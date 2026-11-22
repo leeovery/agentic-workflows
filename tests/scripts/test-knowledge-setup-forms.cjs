@@ -4,7 +4,9 @@
 // constants, the active-settings summary, the initial index every form ends
 // with, and the --key-only flow and the interactive wizard against injected
 // prompt deps. Behaviour of the full forms through `engine knowledge setup`
-// is covered end-to-end in test-knowledge-cli.sh.
+// is covered end to end in test-engine-knowledge-setup.cjs.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 
@@ -14,32 +16,35 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const forms = require('../../skills/workflow-engine/scripts/domain/knowledge/setup-forms.cjs');
-const setup = require('../../skills/workflow-engine/scripts/domain/knowledge/setup.cjs');
-const { runWizard, runKeyOnly } = require('../../skills/workflow-engine/scripts/domain/knowledge/setup-wizard.cjs');
-const { loadSettings } = require('../../skills/workflow-engine/scripts/domain/knowledge/embedder.cjs');
-const config = require('../../skills/workflow-engine/scripts/kernel/knowledge/config.cjs');
-const { UserError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/retry.cjs');
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
-const { heldCall } = require('./knowledge-harness.cjs');
+const forms = require('../../skills/ledger-engine/scripts/domain/knowledge/setup-forms.cjs');
+const setup = require('../../skills/ledger-engine/scripts/domain/knowledge/setup.cjs');
+const { runWizard, runKeyOnly } = require('../../skills/ledger-engine/scripts/domain/knowledge/setup-wizard.cjs');
+const { loadSettings } = require('../../skills/ledger-engine/scripts/domain/knowledge/embedder.cjs');
+const config = require('../../skills/ledger-engine/scripts/kernel/knowledge/config.cjs');
+const { UserError } = require('../../skills/ledger-engine/scripts/kernel/knowledge/retry.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
+const { knowledgeFiles } = require('../../skills/ledger-engine/scripts/kernel/knowledge/files.cjs');
+const { ENGINE_COMMAND, heldCall, refuseLaunches } = require('./knowledge-harness.cjs');
+const { layout } = require('./engine-harness.cjs');
+
+refuseLaunches();
 
 /**
  * A throwaway home the system config resolves through. These forms read
- * `~/.config/workflows`, so the suite's hermetic override — which answers
+ * `~/.config/ledger`, so the suite's hermetic override — which answers
  * ahead of `$HOME` — comes off for the duration.
  */
 function fakeConfigHome() {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-home-'));
   const savedHome = process.env.HOME;
-  const savedOverride = process.env.WORKFLOWS_CONFIG_DIR;
+  const savedOverride = process.env.LEDGER_CONFIG_DIR;
   process.env.HOME = home;
-  delete process.env.WORKFLOWS_CONFIG_DIR;
+  delete process.env.LEDGER_CONFIG_DIR;
   return {
     home,
     restore() {
       process.env.HOME = savedHome;
-      process.env.WORKFLOWS_CONFIG_DIR = savedOverride;
+      process.env.LEDGER_CONFIG_DIR = savedOverride;
       fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     },
   };
@@ -96,8 +101,8 @@ describe('summaryLines', () => {
     const lines = forms.summaryLines(null);
     assert.match(lines[0], /keyword-only \(BM25\)/);
     assert.strictEqual(lines[2],
-      'Upgrade anytime: `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --provider ...` '
-      + 'or the interactive `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup`.');
+      `Upgrade anytime: \`${ENGINE_COMMAND} knowledge setup --provider ...\` `
+      + `or the interactive \`${ENGINE_COMMAND} knowledge setup\`.`);
   });
 
   it('openai shows provider and model only', () => {
@@ -182,38 +187,37 @@ describe('runKeyOnly', () => {
 
 describe('runFromSystem and runKeywordOnly refusals', () => {
   let home;
-  let project;
+  let state;
   let configHome;
 
   beforeEach(() => {
     configHome = fakeConfigHome();
     home = configHome.home;
-    project = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-fromsys-proj-'));
-    fs.mkdirSync(path.join(project, '.workflows'), { recursive: true });
+    state = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-fromsys-state-'));
   });
 
   afterEach(() => {
     configHome.restore();
-    fs.rmSync(project, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    fs.rmSync(state, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
-  const call = () => heldCall(project).call;
+  const call = () => heldCall(state).call;
 
   it('refuses when no system config exists, naming the remedies', async () => {
-    await assert.rejects(() => forms.runFromSystem(call(), project), (err) => {
+    await assert.rejects(() => forms.runFromSystem(call(), state), (err) => {
       assert.ok(err instanceof UserError);
       assert.match(err.message, /no system config found/);
       assert.match(err.message, /--provider/);
       assert.match(err.message, /--keyword-only/);
       return true;
     });
-    assert.ok(!fs.existsSync(path.join(project, '.workflows', '.knowledge')));
+    assert.ok(!fs.existsSync(path.join(state, '.knowledge')));
   });
 
   it('refuses an invalid system config with the parse reason', async () => {
-    fs.mkdirSync(path.join(home, '.config', 'workflows'), { recursive: true });
-    fs.writeFileSync(path.join(home, '.config', 'workflows', 'config.json'), '{"knowledge":42}');
-    await assert.rejects(() => forms.runFromSystem(call(), project), (err) => {
+    fs.mkdirSync(path.join(home, '.config', 'ledger'), { recursive: true });
+    fs.writeFileSync(path.join(home, '.config', 'ledger', 'config.json'), '{"knowledge":42}');
+    await assert.rejects(() => forms.runFromSystem(call(), state), (err) => {
       assert.ok(err instanceof UserError);
       assert.match(err.message, /is not valid/);
       return true;
@@ -221,11 +225,11 @@ describe('runFromSystem and runKeywordOnly refusals', () => {
   });
 
   it('keyword-only refuses an unreadable system config before it writes anything', async () => {
-    const knowledgeDir = path.join(project, '.workflows', '.knowledge');
-    fs.mkdirSync(path.join(home, '.config', 'workflows'), { recursive: true });
+    const knowledgeDir = path.join(state, '.knowledge');
+    fs.mkdirSync(path.join(home, '.config', 'ledger'), { recursive: true });
     for (const [content, reason] of [['{ not json', /not valid JSON/], ['{"knowledge":42}', /invalid "knowledge" key/]]) {
-      fs.writeFileSync(path.join(home, '.config', 'workflows', 'config.json'), content);
-      await assert.rejects(() => forms.runKeywordOnly(call(), project), (err) => {
+      fs.writeFileSync(path.join(home, '.config', 'ledger', 'config.json'), content);
+      await assert.rejects(() => forms.runKeywordOnly(call(), state), (err) => {
         assert.ok(err instanceof UserError);
         assert.match(err.message, /^system config at .* is not valid/);
         assert.match(err.message, reason);
@@ -238,12 +242,12 @@ describe('runFromSystem and runKeywordOnly refusals', () => {
   });
 
   it('treats a knowledge-less shared config (session settings only) as no system config', async () => {
-    fs.mkdirSync(path.join(home, '.config', 'workflows'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.config', 'ledger'), { recursive: true });
     fs.writeFileSync(
-      path.join(home, '.config', 'workflows', 'config.json'),
+      path.join(home, '.config', 'ledger', 'config.json'),
       JSON.stringify({ editor: { theme: 'dark' } })
     );
-    await assert.rejects(() => forms.runFromSystem(call(), project), (err) => {
+    await assert.rejects(() => forms.runFromSystem(call(), state), (err) => {
       assert.ok(err instanceof UserError);
       assert.match(err.message, /no system config found/);
       return true;
@@ -251,12 +255,12 @@ describe('runFromSystem and runKeywordOnly refusals', () => {
   });
 
   it('refuses an unresolvable openai key, naming the env var and --key-only', async () => {
-    fs.mkdirSync(path.join(home, '.config', 'workflows'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.config', 'ledger'), { recursive: true });
     fs.writeFileSync(
-      path.join(home, '.config', 'workflows', 'config.json'),
+      path.join(home, '.config', 'ledger', 'config.json'),
       JSON.stringify({ knowledge: { provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 } })
     );
-    await assert.rejects(() => forms.runFromSystem(call(), project), (err) => {
+    await assert.rejects(() => forms.runFromSystem(call(), state), (err) => {
       assert.ok(err instanceof UserError);
       assert.match(err.message, /\$OPENAI_API_KEY/);
       assert.match(err.message, /--key-only/);
@@ -264,13 +268,13 @@ describe('runFromSystem and runKeywordOnly refusals', () => {
       return true;
     });
     // Nothing was created before the refusal.
-    assert.ok(!fs.existsSync(path.join(project, '.workflows', '.knowledge')));
+    assert.ok(!fs.existsSync(path.join(state, '.knowledge')));
   });
 });
 
 describe('setup writes the provider settings alone', () => {
   let configHome;
-  let project;
+  let state;
   let files;
 
   /** @param {string} file @param {Record<string, any>} content */
@@ -282,32 +286,31 @@ describe('setup writes the provider settings alone', () => {
   const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
   /** A prompter answering each question in turn. @param {string[]} answers */
   const prompter = (answers) => () => ({ question: (_prompt, answer) => answer(answers.shift()), close: () => {} });
-  const wizard = (answers) => runWizard(heldCall(project).call, project, { requireTTY: () => {}, createPrompter: prompter(answers) });
+  const wizard = (answers) => runWizard(heldCall(state).call, state, { requireTTY: () => {}, createPrompter: prompter(answers) });
 
   const TUNED = { similarity_threshold: 0.4, decay_weights: { epic: 2 }, strategy: 'hybrid' };
 
   beforeEach(() => {
     configHome = fakeConfigHome();
-    project = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-setup-keys-'));
-    fs.mkdirSync(path.join(project, '.workflows'), { recursive: true });
-    files = knowledgeFiles(project);
+    state = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-setup-keys-'));
+    files = knowledgeFiles(state);
   });
 
   afterEach(() => {
     configHome.restore();
-    fs.rmSync(project, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    fs.rmSync(state, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   it('--from-system drops the project config\'s provider overrides and keeps every other key', async () => {
     writeJson(config.systemConfigPath(), { knowledge: { provider: 'stub', dimensions: 8 } });
     writeJson(files.config, { knowledge: { provider: 'openai', model: 'text-embedding-3-small', ...TUNED } });
-    await forms.runFromSystem(heldCall(project).call, project);
+    await forms.runFromSystem(heldCall(state).call, state);
     assert.deepStrictEqual(readJson(files.config), { knowledge: TUNED });
   });
 
   it('--keyword-only pins the provider off and keeps every other key of the project config', async () => {
     writeJson(files.config, { knowledge: { provider: 'openai', model: 'text-embedding-3-small', dimensions: 8, ...TUNED } });
-    await forms.runKeywordOnly(heldCall(project).call, project);
+    await forms.runKeywordOnly(heldCall(state).call, state);
     assert.deepStrictEqual(readJson(files.config), { knowledge: { provider: null, ...TUNED } });
   });
 
@@ -323,7 +326,7 @@ describe('setup writes the provider settings alone', () => {
 
   it("the wizard's reinitialise keeps every key of the project config but the provider settings", async () => {
     writeJson(config.systemConfigPath(), { knowledge: { provider: 'stub', dimensions: 8 } });
-    await forms.runKeywordOnly(heldCall(project).call, project);
+    await forms.runKeywordOnly(heldCall(state).call, state);
     writeJson(files.config, { knowledge: { provider: null, model: 'stale', ...TUNED } });
     await wizard(['n', 'y']);
     assert.deepStrictEqual(readJson(files.config), { knowledge: TUNED });
@@ -331,51 +334,51 @@ describe('setup writes the provider settings alone', () => {
 });
 
 describe('runInitialIndexStep', () => {
-  let project;
+  let state;
   let held;
 
-  /** A keyword-only project whose one discussion is completed, holding `body`. @param {string} body */
-  function discussionProject(body) {
-    const wf = path.join(project, '.workflows');
-    fs.mkdirSync(path.join(wf, 'auth', 'discussion'), { recursive: true });
+  /** A keyword-only state whose one record holds `body`. @param {string} body */
+  function recordedProject(body) {
+    const wf = state;
+    fs.mkdirSync(path.join(wf, 'auth'), { recursive: true });
+    fs.mkdirSync(path.dirname(path.join(wf, layout.record('auth', 'auth'))), { recursive: true });
     fs.writeFileSync(path.join(wf, 'manifest.json'), JSON.stringify({ work_units: { auth: { work_type: 'feature' } } }));
     fs.writeFileSync(path.join(wf, 'auth', 'manifest.json'), JSON.stringify({
-      name: 'auth', work_type: 'feature', status: 'in-progress',
-      phases: { discussion: { items: { auth: { status: 'completed' } } } },
+      name: 'auth', work_type: 'feature', status: 'in-progress', phases: {},
     }));
-    fs.writeFileSync(path.join(wf, 'auth', 'discussion', 'auth.md'), body);
-    fs.mkdirSync(path.join(wf, '.knowledge'), { recursive: true });
+    fs.writeFileSync(path.join(wf, layout.record('auth', 'auth')), body);
     fs.writeFileSync(path.join(wf, '.knowledge', 'config.json'), '{ "knowledge": { "provider": null } }\n');
   }
 
   beforeEach(() => {
-    project = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-initial-'));
-    held = heldCall(project);
+    state = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-initial-'));
+    held = heldCall(state);
   });
 
   afterEach(() => {
-    fs.rmSync(project, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    fs.rmSync(state, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
-  const initialIndex = () => setup.runInitialIndexStep(held.call, project, knowledgeFiles(project));
+  const initialIndex = () => setup.runInitialIndexStep(held.call, state, knowledgeFiles(state));
 
   it('a clean initial index says nothing on stderr', async () => {
-    discussionProject('# Auth\n\nTokens rotate.\n');
+    recordedProject('# Auth\n\nTokens rotate.\n');
     await initialIndex();
     assert.strictEqual(held.output.stderr, '');
     assert.match(held.output.stdout, /^1 new, 0 changed, 0 removed, 0 unchanged\.$/m);
   });
 
   it('artifacts that failed to index are counted, and setup still succeeds', async () => {
-    discussionProject('');
+    recordedProject('');
     await initialIndex();
-    assert.match(held.output.stderr, /^Failed to index \.workflows\/auth\/discussion\/auth\.md: No chunks produced/m);
+    const failed = `Failed to index ${path.join(state, layout.record('auth', 'auth'))}: No chunks produced`;
+    assert.ok(held.output.stderr.split('\n').some((line) => line.startsWith(failed)), held.output.stderr);
     assert.ok(held.output.stderr.endsWith('\n1 artifact(s) failed to index — the next start retries them.\n'));
   });
 
   it('chunks awaiting vectors are counted, and setup still succeeds', async () => {
-    discussionProject('# Auth\n\nTokens rotate.\n');
-    const files = knowledgeFiles(project);
+    recordedProject('# Auth\n\nTokens rotate.\n');
+    const files = knowledgeFiles(state);
     const openai = { provider: 'openai', model: 'text-embedding-3-small', dimensions: 8 };
     store.saveStore(store.createStore(), files.store);
     store.writeMetadata(files.metadata, { ...openai, last_indexed: null });
@@ -385,8 +388,8 @@ describe('runInitialIndexStep', () => {
   });
 
   it('an initial index that throws is reported, and setup still succeeds', async () => {
-    discussionProject('# Auth\n\nTokens rotate.\n');
-    fs.writeFileSync(path.join(project, '.workflows', 'manifest.json'), '{ not json');
+    recordedProject('# Auth\n\nTokens rotate.\n');
+    fs.writeFileSync(path.join(state, 'manifest.json'), '{ not json');
     await initialIndex();
     assert.match(held.output.stderr, /Initial indexing hit an error: manifest read failed: /);
     assert.match(held.output.stderr, /The project is initialised; the next start retries the indexing\./);
@@ -395,17 +398,16 @@ describe('runInitialIndexStep', () => {
 
 describe('the interactive wizard', () => {
   let configHome;
-  let project;
+  let state;
 
   beforeEach(() => {
     configHome = fakeConfigHome();
-    project = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-wizard-proj-'));
-    fs.mkdirSync(path.join(project, '.workflows'), { recursive: true });
+    state = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-wizard-state-'));
   });
 
   afterEach(() => {
     configHome.restore();
-    fs.rmSync(project, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    fs.rmSync(state, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   /** A prompter answering each question in turn. @param {string[]} answers */
@@ -417,11 +419,11 @@ describe('the interactive wizard', () => {
     fs.writeFileSync(system, JSON.stringify({
       knowledge: { provider: 'openai-compatible', base_url: 'http://127.0.0.1:9/v1', model: 'm', dimensions: 8 },
     }));
-    const files = knowledgeFiles(project);
-    await forms.runKeywordOnly(heldCall(project).call, project);
+    const files = knowledgeFiles(state);
+    await forms.runKeywordOnly(heldCall(state).call, state);
     assert.deepStrictEqual(config.readConfigFile(files.config), { provider: null });
 
-    await runWizard(heldCall(project).call, project, { requireTTY: () => {}, createPrompter: prompter(['n', 'n']) });
+    await runWizard(heldCall(state).call, state, { requireTTY: () => {}, createPrompter: prompter(['n', 'n']) });
     assert.deepStrictEqual(config.readConfigFile(files.config), {});
     assert.strictEqual(loadSettings(files).cfg.provider, 'openai-compatible');
   });
@@ -433,9 +435,9 @@ describe('the interactive wizard', () => {
     process.env.OPENAI_API_KEY = 'sk-wizard';
     t.after(() => { delete process.env.OPENAI_API_KEY; });
 
-    const held = heldCall(project);
-    await runWizard(held.call, project, { requireTTY: () => {}, createPrompter: prompter(['n']) });
-    const files = knowledgeFiles(project);
+    const held = heldCall(state);
+    await runWizard(held.call, state, { requireTTY: () => {}, createPrompter: prompter(['n']) });
+    const files = knowledgeFiles(state);
     const { provider } = loadSettings(files);
     assert.deepStrictEqual(store.readMetadata(files.metadata), {
       provider: 'openai', model: provider.model(), dimensions: provider.dimensions(), last_indexed: store.readMetadata(files.metadata).last_indexed, fill_failure: null,
@@ -443,9 +445,23 @@ describe('the interactive wizard', () => {
     assert.doesNotMatch(held.output.stderr, /Initial indexing hit an error/);
   });
 
+  it('refuses a project store left without its metadata, pointing at the rebuild — never writing metadata over a store it cannot read', async () => {
+    const system = config.systemConfigPath();
+    fs.mkdirSync(path.dirname(system), { recursive: true });
+    fs.writeFileSync(system, '{ "knowledge": {} }');
+    const files = knowledgeFiles(state);
+    fs.mkdirSync(files.dir, { recursive: true });
+    store.saveStore(store.createStore(), files.store);
+
+    const held = heldCall(state);
+    await assert.rejects(runWizard(held.call, state, { requireTTY: () => {}, createPrompter: prompter(['n']) }), (err) => err.code === 1);
+    assert.match(held.output.stderr, /^\nProject knowledge base at .* is in an inconsistent state:\n  store\.bin is present but metadata\.json is missing\.\n  Setup cannot recover this safely — run\n  `.* knowledge rebuild`\n/);
+    assert.ok(!fs.existsSync(files.metadata));
+  });
+
   it('refuses without a terminal, before it asks anything', async () => {
-    const held = heldCall(project);
-    await assert.rejects(runWizard(held.call, project), (err) => err.code === 1);
+    const held = heldCall(state);
+    await assert.rejects(runWizard(held.call, state), (err) => err.code === 1);
     assert.strictEqual(held.output.stderr,
       'engine knowledge setup requires an interactive terminal. Run it directly, not through Claude or a pipe.\n');
   });

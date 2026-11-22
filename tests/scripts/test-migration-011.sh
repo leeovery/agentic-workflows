@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-MIGRATION="$REPO_DIR/skills/workflow-migrate/scripts/migrations/011-rename-workflow-directory.sh"
+MIGRATION="$REPO_DIR/skills/ledger-migrate/scripts/migrations/011-rename-workflow-directory.sh"
 
 PASS=0
 FAIL=0
@@ -108,10 +108,10 @@ EOF
   local content
   content=$(cat "$TEST_DIR/.gitignore")
 
-  assert_eq "new gitignore entry present" "true" "$(echo "$content" | grep -qF '.workflows/.cache/' && echo true || echo false)"
-  assert_eq "old gitignore entry removed" "false" "$(echo "$content" | grep -qF 'docs/workflow/.cache/' && echo true || echo false)"
-  assert_eq "node_modules/ preserved" "true" "$(echo "$content" | grep -qF 'node_modules/' && echo true || echo false)"
-  assert_eq ".env preserved" "true" "$(echo "$content" | grep -qF '.env' && echo true || echo false)"
+  assert_eq "new gitignore entry present" "true" "$(grep -qF '.workflows/.cache/' <<<"$content" && echo true || echo false)"
+  assert_eq "old gitignore entry removed" "false" "$(grep -qF 'docs/workflow/.cache/' <<<"$content" && echo true || echo false)"
+  assert_eq "node_modules/ preserved" "true" "$(grep -qF 'node_modules/' <<<"$content" && echo true || echo false)"
+  assert_eq ".env preserved" "true" "$(grep -qF '.env' <<<"$content" && echo true || echo false)"
 
   teardown
 }

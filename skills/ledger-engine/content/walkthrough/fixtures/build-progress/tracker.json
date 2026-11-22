@@ -1,0 +1,12 @@
+{
+  "phases": [
+    [
+      { "ref": { "unit": "saved-filters", "phase": 1, "n": 1 }, "title": "Store a named filter set", "status": "done", "type": "feat", "text": "", "additions": [], "after": [], "reason": null },
+      { "ref": { "unit": "saved-filters", "phase": 1, "n": 2 }, "title": "Save from the filter bar", "status": "in-progress", "type": "feat", "text": "", "additions": [], "after": [{ "unit": "saved-filters", "phase": 1, "n": 1 }], "reason": null },
+      { "ref": { "unit": "saved-filters", "phase": 1, "n": 3 }, "title": "Refuse a name already taken", "status": "open", "type": "feat", "text": "", "additions": [], "after": [{ "unit": "saved-filters", "phase": 1, "n": 2 }], "reason": null },
+      { "ref": { "unit": "saved-filters", "phase": 1, "n": 4 }, "title": "List the saved filter sets", "status": "open", "type": "feat", "text": "", "additions": [], "after": [{ "unit": "saved-filters", "phase": 1, "n": 1 }], "reason": null }
+    ],
+    null,
+    null
+  ]
+}

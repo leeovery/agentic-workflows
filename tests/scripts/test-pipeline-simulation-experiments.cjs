@@ -1,0 +1,266 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// The pipeline simulation's experiments in an epic: the spawn, the
+// laboratory's entry and its pick, the walk to verdict, splits, releases,
+// each end's way on and series continuation. A feature's are
+// test-pipeline-simulation-experiments-feature.cjs's.
+//
+// Layer: simulation. World: the project every scenario starts from
+// (pipeline-world.cjs), a copy per scenario; each replays the engine calls
+// the skill prose makes, in prose order, and the oracle
+// (pipeline-oracle.cjs) audits the whole state after every mutation.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+const {
+  Sim, mappedEpic, enterEntry, labEntry, handoff, handoffBy, follow, answerGate, decideTopic, askedOn, send, epicRow, epicMenuLooked, epicMenuAt, epicPick,
+} = require('./pipeline-world.cjs');
+const { leaningCall } = require('./ledger-world.cjs');
+const { trustLines } = require('./pipeline-oracle.cjs');
+
+/**
+ * Claude's answer to a question on the topic's map, once nothing measures it.
+ * @param {Sim} sim @param {string} wu @param {string} topic @param {string} question @param {string} text
+ */
+function claudeDecides(sim, wu, topic, question, text) {
+  sim.run(['ledger', 'decide', `${wu}.discussion.${topic}`, '--answers', question], null,
+    JSON.stringify({ by: 'claude', who_moved_whom: 'none', text, why: 'The experiments settled it.' }));
+}
+
+describe('pipeline simulation: experiments, in an epic', () => {
+  let sim;
+  beforeEach(() => { sim = new Sim(); });
+  afterEach(() => { sim.destroy(); });
+
+  it('epic experiments: spawn, the walk to verdict and the epic\'s menu after it (20.S22), splits, releases, series continuation, and a question raised while its experiment runs', async () => {
+    const wu = 'lab';
+    mappedEpic(sim, wu, ['timing', 'layout']);
+    for (const topic of ['timing', 'layout']) {
+      epicPick(sim, wu, topic);
+      enterEntry(sim, wu, 'discussion', topic);
+      sim.write(`.ledger/${wu}/topics/${topic}/log.md`, `# Discussion — ${topic}\n`);
+    }
+
+    // The spawn, mid-discussion: id + item + the problem statement + the
+    // spawning item's lock, one transaction that commits the record — the
+    // session writes the problem to a cache scratch and the create installs
+    // it, so no conceived record ever exists without its problem file.
+    const e1Problem = sim.write(`.ledger/.cache/${wu}/discussion/timing/problem.md`,
+      '# Problem — window placement\n\n*From: timing · discussion*\n');
+    const placement = askedOn(sim, wu, 'timing', 'Where does a new window open?');
+    const e1 = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'window-placement', '--from', 'discussion', '--problem', e1Problem, '--question', placement]);
+    assert.strictEqual(e1.id, 'E1');
+    assert.strictEqual(e1.dir, path.join(sim.dir, `.ledger/${wu}/topics/timing/experiments/E1-window-placement`));
+    assert.deepStrictEqual(e1.awaiting, { phase: 'discussion', ids: ['E1'] });
+    assert.ok(fs.existsSync(path.join(e1.dir, 'problem.md')), 'the create installs the problem statement');
+    assert.ok(!fs.existsSync(path.join(sim.dir, e1Problem)), 'the scratch is consumed');
+
+    // The now-or-later choice rides the recorded spawn — addressed to the
+    // spawning item, refused for an id it holds no wait on.
+    assert.match(sim.render(['experiment-spawn-gate', `${wu}.discussion.timing`, '--id', 'E1'], { expect: 'content' }),
+      /Work E1 now\?/);
+    sim.refuses(['render', 'experiment-spawn-gate', `${wu}.discussion.timing`, '--id', 'E9'],
+      /holds no evidence wait on E9/);
+
+    // Another topic's spawn numbers its own series.
+    const density = askedOn(sim, wu, 'layout', 'How dense is the grid?');
+    const e2 = sim.run(['experiment', 'create', wu, 'layout', '--slug', 'grid-density', '--from', 'discussion', '--question', density,
+      '--problem', sim.write(`.ledger/.cache/${wu}/discussion/layout/problem.md`, '# Problem — grid density\n')]);
+    assert.strictEqual(e2.id, 'E1');
+
+    // Each topic with an experiment waiting is one row into the laboratory —
+    // which record to work resolves inside the phase, never in the row.
+    assert.deepStrictEqual([epicRow(sim, wu, 'Timing'), epicRow(sim, wu, 'Layout')], [
+      '1 → Continue "Timing" in the laboratory — 1 experiment waiting (recommended)',
+      '2 → Continue "Layout" in the laboratory — 1 experiment waiting',
+    ]);
+
+    // Neither waiting conversation answers the question its experiment
+    // measures while the evidence is out.
+    for (const [topic, question] of [['timing', placement], ['layout', density]]) {
+      sim.refuses(['ledger', 'decide', `${wu}.discussion.${topic}`, '--answers', question], /is measured by experiment E1, still running/, null,
+        JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'A guess.', why: 'No evidence yet.' }));
+    }
+    // Working it now leaves the topic, a review this session dispatched
+    // still running, never waited for: the spawn gate's yes hands the
+    // session straight to the laboratory.
+    const review = sim.run(['agent', 'dispatch', wu, 'discussion', 'timing', '--kind', 'review']);
+    sim.render(['experiment-spawn-gate', `${wu}.discussion.timing`, '--id', 'E1'], { expect: 'content' });
+    assert.deepStrictEqual(sim.run(['gate', 'experiment spawn gate', '--pick', 'y']).next,
+      { kind: 'handoff', skill: 'ledger-experiment-process', args: ['epic', wu, 'timing', 'E1'] });
+    handoff(sim, `/ledger-experiment-process epic ${wu} timing E1`);
+
+    // The walk to verdict: the entry names the one live experiment, then
+    // design → the briefing's freeze → run → conclude, each step committing
+    // what it records with the record's folder. The freeze is the approval
+    // gate's yes; the gate renders only over a designed record.
+    assert.strictEqual(labEntry(sim, wu, 'timing', 'E1'), 'E1');
+    sim.write(`${e1.dir}/design.md`, '# Design — E1\n\nQuestion, prediction, decision rule.\n');
+    sim.run(['experiment', 'advance', wu, 'timing', 'E1']);
+    assert.match(sim.render(['experiment-approval-gate', `${wu}.experiment.timing`, '--id', 'E1'], { expect: 'content' }),
+      /Approve E1's design\?/);
+    const freeze = answerGate(sim, 'experiment approval gate', '--pick', 'y').next;
+    assert.deepStrictEqual(freeze, { kind: 'engine', argv: ['experiment', 'approve', wu, 'timing', 'E1'] });
+    sim.run(freeze.argv);
+    sim.run(['experiment', 'advance', wu, 'timing', 'E1']);
+    sim.run(['experiment', 'runs', wu, 'timing', 'E1', '--file', sim.write(`.ledger/.cache/${wu}/experiment/timing/E1-runs.json`,
+      JSON.stringify([{ condition: 'one monitor', of: 4, values: [1, 1] }, { condition: 'two monitors', of: 4, values: [] }]))]);
+
+    // A split: the running question decomposes into sub-experiments walked in
+    // miniature; the lock stays on E1 and the parent's verdict waits for them.
+    const sub = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'single-monitor', '--parent', 'E1']);
+    assert.strictEqual(sub.id, 'E1.1');
+    assert.strictEqual(sub.dir, path.join(sim.dir, `.ledger/${wu}/topics/timing/experiments/E1-window-placement/E1.1-single-monitor`));
+    sim.refuses(['experiment', 'conclude', wu, 'timing', 'E1', '--verdict', 'held'], /live sub-experiments/);
+    sim.write(`${sub.dir}/design.md`, '# Design — E1.1\n');
+    sim.run(['experiment', 'advance', wu, 'timing', 'E1.1']);
+    sim.run(['experiment', 'approve', wu, 'timing', 'E1.1']);
+    sim.run(['experiment', 'advance', wu, 'timing', 'E1.1']);
+    assert.deepStrictEqual(sim.run(['experiment', 'runs', wu, 'timing', 'E1.1', '--file', sim.write(`.ledger/.cache/${wu}/experiment/timing/E1.1-runs.json`,
+      JSON.stringify([{ condition: 'one monitor', of: 2, values: [3, 5], unit: 'ms' }]))]).runs, [{ condition: 'one monitor', of: 2, done: 2, median: 4, unit: 'ms' }]);
+    const subDone = sim.run(['experiment', 'conclude', wu, 'timing', 'E1.1', '--verdict', 'placed correctly']);
+    assert.strictEqual(subDone.released_waits, undefined, 'a sub releases nothing — the lock is the parent to release');
+    assert.deepStrictEqual(subDone.next, { kind: 'continue' }, 'a split\'s end carries the parent\'s run on');
+
+    // The parent's conclusion synthesises the subs and releases the wait
+    // once, flagging nothing.
+    sim.write(`${e1.dir}/report.md`, '# Report — E1\n\nResults, verdict, reproduce notes.\n');
+    const verdict = sim.run(['experiment', 'conclude', wu, 'timing', 'E1', '--verdict', 'all layouts placed correctly; adopted']);
+    assert.deepStrictEqual(verdict.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
+    assert.strictEqual(verdict.item_status, 'completed', 'timing\'s records are all terminal — the item closes itself');
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items.timing.awaiting_experiments, undefined);
+    // The verdict in and nothing live, its next is the laboratory's leave,
+    // which takes the cleared conversation onto the epic's menu, where
+    // timing's row says its report waits (20.S22).
+    assert.deepStrictEqual(verdict.next, { kind: 'engine', argv: ['handoff', 'unit', wu] });
+    follow(sim, verdict.next);
+    sim.handOver();
+    epicMenuAt(sim, wu);
+    const atMenu = sim.board().view;
+    assert.deepStrictEqual([atMenu.kind, atMenu.at_menu, atMenu.topics.find((/** @type {{topic: string}} */ { topic }) => topic === 'timing').experiment], ['epic', true, { id: 'E1', running: false }],
+      '20.S22: once the verdict is in, This session follows the session to the epic\'s menu, timing saying its report waits');
+    // Back in timing's discussion, the review that ran beside the laboratory
+    // is taken in, the measured question answered — raised once its
+    // experiment concluded, so its raise names none (9.1.11) — and timing
+    // decided.
+    epicPick(sim, wu, 'timing');
+    enterEntry(sim, wu, 'discussion', 'timing');
+    sim.write(review.file, '# Findings\n');
+    sim.run(['agent', 'scan', wu, 'discussion', 'timing']);
+    sim.run(['agent', 'ack', wu, 'discussion', 'timing', review.id, '--clean']);
+    const placed = await sim.runAsync(['raise', `${wu}.discussion.timing`, '--answers', placement], null, JSON.stringify(leaningCall('Where the last window closed.', 'Centred on the screen.')));
+    sim.run(['raise', 'answer', placed.raise, '--pick', '1'], null, JSON.stringify({ why: 'E1 placed every layout correctly.' }));
+    decideTopic(sim, wu, 'timing');
+
+    // Series continuation: a message reopens the decided topic, and the next
+    // questions spawn E2 and E3 onto the completed series and reopen it;
+    // abandonment is the other release — the waiting point reverts to open,
+    // no downstream hop.
+    const toTiming = send(sim, wu, 'timing', 'layout', 'which-monitor');
+    assert.strictEqual(toTiming.reopened, true);
+    const monitor = askedOn(sim, wu, 'timing', 'Which monitor takes a new window?');
+    sim.run(['topic', 'answered', wu, 'timing', path.basename(toTiming.message_path, '.md'), '--entry', monitor]);
+    const next = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'multi-monitor', '--from', 'discussion', '--question', monitor,
+      '--problem', sim.write(`.ledger/.cache/${wu}/discussion/timing/problem.md`, '# Problem — multi-monitor\n')]);
+    assert.strictEqual(next.id, 'E2');
+    const stacking = askedOn(sim, wu, 'timing', 'Which window stacks on top?');
+    const third = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'stacking-order', '--from', 'discussion', '--question', stacking,
+      '--problem', sim.write(`.ledger/.cache/${wu}/discussion/timing/problem.md`, '# Problem — stacking order\n')]);
+    assert.strictEqual(third.id, 'E3');
+    // Entered over two live records, the laboratory's entry puts the pick to
+    // the person before anything is written, and a back out of it hands the
+    // work to the epic menu with no banner — nothing ended.
+    sim.handOver();
+    assert.strictEqual(sim.run(['enter', 'experiment', wu, 'timing']).entered, false);
+    assert.match(sim.sections, /=== MENU: experiment pick /);
+    const back = answerGate(sim, 'experiment pick', '--pick', 'b').next;
+    assert.deepStrictEqual(back, { kind: 'handoff', skill: 'ledger-continue-epic', args: [wu] });
+    follow(sim, back);
+    // From the menu again, the pick's row enters the experiment it names.
+    epicPick(sim, wu, 'timing');
+    sim.run(['enter', 'experiment', wu, 'timing']);
+    const picked = answerGate(sim, 'experiment pick', '--pick', 'E2').next;
+    assert.deepStrictEqual(picked, { kind: 'engine', argv: ['enter', 'experiment', wu, 'timing', '--record', 'E2'] });
+    assert.strictEqual(labEntry(sim, wu, 'timing', 'E2'), 'E2');
+    const dropped = sim.run(['experiment', 'abandon', wu, 'timing', 'E2', '--reason', 'settled by E1 after all']);
+    assert.deepStrictEqual(dropped.released_waits, [{ phase: 'discussion', released: ['E2'], remaining: ['E3'] }]);
+    assert.strictEqual(dropped.item_status, 'in-progress', 'a live sibling keeps the item open');
+
+    // The end's next is the return leg's gate, under the register — the
+    // series moved: a record just closed and E3 still lives, so the session
+    // offers the next experiment or the menu, whose row lands where the
+    // pick's back does.
+    assert.deepStrictEqual(dropped.next, { kind: 'engine', argv: ['render', 'experiment-next-gate', `${wu}.experiment.timing`] });
+    assert.match(sim.render(dropped.next.argv.slice(1), { expect: 'content' }),
+      /Experiments — Timing \(4 experiments\)[\s\S]*E2 multi-monitor\n.*↳ Abandoned — settled by E1 after all[\s\S]*The series still holds E3 stacking-order\./);
+    assert.deepStrictEqual(answerGate(sim, 'experiment next gate', '--pick', 'm').next, back, 'its menu row lands where the picker\'s back does');
+    // Worked from the gate instead, its yes enters the laboratory again on
+    // the one experiment left; that one ended with nothing live, the
+    // laboratory's leave follows, the epic's Continue onto its menu.
+    sim.render(dropped.next.argv.slice(1), { expect: 'content' });
+    const again = answerGate(sim, 'experiment next gate', '--pick', 'y').next;
+    assert.deepStrictEqual(again, { kind: 'engine', argv: ['enter', 'experiment', wu, 'timing'] });
+    assert.strictEqual(sim.run(again.argv).entered, true);
+    assert.match(sim.sections, /^experiment: E3$/m);
+    const last = sim.run(['experiment', 'abandon', wu, 'timing', 'E3', '--reason', 'settled by E1 after all']);
+    assert.deepStrictEqual(last.released_waits, [{ phase: 'discussion', released: ['E3'], remaining: [] }]);
+    assert.strictEqual(last.item_status, 'completed', 'every record terminal closes the item');
+    assert.strictEqual(handoffBy(sim, last.next.argv).invoked, `/ledger-continue-epic ${wu}`);
+    claudeDecides(sim, wu, 'timing', monitor, 'The one holding focus.');
+    claudeDecides(sim, wu, 'timing', stacking, 'The newest.');
+    decideTopic(sim, wu, 'timing');
+
+    // Cancellation is the release's menu-side edge, and the series belongs
+    // to its topic: the cancel gate names the record that ends abandoned,
+    // the topic's cancel releases layout's wait and abandons the record, and
+    // the reactivate brings the conversation back. There is no series-level
+    // cancel to refuse.
+    sim.refuses(['topic', 'cancel', wu, 'experiment', 'layout'], /^cancel is topic-level — discovery/);
+    assert.match(sim.render(['cancel-gate', `${wu}.discovery.layout`], { expect: 'content' }).replace(/\n\u00a0+/g, ' '),
+      /marks its discussion \[in-progress\] cancelled — it can be reactivated later\. 1 open experiment \(E1\) ends abandoned on the register\./);
+    const cancelled = sim.run(['topic', 'cancel', wu, 'discovery', 'layout']);
+    assert.deepStrictEqual(cancelled.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
+    assert.deepStrictEqual(cancelled.abandoned, ['E1'], 'the cancel closes every open record — no zombie survives');
+    assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.experiments.E1.reason, 'topic cancelled');
+    assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.status, 'completed', 'the series settles, never cancelled');
+    sim.run(['topic', 'reactivate', wu, 'discovery', 'layout']);
+    assert.deepStrictEqual(sim.manifest(wu).phases.discussion.items.layout, { status: 'in-progress' });
+    assert.deepStrictEqual([sim.manifest(wu).phases.experiment.items.layout.experiments.E1.status, sim.manifest(wu).phases.experiment.items.layout.experiments.E1.reason], ['abandoned', 'topic cancelled'],
+      '18.S58: the reactivate leaves the experiment abandoned');
+    claudeDecides(sim, wu, 'layout', density, 'Twelve columns.');
+    decideTopic(sim, wu, 'layout');
+    assert.doesNotMatch(epicMenuLooked(sim, wu), /in the laboratory/, 'terminal records retire from the menu');
+
+    // The series is never reactivated on its own — its rows stand; a new
+    // spawn from the reopened conversation revives it at the next id.
+    sim.refuses(['topic', 'reactivate', wu, 'experiment', 'layout'], /^reactivate is topic-level — discovery/);
+
+    // A message reopens it: the series item is derived bookkeeping no
+    // phase's start reconciles, so the settled series is left untouched.
+    const reopened = send(sim, wu, 'layout', 'timing', 'grid-at-scale');
+    assert.strictEqual(reopened.reopened, true);
+    assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.reconcile_needed, undefined,
+      'the series item never takes a reconcile flag');
+
+    const scale = askedOn(sim, wu, 'layout', 'Does the grid hold at scale?');
+    sim.run(['topic', 'answered', wu, 'layout', path.basename(reopened.message_path, '.md'), '--entry', scale]);
+    const revived = sim.run(['experiment', 'create', wu, 'layout', '--slug', 'follow-up', '--from', 'discussion', '--question', scale,
+      '--problem', sim.write(`.ledger/.cache/${wu}/discussion/layout/problem.md`, '# Problem — follow-up\n')]);
+    assert.strictEqual(revived.id, 'E2', 'the revival allocates the next id over the closed rows');
+    assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.status, 'in-progress');
+    // Raised while the follow-up measures it, the question's raise names it
+    // (9.1.11); the person settles it there, and the follow-up is dropped.
+    const { raise } = await sim.runAsync(['raise', `${wu}.discussion.layout`, '--answers', scale], null, JSON.stringify(leaningCall('It holds.', 'It breaks past a thousand windows.')));
+    sim.run(['raise', 'answer', raise, '--pick', '1'], null, JSON.stringify({ why: 'The person has seen it at scale.' }));
+    assert.deepStrictEqual(trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'raise').map(({ measured }) => measured), [null, 'E2']);
+    const settled = sim.run(['experiment', 'abandon', wu, 'layout', 'E2', '--reason', 'settled without the follow-up']);
+    assert.strictEqual(settled.item_status, 'completed');
+    decideTopic(sim, wu, 'layout');
+  });
+});

@@ -4,6 +4,8 @@
 // resolve to, the search that ranks and places each result's passage, and the
 // render that prints. The engine's `knowledge query` composes the three; the
 // eval harness calls them in process.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 
@@ -12,12 +14,13 @@ const os = require('os');
 const path = require('path');
 const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { embeddingEndpoint, engineKnowledge, withoutBackoff } = require('./knowledge-harness.cjs');
+const { ENGINE_COMMAND, embeddingEndpoint, engineKnowledge, refuseLaunches, withoutBackoff } = require('./knowledge-harness.cjs');
+const { setupFixture, cleanupFixture, statePath, layout, createFile } = require('./discovery-test-utils.cjs');
 
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
-const { resolveProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/config.cjs');
-const { QuotaError, AuthError, RateLimitError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
+const { StubProvider } = require('../../skills/ledger-engine/scripts/kernel/knowledge/embeddings.cjs');
+const { resolveProvider } = require('../../skills/ledger-engine/scripts/kernel/knowledge/config.cjs');
+const { QuotaError, AuthError, RateLimitError } = require('../../skills/ledger-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
 const {
   boostProblem,
   QUERY_TIMEOUT_MS,
@@ -26,7 +29,7 @@ const {
   querySettings,
   queryStore,
   renderQuery,
-} = require('../../skills/workflow-engine/scripts/domain/knowledge/query.cjs');
+} = require('../../skills/ledger-engine/scripts/domain/knowledge/query.cjs');
 
 const DIMS = 128;
 const KEYWORD_ONLY = { provider: null, model: null, dimensions: null };
@@ -41,19 +44,23 @@ const PARAPHRASE = { content: 'Receipts reconcile after close.', term: 'when is 
 /** A project holding none of the chunks' source files: each result carries its excerpt alone. */
 const NO_FILES = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-no-files-'));
 after(() => fs.rmSync(NO_FILES, { recursive: true, force: true }));
+refuseLaunches();
 
-/** A chunk of `unit`'s discussion, `n` its ordinal. */
+/** `text` as a regular expression matches it exactly. @param {string} text */
+const literal = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** A chunk of `unit`'s one topic's record, `n` its ordinal. */
 function doc(unit, n, content) {
   return {
-    id: `${unit}-discussion-${unit}-${String(n).padStart(3, '0')}`,
+    id: `${unit}-record-${unit}-${String(n).padStart(3, '0')}`,
     content,
     heading_path: '',
     work_unit: unit,
     work_type: 'feature',
-    phase: 'discussion',
+    phase: 'record',
     topic: unit,
-    confidence: 'medium',
-    source_file: `.workflows/${unit}/discussion/${unit}.md`,
+    confidence: 'high',
+    source_file: layout.record(unit, unit),
     timestamp: new Date(2026, 0, 2).getTime(),
   };
 }
@@ -119,14 +126,14 @@ describe('querySettings', () => {
   });
 
   it('never throws for want of a vector: each conflict runs keyword-only, its note naming the cause and fix', () => {
-    const keyNote = '[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only]';
+    const keyNote = `[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run ${ENGINE_COMMAND} knowledge setup --key-only]`;
     const cases = [
       [OPENAI_BUILT, { provider: 'openai' }, null, keyNote],
       [KEYWORD_ONLY, { provider: 'openai' }, null, keyNote],
       [OPENAI_BUILT, {}, null,
-        '[keyword-only mode — the store was embedded with openai (text-embedding-3-small, 1536 dimensions) and the config names no provider; restore it in the config, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild]'],
+        `[keyword-only mode — the store was embedded with openai (text-embedding-3-small, 1536 dimensions) and the config names no provider; restore it in the config, or run ${ENGINE_COMMAND} knowledge rebuild]`],
       [OPENAI_BUILT, { provider: 'stub' }, new StubProvider({ dimensions: DIMS }),
-        '[keyword-only mode — the store was embedded with openai (text-embedding-3-small, 1536 dimensions) and the config names stub (stub, 128 dimensions); run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild]'],
+        `[keyword-only mode — the store was embedded with openai (text-embedding-3-small, 1536 dimensions) and the config names stub (stub, 128 dimensions); run ${ENGINE_COMMAND} knowledge rebuild]`],
     ];
     for (const [metadata, cfg, provider, note] of cases) {
       const settings = querySettings(metadata, loaded(cfg), provider);
@@ -157,9 +164,9 @@ describe('queryStore', () => {
     const terms = ['token', 'refresh', 'refunds'];
     const merged = await query(db, { terms });
     assert.deepStrictEqual(merged.map((r) => r.id).sort(), [
-      'billing-discussion-billing-002',
-      'new-discussion-new-001',
-      'old-discussion-old-001',
+      'billing-record-billing-002',
+      'new-record-new-001',
+      'old-record-old-001',
     ]);
     assert.strictEqual((await query(db, { terms, options: { limit: 2 } })).length, 2);
   });
@@ -190,164 +197,6 @@ describe('queryStore', () => {
     assert.strictEqual(boosted[0].work_unit, 'old');
   });
 
-  it('never decays a specification, however far the clock has moved past its unit', async () => {
-    const specDb = store.createStore();
-    for (const d of [doc('old', 1, 'Token refresh follows the rate window.'), doc('new', 1, 'Token refresh follows the rate window.')]) {
-      store.insertDocument(specDb, { ...d, embedding: stub.embed(d.content) });
-    }
-    const spec = { ...doc('old', 2, 'Token refresh follows the rate window.'), id: 'old-specification-old-001', phase: 'specification' };
-    store.insertDocument(specDb, { ...spec, embedding: stub.embed(spec.content) });
-    const workUnits = [
-      { name: 'old', status: 'completed', completed_at: '2026-01-01', work_type: 'feature' },
-      { name: 'new', status: 'completed', completed_at: '2026-06-01', work_type: 'feature' },
-    ];
-    const results = await query(specDb, { terms: ['token'], workUnits });
-    assert.deepStrictEqual(results.map((r) => [r.work_unit, r.phase, r.scoring.decay === 1]).sort(), [
-      ['new', 'discussion', true], ['old', 'discussion', false], ['old', 'specification', true],
-    ]);
-  });
-
-  describe('the reopened marker', () => {
-    const DISCUSSION = 'ledger-discussion-ledger-001';
-    const SPECIFICATION = 'ledger-specification-ledger-001';
-    const IMPORT = 'ledger-imports-notes-001';
-    const UNLISTED = 'orphan-discussion-orphan-001';
-    let ledgerDb;
-
-    /**
-     * The ledger unit's manifest, its discussion at `status` and the
-     * specification sourcing it concluded — staled by a reopen's hop.
-     * @param {string} status
-     */
-    function ledger(status) {
-      const stale = status === 'in-progress';
-      return [{
-        name: 'ledger', work_type: 'feature', status: 'in-progress',
-        phases: {
-          discussion: { items: { ledger: { status } } },
-          specification: { items: { ledger: {
-            status: 'completed',
-            sources: { ledger: { status: stale ? 'stale' : 'incorporated' } },
-            ...(stale ? { reconcile_needed: 'discussion' } : {}),
-          } } },
-        },
-      }];
-    }
-
-    /** Each result's marker by chunk id, and the ranking, the discussion at `status`. @param {string} status */
-    async function queried(status) {
-      const results = await query(ledgerDb, { terms: ['receipts'], workUnits: ledger(status) });
-      return { reopened: Object.fromEntries(results.map((r) => [r.id, r.reopened])), ranking: results.map((r) => [r.id, r.score]) };
-    }
-
-    before(() => {
-      ledgerDb = store.createStore();
-      const discussion = doc('ledger', 1, 'Receipts reconcile nightly.');
-      for (const d of [
-        discussion,
-        { ...discussion, id: SPECIFICATION, phase: 'specification', source_file: '.workflows/ledger/specification/ledger/specification.md' },
-        { ...discussion, id: IMPORT, phase: 'imports', topic: 'notes', source_file: '.workflows/ledger/imports/notes.md' },
-        doc('orphan', 1, 'Receipts reconcile nightly.'),
-      ]) {
-        store.insertDocument(ledgerDb, d);
-      }
-    });
-
-    it('marks a result whose own topic is in progress again', async () => {
-      assert.strictEqual((await queried('in-progress')).reopened[DISCUSSION], true);
-    });
-
-    it('leaves the specification sourced from the reopened discussion unmarked: its own item is still concluded', async () => {
-      assert.strictEqual((await queried('in-progress')).reopened[SPECIFICATION], false);
-    });
-
-    it('never marks a result with no item of its own: an import, or a unit no manifest names', async () => {
-      const { reopened } = await queried('in-progress');
-      assert.deepStrictEqual([reopened[IMPORT], reopened[UNLISTED]], [false, false]);
-    });
-
-    it('drops the marker once the topic completes again, and ranks alike either way', async () => {
-      const reopened = await queried('in-progress');
-      const concluded = await queried('completed');
-      assert.deepStrictEqual(concluded.reopened, { [DISCUSSION]: false, [SPECIFICATION]: false, [IMPORT]: false, [UNLISTED]: false });
-      assert.deepStrictEqual(reopened.ranking, concluded.ranking);
-    });
-  });
-
-  describe('the topic order', () => {
-    /**
-     * A chunk of the `auth` epic: `phase`'s record of `topic`.
-     * @param {string} phase @param {string} topic @param {string} content
-     */
-    function record(phase, topic, content) {
-      return { ...doc('auth', 1, content), id: `auth-${phase}-${topic}-001`, work_type: 'epic', phase, topic };
-    }
-
-    /**
-     * The `auth` epic: the `session` topic's research and discussion
-     * concluded, and the specifications at `specs` sourcing its discussion.
-     * @param {Record<string, string>} specs  name → status
-     */
-    function auth(specs) {
-      const specification = Object.fromEntries(Object.entries(specs).map(([name, status]) =>
-        [name, { status, sources: { session: { status: 'incorporated' } } }]));
-      return [{
-        name: 'auth', work_type: 'epic', status: 'in-progress',
-        phases: {
-          research: { items: { session: { status: 'completed' } } },
-          discussion: { items: { session: { status: 'completed' }, billing: { status: 'completed' } } },
-          specification: { items: specification },
-        },
-      }];
-    }
-
-    /** Each result as phase:topic, best first. @param {any} topicDb @param {string[]} terms @param {object[]} workUnits */
-    async function placed(topicDb, terms, workUnits) {
-      return (await query(topicDb, { terms, workUnits })).map((r) => `${r.phase}:${r.topic}`);
-    }
-
-    /** Shorter text scores higher: research best by score, then billing, the discussion, the specification. */
-    function storeOf() {
-      const topicDb = store.createStore();
-      for (const d of [
-        record('research', 'session', 'Tokens.'),
-        record('discussion', 'billing', 'Tokens expire.'),
-        record('discussion', 'session', 'Tokens expire nightly now.'),
-        record('specification', 'core', 'Tokens expire nightly now in batches.'),
-      ]) {
-        store.insertDocument(topicDb, d);
-      }
-      return topicDb;
-    }
-
-    it("heads a topic with the specification its sources name, then its discussion, then its research, in the places they hold", async () => {
-      assert.deepStrictEqual(await placed(storeOf(), ['tokens'], auth({ core: 'completed' })), [
-        'specification:core', 'discussion:billing', 'discussion:session', 'research:session',
-      ]);
-    });
-
-    it('puts research behind the discussion of its name where no specification sources it', async () => {
-      assert.deepStrictEqual(await placed(storeOf(), ['tokens'], auth({})), [
-        'discussion:session', 'discussion:billing', 'research:session', 'specification:core',
-      ]);
-    });
-
-    it('lets no superseded specification head a topic, whatever its manifest order', async () => {
-      assert.deepStrictEqual(await placed(storeOf(), ['tokens'], auth({ legacy: 'superseded', core: 'completed' })), [
-        'specification:core', 'discussion:billing', 'discussion:session', 'research:session',
-      ]);
-    });
-
-    it("orders a topic's records only where they kept the same framing", async () => {
-      const topicDb = store.createStore();
-      store.insertDocument(topicDb, record('discussion', 'session', 'Tokens.'));
-      store.insertDocument(topicDb, record('specification', 'core', 'Grace applies to every renewed login.'));
-      assert.deepStrictEqual(await placed(topicDb, ['tokens', 'grace'], auth({ core: 'completed' })), [
-        'discussion:session', 'specification:core',
-      ]);
-    });
-  });
-
   it('refuses an invalid boost with a UserError', async () => {
     await assert.rejects(
       query(db, { terms: ['token'], options: { boosts: [{ field: 'bogus', value: 'x' }] } }),
@@ -368,7 +217,7 @@ describe('queryStore', () => {
     const settings = querySettings(STUB_BUILT, loaded({ provider: 'stub' }), provider);
     const outcome = await outcomeOf(db, { terms: ['token refresh', 'refunds', PARAPHRASE.term], settings });
     assert.deepStrictEqual(requests, [['token refresh', 'refunds', PARAPHRASE.term]]);
-    assert.ok(outcome.results.some((r) => r.id === 'accounts-discussion-accounts-001'), 'the paraphrase found by its vector');
+    assert.ok(outcome.results.some((r) => r.id === 'accounts-record-accounts-001'), 'the paraphrase found by its vector');
     assert.deepStrictEqual(outcome.notes, []);
   });
 
@@ -382,8 +231,8 @@ describe('queryStore', () => {
         "[keyword-only mode — the embedding provider's rate limit outlasted this command's wait; retry shortly]"],
       [new QuotaError('OpenAI request refused: the account is out of quota (HTTP 429).'),
         '[keyword-only mode — the embedding account is out of quota; add credit to it]'],
-      [new AuthError('OpenAI request was rejected (HTTP 401). The API key is invalid or expired.\n  Run `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup` to fix.'),
-        '[keyword-only mode — the query could not be embedded: OpenAI request was rejected (HTTP 401). The API key is invalid or expired. Run `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup` to fix.]'],
+      [new AuthError(`OpenAI request was rejected (HTTP 401). The API key is invalid or expired.\n  Run \`${ENGINE_COMMAND} knowledge setup\` to fix.`),
+        `[keyword-only mode — the query could not be embedded: OpenAI request was rejected (HTTP 401). The API key is invalid or expired. Run \`${ENGINE_COMMAND} knowledge setup\` to fix.]`],
     ];
     for (const [error, note] of cases) {
       const settings = querySettings(STUB_BUILT, loaded({ provider: 'stub' }), failing(error));
@@ -413,16 +262,15 @@ describe('queryStore', () => {
     const settings = querySettings({ provider: 'axis', model: 'axis', dimensions: 2 }, loaded({ provider: 'axis' }), axis);
     const keyword = Object.fromEntries(store.searchKeyword(blended, { term: 'receipts' }).map((h) => [h.work_unit, h.score]));
     const best = Math.max(...Object.values(keyword));
-    const confidence = 0.03;
     const results = Object.fromEntries((await query(blended, { terms: ['receipts'], settings })).map((r) => [r.work_unit, r.score]));
     assert.deepStrictEqual(Object.keys(results), ['both', 'keyword', 'vector']);
-    assert.strictEqual(results.both, 0.4 * (keyword.both / best) + 0.6 + confidence);
-    assert.strictEqual(results.keyword, 0.4 * (keyword.keyword / best) + confidence);
-    assert.ok(Math.abs(results.vector - (0.6 * 0.6 + confidence)) < 1e-6, 'a vector hit alone, its cosine over the best');
+    assert.strictEqual(results.both, 0.4 * (keyword.both / best) + 0.6);
+    assert.strictEqual(results.keyword, 0.4 * (keyword.keyword / best));
+    assert.ok(Math.abs(results.vector - 0.6 * 0.6) < 1e-6, 'a vector hit alone, its cosine over the best');
   });
 
   it('finds by meaning in full mode a chunk sharing no word with the query', async () => {
-    const accounts = 'accounts-discussion-accounts-001';
+    const accounts = 'accounts-record-accounts-001';
     const full = querySettings(STUB_BUILT, loaded({ provider: 'stub' }), stub);
     assert.ok((await query(db, { terms: [PARAPHRASE.term], settings: full })).some((r) => r.id === accounts));
     assert.ok(!(await query(db, { terms: [PARAPHRASE.term] })).some((r) => r.id === accounts));
@@ -458,22 +306,21 @@ describe('queryProvider', () => {
     assert.deepStrictEqual(endpoint.requests, [['receipts']]);
     assert.deepStrictEqual(waits, [], 'the 20 s wait the endpoint names never fits the query\'s budget');
     assert.deepStrictEqual(outcome.notes, ["[keyword-only mode — the embedding provider's rate limit outlasted this command's wait; retry shortly]"]);
-    assert.deepStrictEqual(outcome.results.map((r) => r.id), ['ledger-discussion-ledger-001']);
+    assert.deepStrictEqual(outcome.results.map((r) => r.id), ['ledger-record-ledger-001']);
   });
 
-  it('gives an endpoint that never answers two tries of its timeout, then runs keyword-only', async () => {
+  it('gives an endpoint that never answers two tries of its timeout, a second\'s wait between, then runs keyword-only', async (t) => {
     endpoint.mode = 'silent';
-    const timeoutMs = 50;
-    const backoffMs = 1000;
-    const started = performance.now();
-    const outcome = await queryThrough(queryProvider(endpoint.config, { timeoutMs }));
-    const elapsed = performance.now() - started;
-    assert.deepStrictEqual(endpoint.requests, [['receipts'], ['receipts']], 'two tries');
-    assert.ok(elapsed < 2 * timeoutMs + backoffMs + 1000, `keyword-only within the bound, after ${Math.round(elapsed)} ms`);
+    const fetched = globalThis.fetch;
+    let tries = 0;
+    t.mock.method(globalThis, 'fetch', (/** @type {any[]} */ ...args) => { tries += 1; return fetched(...args); });
+    const waits = [];
+    const outcome = await queryThrough(queryProvider(endpoint.config, { timeoutMs: 50, sleep: async (ms) => { waits.push(ms); } }));
+    assert.deepStrictEqual([tries, waits], [2, [1000]], 'two tries, the backoff between');
     assert.deepStrictEqual(outcome.notes, [
       '[keyword-only mode — the query could not be embedded: Embeddings endpoint embedding request timed out after 0.05s (network error): the endpoint did not answer; retry once the provider answers]',
     ]);
-    assert.deepStrictEqual(outcome.results.map((r) => r.id), ['ledger-discussion-ledger-001']);
+    assert.deepStrictEqual(outcome.results.map((r) => r.id), ['ledger-record-ledger-001']);
   });
 
   it('gives each request 5 seconds to answer, and a rate limit 5 seconds of waiting in all', () => {
@@ -531,13 +378,12 @@ describe('knowledge query — `engine knowledge query`', () => {
 
   /** @param {string} name @param {string} completedAt */
   function completedFeature(name, completedAt) {
-    const unit = path.join(root, '.workflows', name);
-    fs.mkdirSync(path.join(unit, 'discussion'), { recursive: true });
+    const unit = path.join(root, '.ledger', name);
+    fs.mkdirSync(unit, { recursive: true });
     fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
-      name, work_type: 'feature', status: 'completed', created: '2026-01-01', completed_at: completedAt,
-      phases: { discussion: { items: { [name]: { status: 'completed' } } } },
+      name, work_type: 'feature', status: 'completed', created: '2026-01-01', completed_at: completedAt, phases: {},
     }));
-    fs.writeFileSync(path.join(unit, 'discussion', `${name}.md`), '# Discussion\n\nToken refresh follows the rate window.\n');
+    createFile(statePath(root), layout.record(name, name), '# Investigation\n\nToken refresh follows the rate window.\n');
   }
 
   /** @param {...string} args */
@@ -548,42 +394,42 @@ describe('knowledge query — `engine knowledge query`', () => {
   }
 
   before(async () => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-'));
-    fs.mkdirSync(path.join(root, '.workflows', '.knowledge'), { recursive: true });
-    fs.writeFileSync(path.join(root, '.workflows', '.knowledge', 'config.json'), '{ "knowledge": { "provider": null } }');
-    fs.writeFileSync(path.join(root, '.workflows', 'manifest.json'),
+    root = setupFixture('kb-query-');
+    fs.mkdirSync(path.join(root, '.ledger', '.knowledge'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.ledger', '.knowledge', 'config.json'), '{ "knowledge": { "provider": null } }');
+    fs.writeFileSync(path.join(root, '.ledger', 'manifest.json'),
       JSON.stringify({ work_units: { alpha: { work_type: 'feature' }, beta: { work_type: 'feature' } } }));
     completedFeature('alpha', '2026-01-01');
     completedFeature('beta', '2026-06-01');
-    await knowledge('index', '.workflows/alpha/discussion/alpha.md');
-    await knowledge('index', '.workflows/beta/discussion/beta.md');
+    await knowledge('index', `.ledger/${layout.record('alpha', 'alpha')}`);
+    await knowledge('index', `.ledger/${layout.record('beta', 'beta')}`);
   });
 
-  after(() => fs.rmSync(root, { recursive: true, force: true }));
+  after(() => cleanupFixture(root));
 
   it('ranks a chunk the progress clock has moved past below its equal', async () => {
-    const units = [...(await knowledge('query', 'token refresh')).matchAll(/^\[discussion \| (\w+)\//gm)].map((m) => m[1]);
+    const units = [...(await knowledge('query', 'token refresh')).matchAll(/^\[record \| (\w+)\//gm)].map((m) => m[1]);
     assert.deepStrictEqual(units, ['beta', 'alpha']);
   });
 
   it("prints each result's excerpt beneath the headings enclosing it, and its source at the chunk's lines", async () => {
     const [, beta] = (await knowledge('query', 'token refresh')).split('\n\n');
     assert.deepStrictEqual(beta.split('\n').slice(1), [
-      'Discussion',
+      'Investigation',
       'Token refresh follows the rate window.',
-      'Source: .workflows/beta/discussion/beta.md:L1-3',
+      `Source: ${path.join(root, `.ledger/${layout.record('beta', 'beta')}`)}:L1-3`,
     ]);
   });
 
   it('prints the bare path, and no headings, for a chunk its file no longer holds', async () => {
-    const file = path.join(root, '.workflows', 'beta', 'discussion', 'beta.md');
+    const file = statePath(root, layout.record('beta', 'beta'));
     const written = fs.readFileSync(file, 'utf8');
     fs.writeFileSync(file, written.replace('rate window', 'burst window'));
     try {
       const [, beta] = (await knowledge('query', 'token refresh')).split('\n\n');
       assert.deepStrictEqual(beta.split('\n').slice(1), [
         'Token refresh follows the rate window.',
-        'Source: .workflows/beta/discussion/beta.md',
+        `Source: ${path.join(root, `.ledger/${layout.record('beta', 'beta')}`)}`,
       ]);
     } finally {
       fs.writeFileSync(file, written);
@@ -595,31 +441,13 @@ describe('knowledge query — `engine knowledge query`', () => {
     const score = String.raw`\d+\.\d{4}`;
     for (const [unit, decay] of [['beta', '1\\.0000'], ['alpha', '0\\.9791']]) {
       assert.match(explained, new RegExp([
-        `^Source: \\.workflows/${unit}/discussion/${unit}\\.md:L1-3`,
+        `^Source: ${literal(statePath(root, layout.record(unit, unit)))}:L1-3`,
         `Framing 1: keyword ${score}`,
         `Framing 2: keyword ${score}`,
-        `Score: kept framing 1's ${score} × ${decay} decay \\+ 0\\.0000 boost \\+ 0\\.0200 tier = ${score}$`,
+        `Score: kept framing 1's ${score} × ${decay} decay \\+ 0\\.0000 boost = ${score}$`,
       ].join('\n'), 'm'));
     }
     assert.strictEqual(explained.replace(/^(?:Framing \d+|Score): .*\n/gm, ''), await knowledge('query', 'token refresh', 'rate window'));
-  });
-
-  it("closes a reopened topic's provenance line on reopened, and only that topic's", async () => {
-    const manifest = path.join(root, '.workflows', 'beta', 'manifest.json');
-    const written = fs.readFileSync(manifest, 'utf8');
-    const reopened = JSON.parse(written);
-    reopened.phases.discussion.items.beta.status = 'in-progress';
-    fs.writeFileSync(manifest, JSON.stringify(reopened));
-    try {
-      const provenance = (await knowledge('query', 'token refresh')).match(/^\[discussion \|.*$/gm)
-        .map((line) => line.replace(/\d{4}-\d{2}-\d{2}/, 'YYYY-MM-DD'));
-      assert.deepStrictEqual(provenance, [
-        '[discussion | beta/beta | low-medium | YYYY-MM-DD | reopened]',
-        '[discussion | alpha/alpha | low-medium | YYYY-MM-DD]',
-      ]);
-    } finally {
-      fs.writeFileSync(manifest, written);
-    }
   });
 
   it('never reads the term after --explain as its value', async () => {
@@ -628,18 +456,18 @@ describe('knowledge query — `engine knowledge query`', () => {
 });
 
 describe('knowledge query — `engine knowledge query`, without a vector', () => {
-  const RESULT = /^\[1 results\]\n\n\[discussion \| alpha\/alpha \|/m;
+  const RESULT = /^\[1 results\]\n\n\[record \| alpha\/alpha \|/m;
   let endpoint;
   let root;
 
   /** @param {Record<string, any>} knowledge */
   function configure(knowledge) {
-    fs.writeFileSync(path.join(root, '.workflows', '.knowledge', 'config.json'), JSON.stringify({ knowledge }));
+    fs.writeFileSync(path.join(root, '.ledger', '.knowledge', 'config.json'), JSON.stringify({ knowledge }));
   }
 
   /** @param {Record<string, any>} fields */
   function rewriteMetadata(fields) {
-    const file = path.join(root, '.workflows', '.knowledge', 'metadata.json');
+    const file = path.join(root, '.ledger', '.knowledge', 'metadata.json');
     fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), ...fields }));
   }
 
@@ -650,23 +478,21 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
   after(() => endpoint.close());
 
   beforeEach(async () => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-cli-'));
-    const unit = path.join(root, '.workflows', 'alpha');
-    fs.mkdirSync(path.join(unit, 'discussion'), { recursive: true });
-    fs.mkdirSync(path.join(root, '.workflows', '.knowledge'), { recursive: true });
-    fs.writeFileSync(path.join(root, '.workflows', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
+    root = setupFixture('kb-query-cli-');
+    const unit = path.join(root, '.ledger', 'alpha');
+    fs.mkdirSync(unit, { recursive: true });
+    fs.writeFileSync(path.join(root, '.ledger', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
     fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
-      name: 'alpha', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
-      phases: { discussion: { items: { alpha: { status: 'completed' } } } },
+      name: 'alpha', work_type: 'feature', status: 'in-progress', created: '2026-01-01', phases: {},
     }));
-    fs.writeFileSync(path.join(unit, 'discussion', 'alpha.md'), '# Discussion\n\nToken refresh follows the rate window.\n');
+    createFile(statePath(root), layout.record('alpha', 'alpha'), '# Investigation\n\nToken refresh follows the rate window.\n');
     configure(endpoint.config);
     endpoint.mode = 'ok';
     assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
     endpoint.requests.length = 0;
   });
 
-  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+  afterEach(() => cleanupFixture(root));
 
   it('embeds every framing in one request, and prints no note', async () => {
     const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh', 'rate window']);
@@ -704,7 +530,7 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
     configure({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
     const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
-    assert.match(stdout, /^\[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run node \.claude\/skills\/workflow-engine\/scripts\/engine\.cjs knowledge setup --key-only\]\n/);
+    assert.match(stdout, /^\[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run node \.claude\/skills\/ledger-engine\/scripts\/engine\.cjs knowledge setup --key-only\]\n/);
     assert.match(stdout, RESULT);
   });
 
@@ -712,7 +538,7 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
     configure({ ...endpoint.config, model: 'another' });
     const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
-    assert.match(stdout, /^\[keyword-only mode — the store was embedded with openai-compatible \(stand-in, 8 dimensions\) and the config names openai-compatible \(another, 8 dimensions\); run node \.claude\/skills\/workflow-engine\/scripts\/engine\.cjs knowledge rebuild\]\n/);
+    assert.match(stdout, /^\[keyword-only mode — the store was embedded with openai-compatible \(stand-in, 8 dimensions\) and the config names openai-compatible \(another, 8 dimensions\); run node \.claude\/skills\/ledger-engine\/scripts\/engine\.cjs knowledge rebuild\]\n/);
     assert.match(stdout, RESULT);
     assert.deepStrictEqual(endpoint.requests, [], 'nothing embedded for a store it cannot compare');
   });
@@ -727,20 +553,20 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
 
     configure({ ...endpoint.config, model: 'another' });
     assert.deepStrictEqual(await modeAndNote(), keywordOnly(
-      'the store was embedded with openai-compatible (stand-in, 8 dimensions) and the config names openai-compatible (another, 8 dimensions); run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild'));
+      `the store was embedded with openai-compatible (stand-in, 8 dimensions) and the config names openai-compatible (another, 8 dimensions); run ${ENGINE_COMMAND} knowledge rebuild`));
 
     configure({});
     assert.deepStrictEqual(await modeAndNote(), keywordOnly(
-      'the store was embedded with openai-compatible (stand-in, 8 dimensions) and the config names no provider; restore it in the config, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild'));
+      `the store was embedded with openai-compatible (stand-in, 8 dimensions) and the config names no provider; restore it in the config, or run ${ENGINE_COMMAND} knowledge rebuild`));
 
     rewriteMetadata({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
     configure({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
     assert.deepStrictEqual(await modeAndNote(), keywordOnly(
-      'the openai API key could not be resolved; export OPENAI_API_KEY, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only'));
+      `the openai API key could not be resolved; export OPENAI_API_KEY, or run ${ENGINE_COMMAND} knowledge setup --key-only`));
   });
 
   it('status names a knowledge config it cannot load, where a query fails', async () => {
-    fs.writeFileSync(path.join(root, '.workflows', '.knowledge', 'config.json'), '{ not json');
+    fs.writeFileSync(path.join(root, '.ledger', '.knowledge', 'config.json'), '{ not json');
     const status = await engineKnowledge(root, ['status']);
     assert.strictEqual(status.code, 0);
     assert.match(status.stdout, /^Mode: none — a query fails until the knowledge config loads$/m);
@@ -749,12 +575,12 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
   });
 
   it('exits non-zero when the store cannot be read, or its metadata is missing', async () => {
-    const knowledgeDir = path.join(root, '.workflows', '.knowledge');
+    const knowledgeDir = path.join(root, '.ledger', '.knowledge');
     fs.rmSync(path.join(knowledgeDir, 'metadata.json'));
     const missing = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(missing.code, 1);
     assert.strictEqual(missing.stderr,
-      'metadata.json missing but store exists. Run `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild` to fix.\n');
+      `metadata.json missing but store exists. Run \`${ENGINE_COMMAND} knowledge rebuild\` to fix.\n`);
 
     fs.writeFileSync(path.join(knowledgeDir, 'store.bin'), 'not a store');
     const corrupt = await engineKnowledge(root, ['query', 'token refresh']);
@@ -773,22 +599,20 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
   }
 
   beforeEach(async () => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-config-'));
-    const unit = path.join(root, '.workflows', 'alpha');
-    fs.mkdirSync(path.join(unit, 'discussion'), { recursive: true });
-    fs.mkdirSync(path.join(root, '.workflows', '.knowledge'), { recursive: true });
-    fs.writeFileSync(path.join(root, '.workflows', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
+    root = setupFixture('kb-query-config-');
+    const unit = path.join(root, '.ledger', 'alpha');
+    fs.mkdirSync(unit, { recursive: true });
+    fs.writeFileSync(path.join(root, '.ledger', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
     fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
-      name: 'alpha', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
-      phases: { discussion: { items: { alpha: { status: 'completed' } } } },
+      name: 'alpha', work_type: 'feature', status: 'in-progress', created: '2026-01-01', phases: {},
     }));
-    fs.writeFileSync(path.join(unit, 'discussion', 'alpha.md'), '# Discussion\n\nToken refresh follows the rate window.\n');
-    configFile = path.join(root, '.workflows', '.knowledge', 'config.json');
+    createFile(statePath(root), layout.record('alpha', 'alpha'), '# Investigation\n\nToken refresh follows the rate window.\n');
+    configFile = path.join(root, '.ledger', '.knowledge', 'config.json');
     configure({ provider: null });
     assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
   });
 
-  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+  afterEach(() => cleanupFixture(root));
 
   it('a search runs past it, its note naming each ignored key after the others', async () => {
     configure({ provider: null, similarity_threshold: '0.5', strategy: 'hybrid' });
@@ -833,16 +657,15 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
     const completions = [['buried', '2024-01-01'], ['recent', '2024-06-01'], ['frontier', '2024-12-01']];
     const units = { alpha: { work_type: 'feature' } };
     for (const [name, completedAt] of completions) {
-      const unit = path.join(root, '.workflows', name);
-      fs.mkdirSync(path.join(unit, 'discussion'), { recursive: true });
+      const unit = path.join(root, '.ledger', name);
+      fs.mkdirSync(unit, { recursive: true });
       fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
-        name, work_type: 'feature', status: 'completed', created: '2024-01-01', completed_at: completedAt,
-        phases: { discussion: { items: { [name]: { status: 'completed' } } } },
+        name, work_type: 'feature', status: 'completed', created: '2024-01-01', completed_at: completedAt, phases: {},
       }));
-      fs.writeFileSync(path.join(unit, 'discussion', `${name}.md`), `# Discussion\n\n${name} settled its tokens.\n`);
+      createFile(statePath(root), layout.record(name, name), `# Investigation\n\n${name} settled its tokens.\n`);
       units[name] = { work_type: 'feature' };
     }
-    fs.writeFileSync(path.join(root, '.workflows', 'manifest.json'), JSON.stringify({ work_units: units }));
+    fs.writeFileSync(path.join(root, '.ledger', 'manifest.json'), JSON.stringify({ work_units: units }));
     configure({ provider: null, decay_prune_below: false, decay_base_stability: 0.05 });
     assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
 
@@ -851,56 +674,52 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
     assert.strictEqual(compact.code, 0, compact.stderr);
     assert.strictEqual(compact.stdout, [
       'Compacted: removed 1 chunks from 1 work units (retrievability < 0.05)',
-      '  • buried: 1 chunks (discussion)',
+      '  • buried: 1 chunks (record)',
       '',
     ].join('\n'));
   });
 });
 
 describe('renderQuery', () => {
+  const STATE = '/work/project/.ledger';
   const result = {
     ...doc('auth', 1, '## Refresh\n\nTokens refresh hourly.\nSessions end at logout.'),
     excerpt: 'Tokens refresh hourly.',
-    headings: ['Discussion: Auth', 'Refresh'],
+    headings: ['Investigation: Auth', 'Refresh'],
     lines: { first: 3, last: 6 },
-    reopened: false,
   };
   const awaiting = '[2 chunks await vectors — searched by keyword alone; each start retries them]';
 
   it("opens with the query's notes, then each result's provenance, the headings above its excerpt, the excerpt and its source at the chunk's lines", () => {
-    assert.strictEqual(renderQuery({ results: [result], notes: [CHOSEN_NOTE, awaiting] }), [
+    assert.strictEqual(renderQuery({ results: [result], notes: [CHOSEN_NOTE, awaiting] }, { root: STATE }), [
       CHOSEN_NOTE,
       awaiting,
       '[1 results]',
       '',
-      '[discussion | auth/auth | medium | 2026-01-02]',
-      'Discussion: Auth › Refresh',
+      '[record | auth/auth | high | 2026-01-02]',
+      'Investigation: Auth › Refresh',
       'Tokens refresh hourly.',
-      'Source: .workflows/auth/discussion/auth.md:L3-6',
+      'Source: /work/project/.ledger/.knowledge/records/auth/auth.md:L3-6',
     ].join('\n') + '\n');
   });
 
   it('names a one-line chunk by its line, and leaves out the headings and an excerpt where there are none', () => {
-    const lines = (placed) => renderQuery({ results: [{ ...result, ...placed }], notes: [] }).split('\n').slice(3, -1);
+    const lines = (placed) => renderQuery({ results: [{ ...result, ...placed }], notes: [] }, { root: STATE }).split('\n').slice(3, -1);
+    const source = 'Source: /work/project/.ledger/.knowledge/records/auth/auth.md';
     assert.deepStrictEqual(lines({ lines: { first: 9, last: 9 } }), [
-      'Discussion: Auth › Refresh', 'Tokens refresh hourly.', 'Source: .workflows/auth/discussion/auth.md:L9',
+      'Investigation: Auth › Refresh', 'Tokens refresh hourly.', `${source}:L9`,
     ]);
-    assert.deepStrictEqual(lines({ headings: [], lines: null }), ['Tokens refresh hourly.', 'Source: .workflows/auth/discussion/auth.md']);
-    assert.deepStrictEqual(lines({ excerpt: '' }), ['Discussion: Auth › Refresh', 'Source: .workflows/auth/discussion/auth.md:L3-6']);
-  });
-
-  it('closes the provenance line on reopened where the topic is in progress again', () => {
-    assert.strictEqual(renderQuery({ results: [{ ...result, reopened: true }], notes: [] }).split('\n')[2],
-      '[discussion | auth/auth | medium | 2026-01-02 | reopened]');
+    assert.deepStrictEqual(lines({ headings: [], lines: null }), ['Tokens refresh hourly.', source]);
+    assert.deepStrictEqual(lines({ excerpt: '' }), ['Investigation: Auth › Refresh', `${source}:L3-6`]);
   });
 
   it('prints no note where there is none, and a bare count where there are no results', () => {
-    assert.match(renderQuery({ results: [result], notes: [] }), /^\[1 results\]\n/);
-    assert.strictEqual(renderQuery({ results: [], notes: [] }), '[0 results]\n');
+    assert.match(renderQuery({ results: [result], notes: [] }, { root: STATE }), /^\[1 results\]\n/);
+    assert.strictEqual(renderQuery({ results: [], notes: [] }, { root: STATE }), '[0 results]\n');
   });
 
   it('strips control characters, keeping newlines and tabs', () => {
-    const text = renderQuery({ results: [{ ...result, excerpt: 'a\x1b[31mred\x00\tb\nc' }], notes: [] });
+    const text = renderQuery({ results: [{ ...result, excerpt: 'a\x1b[31mred\x00\tb\nc' }], notes: [] }, { root: STATE });
     assert.ok(text.includes('a[31mred\tb\nc'));
   });
 });

@@ -1,0 +1,565 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: the conversation's folder — what belongs to one Claude Code
+// conversation rather than to a work unit. A conversation visits several
+// work units, or none (the start menu, the roadmap), so its records cannot
+// live in a unit's cache, which goes when the unit closes; nor in the
+// project, since the directory a conversation runs in moves under it — a
+// `cd` Claude runs moves it, and a conversation can be resumed from another
+// directory. Each conversation that runs Ledger has one folder beside
+// the system config, `{config}/conversations/{session-id}/`, found by the
+// session id Claude Code hands every command it runs, wherever the command
+// runs, and each concern writes a file of its own there — the files two
+// write are the mod's `sent.json`, which the rows mod spends, and boot's
+// stamp, which the mod copies across a handoff's clear:
+//
+//   workflow       the mark that the conversation runs Ledger, which
+//                  the gate mod reads to set Ledger's harness, to say the
+//                  phase in its spinner, to answer a compaction and to
+//                  record each task's builder and reviewers — written by
+//                  every engine call that carries a session id, run in a
+//                  project whose state already exists, but one refused
+//                  until boot has run
+//   transcript     the conversation's transcript path, written as it ends by
+//                  the SessionEnd hook
+//   position.json  where in Ledger the conversation is working, and
+//                  in implementation every task in flight with its builder's
+//                  agent id and its pair's, the worktree it is built in, and
+//                  when its builder stopped (position.cjs), written under
+//                  the lock beside it — what the session label's resume
+//                  re-applies, the gate mod's spinner says, the commit door
+//                  and the hook before Bash check a commit against, `verify`
+//                  attributes a run by, a call in a task's worktree is that
+//                  task's by (`taskAt`), the board reads a task's stop from,
+//                  and `conversation position` names files for; read here
+//                  alone (`readPosition`, `tasksInFlight`); kept, once the
+//                  conversation leaves its place, while it holds a task in
+//                  flight there, for its tasks alone
+//   left.json      the place the conversation left for the start menu, its
+//                  unit and phase, written as boot drops a position naming a
+//                  phase, or as the position is left with tasks in flight,
+//                  and gone once a position is recorded again — while it
+//                  stands, the conversation is at no place, whatever
+//                  `position.json` names; what the board reads to close a
+//                  unit finished there (D38); read here alone (`readLeft`)
+//   came-from.json the project-level place the conversation was in as it
+//                  started a quick-fix, and the quick-fix's name: where its
+//                  close or its cancel puts the conversation back, forgotten
+//                  as the position is left or dropped, or the quick-fix
+//                  moves (position.cjs, `keepCameFrom`)
+//   trust-pending.jsonl
+//                  the trust log's events waiting in the conversation
+//                  (trust-log.cjs): those it could not append, for its next
+//                  record to append first, and each call and reversal a
+//                  ledger write keeps ahead of its entry, for the landing
+//                  after it — made where the folder is unmarked, so an
+//                  event before the project has state waits too
+//   gate-shown.json
+//                  the gate the conversation was last shown, with what each
+//                  of its rows leads to, and its answer once given — what
+//                  `gate` answers against (gate.cjs); made where the folder
+//                  is unmarked too, so a gate before the project has state
+//                  is answered like any other
+//   raise-shown.json
+//                  each raise the conversation was drawn, sealed by its id
+//                  before the person answers: Claude's call with its lean,
+//                  where it was raised and the question it answers, and its
+//                  answer once given — what `raise show` draws again
+//                  (raise.cjs)
+//   booted.json    boot's stamp that the conversation booted each project,
+//                  by its main checkout, at the installed version, which
+//                  every verb that touches work refuses without — written
+//                  by boot under the lock beside it (boot-stamp.cjs), and
+//                  copied, unread, by the gate mod into the conversation a
+//                  handoff's clear goes on as
+//   raise-checked.json
+//                  each raise the ask rule sent Claude to check, by the
+//                  raise checked — the question it answers, or the decision
+//                  it would replace, and the task raising it — what the rule
+//                  is told that raise made again was checked by (raise.cjs);
+//                  written under the lock beside it
+//   knowledge-query.json
+//                  the conversation's last `knowledge query`: its terms, its
+//                  filters, and what it returned or why it failed — what the
+//                  plain-search helper is briefed from (last-query.cjs)
+//   briefs/       each brief the conversation issued, `{id}.md`, as its
+//                  template was filled, and beside it `{id}.json`, the
+//                  record of whose it is (brief.cjs): what a dispatch of one of
+//                  Ledger's agents carries by its pointer
+//   gate.json      the gate the mod keeps for a resume (the mod's own)
+//   sent.json      what the mod last sent from a press, or a handoff's
+//                  continuation with its line (the mod's; the rows mod
+//                  writes null over it once it has drawn the row)
+//   pressed.json   the row the mod last sent from a press: the gate's name,
+//                  the answer and when — what `gate` reads to log an answer
+//                  pressed (the mod's own)
+//   compacted.json every note the mod appended to a compaction, with the
+//                  place it carries on in (the mod's own; the rows mod reads
+//                  it)
+//   discussing.json
+//                  the questions waiting the person sent from the board to
+//                  discuss, `{"discussing", "queue"}` by number — the one
+//                  under discussion and those after it — which the mod
+//                  writes as the person presses and as Claude records each,
+//                  and `raise` reads for the next its receipt names
+//                  (questions.cjs)
+//   rows.json      each row the rows mod redrew of what the mod sent, by
+//                  message id (its own)
+//
+// A folder goes at any project's boot once its transcript is gone: Claude
+// Code has deleted the conversation, so nothing can resume it, and whatever
+// retention the person set is the retention these records keep. The recorded
+// path does not say where the transcript is — a resume from another
+// directory hands the hook a path under that directory's project key while
+// Claude Code goes on writing where the conversation began — so the path is
+// read only for the directory Claude Code keeps its projects in, and the
+// transcript is looked for by its file name in every project folder there. A
+// folder whose conversation ended without the hook names no transcript and
+// stays, as does one naming a relative path (a leading `~` is the home
+// directory) or a projects directory that cannot be read, and one still
+// holding trust events boot could not append (trust-log.cjs).
+//
+// While the conversation runs, its transcript is found the same way, by its
+// file name in every project folder of the projects directory Claude Code
+// keeps in its config directory (`CLAUDE_CONFIG_DIR`, else `~/.claude`); a
+// transcript's last assistant message names the model it runs on, which the
+// trust log keys its evidence by (16.4.4) — read past the messages Claude
+// Code writes itself, which name the model `<synthetic>` — and its path is
+// what a log the conversation writes names it by (topic-log.cjs). A subagent's
+// commands carry the conversation's session id and nothing naming the
+// subagent, so the model of a command's caller is told by where the command
+// runs: in the worktree of one of the conversation's subagents still at
+// work — its record beside its own transcript,
+// `{session-id}/subagents/agent-{id}.meta.json`, names it, and marks it
+// `finished` once it is done, a mark a resumed subagent's record drops — it
+// is that subagent's, the deepest where worktrees nest; and, before its
+// transcript holds an assistant message, the model its record names, if
+// any. Anywhere else it is the conversation's: every subagent that records
+// runs in a worktree of its own (29.14).
+//
+// The same record names the agent type a subagent was dispatched as, which
+// tells whose agent a message sent to it reaches (brief-guard.cjs).
+// ---------------------------------------------------------------------------
+
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { systemConfigDir } = require('../kernel/system-config.cjs');
+const { findStateRoot } = require('../kernel/state-root.cjs');
+const { fileLinesBackward } = require('../kernel/file-stream.cjs');
+const { realpathOrSelf, within } = require('../kernel/isolated-git.cjs');
+const { handedSession } = require('../kernel/process.cjs');
+
+const MARKER = 'workflow';
+// The model Claude Code names on the messages it writes itself.
+const SYNTHETIC = '<synthetic>';
+const TRANSCRIPT = 'transcript';
+
+function conversationsRoot() {
+  return path.join(systemConfigDir(), 'conversations');
+}
+
+/**
+ * A conversation's folder, named by the session id's safe characters alone
+ * — a hook hands the id over on stdin, and it never escapes the root.
+ * @param {string} sessionId
+ */
+function conversationDir(sessionId) {
+  return path.join(conversationsRoot(), safeId(sessionId));
+}
+
+/** A session id's safe characters alone. @param {string} sessionId */
+function safeId(sessionId) {
+  return sessionId.replace(/[^A-Za-z0-9_-]/g, '');
+}
+
+/** Where a conversation keeps its position (position.cjs). @param {string} sessionId */
+function positionPath(sessionId) {
+  return path.join(conversationDir(sessionId), 'position.json');
+}
+
+/** Where a conversation keeps the place it left for the start menu (position.cjs). @param {string} sessionId */
+function leftPath(sessionId) {
+  return path.join(conversationDir(sessionId), 'left.json');
+}
+
+/** Where a conversation keeps the place it started a quick-fix from (position.cjs). @param {string} sessionId */
+function cameFromPath(sessionId) {
+  return path.join(conversationDir(sessionId), 'came-from.json');
+}
+
+/**
+ * The place the conversation `sessionId` left for the start menu, its unit
+ * and phase; null where it left none, or it does not read as one.
+ * @param {string} sessionId @returns {{name: string, phase: string}|null}
+ */
+function readLeft(sessionId) {
+  try {
+    const { name, phase } = JSON.parse(fs.readFileSync(leftPath(sessionId), 'utf8')) ?? {};
+    return typeof name === 'string' && typeof phase === 'string' ? { name, phase } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A task in flight: its `{phase}.{n}`, the agent id of its builder once one
+ * is dispatched, those of its reviewers, the pair the later rounds go back
+ * to, the worktree it is built in, absolute, once `task worktree` laid it
+ * out (task-worktree.cjs), and when its builder stopped, unable to build
+ * past a problem, until it is sent back or a raise parks the task.
+ * @typedef {{task: string, builder: string|null, reviewers: string[], worktree?: string, stopped?: string}} InFlight
+ */
+
+/**
+ * Where a conversation is working: a work unit, or a project identity; its
+ * phase and topic; in the laboratory, the experiment its entry named; and,
+ * in implementation, every task in flight there.
+ * @typedef {object} Position
+ * @property {string} name
+ * @property {string} [phase]
+ * @property {string} [topic]
+ * @property {string} [record]
+ * @property {InFlight[]} [tasks]
+ */
+
+/** Whether a value reads as an agent id. @param {unknown} value @returns {value is string} */
+function isAgentId(value) {
+  return typeof value === 'string' && /^[A-Za-z0-9_-]+$/.test(value);
+}
+
+/** A stored task in flight, or null where it does not read as one. @param {unknown} stored @returns {InFlight|null} */
+function inFlightOf(stored) {
+  if (stored === null || typeof stored !== 'object') return null;
+  const { task, builder, reviewers, worktree, stopped } = /** @type {Record<string, unknown>} */ (stored);
+  if (typeof task !== 'string' || !/^\d+\.\d+$/.test(task)) return null;
+  return {
+    task,
+    builder: isAgentId(builder) ? builder : null,
+    reviewers: Array.isArray(reviewers) ? reviewers.filter(isAgentId) : [],
+    ...(typeof worktree === 'string' && path.isAbsolute(worktree) ? { worktree } : {}),
+    ...(typeof stopped === 'string' && !Number.isNaN(Date.parse(stopped)) ? { stopped } : {}),
+  };
+}
+
+/**
+ * The position file of the conversation `sessionId`, as its fields read — a
+ * task in flight, or an agent id, that does not read as one left out; null
+ * where none is recorded, or it names no place — whether or not the
+ * conversation has left that place since. The one read of the file: it
+ * loads nothing of position.cjs's, for the hook before Bash, which stands
+ * before every shell command (shell-guard.cjs).
+ * @param {string} sessionId @returns {Position|null}
+ */
+function storedPosition(sessionId) {
+  let stored;
+  try {
+    stored = JSON.parse(fs.readFileSync(positionPath(sessionId), 'utf8'));
+  } catch {
+    return null;
+  }
+  if (stored === null || typeof stored !== 'object' || typeof stored.name !== 'string') return null;
+  const { name, phase, topic, record, tasks } = stored;
+  const inFlight = Array.isArray(tasks) ? tasks.map(inFlightOf).filter(/** @returns {t is InFlight} */ (t) => t !== null) : [];
+  return {
+    name,
+    ...(typeof phase === 'string' ? { phase } : {}),
+    ...(typeof topic === 'string' ? { topic } : {}),
+    ...(typeof record === 'string' ? { record } : {}),
+    ...(inFlight.length > 0 ? { tasks: inFlight } : {}),
+  };
+}
+
+/**
+ * Where the conversation `sessionId` is working, with its tasks in flight
+ * there (`storedPosition`); null where it is at no place — none recorded,
+ * or the place left for the start menu, its tasks in flight kept there.
+ * @param {string} sessionId @returns {Position|null}
+ */
+function readPosition(sessionId) {
+  return fs.existsSync(leftPath(sessionId)) ? null : storedPosition(sessionId);
+}
+
+/**
+ * The tasks in flight in the conversation `sessionId`, each with the unit
+ * its position names, at its place or at the place it left — what the
+ * commit door (commit-task.cjs) and the hook before Bash check a commit
+ * against, `verify` attributes a run by (verify.cjs), and the board reads
+ * for the unit's build.
+ * @param {string} sessionId @returns {(InFlight & {unit: string})[]}
+ */
+function tasksInFlight(sessionId) {
+  const position = storedPosition(sessionId);
+  if (position === null) return [];
+  return (position.tasks ?? []).map((task) => ({ unit: position.name, ...task }));
+}
+
+/**
+ * The task in flight in the conversation `sessionId` whose worktree holds
+ * `cwd` — what a call made in a task's worktree is that task's by; null
+ * where none does. Claude Code makes each worktree beside the others, so
+ * none holds another.
+ * @param {string} sessionId @param {string} cwd @returns {(InFlight & {unit: string, worktree: string})|null}
+ */
+function taskAt(sessionId, cwd) {
+  const here = realpathOrSelf(cwd);
+  return tasksInFlight(sessionId)
+    .find(/** @returns {task is InFlight & {unit: string, worktree: string}} */ (task) => task.worktree !== undefined && within(here, task.worktree)) ?? null;
+}
+
+/**
+ * Mark the calling conversation as one that runs Ledger — once, only
+ * where Claude Code handed the command a session id, and only for a command
+ * run inside a Ledger project — one whose repository holds the state, a
+ * code worktree's included: one run anywhere else marks nothing. A mark
+ * that cannot be written costs the command nothing.
+ * @param {string} cwd
+ */
+function markConversation(cwd) {
+  const sessionId = handedSession();
+  if (sessionId === null || findStateRoot(cwd) === null) return;
+  const marker = path.join(conversationDir(sessionId), MARKER);
+  if (fs.existsSync(marker)) return;
+  try {
+    fs.mkdirSync(path.dirname(marker), { recursive: true });
+    fs.writeFileSync(marker, '');
+  } catch { /* the command stands without it */ }
+}
+
+/**
+ * Whether the engine has marked the conversation `sessionId` as one that
+ * runs Ledger — what every other writer of the folder but the trust
+ * log's and the gate shown's waits on, so a conversation the engine never
+ * marked gets no folder from them.
+ * @param {string} sessionId
+ */
+function isMarked(sessionId) {
+  return fs.existsSync(path.join(conversationDir(sessionId), MARKER));
+}
+
+/**
+ * Record the ending conversation's transcript path — `conversation end`,
+ * the SessionEnd hook's target — in its folder, and only where the folder
+ * exists: a conversation that never ran Ledger gets nothing. Never
+ * throws: a hook must exit clean.
+ * @param {unknown} sessionId @param {unknown} transcriptPath
+ * @returns {{recorded: boolean}}
+ */
+function endConversation(sessionId, transcriptPath) {
+  if (typeof sessionId !== 'string' || !sessionId || typeof transcriptPath !== 'string' || !transcriptPath) {
+    return { recorded: false };
+  }
+  const dir = conversationDir(sessionId);
+  if (!fs.existsSync(dir)) return { recorded: false };
+  try {
+    fs.writeFileSync(path.join(dir, TRANSCRIPT), transcriptPath);
+    return { recorded: true };
+  } catch {
+    return { recorded: false };
+  }
+}
+
+/**
+ * The directory Claude Code keeps its projects in, read off a recorded
+ * transcript path — `<projects>/<project-key>/<id>.jsonl`: a leading `~` is
+ * the home directory, and a path that is still not absolute names none.
+ * @param {string} recorded @returns {string|null}
+ */
+function projectsDir(recorded) {
+  const expanded = recorded.startsWith('~/') ? path.join(os.homedir(), recorded.slice(2)) : recorded;
+  return path.isAbsolute(expanded) ? path.dirname(path.dirname(expanded)) : null;
+}
+
+/**
+ * Every file name the project folders in `projects` hold — none where the
+ * directory is gone, and null where it, or a folder in it, cannot be read.
+ * @param {string} projects @returns {Set<string>|null}
+ */
+function transcriptNames(projects) {
+  let keys;
+  try {
+    keys = fs.readdirSync(projects, { withFileTypes: true }).filter((e) => e.isDirectory());
+  } catch (err) {
+    return /** @type {NodeJS.ErrnoException} */ (err).code === 'ENOENT' ? new Set() : null;
+  }
+  try {
+    return new Set(keys.flatMap((e) => fs.readdirSync(path.join(projects, e.name))));
+  } catch { return null; }
+}
+
+/** The projects directory Claude Code keeps in its config directory. */
+function claudeProjectsDir() {
+  return path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'projects');
+}
+
+/**
+ * The running conversation's transcript: the file named by its session id
+ * in a project folder of the projects directory Claude Code keeps — null
+ * where none holds it, or the directory cannot be read.
+ * @param {string} sessionId @returns {string|null}
+ */
+function runningTranscript(sessionId) {
+  const projects = claudeProjectsDir();
+  const name = `${safeId(sessionId)}.jsonl`;
+  try {
+    for (const key of fs.readdirSync(projects, { withFileTypes: true })) {
+      const file = path.join(projects, key.name, name);
+      if (key.isDirectory() && fs.existsSync(file)) return file;
+    }
+  } catch { /* none can be found */ }
+  return null;
+}
+
+/**
+ * The model of a transcript line's assistant message: null where it names
+ * none, undefined where the line is no assistant message, or one Claude Code
+ * wrote itself.
+ * @param {string} line @returns {string|null|undefined}
+ */
+function assistantModel(line) {
+  let entry;
+  try {
+    entry = JSON.parse(line);
+  } catch {
+    return undefined;
+  }
+  if (entry === null || typeof entry !== 'object' || entry.type !== 'assistant') return undefined;
+  const model = entry.message?.model;
+  if (model === SYNTHETIC) return undefined;
+  return typeof model === 'string' && model !== '' ? model : null;
+}
+
+/**
+ * The model a transcript's last assistant message names, read from its end:
+ * null where it cannot be read, or names none.
+ * @param {string} transcript @returns {string|null}
+ */
+function lastModel(transcript) {
+  try {
+    for (const line of fileLinesBackward(transcript)) {
+      const model = assistantModel(line);
+      if (model !== undefined) return model;
+    }
+  } catch { /* unread, it names none */ }
+  return null;
+}
+
+/** @typedef {{transcript: string, worktree: string, model: string|null}} Subagent */
+
+/** The folder of a conversation's subagents, beside its transcript. @param {string} transcript the conversation's */
+function subagentsDir(transcript) {
+  return path.join(transcript.slice(0, -path.extname(transcript).length), 'subagents');
+}
+
+/**
+ * A subagent's record, beside its transcript; null where it cannot be read
+ * or holds no object.
+ * @param {string} transcript the subagent's @returns {Record<string, unknown>|null}
+ */
+function subagentRecord(transcript) {
+  try {
+    const record = JSON.parse(fs.readFileSync(transcript.replace(/\.jsonl$/, '.meta.json'), 'utf8'));
+    return record !== null && typeof record === 'object' ? record : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The agent type the subagent `agentId` of the conversation `sessionId` was
+ * dispatched as, from its record beside the conversation's transcript in
+ * the project folder `transcriptPath` is in; null where it has none, or the
+ * record names none.
+ * @param {string} transcriptPath @param {string} sessionId @param {string} agentId @returns {string|null}
+ */
+function subagentType(transcriptPath, sessionId, agentId) {
+  const transcript = path.join(path.dirname(transcriptPath), `${safeId(sessionId)}.jsonl`);
+  const { agentType } = subagentRecord(path.join(subagentsDir(transcript), `agent-${safeId(agentId)}.jsonl`)) ?? {};
+  return typeof agentType === 'string' && agentType !== '' ? agentType : null;
+}
+
+/**
+ * A subagent still at work in a worktree of its own, from its record: the
+ * worktree, absolute and resolved, and the model it names — a model's own
+ * name, never `inherit`; null where it is done, names no worktree of its
+ * own, or cannot be read.
+ * @param {string} transcript the subagent's @returns {Subagent|null}
+ */
+function workingSubagent(transcript) {
+  const record = subagentRecord(transcript);
+  if (record === null || record.finished === true) return null;
+  const { worktreePath, model } = record;
+  if (typeof worktreePath !== 'string' || !path.isAbsolute(worktreePath)) return null;
+  return { transcript, worktree: realpathOrSelf(worktreePath), model: typeof model === 'string' && model !== '' && model !== 'inherit' ? model : null };
+}
+
+/**
+ * The running conversation's subagent at work in the worktree that holds
+ * `cwd`, the deepest where worktrees nest, from the folder beside the
+ * conversation's transcript; null where none does.
+ * @param {string} transcript @param {string} cwd @returns {Subagent|null}
+ */
+function subagentAt(transcript, cwd) {
+  const dir = subagentsDir(transcript);
+  let names;
+  try {
+    names = fs.readdirSync(dir).filter((name) => name.endsWith('.jsonl'));
+  } catch {
+    return null;
+  }
+  const here = realpathOrSelf(cwd);
+  /** @type {Subagent|null} */
+  let deepest = null;
+  for (const name of names) {
+    const subagent = workingSubagent(path.join(dir, name));
+    if (subagent === null || !within(here, subagent.worktree)) continue;
+    if (deepest === null || subagent.worktree.length > deepest.worktree.length) deepest = subagent;
+  }
+  return deepest;
+}
+
+/**
+ * The model the command calling from `cwd` in the conversation `sessionId`
+ * runs on: the subagent's at work in the worktree that holds `cwd` — its
+ * record's before its transcript names one — else the conversation's. Null
+ * where a transcript cannot be found or read, or names none.
+ * @param {string} sessionId @param {string} cwd @returns {string|null}
+ */
+function callerModel(sessionId, cwd) {
+  const transcript = runningTranscript(sessionId);
+  if (transcript === null) return null;
+  const subagent = subagentAt(transcript, cwd);
+  return subagent === null ? lastModel(transcript) : lastModel(subagent.transcript) ?? subagent.model;
+}
+
+/**
+ * Boot's tidy-up: delete every folder whose transcript no project folder
+ * holds, reading each projects directory once. A folder naming none stays,
+ * as does one `keeps` holds on to — boot's, one a trust log event still
+ * waits in — and one that cannot be deleted waits for the next boot.
+ * @param {(dir: string) => boolean} [keeps]
+ */
+function tidyConversations(keeps = () => false) {
+  const root = conversationsRoot();
+  /** @type {string[]} */
+  let folders = [];
+  try {
+    folders = fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+  } catch { return; }
+  /** @type {Map<string, Set<string>|null>} */
+  const held = new Map();
+  for (const folder of folders) {
+    const dir = path.join(root, folder);
+    let recorded;
+    try { recorded = fs.readFileSync(path.join(dir, TRANSCRIPT), 'utf8'); } catch { continue; }
+    const projects = projectsDir(recorded);
+    if (!projects) continue;
+    if (!held.has(projects)) held.set(projects, transcriptNames(projects));
+    const names = held.get(projects);
+    if (!names || names.has(path.basename(recorded)) || keeps(dir)) continue;
+    try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* the next boot tries again */ }
+  }
+}
+
+module.exports = { conversationsRoot, conversationDir, safeId, positionPath, leftPath, cameFromPath, isAgentId, storedPosition, readPosition, readLeft, tasksInFlight, taskAt, isMarked, markConversation, endConversation, claudeProjectsDir, runningTranscript, callerModel, subagentType, tidyConversations };

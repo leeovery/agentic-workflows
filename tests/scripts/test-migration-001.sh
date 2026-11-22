@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-MIGRATION="$REPO_DIR/skills/workflow-migrate/scripts/migrations/001-discussion-frontmatter.sh"
+MIGRATION="$REPO_DIR/skills/ledger-migrate/scripts/migrations/001-discussion-frontmatter.sh"
 
 PASS=0
 FAIL=0
@@ -64,11 +64,11 @@ EOF
   content=$(cat "$DISCUSSION_DIR/api-design.md")
 
   assert_eq "File starts with frontmatter delimiter" "---" "$(head -1 "$DISCUSSION_DIR/api-design.md")"
-  assert_eq "Topic extracted from filename" "true" "$(echo "$content" | grep -q '^topic: api-design$' && echo true || echo false)"
-  assert_eq "Exploring status mapped to in-progress" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
-  assert_eq "Date extracted" "true" "$(echo "$content" | grep -q '^date: 2024-01-15$' && echo true || echo false)"
-  assert_eq "H1 heading preserved" "true" "$(echo "$content" | grep -q '^# Discussion: API Design$' && echo true || echo false)"
-  assert_eq "Content sections preserved" "true" "$(echo "$content" | grep -q '^## Context$' && echo true || echo false)"
+  assert_eq "Topic extracted from filename" "true" "$(grep -q '^topic: api-design$' <<<"$content" && echo true || echo false)"
+  assert_eq "Exploring status mapped to in-progress" "true" "$(grep -q '^status: in-progress$' <<<"$content" && echo true || echo false)"
+  assert_eq "Date extracted" "true" "$(grep -q '^date: 2024-01-15$' <<<"$content" && echo true || echo false)"
+  assert_eq "H1 heading preserved" "true" "$(grep -q '^# Discussion: API Design$' <<<"$content" && echo true || echo false)"
+  assert_eq "Content sections preserved" "true" "$(grep -q '^## Context$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -91,7 +91,7 @@ EOF
   run_migration
   content=$(cat "$DISCUSSION_DIR/auth-flow.md")
 
-  assert_eq "Deciding status mapped to in-progress" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
+  assert_eq "Deciding status mapped to in-progress" "true" "$(grep -q '^status: in-progress$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -114,7 +114,7 @@ EOF
   run_migration
   content=$(cat "$DISCUSSION_DIR/caching.md")
 
-  assert_eq "Concluded status mapped to concluded" "true" "$(echo "$content" | grep -q '^status: concluded$' && echo true || echo false)"
+  assert_eq "Concluded status mapped to concluded" "true" "$(grep -q '^status: concluded$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -137,7 +137,7 @@ EOF
   run_migration
   content=$(cat "$DISCUSSION_DIR/database.md")
 
-  assert_eq "Complete status mapped to concluded" "true" "$(echo "$content" | grep -q '^status: concluded$' && echo true || echo false)"
+  assert_eq "Complete status mapped to concluded" "true" "$(grep -q '^status: concluded$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -160,7 +160,7 @@ EOF
   run_migration
   content=$(cat "$DISCUSSION_DIR/logging.md")
 
-  assert_eq "Emoji Complete status mapped to concluded" "true" "$(echo "$content" | grep -q '^status: concluded$' && echo true || echo false)"
+  assert_eq "Emoji Complete status mapped to concluded" "true" "$(grep -q '^status: concluded$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -183,7 +183,7 @@ EOF
   run_migration
   content=$(cat "$DISCUSSION_DIR/testing.md")
 
-  assert_eq "Alternate colon format handled" "true" "$(echo "$content" | grep -q '^status: concluded$' && echo true || echo false)"
+  assert_eq "Alternate colon format handled" "true" "$(grep -q '^status: concluded$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -206,7 +206,7 @@ EOF
   run_migration
   content=$(cat "$DISCUSSION_DIR/deployment.md")
 
-  assert_eq "Date extracted from Started field" "true" "$(echo "$content" | grep -q '^date: 2024-07-01$' && echo true || echo false)"
+  assert_eq "Date extracted from Started field" "true" "$(grep -q '^date: 2024-07-01$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -229,7 +229,7 @@ EOF
   content=$(cat "$DISCUSSION_DIR/no-date.md")
   today=$(date +%Y-%m-%d)
 
-  assert_eq "Date defaults to today when not found" "true" "$(echo "$content" | grep -q "^date: $today$" && echo true || echo false)"
+  assert_eq "Date defaults to today when not found" "true" "$(grep -q "^date: $today$" <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -341,11 +341,11 @@ EOF
   run_migration
   content=$(cat "$DISCUSSION_DIR/full-discussion.md")
 
-  assert_eq "Context section preserved" "true" "$(echo "$content" | grep -q '^## Context$' && echo true || echo false)"
-  assert_eq "Options section preserved" "true" "$(echo "$content" | grep -q '^## Options$' && echo true || echo false)"
-  assert_eq "Decision section preserved" "true" "$(echo "$content" | grep -q '^## Decision$' && echo true || echo false)"
-  assert_eq "Consequences section preserved" "true" "$(echo "$content" | grep -q '^## Consequences$' && echo true || echo false)"
-  assert_eq "List content preserved" "true" "$(echo "$content" | grep -qF 'Option A' && echo true || echo false)"
+  assert_eq "Context section preserved" "true" "$(grep -q '^## Context$' <<<"$content" && echo true || echo false)"
+  assert_eq "Options section preserved" "true" "$(grep -q '^## Options$' <<<"$content" && echo true || echo false)"
+  assert_eq "Decision section preserved" "true" "$(grep -q '^## Decision$' <<<"$content" && echo true || echo false)"
+  assert_eq "Consequences section preserved" "true" "$(grep -q '^## Consequences$' <<<"$content" && echo true || echo false)"
+  assert_eq "List content preserved" "true" "$(grep -qF 'Option A' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -368,7 +368,7 @@ EOF
   run_migration
   content=$(cat "$DISCUSSION_DIR/user-authentication-flow.md")
 
-  assert_eq "Topic uses kebab-case from filename" "true" "$(echo "$content" | grep -q '^topic: user-authentication-flow$' && echo true || echo false)"
+  assert_eq "Topic uses kebab-case from filename" "true" "$(grep -q '^topic: user-authentication-flow$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -411,8 +411,8 @@ TESTEOF
   content=$(cat "$DISCUSSION_DIR/multi-hr.md")
   body_after=$(sed -n '/^## /,$p' "$DISCUSSION_DIR/multi-hr.md")
 
-  assert_eq "Frontmatter status is correct" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
-  assert_eq "Frontmatter topic is correct" "true" "$(echo "$content" | grep -q '^topic: multi-hr$' && echo true || echo false)"
+  assert_eq "Frontmatter status is correct" "true" "$(grep -q '^status: in-progress$' <<<"$content" && echo true || echo false)"
+  assert_eq "Frontmatter topic is correct" "true" "$(grep -q '^topic: multi-hr$' <<<"$content" && echo true || echo false)"
   assert_eq "All body --- horizontal rules preserved exactly" "$body_before" "$body_after"
 
   teardown
@@ -457,7 +457,7 @@ TESTEOF
   content=$(cat "$DISCUSSION_DIR/special-chars.md")
   body_after=$(sed -n '/^## /,$p' "$DISCUSSION_DIR/special-chars.md")
 
-  assert_eq "Frontmatter status correct" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
+  assert_eq "Frontmatter status correct" "true" "$(grep -q '^status: in-progress$' <<<"$content" && echo true || echo false)"
   assert_eq "Body with code blocks, tables, and special chars preserved exactly" "$body_before" "$body_after"
 
   teardown
@@ -517,8 +517,8 @@ TESTEOF
   content=$(cat "$DISCUSSION_DIR/exact-body.md")
   body_after=$(sed -n '/^## /,$p' "$DISCUSSION_DIR/exact-body.md")
 
-  assert_eq "Frontmatter status correct" "true" "$(echo "$content" | grep -q '^status: concluded$' && echo true || echo false)"
-  assert_eq "Frontmatter topic correct" "true" "$(echo "$content" | grep -q '^topic: exact-body$' && echo true || echo false)"
+  assert_eq "Frontmatter status correct" "true" "$(grep -q '^status: concluded$' <<<"$content" && echo true || echo false)"
+  assert_eq "Frontmatter topic correct" "true" "$(grep -q '^topic: exact-body$' <<<"$content" && echo true || echo false)"
   assert_eq "Complex body content preserved exactly after migration" "$body_before" "$body_after"
 
   teardown
@@ -544,9 +544,9 @@ EOF
   content=$(cat "$DISCUSSION_DIR/date-only.md")
 
   assert_eq "date-only: migrated to frontmatter" "---" "$(head -1 "$DISCUSSION_DIR/date-only.md")"
-  assert_eq "date-only: status defaulted to in-progress" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
-  assert_eq "date-only: date preserved" "true" "$(echo "$content" | grep -q '^date: 2024-03-01$' && echo true || echo false)"
-  assert_eq "date-only: body section preserved" "true" "$(echo "$content" | grep -q '^## Context$' && echo true || echo false)"
+  assert_eq "date-only: status defaulted to in-progress" "true" "$(grep -q '^status: in-progress$' <<<"$content" && echo true || echo false)"
+  assert_eq "date-only: date preserved" "true" "$(grep -q '^date: 2024-03-01$' <<<"$content" && echo true || echo false)"
+  assert_eq "date-only: body section preserved" "true" "$(grep -q '^## Context$' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -571,9 +571,9 @@ EOF
   run_migration
   content=$(cat "$DISCUSSION_DIR/no-section.md")
 
-  assert_eq "no-section: first body line preserved" "true" "$(echo "$content" | grep -qF 'This is body prose with no section heading.' && echo true || echo false)"
-  assert_eq "no-section: later body line preserved" "true" "$(echo "$content" | grep -qF 'More body content that must survive migration.' && echo true || echo false)"
-  assert_eq "no-section: H1 preserved" "true" "$(echo "$content" | grep -q '^# Discussion: No Section$' && echo true || echo false)"
+  assert_eq "no-section: first body line preserved" "true" "$(grep -qF 'This is body prose with no section heading.' <<<"$content" && echo true || echo false)"
+  assert_eq "no-section: later body line preserved" "true" "$(grep -qF 'More body content that must survive migration.' <<<"$content" && echo true || echo false)"
+  assert_eq "no-section: H1 preserved" "true" "$(grep -q '^# Discussion: No Section$' <<<"$content" && echo true || echo false)"
 
   teardown
 }

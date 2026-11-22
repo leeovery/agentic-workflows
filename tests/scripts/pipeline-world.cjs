@@ -1,0 +1,1890 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// The pipeline simulation's world (tests/README.md §11): the project every
+// scenario starts from, made once per run and copied for each; the
+// named worlds several scenario files start from, each built once per run
+// (`worlds`); a scenario file's own world built through the verbs once, on
+// either (`worldFrom`); `Sim`, which drives the engine through its
+// in-process entry rather than a process per call — the same argv, the same
+// answers (stdout, stderr and an exit code), a thousandth of the start-up —
+// and has the oracle (pipeline-oracle.cjs) audit the whole state after every
+// mutation; and the steps the skill prose takes, which the scenarios replay.
+//
+// A scenario is an ordered list of `sim.run()` calls, in the scenario file
+// of its work type or its subject (`test-pipeline-simulation-*.cjs`).
+// Together they cover the happy paths and the supported edges: reopening,
+// supersession, cancel and reactivate at topic and work-unit level, pivot,
+// absorption, promotion, restarts.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const assert = require('node:assert');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const ROOT = path.join(__dirname, '../..');
+const engine = require(path.join(ROOT, 'skills/ledger-engine/scripts/engine.cjs'));
+const schema = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/manifest-schema.cjs'));
+const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/knowledge/files.cjs'));
+const { drawLabel } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/surfaces.cjs'));
+const { startMenuScreen } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/start-menu.cjs'));
+const { startMenuRead } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/start-menu.cjs'));
+const { skillAt } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/position.cjs'));
+const { HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/handoff.cjs'));
+const { SHOWN, RAISE_SHOWN } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/gate.cjs'));
+const { layoutsFolder, layoutFolderName } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/project-layout.cjs'));
+const { initRepo, fixtureFrom, cleanupFixture, git, stateGit, withEnv, screenOf, stampBooted } = require('./engine-harness.cjs');
+const { BOOTED } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/user-files.cjs'));
+const { briefPath } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/brief-names.cjs'));
+const { copyWorld, templateFolder } = require('./discovery-test-utils.cjs');
+const { worldOfTheRun } = require('./run-worlds.cjs');
+const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/state-root.cjs'));
+
+const { shellWords, auditState, auditGatePayload, auditTrust, trustLines, auditGateAnswer } = require('./pipeline-oracle.cjs');
+const { leaningCall } = require('./ledger-world.cjs');
+const { labelAnswers } = require('./labels.cjs');
+const decisionPoint = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/decision-point.cjs'));
+
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs').Next} Next */
+
+// The project every scenario starts from, made once per run.
+// The topic family's map verbs, which answer their one-line report after
+// their JSON (8.8.7).
+const MAP_VERBS = Object.freeze(['add', 'add-batch', 'edit', 'rename', 'remove', 'order', 'brief']);
+// The raise commands that draw nothing: an answer, a question set aside, the questions waiting.
+const RAISE_ANSWERS = Object.freeze(['answer', 'aside', 'waiting']);
+// The verbs that print their screen or their receipt after their JSON, by group.
+const RECEIPTED = Object.freeze({
+  workunit: ['move', 'cancel', 'reactivate', 'pivot', 'absorb'],
+  inbox: ['capture', 'archive', 'restore', 'delete'],
+  topic: ['cancel', 'reactivate', 'postpone'],
+  roadmap: ['pull-forward'],
+  finish: ['yes'],
+});
+// What a blind question's answer draws: its reveal (16.17.7).
+const REVEAL = '=== DISPLAY: blind question revealed ';
+
+// What a sim needs of a project beyond its state, made in `dir`: the
+// checkout's knowledge setup, the skills installed, and an ignored clone.
+/** @param {string} dir */
+function readyForSim(dir) {
+  // This checkout's knowledge setup: keyword-only, pinned as setup records
+  // it, so the transactions' indexing builds a store as a set-up project's does.
+  fs.mkdirSync(statePath(dir, KNOWLEDGE_DIR), { recursive: true });
+  fs.writeFileSync(statePath(dir, KNOWLEDGE_DIR, 'config.json'), '{ "knowledge": { "provider": null } }\n');
+  // The skills a conversation carries on in after a compaction, installed
+  // as a project installs them — kept out of git's sight, so no commit or
+  // dirt check ever meets them.
+  const skills = new Set([...HANDOFF_TARGETS, ...schema.PROJECT_IDENTITIES.map((name) => skillAt(name))]);
+  for (const skill of /** @type {Set<string>} */ (skills)) {
+    fs.mkdirSync(path.join(dir, '.claude/skills', skill), { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'skills', skill, 'SKILL.md'), path.join(dir, '.claude/skills', skill, 'SKILL.md'));
+  }
+  fs.mkdirSync(path.join(dir, '.git/info'), { recursive: true });
+  fs.appendFileSync(path.join(dir, '.git/info/exclude'), '.claude/skills/\n');
+  // Part of the project's code lives in an ignored clone: a repo of its own
+  // that the project's git ignores. A code commit naming a path in it lands
+  // in the clone's history, and every dirt read reaches into it.
+  const api = initRepo(path.join(dir, 'api'));
+  fs.writeFileSync(path.join(api, 'README.md'), '# API\n');
+  git(api, ['add', '-A']);
+  git(api, ['commit', '-q', '-m', 'init']);
+  fs.appendFileSync(path.join(dir, '.git/info/exclude'), 'api/\n');
+}
+
+const simWorld = fixtureFrom('pipeline-sim-', readyForSim);
+
+class Sim {
+  /** @param {() => string} [world] the project the sim starts from, copied for it: the one every scenario starts from, or a scenario file's own (`worldFrom`) */
+  constructor(world = simWorld) {
+    // A project with its state worktree at `.ledger/`, which ignores the
+    // cache and the checkout's own knowledge directory.
+    this.dir = world();
+    // The system config directory sits beside the project, as a real one
+    // does: the conversation folders the sim's calls mark live there.
+    this.configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-sim-config-'));
+    this.api = path.join(this.dir, 'api');
+    this.step = 0;
+    this.conversations = 0;
+    // Every handoff a call answered, `engine {args}` by its argv: a flow
+    // that holds one conversation asserts none came between.
+    /** @type {string[]} */
+    this.handoffs = [];
+    // Hermetic environment, as a delta from this process's — the engine runs
+    // in-process and holds these keys for the call's duration: the system
+    // config dir pins into the sandbox (the knowledge base reads it) and the
+    // tmux and Portal identities are taken away, so `session label` can never
+    // relabel the developer's real session.
+    // A real session always carries its identity, and presence reads it to
+    // tell its own holds from a peer's — pin one so the sim never gates
+    // against itself, whatever the host environment carries.
+    // The sim's own identity: this process, alive with a real start time, so
+    // the rows its verbs beat read `held`.
+    this.env = {
+      LEDGER_CONFIG_DIR: this.configDir,
+      CLAUDE_CODE_SESSION_ID: 'sim-session',
+      CLAUDE_PID: String(process.pid),
+      TMUX: undefined,
+      TMUX_PANE: undefined,
+      ZMX_SESSION: undefined,
+      ZMX_DIR: undefined,
+    };
+    // The conversation the sim opens on has booted, as the start skill's
+    // first step does before anything else runs.
+    stampBooted(this.dir, this.env.CLAUDE_CODE_SESSION_ID, this.configDir);
+  }
+
+  destroy() {
+    cleanupFixture(this.dir);
+    fs.rmSync(this.configDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  }
+
+  write(rel, content) {
+    const full = path.resolve(this.dir, rel);
+    fs.mkdirSync(path.dirname(full), { recursive: true });
+    fs.writeFileSync(full, typeof content === 'string' ? content : JSON.stringify(content, null, 2));
+    return rel;
+  }
+
+  // Transactions answer with pure JSON — display artifacts belong to render
+  // surfaces fetched at their display point. The section-bearing commands
+  // left are a raise's draw and show — every raise command but its answer,
+  // an aside and the questions
+  // waiting — whose sections are the screen the raise is drawn as, none
+  // where it parks its task or proceeds; the answer to a raise sealed
+  // blind, `blind`, whose section is its reveal, and no other answer's;
+  // the entry, whose sections are what the phase
+  // reads on arrival; a unit's move, whose sections are start this work's
+  // screen it stages; the capture line, whose section is the one line it
+  // draws; a unit's cancel, reactivate, pivot and absorb, a topic's cancel,
+  // reactivate and postpone, a roadmap item's pull forward, and the inbox's
+  // archive, restore and delete, whose sections are their receipts; and
+  // Claude's proposal for the record of the person, whose
+  // sections are the screen it is proposed on.
+  /** @param {string[]} args @param {string} sections @param {boolean} [blind] */
+  static carriesSections([group, verb], sections, blind = false) {
+    return group === 'presence' || group === 'enter' || (group === 'raise' && !RAISE_ANSWERS.includes(verb)) || (group === 'topic' && (MAP_VERBS.includes(verb) || RECEIPTED.topic.includes(verb)))
+      || (group === 'raise' && verb === 'answer' && blind && sections.startsWith(REVEAL))
+      || (group === 'workunit' && RECEIPTED.workunit.includes(verb)) || (group === 'inbox' && RECEIPTED.inbox.includes(verb))
+      || (group === 'roadmap' && RECEIPTED.roadmap.includes(verb)) || (group === 'finish' && RECEIPTED.finish.includes(verb)) || (group === 'person' && verb === 'propose');
+  }
+
+  /**
+   * Whether `args` answer a raise the conversation `identity` names — the
+   * sim's own where none is — sealed blind (16.17.7).
+   * @param {string[]} args @param {{CLAUDE_CODE_SESSION_ID: string}|null} identity
+   */
+  answersBlind([group, verb, prefix], identity) {
+    if (group !== 'raise' || verb !== 'answer') return false;
+    const file = path.join(this.configDir, 'conversations', this.envOf(/** @type {any} */ (identity)).CLAUDE_CODE_SESSION_ID, RAISE_SHOWN);
+    if (!fs.existsSync(file)) return false;
+    return Object.entries(JSON.parse(fs.readFileSync(file, 'utf8'))).some(([id, seal]) => id.startsWith(prefix) && seal.blind === true);
+  }
+
+  /**
+   * The environment one call runs under: the sim's own, or a named session's.
+   * @param {{CLAUDE_CODE_SESSION_ID: string, CLAUDE_PID: string}|null} [identity]
+   */
+  envOf(identity) {
+    return identity ? { ...this.env, ...identity } : this.env;
+  }
+
+  /**
+   * A handoff the gate mod carries: the conversation is cleared, its rows
+   * dropped as Claude Code's SessionEnd hook drops them on a clear, and the
+   * work starts in a fresh one, in the same Claude process, boot's stamp
+   * copied into it from the one cleared, as the mod copies it.
+   */
+  handOver() {
+    const stamp = (/** @type {string} */ id) => path.join(this.configDir, 'conversations', id, BOOTED);
+    const left = stamp(this.env.CLAUDE_CODE_SESSION_ID);
+    this.run(['presence', 'cleanup', this.env.CLAUDE_CODE_SESSION_ID]);
+    this.conversations += 1;
+    this.env = { ...this.env, CLAUDE_CODE_SESSION_ID: `sim-session-${this.conversations}` };
+    fs.mkdirSync(path.dirname(stamp(this.env.CLAUDE_CODE_SESSION_ID)), { recursive: true });
+    fs.copyFileSync(left, stamp(this.env.CLAUDE_CODE_SESSION_ID));
+  }
+
+  /** A new conversation the person opens themselves: nothing booted in it yet. */
+  open() {
+    this.conversations += 1;
+    this.env = { ...this.env, CLAUDE_CODE_SESSION_ID: `sim-session-${this.conversations}` };
+  }
+
+  /**
+   * A second (or third) session on the same checkout: identical sandbox,
+   * distinct identity. Presence records the calling process's pid and session
+   * id, and every consumer that asks whether a hold is mine or a peer's
+   * compares against them — so concurrent sessions in the sim are exactly
+   * that, two identities issuing calls into one project. `pid` defaults to
+   * this process, which is alive and has a real start time, so the session's
+   * rows read `held`; a session that must read as a stranger to another's
+   * hold is given a pid of its own.
+   * @param {string} sessionId @param {number} [pid]
+   */
+  session(sessionId, pid = process.pid) {
+    const identity = { CLAUDE_CODE_SESSION_ID: sessionId, CLAUDE_PID: String(pid) };
+    stampBooted(this.dir, sessionId, this.configDir);
+    return {
+      id: sessionId,
+      run: (/** @type {string[]} */ args, /** @type {string} */ stdin = '') => this.run(args, identity, stdin),
+      refuses: (/** @type {string[]} */ args, /** @type {RegExp} */ pattern) => this.refuses(args, pattern, identity),
+      read: (/** @type {string[]} */ args) => this.read(args, identity),
+      render: (/** @type {string[]} */ args, /** @type {object} */ opts) => this.render(args, { ...opts, identity }),
+      write: (/** @type {string} */ rel, /** @type {any} */ content) => this.write(rel, content),
+    };
+  }
+
+  /**
+   * One engine call, in this process: the CLI's argv contract without a
+   * process per assertion. Answers what the spawned CLI answered.
+   * @param {string[]} args @param {object|null} [identity] @param {string} [stdin] what a hook target reads
+   */
+  engine(args, identity = null, stdin = '') {
+    return engine.run(args, { cwd: this.dir, env: this.envOf(identity), stdin });
+  }
+
+  /**
+   * One engine call awaited — the door the knowledge verbs that wait on the
+   * embedding provider take, which `engine` refuses.
+   * @param {string[]} args @param {object|null} [identity] @param {string} [stdin]
+   */
+  engineAsync(args, identity = null, stdin = '') {
+    return engine.runAsync(args, { cwd: this.dir, env: this.envOf(identity), stdin });
+  }
+
+  /** Engine mutation: expect ok:true JSON, then audit the whole state. */
+  run(args, identity = null, stdin = '') {
+    return this.audited(args, this.engine(args, identity, stdin), identity);
+  }
+
+  /**
+   * Engine mutation run in another folder of the project — a builder's
+   * worktree — audited as `run`'s.
+   * @param {string} cwd @param {string[]} args @param {object|null} [identity]
+   */
+  runIn(cwd, args, identity = null) {
+    return this.audited(args, engine.run(args, { cwd, env: this.envOf(identity), stdin: '' }), identity);
+  }
+
+  /** Engine mutation awaited — the door a command that answers later takes — audited as `run`'s. */
+  async runAsync(args, identity = null, stdin = '') {
+    return this.audited(args, await this.engineAsync(args, identity, stdin), identity);
+  }
+
+  /**
+   * A mutation's answer `res`, in the conversation `identity` names, held
+   * to ok:true JSON, then the whole state audited: its parsed answer.
+   * @param {string[]} args @param {{code: number, stdout: string, stderr: string}} res @param {object|null} [identity]
+   */
+  audited(args, res, identity = null) {
+    this.step += 1;
+    const label = `step ${this.step}: engine ${args.join(' ')}`;
+    assert.strictEqual(res.code, 0,
+      `[${label}] expected success\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
+    const nl = res.stdout.indexOf('\n');
+    const first = (nl === -1 ? res.stdout : res.stdout.slice(0, nl)).trim();
+    const parsed = JSON.parse(first);
+    assert.strictEqual(parsed.ok, true, `[${label}] engine answered ok:false`);
+    this.sections = nl === -1 ? '' : res.stdout.slice(nl + 1);
+    if (!Sim.carriesSections(args, this.sections, this.answersBlind(args, /** @type {any} */ (identity)))) {
+      assert.strictEqual(this.sections, '',
+        `[${label}] transaction verbs answer with pure JSON — display sections belong to render surfaces fetched at their display point`);
+    }
+    auditState(this.dir, label);
+    auditTrust(this, label, args);
+    if (parsed.next?.kind === 'handoff') this.handoffs.push(`engine ${args.join(' ')}`);
+    if (typeof parsed.committed === 'string' || (Array.isArray(parsed.committed) && parsed.committed.length > 0)) {
+      assert.strictEqual(stateGit(this.dir, ['ls-files', '--', KNOWLEDGE_DIR]).trim(), '',
+        `[${label}] the commit carried the knowledge directory — it is the checkout's own, never committed`);
+      assert.strictEqual(git(this.dir, ['ls-files', '--', STATE_DIR_NAME]).trim(), '',
+        `[${label}] the code tree carries the state — it lives on its own branch`);
+    }
+    return parsed;
+  }
+
+  /**
+   * Engine call answering on stderr with stdout empty — the SessionStart
+   * hook's target, whose stdout Claude Code would inject into the resumed
+   * conversation. Exit 0, {ok:true} JSON on stderr, then audit.
+   */
+  runOnStderr(args, identity = null) {
+    this.step += 1;
+    const label = `step ${this.step}: engine ${args.join(' ')} (stderr response)`;
+    const res = this.engine(args, identity);
+    assert.strictEqual(res.code, 0,
+      `[${label}] expected success\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
+    assert.strictEqual(res.stdout, '', `[${label}] a SessionStart hook target keeps stdout empty`);
+    const parsed = JSON.parse(res.stderr.trim());
+    assert.strictEqual(parsed.ok, true, `[${label}] engine answered ok:false`);
+    auditState(this.dir, label);
+    return parsed;
+  }
+
+  /** Engine call that must refuse loudly: exit 1, {ok:false} JSON on stderr. */
+  refuses(args, pattern, identity = null, stdin = '') {
+    return this.refused(args, pattern, this.engine(args, identity, stdin));
+  }
+
+  /** Engine call awaited that must refuse loudly, held as `refuses` holds one. */
+  async refusesAsync(args, pattern, identity = null, stdin = '') {
+    return this.refused(args, pattern, await this.engineAsync(args, identity, stdin));
+  }
+
+  /**
+   * A refusal's answer `res` held to exit 1 and clean {ok:false} JSON on
+   * stderr matching `pattern`, then the whole state audited untouched: its
+   * parsed answer.
+   * @param {string[]} args @param {RegExp|null} pattern @param {{code: number, stdout: string, stderr: string}} res
+   */
+  refused(args, pattern, res) {
+    this.step += 1;
+    const label = `step ${this.step}: engine ${args.join(' ')} (expected refusal)`;
+    assert.strictEqual(res.code, 1, `[${label}] expected exit 1, got ${res.code}\nstdout: ${res.stdout}`);
+    const parsed = JSON.parse(res.stderr.trim());
+    assert.strictEqual(parsed.ok, false, `[${label}] refusal is not clean {ok:false} JSON`);
+    if (pattern) assert.match(parsed.error, pattern, `[${label}] refusal message drifted`);
+    auditState(this.dir, `${label} — state untouched`);
+    auditTrust(this, `${label} — trust log untouched`);
+    return parsed;
+  }
+
+  /** Bare-stdout read (manifest get / exists / resolve …). */
+  read(args, identity = null) {
+    const res = this.engine(args, identity);
+    assert.strictEqual(res.code, 0,
+      `[read engine ${args.join(' ')}] expected success, got ${res.code}\nstderr: ${res.stderr}`);
+    return res.stdout.trim();
+  }
+
+  /**
+   * Render surface: must exit 0 (a surface with nothing to show renders
+   * empty) — from the project, or from `cwd`, a folder the session opened.
+   */
+  render(args, { expect, identity = null, cwd = this.dir } = {}) {
+    const res = engine.run(['render', ...args], { cwd, env: this.envOf(identity), stdin: '' });
+    assert.strictEqual(res.code, 0,
+      `[render ${args.join(' ')}] crashed or refused\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
+    if (expect === 'content') {
+      assert.ok(res.stdout.trim().length > 0, `[render ${args.join(' ')}] produced no output`);
+    }
+    if (expect === 'empty') {
+      assert.strictEqual(res.stdout.trim(), '', `[render ${args.join(' ')}] expected a pass (empty render)`);
+    }
+    auditGatePayload(this, args, identity, cwd);
+    return res.stdout;
+  }
+
+  manifest(wu) {
+    return JSON.parse(fs.readFileSync(path.join(this.dir, '.ledger', wu, 'manifest.json'), 'utf8'));
+  }
+
+  /** The board as the sim's conversation draws it — This session unless `args` name a tab — the mod's read, nothing to audit. @param {string[]} [args] */
+  board(args = []) {
+    return JSON.parse(this.read(['board', this.env.CLAUDE_CODE_SESSION_ID, ...args]));
+  }
+}
+
+/** Session-log helper — workunit create needs one. */
+function sessionLog(sim, wu, n = 1) {
+  return sim.write(`.ledger/.cache/${wu}/discovery/session-00${n}.md`,
+    `# Discovery Session 00${n}\n\n## Conclusion\n\n(none)\n`);
+}
+
+/** Write a message scratch and return the `topic send` argv delivering it from `from`. */
+function sendArgv(sim, wu, topic, from, slug = 'a-message') {
+  const scratch = sim.write(`.ledger/.cache/scratch/${slug}.md`, `${slug}\n\nBody of ${slug}.\n`);
+  return ['topic', 'send', wu, topic, '--from', from, '--content', scratch, '--slug', slug];
+}
+
+/** Send one message to a topic from `from`. */
+function send(sim, wu, topic, from, slug) {
+  return sim.run(sendArgv(sim, wu, topic, from, slug));
+}
+
+// A world built through the verbs by `build`, on a sim of its own made from
+// `base`, whose every presence it sweeps at the end, so the copies hold
+// nothing a session holds; left at `dir`.
+/** @param {(sim: Sim) => void} build @param {string} dir @param {() => string} base @returns {string} dir, symbolic links resolved */
+function builtAt(build, dir, base) {
+  const sim = new Sim(base);
+  build(sim);
+  for (let n = 0; n <= sim.conversations; n += 1) sim.run(['presence', 'cleanup', n === 0 ? 'sim-session' : `sim-session-${n}`]);
+  const at = copyWorld(sim.dir, dir);
+  sim.destroy();
+  return at;
+}
+
+// A scenario file's own world (tests/README.md §3): built once per process
+// on a copy of `base` — the project every scenario starts from, or a named
+// world — then copied for each sim made from it, `new Sim(world)`.
+/** @param {string} prefix the template's temp-directory prefix @param {(sim: Sim) => void} build @param {() => string} [base] @returns {() => string} */
+function worldFrom(prefix, build, base = simWorld) {
+  /** @type {string|null} */
+  let made = null;
+  return () => {
+    made ??= builtAt(build, templateFolder(`${prefix}template-`), base);
+    return copyWorld(made, fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
+  };
+}
+
+// A world several scenario files start from, named for what builds it on a
+// copy of `base` — the project every scenario starts from, or another named
+// world: built once per run by the first process to ask (run-worlds.cjs),
+// then copied for each sim made from it.
+/** @param {string} name @param {(sim: Sim) => void} build @param {() => string} [base] @returns {() => string} */
+function namedWorld(name, build, base = simWorld) {
+  return () => copyWorld(worldOfTheRun(name, (dir) => { builtAt(build, dir, base); }, { by: [build, base] }).dir,
+    fs.mkdtempSync(path.join(os.tmpdir(), `pipeline-${name}-`)));
+}
+
+// An epic started at its gate and its map of the named topics, each with its
+// brief, approved at its own. The yes hands off to the epic's menu, and the
+// conversation the gate mod clears for it ends, SessionEnd sweeping the
+// presence its discovery held.
+/** @param {Sim} sim @param {string} wu @param {string[]} names */
+function mappedEpic(sim, wu, names) {
+  startUnit(sim, 'epic', wu, 'An epic of its own');
+  const { next } = approveTheMap(sim, wu, { topics: names.map((name) => ({ name, summary: name, brief: briefDraft(sim, wu, name) })) });
+  handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
+  sim.run(['presence', 'cleanup', sim.env.CLAUDE_CODE_SESSION_ID]);
+  sim.handOver();
+}
+
+/** Topics landed on an epic's map in one batch, each with a brief drafted for it. @param {Sim} sim @param {string} wu @param {{name: string}[]} topics */
+function mapTopics(sim, wu, topics) {
+  return sim.run(['topic', 'add-batch', wu, '--file', sim.write(`.ledger/.cache/${wu}/discovery/topics.json`,
+    topics.map((topic) => ({ ...topic, brief: briefDraft(sim, wu, topic.name) })))]);
+}
+
+/** One presence row from a scan, or undefined. */
+function presenceRow(scan, phase, topic) {
+  return scan.sessions.find((r) => r.phase === phase && r.topic === topic);
+}
+
+// What the sim's conversation re-reads to carry on from its position — the
+// one line of JSON `conversation position` answers, its DATA the same
+// message. A read: nothing to audit.
+function carryOn(sim, identity = null) {
+  const res = sim.engine(['conversation', 'position'], identity);
+  assert.strictEqual(res.code, 0, `conversation position failed\nstderr: ${res.stderr}`);
+  const marker = '=== POSITION (json for the gate mod — never display) ===\n';
+  const at = res.stdout.indexOf(marker);
+  assert.ok(at !== -1, `conversation position answered no POSITION section:\n${res.stdout}`);
+  const answer = JSON.parse(res.stdout.slice(at + marker.length).trim());
+  assert.ok(res.stdout.slice(0, at).endsWith(`${answer.text}\n`), 'the DATA section is the message the JSON carries');
+  return answer;
+}
+
+// Every place labels itself on arrival: the start and the roadmap label the
+// place alone (`arrive`), the epic's menu by drawing
+// itself (`epicMenuAt`), and every phase skill's Step 0 records its place
+// before anything else (`handoffEntry`). The sim strips the multiplexers'
+// identities and pins an empty config dir, so the label is the disabled or
+// no-multiplexer no-op; what the sim pins is the call sequence, that every name and phase
+// literal the prose passes validates, and the conversation's position each
+// arrival records.
+function arrive(sim, name) {
+  const res = sim.run(['session', 'label', name]);
+  assert.strictEqual(res.labelled, false, `the sim labels no session (${name})`);
+  arrived(sim, name);
+}
+
+// The conversation at a place alone: a project place and an epic's menu
+// carry on in their own skill after a compaction.
+/** @param {Sim} sim @param {string} name */
+function arrived(sim, name) {
+  const here = carryOn(sim);
+  assert.deepStrictEqual(here.position, { name }, `the arrival records the place alone (${name})`);
+  const skill = schema.PROJECT_IDENTITIES.includes(name) ? `ledger-${name}` : skillAt(name, undefined, sim.manifest(name).work_type);
+  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skill), 'SKILL.md'), `the ${name} carries on in its own skill`);
+}
+
+// An epic continued from the start menu: its row picked, which hands off to
+// its menu's skill (19.1.3).
+/** @param {Sim} sim @param {string} wu */
+function continueEpic(sim, wu) {
+  assert.strictEqual(sim.manifest(wu).work_type, 'epic', 'only an epic has a menu of its own — any other unit is continued where it stands');
+  assert.strictEqual(continueUnit(sim, wu).text, `Invoke \`/ledger-continue-epic ${wu}\`.`, 'an epic\'s Continue opens its menu');
+}
+
+// The start menu, then an epic's menu, as a conversation reaches them: the
+// epic's Continue, and its menu drawn by its skill. Answers the menu drawn.
+/** @param {Sim} sim @param {string} wu @returns {string} */
+function menuEntry(sim, wu) {
+  continueEpic(sim, wu);
+  return epicMenuAt(sim, wu);
+}
+
+// A move into a phase hands off — a menu's pick and a conclusion's `next`
+// alike: carried by the gate mod, the conversation is cleared and the
+// phase skill starts in a fresh one, whose first engine call is its label —
+// marking the conversation and recording the place, so a compaction there
+// carries on in the phase's skill.
+function handoffEntry(sim, wu, phase, topic) {
+  sim.handOver();
+  const res = sim.run(['session', 'label', wu, phase, topic]);
+  assert.strictEqual(res.labelled, false, `the sim labels no session (${phase})`);
+  const here = carryOn(sim);
+  assert.deepStrictEqual(here.position, { name: wu, phase, topic }, `the phase skill records its place (${phase})`);
+  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, phase, sim.manifest(wu).work_type)), 'SKILL.md'),
+    `a compaction there carries on in the phase's skill (${phase})`);
+}
+
+// A move into a phase that enters through `enter`: handed off as above, the
+// phase skill's first engine call is its entry — starting the topic where
+// unstarted, recording the place, and answering what to read in its sections
+// (`sim.sections`) — so a compaction there carries on in the phase's skill,
+// re-reading the topic's record. A unit's one topic left unnamed is the unit,
+// as a bugfix's investigation enters it.
+/** @param {Sim} sim @param {string} wu @param {string} phase @param {string} [topic] */
+function enterEntry(sim, wu, phase, topic) {
+  sim.handOver();
+  const res = sim.run(['enter', phase, wu, ...(topic === undefined ? [] : [topic])]);
+  assert.strictEqual(res.entered, true, `no other session holds the topic, so the entry asks nothing (${phase})`);
+  const here = carryOn(sim);
+  const at = topic ?? wu;
+  assert.deepStrictEqual(here.position, { name: wu, phase, topic: at }, `the entry records its place (${phase})`);
+  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, phase, sim.manifest(wu).work_type)), 'SKILL.md'),
+    `a compaction there carries on in the phase's skill (${phase})`);
+  assert.ok(here.text.includes(`ledger record ${wu} ${at}\``), `a compaction there re-reads the topic's record (${phase})`);
+  return res;
+}
+
+// The laboratory's entry: handed off as above, the experiment skill's first
+// engine call is its entry, which names in its DATA the experiment the
+// conversation works — the one live, or `record`, the handoff's or the
+// pick's — and records the place with it, so a compaction there carries on
+// in the laboratory's skill, naming that experiment. Answers the experiment
+// entered.
+/** @param {Sim} sim @param {string} wu @param {string} topic @param {string} [record] */
+function labEntry(sim, wu, topic, record) {
+  sim.handOver();
+  const res = sim.run(['enter', 'experiment', wu, topic, ...(record === undefined ? [] : ['--record', record])]);
+  assert.strictEqual(res.entered, true, 'no other session holds the laboratory and one experiment is named, so the entry asks nothing');
+  const worked = /** @type {string} */ (sim.sections.match(/^experiment: (.+)$/m)?.[1]);
+  const here = carryOn(sim);
+  assert.deepStrictEqual(here.position, { name: wu, phase: 'experiment', topic, record: worked }, 'the entry records its place and the experiment worked');
+  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills/ledger-experiment-process/SKILL.md'), 'a compaction there carries on in the laboratory\'s skill');
+  assert.ok(here.text.includes(`The experiment worked here is ${worked},`), 'a compaction there names the experiment worked');
+  return worked;
+}
+
+// The spec's entry, at the work unit: handed off as above, the spec skill's
+// first engine call is its entry, which starts nothing and records the unit
+// as its place, so a compaction there carries on in the spec's skill,
+// re-reading each live topic's record — a single-topic unit's in the unit's.
+/** @param {Sim} sim @param {string} wu @param {string[]} topics the unit's live topics */
+function specEntry(sim, wu, topics) {
+  sim.handOver();
+  const res = sim.run(['enter', 'specification', wu]);
+  assert.strictEqual(res.entered, true, 'no other session holds the spec, so the entry asks nothing');
+  const here = carryOn(sim);
+  assert.deepStrictEqual(here.position, { name: wu, phase: 'specification', topic: wu }, 'the entry records the unit as its place');
+  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, 'specification')), 'SKILL.md'),
+    'a compaction there carries on in the spec\'s skill');
+  for (const topic of topics) assert.ok(here.text.includes(topic === wu ? `ledger record ${wu}\`` : `ledger record ${wu} ${topic}\``), `a compaction there re-reads ${topic}'s record`);
+  return res;
+}
+
+// A move into work, as the prose makes it through handing-off.md: the route —
+// the skill's slash command and its arguments — passes to the engine as it
+// stands, which checks it against the handoff table and names where the work
+// goes. Unannounced, the session invokes the DATA's skill with its args in
+// place; announced, the gate mod carries the continuation the engine composed.
+// Either way what is invoked is the route itself.
+/** @param {Sim} sim @param {string} route */
+function handoff(sim, route) {
+  const { invoked, payload } = handoffBy(sim, ['handoff', ...shellWords(route)]);
+  assert.strictEqual(invoked, route, 'invoked in place, the skill takes the route as it stands');
+  return payload;
+}
+
+// A handoff the engine call `argv` makes — a route as it stands, or a unit's
+// Continue: unannounced, the session invokes the DATA's skill with its args;
+// announced, the mod carries the continuation that invokes the same. Answers
+// the route invoked and the mod's payload.
+/** @param {Sim} sim @param {string[]} argv */
+function handoffBy(sim, argv) {
+  const inline = sim.engine(argv);
+  assert.strictEqual(inline.code, 0, `[engine ${argv.join(' ')}] refused\n${inline.stderr}`);
+  assert.match(inline.stdout, /^handoff: inline$/m);
+  assert.ok(!inline.stdout.includes('=== HANDOFF'), 'the payload is the mod\'s, present only announced');
+  const data = (/** @type {string} */ field) => inline.stdout.match(new RegExp(`^${field}: (.*)$`, 'm'))?.[1];
+  const invoked = [`/${data('skill')}`, data('args')].filter(Boolean).join(' ');
+  const carried = engine.run(argv, { cwd: sim.dir, env: { ...sim.env, LEDGER_HANDOFF: '1' } });
+  assert.match(carried.stdout, /^handoff: mod$/m);
+  const payload = JSON.parse(carried.stdout.split(/^=== HANDOFF .*$/m)[1].trim());
+  assert.strictEqual(payload.text, `Invoke \`${invoked}\`.`, 'nothing travels but the route');
+  return { invoked, payload };
+}
+
+// The epic's menu as its skill draws it (ledger-continue-epic): the render
+// alone, which leaves the conversation at the epic. Answers the menu drawn.
+/** @param {Sim} sim @param {string} wu @returns {string} */
+function epicMenuAt(sim, wu) {
+  const drawn = sim.render(['epic-menu', wu], { expect: 'content' });
+  arrived(sim, wu);
+  return drawn;
+}
+
+// An epic's topic decided, or cancelled or postponed inside its own
+// session, hands off onto the epic's menu, named by the epic alone (18.4.20):
+// the verb's `next` followed. Answers the menu drawn.
+/** @param {Sim} sim @param {string} wu @param {Next} next @returns {string} */
+function arriveAtEpicMenu(sim, wu, next) {
+  assert.deepStrictEqual(next, { kind: 'handoff', skill: 'ledger-continue-epic', args: [wu] }, 'the move lands on the epic\'s menu');
+  follow(sim, next);
+  return epicMenuAt(sim, wu);
+}
+
+// A discussion closing its topic fetches the wait for its agents, empty
+// where none runs.
+/** @param {Sim} sim @param {string} wu @param {string} topic */
+function waitAgents(sim, wu, topic) {
+  sim.render(['wait-agents', `${wu}.${topic}`], { expect: 'empty' });
+}
+
+// A menu's pick into work hands off along the route the menu built for it, as
+// it stands.
+/** @param {Sim} sim @param {{action: string, topic?: string, route?: string|null}[]} keys @param {string} action @param {string} [topic] */
+function pickRoute(sim, keys, action, topic) {
+  const key = keys.find((k) => k.action === action && (topic === undefined || k.topic === topic));
+  assert.ok(key && key.route, `the menu routes ${action}${topic === undefined ? '' : ` on ${topic}`} into work`);
+  return handoff(sim, key.route);
+}
+
+// What a row of the epic's menu opens, by which a scenario names the row it
+// picks: the topic its door names, else the skill it hands off into.
+/** @param {Next|null} next @returns {string|undefined} */
+function opens(next) {
+  if (next?.kind === 'engine') return next.argv[0] === 'handoff' ? next.argv[3] : undefined;
+  return next?.kind === 'handoff' ? next.args[2] ?? next.skill : undefined;
+}
+
+// The epic's menu as a conversation of its own draws it — looked at without
+// moving the scenario's conversation.
+/** @param {Sim} sim @param {string} wu @returns {string} */
+const epicMenuLooked = (sim, wu) => sim.session('menu-look').render(['epic-menu', wu], { expect: 'content' });
+
+// A row of the epic's menu as it is looked at, its lines joined. Answers the
+// row naming `title`.
+/** @param {Sim} sim @param {string} wu @param {string} title @returns {string|undefined} */
+function epicRow(sim, wu, title) {
+  return screenOf(epicMenuLooked(sim, wu), 'MENU: epic menu').join('\n').split(/\n(?=\S)/).find((row) => row.includes(`"${title}"`))?.replace(/\s+/g, ' ');
+}
+
+// The rows of the gate the conversation was last shown, each with its next.
+/** @param {Sim} sim @returns {{key: string, word: string|null, head: string, recommended: boolean, next: Next}[]} */
+function shownRows(sim) {
+  return JSON.parse(fs.readFileSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID, SHOWN), 'utf8')).options;
+}
+
+// What the epic's menu sets aside as it is looked at, a line a topic.
+/** @param {Sim} sim @param {string} wu @returns {string[]} */
+function epicSetAside(sim, wu) {
+  const shown = screenOf(epicMenuLooked(sim, wu), 'DISPLAY: epic-menu');
+  return shown.includes('SET ASIDE') ? shown.slice(shown.indexOf('SET ASIDE') + 1).map((line) => line.trim()) : [];
+}
+
+// The epic's menu drawn, and its row by its key, the topic it opens or the
+// skill it hands off into, as the gate was shown it.
+/** @param {Sim} sim @param {string} wu @param {string} pick @returns {{key: string, head: string, recommended: boolean, next: Next}} */
+function epicKey(sim, wu, pick) {
+  epicMenuAt(sim, wu);
+  const row = shownRows(sim).find((/** @type {{key: string, next: Next}} */ o) => o.key === pick || opens(o.next) === pick);
+  assert.ok(row, `the epic menu offers ${pick}`);
+  return row;
+}
+
+// A menu row's next followed into work as the menu's skill follows it: a
+// handoff carried as it stands, and `handoff topic` along the route it
+// names. Answers the handoff's payload.
+/** @param {Sim} sim @param {Next} next */
+function follow(sim, next) {
+  if (next.kind === 'handoff') return handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
+  assert.ok(next.kind === 'engine' && next.argv[0] === 'handoff', `${JSON.stringify(next)} moves into no work`);
+  return handoffBy(sim, next.argv).payload;
+}
+
+// The epic menu's pick into work: the row answered at its gate, and its
+// next followed. Answers the handoff's payload.
+/** @param {Sim} sim @param {string} wu @param {string} pick */
+function epicPick(sim, wu, pick) {
+  const { key } = epicKey(sim, wu, pick);
+  return follow(sim, answerGate(sim, 'epic menu', '--pick', key).next);
+}
+
+// The epic menu's build or review row picked as the menu offers it
+// (18.4.17): the menu reached by the epic's Continue, its row recommended, and its
+// next handed off into the phase, whose skill starts in a fresh
+// conversation. Answers the row as the gate was shown it.
+/** @param {Sim} sim @param {string} wu @param {'implementation'|'review'} phase */
+function epicBuildPick(sim, wu, phase) {
+  continueEpic(sim, wu);
+  const row = epicKey(sim, wu, /** @type {string} */ (skillAt(wu, phase, 'epic')));
+  assert.ok(row.recommended, `the menu recommends the ${phase}`);
+  follow(sim, answerGate(sim, 'epic menu', '--pick', row.key).next);
+  sim.handOver();
+  return row;
+}
+
+// The person's answer at the gate shown, through `gate` as the prose gives
+// it — free text with their words on stdin: one line of the trust log
+// apiece, the oracle holds. Answers what `gate` answered.
+/** @param {Sim} sim @param {string[]} args @param {string} words */
+function gateAnswered(sim, args, words) {
+  const before = trustLines(sim);
+  const answered = sim.run(['gate', ...args], null, words);
+  auditGateAnswer(sim, answered, before, `gate ${args.join(' ')}`);
+  return answered;
+}
+
+/** A row picked or a typed row, by its key. @param {Sim} sim @param {string} name @param {...string} answer */
+const answerGate = (sim, name, ...answer) => gateAnswered(sim, [name, ...answer], '');
+
+/** Free text naming no row, the person's `words`. @param {Sim} sim @param {string} name @param {string} words */
+const typeAtGate = (sim, name, words) => gateAnswered(sim, [name, '--typed'], words);
+
+// A learned gate passed as the prose passes it (3.2.6): the row `key` picked
+// where the render drew its menu; else the automatic step its decision point
+// ran in the menu's place, which must have run that row, and nothing is
+// answered. Answers the row's next.
+/** @param {Sim} sim @param {string} rendered @param {string} name @param {string} key @returns {Next|null} */
+function passGate(sim, rendered, name, key) {
+  if (rendered.includes(`=== MENU: ${name}`)) return answerGate(sim, name, '--pick', key).next;
+  const step = rendered.match(/^automatic step: (.+)\nran: (.+)\nnext: (.+)$/m);
+  assert.ok(step, `the render drew neither ${name}'s menu nor an automatic step`);
+  assert.deepStrictEqual(step.slice(1, 3), [name, key], `${name} ran as a step on another row`);
+  return JSON.parse(step[3]);
+}
+
+/** The gates the person answered, in order, as the trust log has them. @param {Sim} sim @returns {string[]} */
+const gatesAnswered = (sim) => trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'gate').map(({ gate }) => gate);
+
+/** Claude's items of the decided checklist; the engine works out the rest. */
+const DECIDED_ITEMS = Object.freeze(['closing-pass', 'decisions-entered', 'replacements-checked', 'conflicts-read', 'findings-rerun', 'product-lines-shown']);
+
+/**
+ * A discussion closed as the prose closes it (9.7): the map drawn, no agent
+ * left to wait for, the decided checklist worked and closed, Claude's
+ * payload staged on the decided screen, and the person's yes at its gate
+ * run — a feature's topic closing into its spec with no gate, its payload
+ * staged for ready to build's screen (11.2.1). Answers what the yes, or a
+ * feature's stage, answered.
+ * @param {Sim} sim @param {string} wu @param {string} topic
+ * @param {{lines: object[], candidates: object[]}} [payload]
+ */
+function decideTopic(sim, wu, topic, payload = { lines: [], candidates: [] }) {
+  assert.match(sim.render(['map', `${wu}.${topic}`], { expect: 'content' }), /^=== DISPLAY: map /m);
+  waitAgents(sim, wu, topic);
+  for (const item of DECIDED_ITEMS) sim.run(['checklist', 'done', 'decided', wu, topic, item]);
+  sim.run(['checklist', 'close', 'decided', wu, topic]);
+  const file = sim.write(`.ledger/.cache/scratch/decided-${topic}.json`, payload);
+  if (sim.manifest(wu).work_type === 'feature') return sim.run(['decided', 'stage', wu, topic, '--file', file]);
+  assert.match(sim.render(['decided', `${wu}.${topic}`, '--file', file], { expect: 'content' }), /^=== MENU: decided /m);
+  const { next } = answerGate(sim, 'decided', '--pick', 'y');
+  return sim.run(next.argv);
+}
+
+/**
+ * A discussion worked from its entry to its close as the prose works it
+ * (9.3, 9.7): the entry; the reads — every other decided topic's record and
+ * the product record; each waiting message raised as a question and answered
+ * off the mailbox; the opening question asked and the person's answer
+ * decided, the log written; then the close — an epic's topic's through its
+ * decided gate's yes, a feature's staged into its spec. Answers what the yes,
+ * or the stage, answered.
+ * @param {Sim} sim @param {string} wu @param {string} topic
+ * @param {{question?: string, answer?: string, payload?: {lines: object[], candidates: object[]}}} [opts]
+ */
+function discussed(sim, wu, topic, { question = `What does ${topic} settle?`, answer = 'This.', payload } = {}) {
+  enterEntry(sim, wu, 'discussion', topic);
+  const items = sim.manifest(wu).phases?.discussion?.items ?? {};
+  for (const [name, item] of Object.entries(items)) {
+    if (name !== topic && item.status === 'completed') sim.read(['ledger', 'record', wu, name]);
+  }
+  sim.read(['ledger', 'product', wu, topic]);
+  const at = `${wu}.discussion.${topic}`;
+  const person = { by: 'person', who_moved_whom: 'none' };
+  for (const file of JSON.parse(sim.read(['topic', 'mailbox', wu, topic])).files) {
+    const message = path.basename(file, '.md');
+    const raised = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...person, text: `What does ${message} ask?` })).id;
+    sim.run(['topic', 'answered', wu, topic, message, '--entry', raised]);
+    sim.run(['ledger', 'decide', at, '--answers', raised], null, JSON.stringify({ ...person, text: 'Answered.', why: 'The message said so.' }));
+  }
+  const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...person, text: question })).id;
+  sim.run(['ledger', 'decide', at, '--answers', asked], null, JSON.stringify({ ...person, text: answer, why: 'The person said so.' }));
+  const log = `.ledger/${wu}/topics/${topic}/log.md`;
+  if (!fs.existsSync(path.join(sim.dir, log))) sim.write(log, `# ${topic}\n\n${question} ${answer}\n`);
+  return decideTopic(sim, wu, topic, payload);
+}
+
+/**
+ * A question Claude asks on the topic's discussion map, as a spawn measures
+ * one: its short id. @param {Sim} sim @param {string} wu @param {string} topic @param {string} text
+ */
+function askedOn(sim, wu, topic, text) {
+  return sim.run(['ledger', 'ask', `${wu}.discussion.${topic}`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text })).id;
+}
+
+// ---------------------------------------------------------------------------
+// A bugfix's investigation as its skill works it (19.4), at its one topic,
+// the unit, each payload written where the skill writes it.
+// ---------------------------------------------------------------------------
+
+const CLAUDES = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
+
+/** Where the investigation's skill writes a payload. @param {string} wu @param {string} name */
+const investigationCache = (wu, name) => `${STATE_DIR_NAME}/.cache/${wu}/investigation/${wu}/${name}`;
+
+/**
+ * The investigation entered and worked to its root cause (19.4.1–19.4.3):
+ * the entry and its reads; the symptom in the person's words and the
+ * hypotheses logged, the plan agreed at its gate, or run as its learned
+ * step; where `live`, the person's permission to run the save against the
+ * live server asked at the investigation's own level (19.4.20); a trace's
+ * finding logged as an experiment settling both, the check-in drawn and
+ * carried past; and the root cause decided on that finding and logged.
+ * Answers the root cause's id.
+ * @param {Sim} sim @param {string} wu @param {{live?: boolean}} [opts]
+ */
+async function rootCaused(sim, wu, { live = false } = {}) {
+  const at = `${wu}.investigation.${wu}`;
+  const log = (/** @type {string} */ kind, /** @type {string[]} */ args) => sim.run(['investigation-log', kind, wu, ...args]);
+  const ledger = (/** @type {string} */ verb, /** @type {string[]} */ flags, /** @type {object} */ content) => sim.run(['ledger', verb, at, ...flags], null, JSON.stringify(content)).id;
+  enterEntry(sim, wu, 'investigation');
+  sim.read(['ledger', 'product', wu, wu]);
+  await sim.engineAsync(['knowledge', 'query', 'save crash']);
+  log('symptom', ['--text', 'The app crashes when I save']);
+  log('hypothesis', ['--title', 'The save writes a null']);
+  log('hypothesis', ['--title', 'The disk is full']);
+  const plan = sim.render(['investigation-plan', wu, '--file', sim.write(investigationCache(wu, 'plan.json'), { order: [{ hypothesis: 'H1', check: 'Trace the save' }, { hypothesis: 'H2', check: 'Read the disk' }] })], { expect: 'content' });
+  passGate(sim, plan, 'plan gate', 'y');
+  if (live) await permitted(sim, wu);
+  const finding = ledger('find', [], { ...CLAUDES, text: 'The save writes a null field on every crash.', how: 'Traced save() to write().', known: 'read' });
+  log('experiment', ['--title', 'Trace the save', '--showed', 'a null on every crash', '--entry', finding]);
+  log('hypothesis', ['H1', '--state', 'confirmed']);
+  log('hypothesis', ['H2', '--state', 'ruled-out']);
+  sim.render(['investigation-check-in', wu, '--file', sim.write(investigationCache(wu, 'check-in.json'), { resolved: ['H1', 'H2'], next: 'Name the root cause' })], { expect: 'content' });
+  const asked = ledger('ask', [], { ...CLAUDES, text: 'What crashes the save?' });
+  const cause = ledger('decide', ['--answers', asked, '--relies-on', finding], { ...CLAUDES, text: 'The save writes a null that nothing checks.', why: 'The trace showed it.' });
+  log('root-cause', ['--entry', cause]);
+  return cause;
+}
+
+/**
+ * Whether the save may run against the live server, raised as the person's
+ * call at the investigation's own level, `{wu}.investigation` — a
+ * permission for the hunt, never a rule its fix keeps — marked to always
+ * ask as live-server danger (19.4.20), and answered no.
+ * @param {Sim} sim @param {string} wu
+ */
+async function permitted(sim, wu) {
+  const at = `${wu}.investigation`;
+  const question = 'May I run the save against the live server to reproduce it?';
+  const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...CLAUDES, text: question })).id;
+  const { raise } = await sim.runAsync(['raise', at, '--answers', asked, '--always', 'live-server'], null, JSON.stringify({
+    question,
+    rows: [
+      { key: 'yes', name: 'Live', text: 'Run the save against the live server', notice: 'a save lands on live data' },
+      { key: 'no', name: 'Local', text: 'Reproduce it on a local copy only', notice: 'nothing touches live data' },
+    ],
+    lean: 'no', why: 'A local copy shows the same crash.', sort: 'several', mechanism: 'The save writes to the database it is pointed at.', product_wide: false,
+  }));
+  sim.run(['raise', 'answer', raise, '--pick', 'no'], null, JSON.stringify({ why: 'Live data is the customers\'.' }));
+}
+
+/**
+ * A validation of `which` as the investigation sends it (19.4.7):
+ * dispatched, briefed, its report written where the brief says with the
+ * findings given, each by its heading, scanned and acknowledged. Answers
+ * its id.
+ * @param {Sim} sim @param {string} wu @param {'root-cause'|'fix'} which @param {string[]} [findings]
+ */
+function reported(sim, wu, which, findings = []) {
+  const kind = `${which}-validation`;
+  const { id } = sim.run(['agent', 'dispatch', wu, 'investigation', wu, '--kind', kind]);
+  const found = findings.length === 0 ? 'None identified.\n' : findings.map((finding) => `### ${finding}: it does not hold\n`).join('\n');
+  landed(placeIn(sim, sim.run(['brief', kind, wu, '--agent', id]), 'Your report'), `# Validation — ${id}\n\n## Summary\n\nIt holds.\n\n## Findings\n\n${found}`);
+  sim.run(['agent', 'scan', wu, 'investigation', wu]);
+  sim.run(['agent', 'ack', wu, 'investigation', wu, id, ...(findings.length === 0 ? ['--clean'] : ['--findings', findings.join(',')])]);
+  return id;
+}
+
+/**
+ * A validation of `which` as the investigation runs it (19.4.7): reported
+ * clean and closed, and what it found logged.
+ * @param {Sim} sim @param {string} wu @param {'root-cause'|'fix'} which
+ */
+function validated(sim, wu, which) {
+  const id = reported(sim, wu, which);
+  sim.run(['agent', 'incorporate', wu, 'investigation', wu, id]);
+  sim.run(['investigation-log', 'validation', wu, which, '--found', 'It holds', '--did', 'Carried on']);
+}
+
+/**
+ * The fix direction as the investigation sets it out (19.4.13, 19.4.21): a
+ * question on the map, raised with what the step back found — where the
+ * cause sits in the design, with a row to rework the area as a feature,
+ * marked to always ask as a design problem — the person's pick answered,
+ * and the fix direction logged once it is decided. Answers the question's
+ * id.
+ * @param {Sim} sim @param {string} wu @param {{pick?: '1'|'2'|'rework', design?: boolean}} [opts]
+ */
+async function fixDirected(sim, wu, { pick = '1', design = false } = {}) {
+  const at = `${wu}.investigation.${wu}`;
+  const fix = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...CLAUDES, text: 'How should the save stop crashing?' })).id;
+  const { raise } = await sim.runAsync(['raise', at, '--answers', fix, ...(design ? ['--always', 'design-problem'] : [])], null, JSON.stringify({
+    question: 'How should the save stop crashing?',
+    rows: [
+      { key: '1', name: 'Check', text: 'Check the field before the save writes it', notice: 'a save never crashes' },
+      { key: '2', name: 'Default', text: 'Write a default in place of the null', notice: 'a save keeps a placeholder' },
+      ...(design ? [{ key: 'rework', name: 'Rework', text: 'Rework saving as a feature', notice: 'nothing changes until saving is decided afresh' }] : []),
+    ],
+    lean: '1', why: 'The null is the cause.', sort: 'several', mechanism: 'The save checks the field.', product_wide: false,
+    stepped_back: ['The save was right for the fields it knew; a null is a case it never met.'],
+  }));
+  sim.run(['raise', 'answer', raise, '--pick', pick], null, JSON.stringify({ why: 'It stops the crash at its cause.' }));
+  sim.run(['investigation-log', 'fix-direction', wu, '--question', fix]);
+  return fix;
+}
+
+/**
+ * The hunt as the investigation works it, from its entry: the root cause
+ * found and validated, the fix direction raised and picked, then
+ * validated.
+ * @param {Sim} sim @param {string} wu
+ */
+async function hunted(sim, wu) {
+  await rootCaused(sim, wu);
+  validated(sim, wu, 'root-cause');
+  await fixDirected(sim, wu);
+  validated(sim, wu, 'fix');
+}
+
+/**
+ * The investigation closed into its spec with no gate (19.4.23, 11.2.1):
+ * the recap staged, naming what the bug is in where `bug` does, handing
+ * off into the spec (24.S17), whose ready to build concludes it.
+ * @param {Sim} sim @param {string} wu @param {{fixes?: string}} [bug]
+ */
+function concluded(sim, wu, bug = {}) {
+  const recap = sim.write(investigationCache(wu, 'recap.json'), { hunt: 'Two hypotheses; the save wrote a null on every crash, and nothing checked it.', ...bug });
+  const { next } = sim.run(['investigation', 'stage', wu, '--file', recap]);
+  const route = `/ledger-specification-process bugfix ${wu}`;
+  assert.strictEqual([`/${next.skill}`, ...next.args].join(' '), route, 'the close hands off into the spec');
+  handoff(sim, route);
+}
+
+// A bugfix started as discovery starts one and handed into its
+// investigation, worked to its close and handed into its spec.
+/** @param {Sim} sim @param {string} wu @param {string} description */
+async function investigated(sim, wu, description) {
+  startNew(sim);
+  startUnit(sim, 'bugfix', wu, description);
+  handoff(sim, `/ledger-investigation-process bugfix ${wu}`);
+  await hunted(sim, wu);
+  concluded(sim, wu);
+}
+
+// The start menu as the start skill draws it (start-menu.md), and every
+// menu's back: `render start-menu`, which leaves the conversation at no
+// position. Answers the rows the gate shown holds, each with its next.
+/** @param {Sim} sim @returns {{key: string, word: string|null, head: string, next: any}[]} */
+function startMenu(sim) {
+  sim.render(['start-menu'], { expect: 'content' });
+  assert.strictEqual(carryOn(sim).position, null, 'the start menu is no position');
+  return shownRows(sim);
+}
+
+// A row of the start menu picked, as start-menu.md takes it: the menu drawn,
+// the answer through `gate`, and its next followed — a handoff, a unit's
+// Continue, `handoff unit`, a place's legacy files read for the pass that
+// sorts them, `asset legacy`, or another of the project's menus drawn — or
+// carrying on in the conversation. Answers the move's payload, or the read,
+// null for a row that draws a menu or carries on.
+/** @param {Sim} sim @param {string} key */
+function startPick(sim, key) {
+  assert.ok(startMenu(sim).some((row) => row.key === key), `the start menu offers ${key}`);
+  const { next } = answerGate(sim, 'start menu', '--pick', key);
+  if (next.kind === 'continue') return null;
+  if (next.kind === 'handoff') return handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
+  if (next.argv[0] === 'render') {
+    sim.render(next.argv.slice(1), { expect: 'content' });
+    return null;
+  }
+  if (next.argv[0] === 'asset') return sim.run(next.argv);
+  assert.deepStrictEqual(next.argv.slice(0, 2), ['handoff', 'unit'], 'the start menu\'s one move into work is a unit\'s Continue');
+  return handoffBy(sim, next.argv).payload;
+}
+
+// A unit continued from the start menu (19.1.3): its row picked, which hands
+// off where the unit stands, with no menu between.
+/** @param {Sim} sim @param {string} wu */
+function continueUnit(sim, wu) {
+  const row = startMenu(sim).find(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`);
+  assert.ok(row, `the start menu lists ${wu}`);
+  return startPick(sim, row.key);
+}
+
+// A unit built by its cut continued from the start menu (24.1.6): into the
+// build, or into its review phase once every phase of its cut has closed.
+/** @param {Sim} sim @param {string} wu @param {'implementation'|'review'} phase */
+function continueInto(sim, wu, phase) {
+  const type = sim.manifest(wu).work_type;
+  assert.strictEqual(continueUnit(sim, wu).text, `Invoke \`/${skillAt(wu, phase, type)} ${type} ${wu}\`.`, `Continue takes the unit into its ${phase}`);
+  sim.handOver();
+}
+
+/** The start menu's row for a unit, as it reads. @param {Sim} sim @param {string} wu */
+function startRow(sim, wu) {
+  const row = startMenuScreen(startMenuRead(sim.dir)).rows.find(({ next }) => next.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`);
+  assert.ok(row, `the start menu lists ${wu}`);
+  return drawLabel(row.label);
+}
+
+// A menu's `b/back` (start-menu.md): an internal move, no route — the start
+// menu drawn again, which records that the session is working nowhere.
+// Answers the start menu's rows.
+/** @param {Sim} sim @param {{action: string, route?: string|null}[]} keys */
+function backToStart(sim, keys) {
+  const back = keys.find((k) => k.action === 'back');
+  assert.ok(back, 'the menu offers its way back to the start menu');
+  assert.strictEqual(back.route, null, 'back is a move between menus, never a handoff');
+  return startMenu(sim);
+}
+
+// A handoff into `discovery none` landing: the product's conversation
+// entered, as discovery's skill enters it, and its log written with the
+// section the work's talk shaped. Answers the section, state-relative, as
+// start this work points at it.
+/** @param {Sim} sim @param {string} section */
+function shapedInTheProduct(sim, section) {
+  sim.handOver();
+  sim.run(['enter', 'discovery', 'product']);
+  const log = /** @type {string} */ (sim.sections.match(/^log: (.*)$/m)?.[1]);
+  fs.appendFileSync(log, `\n## ${section} {#${section}}\n\nWhat the talk shaped.\n`);
+  return `${path.relative(statePath(sim.dir), log)}#${section}`;
+}
+
+// Claude's draft of a topic's brief, in the cache.
+/** @param {Sim} sim @param {string} wu @param {string} topic */
+function briefDraft(sim, wu, topic) {
+  return sim.write(`${STATE_DIR_NAME}/.cache/${wu}/briefs/${topic}.md`, `# ${topic}\n\nWhat discovery heard.\n`);
+}
+
+// One of discovery's authority gates as the prose works it (8.8.1, 8.8.3):
+// Claude's payload staged on its screen, the person's yes at its gate, and
+// what the yes leads to run. Answers the yes's answer.
+/** @param {Sim} sim @param {string} gate @param {string[]} screen @param {object} given */
+function atTheGate(sim, gate, screen, given) {
+  const file = sim.write(`${STATE_DIR_NAME}/.cache/scratch/${screen[0]}.json`, given);
+  sim.render([...screen, '--file', file], { expect: 'content' });
+  const { next } = answerGate(sim, gate, '--pick', 'y');
+  return sim.run(next.argv);
+}
+
+/** Start this work at its gate. @param {Sim} sim @param {object} given */
+function startThisWork(sim, given) {
+  return atTheGate(sim, 'start this work', ['start-this-work'], given);
+}
+
+/** Approve the map at its gate. @param {Sim} sim @param {string} wu @param {object} given */
+function approveTheMap(sim, wu, given) {
+  return atTheGate(sim, 'approve the map', ['approve-map', wu], given);
+}
+
+// A unit started as discovery starts one (8.8.1): shaped in the product's
+// conversation, then started at start this work's gate — a feature or a
+// bugfix with its one topic's brief — and an epic carried on into its own
+// discovery. Answers the yes's answer.
+/** @param {Sim} sim @param {string} type @param {string} wu @param {string} description */
+function startUnit(sim, type, wu, description) {
+  const started = startThisWork(sim, {
+    type, name: wu, description, reason: `It is ${type} work.`,
+    shaped_by: [shapedInTheProduct(sim, wu)],
+    ...(['feature', 'bugfix'].includes(type) ? { brief: briefDraft(sim, wu, wu) } : {}),
+  });
+  if (type === 'epic') sim.run(started.next.argv);
+  return started;
+}
+
+// The start menu's Start row: new work goes to discovery as a piece of work
+// of no kind yet, which discovery finds as the person talks (18.2.7).
+/** @param {Sim} sim */
+function startNew(sim) {
+  return startPick(sim, 's');
+}
+
+// The bare command typed in a new conversation (18.2.15): the start skill
+// draws the banner before boot has run, then boots with no words. Answers
+// boot's answer.
+/** @param {Sim} sim */
+function startBare(sim) {
+  sim.open();
+  sim.render(['banner'], { expect: 'content' });
+  return sim.run(['boot']);
+}
+
+// The start as Claude enters it (18.2.14): the start skill invoked with the
+// person's words, which boot is given on stdin, as the skill's heredoc
+// hands them over. Answers boot's answer.
+/** @param {Sim} sim @param {string} words */
+function startWith(sim, words) {
+  return sim.run(['boot'], null, `${words}\n`);
+}
+
+// The roadmap drawn, as the roadmap skill draws it, recording the
+// conversation at the roadmap. Answers the rows of the gate it states.
+/** @param {Sim} sim */
+function roadmapMenu(sim) {
+  sim.render(['roadmap'], { expect: 'content' });
+  arrived(sim, 'roadmap');
+  return shownRows(sim);
+}
+
+// Work started from the roadmap (the roadmap skill's w/work): the roadmap
+// drawn, w carrying on in the conversation, where Claude names the items,
+// and the items handed to discovery as its seeds, each `roadmap:{item}`,
+// with no type — discovery finds it (18.8.3). Answers the handoff's payload.
+/** @param {Sim} sim @param {string[]} items */
+function pullFromRoadmap(sim, items) {
+  roadmapMenu(sim);
+  assert.deepStrictEqual(answerGate(sim, 'roadmap', '--pick', 'w').next, { kind: 'continue' }, 'w carries on, where Claude asks which items');
+  return handoff(sim, `/ledger-discovery start none "${items.map((name) => `roadmap:${name}`).join(',')}"`);
+}
+
+// Items picked in triage (triage.md): Claude's pick, by the items' paths,
+// with what fits with it, drawn. Answers the rows of the gate it states.
+/** @param {Sim} sim @param {string[]} picked state-relative or absolute @param {string[]} [fits] */
+function triagePick(sim, picked, fits = []) {
+  const absolute = (/** @type {string} */ given) => path.resolve(sim.dir, given);
+  const file = sim.write(`${STATE_DIR_NAME}/.cache/triage.json`, { picked: picked.map(absolute), fits: fits.map(absolute) });
+  sim.render(['triage', '--file', file], { expect: 'content' });
+  return shownRows(sim);
+}
+
+// Triage's w/work (triage.md): what is picked goes to discovery as one piece
+// of work, the items its seeds, quoted, and no type — discovery finds it
+// (18.7.6). Answers the handoff's payload.
+/** @param {Sim} sim @param {string[]} paths */
+function workTheSet(sim, paths) {
+  triagePick(sim, paths);
+  const { next } = answerGate(sim, 'triage', '--pick', 'w');
+  const [type, unit, seeds] = next.args;
+  return handoff(sim, `/${next.skill} ${type} ${unit} "${seeds}"`);
+}
+
+// The spec's corridor as the skill runs it (11.3–11.8): entered at the unit,
+// written from the writer's brief citing a decision of each live topic,
+// landed, reviewed and cut, and ready to build's pick beginning the build in
+// the position picked and handing off into the build — no construction,
+// finding, re-loop or sign-off gate on the way (11.8.4). Answers what the
+// pick ran.
+/** @param {Sim} sim @param {string} wu @param {string[]} topics @param {'s'|'a'} [position] */
+function specToBuild(sim, wu, topics, position = 's') {
+  specWritten(sim, wu, topics);
+  return specBuilt(sim, wu, position);
+}
+
+// The corridor's first half: the spec entered, written and landed, its
+// one screen not yet answered.
+/** @param {Sim} sim @param {string} wu @param {string[]} topics */
+function specWritten(sim, wu, topics) {
+  specEntry(sim, wu, topics);
+  specLanded(sim, wu, topics);
+}
+
+// The spec's writer briefed, the spec written from the first decision of
+// each of `topics`, then each of `since`, and landed.
+/** @param {Sim} sim @param {string} wu @param {string[]} topics @param {string[]} [since] */
+function specLanded(sim, wu, topics, since = []) {
+  sim.run(['brief', 'spec-writer', wu]);
+  const cited = [...topics.map((topic) => JSON.parse(sim.read(['ledger', 'record', wu, topic])).decisions[0].id), ...since];
+  const statements = cited.map((id, i) => `1.1.${i + 1} ${topics[i] ?? 'the change'} holds as decided. [${id}]`);
+  sim.write(`.ledger/${wu}/spec.md`, [
+    `# ${wu}`, '', '## 1. The work', '', '### 1.1 As decided', '', ...statements.flatMap((s) => [s, '']),
+    '## 1-S. Scenarios for §1', '', '1.S1 Given the work, when it runs, then it holds as decided. (1.1.1)', '',
+  ].join('\n'));
+  assert.deepStrictEqual(sim.run(['spec', 'land', wu]).invented, []);
+}
+
+// The corridor's second half, from a landed spec: reviewed and cut, and
+// ready to build's pick beginning the build. Answers what the pick ran.
+/** @param {Sim} sim @param {string} wu @param {'s'|'a'} [position] */
+function specBuilt(sim, wu, position = 's') {
+  specReviewed(sim, wu);
+  cutTheSpec(sim, wu, [{ name: 'The work', goal: 'The work holds as decided.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }]);
+  const rows = readyToBuild(sim, wu).split('\n').flatMap((line) => {
+    const row = line.match(/^\*\*`(\w+\/\w+)`\*\* +→ (.+?)(?: —|$)/);
+    return row ? [`${row[1]} ${row[2]}`] : [];
+  });
+  assert.deepStrictEqual(rows, ['a/auto Auto', 's/step Step'], 'ready to build is the one gate: its rows are the position alone');
+  return intoTheBuild(sim, wu, sim.run(answerGate(sim, 'ready to build', '--pick', position).next.argv));
+}
+
+// Ready to build's yes `begun` followed: its `next` hands off into the
+// build, whatever the unit's type (24.1.2), and the conversation the gate
+// mod clears for it ends, SessionEnd sweeping the presence the spec held.
+// Answers the yes.
+/** @param {Sim} sim @param {string} wu @param {Record<string, any>} begun */
+function intoTheBuild(sim, wu, begun) {
+  const route = `/ledger-implementation-process ${sim.manifest(wu).work_type} ${wu}`;
+  assert.strictEqual([`/${begun.next.skill}`, ...begun.next.args].join(' '), route, 'the yes hands off into the build');
+  handoff(sim, route);
+  sim.run(['presence', 'cleanup', sim.env.CLAUDE_CODE_SESSION_ID]);
+  sim.handOver();
+  return begun;
+}
+
+// The review of the spec's last land (11.7), as writing-and-review.md runs
+// it: a pass dispatched and briefed, its report written where the dispatch
+// said — clean, or holding `findings`, each by its lane, a gap or a fact
+// the record already answers declined — taken in by the scan and
+// acknowledged with every finding it holds (`passTakenIn`); each finding but
+// a rewrite or one declined surfaced — a gap asked as a question with the
+// question it was asked as — and the pass incorporated, whatever closed it
+// first (`passSurfaced`). A gap asked is asked between the two, as the
+// prose asks it: on the ledger, then raised.
+/**
+ * @param {Sim} sim @param {string} wu @param {{lane: 'rewrite'|'gap'|'fact', declined?: boolean}[]} findings
+ * @returns {{id: string, file: string}} the pass
+ */
+function passTakenIn(sim, wu, findings) {
+  const pass = sim.run(['agent', 'dispatch', wu, 'specification', wu, '--kind', 'spec-review']);
+  sim.run(['brief', 'spec-reviewer', wu, '--agent', pass.id]);
+  const body = findings.length === 0 ? 'None identified.' : findings.map(({ lane }, at) => `### F${at + 1}: a ${lane} finding\n\n**Lane:** ${lane}\n\nWhat the pass found.`).join('\n\n');
+  fs.writeFileSync(pass.file, `# Spec Review — ${pass.id}\n\n## Findings\n\n${body}\n`);
+  sim.run(['agent', 'scan', wu, 'specification', wu]);
+  const ids = findings.map((_, at) => `F${at + 1}`);
+  sim.run(['agent', 'ack', wu, 'specification', wu, pass.id, ...(ids.length === 0 ? ['--clean'] : ['--findings', ids.join(',')])]);
+  return pass;
+}
+
+/**
+ * @param {Sim} sim @param {string} wu @param {{id: string}} pass @param {{lane: 'rewrite'|'gap'|'fact', declined?: boolean}[]} findings
+ * @param {Record<number, string>} [asked] the question each gap was asked as, by its finding's place
+ */
+function passSurfaced(sim, wu, pass, findings, asked = {}) {
+  for (const [at, { lane, declined }] of findings.entries()) {
+    if (lane === 'rewrite' || declined) continue;
+    sim.run(['agent', 'surface', wu, 'specification', wu, pass.id, `F${at + 1}`, ...(asked[at] === undefined ? [] : ['--question', asked[at]])]);
+  }
+  sim.run(['agent', 'incorporate', wu, 'specification', wu, pass.id]);
+}
+
+/**
+ * A pass taken in and surfaced, with no gap asked.
+ * @param {Sim} sim @param {string} wu @param {{lane: 'rewrite'|'gap'|'fact', declined?: boolean}[]} [findings]
+ * @returns {{id: string, file: string}} the pass
+ */
+function specReviewed(sim, wu, findings = []) {
+  const pass = passTakenIn(sim, wu, findings);
+  passSurfaced(sim, wu, pass, findings);
+  return pass;
+}
+
+// The cut's corridor (11.5.1): the phase cut's agent briefed from the unit's
+// spec, its cut staged where the brief says it goes, and `cut` taking it, as
+// the skill runs it, naming no file.
+/**
+ * @param {Sim} sim @param {string} wu
+ * @param {{name: string, goal: string, scenarios: string[], sections: string[], relies_on: Array<number|string>}[]} phases
+ * @returns {Record<string, any>} the cut's answer
+ */
+function cutTheSpec(sim, wu, phases) {
+  assert.strictEqual(sim.run(['brief', 'phase-cut', wu]).agent, 'ledger-phase-cut');
+  sim.write(`.ledger/.cache/${wu}/specification/cut.json`, { phases });
+  return sim.run(['cut', wu]);
+}
+
+// The environment setup asked as the prose asks it at the project's first
+// ready to build (22.5.7): what is recorded read — nothing to add, in a
+// project that runs nothing — its screen drawn, and the person's yes
+// followed.
+/** @param {Sim} sim */
+function environmentSetup(sim) {
+  sim.read(['environment', 'show']);
+  sim.render(['environment-setup'], { expect: 'content' });
+  sim.run(answerGate(sim, 'environment setup', '--pick', 'y').next.argv);
+}
+
+// Ready to build's checklist worked as the prose works it (11.8): Claude's
+// items marked done, the environment setup asked where it never was, the
+// engine's holding — and closed.
+/** @param {Sim} sim @param {string} wu */
+function readyClosed(sim, wu) {
+  for (const { key, by, state } of JSON.parse(sim.read(['checklist', 'show', 'ready-to-build', wu])).items) {
+    if (by === 'claude' && state === 'open') sim.run(['checklist', 'done', 'ready-to-build', wu, key]);
+    if (key === 'environment-recorded' && state === 'open') environmentSetup(sim);
+  }
+  sim.run(['checklist', 'close', 'ready-to-build', wu]);
+}
+
+// Ready to build as the prose reaches it: its checklist closed, then the
+// screen fetched, `flags` given. Answers what it drew.
+/** @param {Sim} sim @param {string} wu @param {string[]} [flags] */
+function readyToBuild(sim, wu, flags = []) {
+  readyClosed(sim, wu);
+  return sim.render(['ready-to-build', wu, ...flags], { expect: 'content' });
+}
+
+// The build's entry, at the work unit: once ready to build's yes carries the
+// conversation on, the build's first engine call is its entry, which starts
+// nothing and records the unit as its place, answering where the build
+// stands and what to read beside the ledger — the build's log among it; a
+// compaction there carries on in the build's skill, re-reading the same
+// (12.1.6, 24.2.2). Answers the entry's DATA lines.
+/** @param {Sim} sim @param {string} wu @returns {string[]} */
+function buildEntry(sim, wu) {
+  const res = sim.run(['enter', 'implementation', wu]);
+  assert.strictEqual(res.entered, true, 'no other session holds the code, so the entry asks nothing');
+  const lines = sim.sections.split('\n').filter((line) => /^[a-z ]+: /.test(line));
+  const here = carryOn(sim);
+  assert.deepStrictEqual(here.position, { name: wu, phase: 'implementation', topic: wu }, 'the entry records the unit as its place');
+  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, 'implementation', sim.manifest(wu).work_type)), 'SKILL.md'),
+    'a compaction there carries on in the build\'s skill');
+  for (const call of [`ledger affected ${wu}`, `ledger record ${wu}`]) assert.ok(here.text.includes(`${call}\``), `a compaction there re-reads ${call}`);
+  assert.ok(lines.filter((line) => line.startsWith('phase: ')).every((line) => here.text.includes(line)), 'a compaction there says where each phase stands, as the entry does');
+  return lines;
+}
+
+// A phase's start (6.4.8): its checklist shown, Claude's items marked done,
+// the engine's holding, and closed.
+/** @param {Sim} sim @param {string} wu @param {number} phase */
+function startPhase(sim, wu, phase) {
+  for (const { key, by, state } of JSON.parse(sim.read(['checklist', 'show', 'phase-start', wu, String(phase)])).items) {
+    if (by === 'claude' && state === 'open') sim.run(['checklist', 'done', 'phase-start', wu, String(phase), key]);
+  }
+  sim.run(['checklist', 'close', 'phase-start', wu, String(phase)]);
+}
+
+// The task writer's calls for one phase (12.5.2–12.5.4): the phase written
+// into the tracker, then each task from its file, one call per task, then
+// the links between them. A task's `after` names the tasks it waits on, as
+// `{phase}.{n}`; its `scenarios`, the phase's scenarios it takes from the
+// cut (12.4.3), else a scenario of its own; its `type` and `reference`, a
+// review's fix task's `fix` and the finding's area, else `feat` and §1.
+/**
+ * @param {Sim} sim @param {string} wu @param {number} phase @param {string} title
+ * @param {{title: string, after?: string[], scenarios?: string[], type?: string, reference?: string}[]} tasks
+ * @returns {string[]} the tasks as created
+ */
+function writePhaseTasks(sim, wu, phase, title, tasks) {
+  sim.run(['task', 'phase', wu, String(phase), '--title', title]);
+  return writeTasks(sim, wu, phase, tasks);
+}
+
+// A written phase's tasks as the task writer records them, as
+// `writePhaseTasks` records them once the phase is written.
+/**
+ * @param {Sim} sim @param {string} wu @param {number} phase
+ * @param {{title: string, after?: string[], scenarios?: string[]}[]} tasks
+ * @returns {string[]} the tasks as created
+ */
+function writeTasks(sim, wu, phase, tasks) {
+  const created = tasks.map((task) => {
+    const scenarios = task.scenarios ?? [`Given a ledger, when ${task.title.toLowerCase()} runs, then it answers.`];
+    const file = sim.write(`.ledger/.cache/${wu}/build/task.md`, [
+      `# ${task.title}`, '', '## Type', task.type ?? 'feat', '', '## Problem', `${task.title} is missing.`, '', '## Solution', `Build ${task.title.toLowerCase()}.`, '',
+      '## Outcome', `${task.title} works.`, '', '## Acceptance scenarios', ...scenarios.map((scenario) => `- ${scenario}`), '',
+      '## Spec reference', task.reference ?? '§1', '',
+    ].join('\n'));
+    return sim.run(['task', 'create', wu, String(phase), '--file', file]).task;
+  });
+  tasks.forEach((task, i) => {
+    for (const after of task.after ?? []) sim.run(['task', 'link', wu, created[i], '--after', after]);
+  });
+  return created;
+}
+
+/** A string as the regular expression that matches it literally. @param {string} text */
+function literal(text) {
+  return text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+}
+
+/** A brief as the conversation stored it. @param {Sim} sim @param {{id: string}} res */
+const briefOf = (sim, res) => withEnv({ LEDGER_CONFIG_DIR: sim.configDir }, () => fs.readFileSync(briefPath(sim.env.CLAUDE_CODE_SESSION_ID, res.id), 'utf8'));
+
+/** The engine calls a reader's brief names to lay out its scratch worktree and take it apart, each by its argv. @param {string} brief */
+function scratchCalls(brief) {
+  const calls = [...brief.matchAll(/^node (\S+) (scratch .*)$/gm)];
+  assert.ok(calls.every(([, engine]) => path.isAbsolute(engine)), 'the brief runs the engine by its absolute path');
+  return calls.map(([, , call]) => call.split(' '));
+}
+
+// A reader that lays out its scratch worktree by its brief's first call and
+// dies, never taking it apart: the project's folder there.
+/** @param {Sim} sim @param {{id: string}} res its brief */
+const deadReader = (sim, res) => sim.run(scratchCalls(briefOf(sim, res))[0]).path;
+
+// Another reader's layout, `name`, laid out beside it at the commits the
+// brief `res` lays its own at: the project's folder there.
+/** @param {Sim} sim @param {{id: string}} res @param {string} name */
+const laidBeside = (sim, res, name) => sim.run(['scratch', 'lay', name, ...scratchCalls(briefOf(sim, res))[0].slice(3)]).path;
+
+/** The file a brief names under its heading `heading`. @param {Sim} sim @param {{id: string}} res @param {string} heading */
+function placeIn(sim, res, heading) {
+  const brief = briefOf(sim, res);
+  return /`([^`]+)`/.exec(brief.slice(brief.indexOf(`# ${heading}\n`)))?.[1] ?? '';
+}
+
+/** A file written as a build agent writes it: a `.txt` beside it, renamed to it. @param {string} file @param {string} text */
+function landed(file, text) {
+  const staged = `${file.slice(0, -'.md'.length)}.txt`;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(staged, text);
+  fs.renameSync(staged, file);
+}
+
+/** A reviewer's report that passes, as the agent writes it. */
+const PASSED_REPORT = '## Findings\n\nNone.\n\nVerdict: pass\n';
+
+/** The verify setup the first task's builder builds: its files, by path. */
+const VERIFY_FILES = Object.freeze({
+  'verify/features.md': '# Features\n',
+  'verify/drive.sh': '#!/bin/sh\nprintf "pass\\n" > "$LEDGER_RUN/verdict"\n',
+});
+
+// A worktree a builder's isolation makes, under a folder of its own; and
+// that folder removed.
+const builders = {
+  /** @param {string} name */
+  make: (name) => path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-sim-builders-'))), name),
+  /** @param {Sim} sim @param {string} tree */
+  remove: (sim, tree) => {
+    git(sim.dir, ['worktree', 'remove', '--force', tree]);
+    fs.rmSync(path.dirname(tree), { recursive: true, force: true });
+  },
+};
+
+// A task built as the build's loop builds it in the worktree at `tree`
+// (12.7): started, its builder's worktree made by its isolation at the
+// default branch and the task laid out there, its files committed there,
+// the verify setup recorded and its scenario run where `setup` says so, its
+// builder banking `note` for later where one is given (12.10.2), its pair
+// passing it from where it was laid out, its account written once its
+// builder's brief again says it landed, and taken, `accounted` run there
+// where given, its step gate drawn and the person's yes given there where
+// `gated` says so (12.7.9), chained into its phase's stack — the chain's
+// `next`, the phase's mutation run once its last task chains — and done.
+// Answers the note's number, null where none was banked.
+/**
+ * @param {Sim} sim @param {string} wu @param {string} task @param {string} tree
+ * @param {Record<string, string>} files @param {boolean} setup @param {{gated?: boolean, note?: string, accounted?: () => void}} [opts]
+ * @returns {number|null}
+ */
+function taskBuilt(sim, wu, task, tree, files, setup, { gated = false, note, accounted } = {}) {
+  sim.run(['task', 'start', wu, task]);
+  const builder = sim.run(['brief', 'builder', wu, task]);
+  git(sim.dir, ['worktree', 'add', '-q', '-b', `worktree-agent-${task}`, tree, 'main']);
+  sim.runIn(tree, ['task', 'worktree', wu, task]);
+  for (const [file, text] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(tree, file)), { recursive: true });
+    fs.writeFileSync(path.join(tree, file), text, { mode: 0o755 });
+  }
+  sim.runIn(tree, ['commit', '--paths', ...Object.keys(files), '--task', wu, task, '-m', `feat(${wu}): task ${task}`]);
+  if (setup) {
+    const at = placeIn(sim, builder, 'Where the verify setup goes');
+    fs.mkdirSync(path.dirname(at), { recursive: true });
+    fs.writeFileSync(at, JSON.stringify(VERIFY_SETUP));
+    sim.runIn(tree, ['verify', 'setup', wu, '--file', at, '--scenario', '1.S1']);
+    sim.runIn(tree, ['verify', 'run', wu, '1.S1']);
+  }
+  const banked = note === undefined ? null : sim.run(['task', 'note', wu, '--file', sim.write(`.ledger/.cache/${wu}/build/note.md`, `${note}\n`)]).number;
+  for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'reviewer', wu, task, '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
+  const back = sim.run(['brief', 'builder', wu, task]);
+  assert.match(briefOf(sim, back), /Your reviewers passed the task in round 1: it has landed, so write its account now\./);
+  landed(placeIn(sim, back, 'Where your account goes'), [
+    '## What was done', 'Built.', '## Where in the code', ...Object.keys(files).map((file) => `- ${file}`), '## What the tests prove', '- 1.S1, run through verify.',
+    '## Differs from the task', 'None.', '## Reviews', '### Round 1', 'Passed.',
+  ].join('\n\n'));
+  sim.run(['task', 'account', wu, task]);
+  accounted?.();
+  if (gated) {
+    sim.render(['step-gate', wu, task], { expect: 'content' });
+    answerGate(sim, 'step gate', '--pick', 'y');
+  }
+  sim.run(['land', 'open', wu, task]);
+  const { next } = sim.run(['land', 'chain', wu, task]);
+  sim.run(['task', 'done', wu, task]);
+  if (next !== undefined) sim.run(next.argv);
+  return banked;
+}
+
+// A quick-fix's worktree, where its fixes are built, laid out by its first
+// fix's start (fix-branch.cjs).
+/** @param {Sim} sim @param {string} wu */
+const fixTree = (sim, wu) => path.join(layoutsFolder(sim.dir), layoutFolderName(wu));
+
+// A quick-fix's task, started, as its skill builds it through the task loop
+// (19.5.4, 19.5.20, 19.5.22): its builder briefed, `files` committed through
+// the door in the quick-fix's worktree and pushed to the quick-fix's one
+// pull request, its pair passing it, its short record written where `record`
+// says what changed, its account written once its builder's brief again says
+// it landed, and taken, pushed again and done. Answers the done.
+/**
+ * @param {Sim} sim @param {string} wu @param {string} task @param {string[]} files
+ * @param {{record?: string}} [opts]
+ * @returns {Record<string, any>}
+ */
+function fixBuilt(sim, wu, task, files, { record } = {}) {
+  sim.run(['brief', 'builder', wu, task]);
+  const tree = fixTree(sim, wu);
+  for (const file of files) sim.write(path.join(tree, file), '--colour\n');
+  sim.runIn(tree, ['commit', '--paths', ...files, '--task', wu, task, '-m', `fix(${wu}): task ${task}`]);
+  sim.run(['land', 'open', wu, task]);
+  for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'reviewer', wu, task, '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
+  if (record !== undefined) {
+    sim.run(['quick-fix', 'record', wu, task, '--file', sim.write(`.ledger/.cache/${wu}/build/record.md`, `## What changed\n${record}\n\n## Why\nIt was spelt the American way.\n\n## Leaves out\nOld scripts.\n`)]);
+  }
+  const back = sim.run(['brief', 'builder', wu, task]);
+  assert.match(briefOf(sim, back), /Your reviewers passed the task in round 1: it has landed, so write its account now\./);
+  landed(placeIn(sim, back, 'Where your account goes'), [
+    '## What was done', 'Built.', '## Where in the code', ...files.map((file) => `- ${file}`), '## What the tests prove', '- Read by its pair.',
+    '## Differs from the task', 'None.', '## Reviews', '### Round 1', 'Passed.',
+  ].join('\n\n'));
+  sim.run(['task', 'account', wu, task]);
+  sim.run(['land', 'open', wu, task]);
+  return sim.run(['task', 'done', wu, task]);
+}
+
+// A unit's first phase, entered once ready to build's yes began its build,
+// built as the loop builds it: written as `title`, its one task `task`
+// building the verify setup and `file` and proving 1.S1, then its review
+// passing, its stack merged and its close.
+/** @param {Sim} sim @param {string} wu @param {string} title @param {string} task @param {string} file */
+function firstPhaseBuilt(sim, wu, title, task, file) {
+  buildEntry(sim, wu);
+  writePhaseTasks(sim, wu, 1, title, [{ title: task, scenarios: ['1.S1'] }]);
+  startPhase(sim, wu, 1);
+  const tree = builders.make('agent-1');
+  taskBuilt(sim, wu, '1.1', tree, { ...VERIFY_FILES, [file]: `export const ${path.basename(file, '.js')} = 1;\n` }, true);
+  builders.remove(sim, tree);
+  for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'phase-review', wu, '1', '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
+  sim.run(['land', 'phase', wu, '1']);
+  sim.run(['checklist', 'close', 'phase-close', wu, '1']);
+}
+
+// The build the review phase reviews: a feature through its spec to ready
+// to build's pick, continued from the start menu into the build, its cut's
+// one phase — the verify setup and the code — built, reviewed, merged and
+// closed, and continued from the start menu into its review phase.
+/** @param {Sim} sim @param {string} wu */
+function cutClosed(sim, wu) {
+  startUnit(sim, 'feature', wu, 'A ledger');
+  discussed(sim, wu, wu);
+  specToBuild(sim, wu, [wu], 'a');
+  continueInto(sim, wu, 'implementation');
+  firstPhaseBuilt(sim, wu, 'The work', 'Write the ledger', 'src/ledger.js');
+  continueInto(sim, wu, 'review');
+}
+
+// The named worlds (tests/README.md §3), each built once per run, and the
+// unit each builds, which a scenario starting from it names its own.
+const SPEC_TO_BUILD_UNIT = 'ledgerly';
+const CUT_CLOSED_UNIT = 'ledger';
+/** A feature, SPEC_TO_BUILD_UNIT, through its spec to ready to build's pick in auto, handed off into its build. */
+const specToBuildWorld = namedWorld('specToBuild', (sim) => {
+  startUnit(sim, 'feature', SPEC_TO_BUILD_UNIT, 'A ledger');
+  discussed(sim, SPEC_TO_BUILD_UNIT, SPEC_TO_BUILD_UNIT);
+  specToBuild(sim, SPEC_TO_BUILD_UNIT, [SPEC_TO_BUILD_UNIT], 'a');
+});
+
+const worlds = Object.freeze({
+  specToBuild: specToBuildWorld,
+  /** SPEC_TO_BUILD_UNIT's build begun in auto: its one phase, Showing, written — 1.1 showing an entry, proving 1.S1, and 1.2 checking the hash on show — and started. */
+  buildBegun: namedWorld('buildBegun', (sim) => {
+    buildEntry(sim, SPEC_TO_BUILD_UNIT);
+    sim.run(['task', 'phase', SPEC_TO_BUILD_UNIT, '1', '--title', 'Showing']);
+    sim.run(['brief', 'task-writer', SPEC_TO_BUILD_UNIT, '1']);
+    writeTasks(sim, SPEC_TO_BUILD_UNIT, 1, [{ title: 'Show an entry', scenarios: ['1.S1'] }, { title: 'Check the hash on show' }]);
+    startPhase(sim, SPEC_TO_BUILD_UNIT, 1);
+  }, specToBuildWorld),
+  /** The build the review phase reviews (`cutClosed`), CUT_CLOSED_UNIT's, in auto, the person stopped on the way at start this work and the one screen alone, continuing it from the start menu. */
+  cutClosed: namedWorld('cutClosed', (sim) => {
+    cutClosed(sim, CUT_CLOSED_UNIT);
+    assert.deepStrictEqual(gatesAnswered(sim), ['start this work', 'environment setup', 'ready to build', 'start menu', 'start menu'],
+      '19.S6, 22.S13: between the one screen — the project\'s environment setup asked once before it, at its first ready to build — and the review, no gate stops the person; they pick the unit on the start menu alone, continuing it into its build and its review');
+  }),
+  /** An epic, SPEC_TO_BUILD_UNIT, through its spec to ready to build's pick in auto, its cut two phases (`twoPhaseEpic`), handed off into its build. */
+  twoPhaseEpic: namedWorld('twoPhaseEpic', (sim) => twoPhaseEpic(sim, SPEC_TO_BUILD_UNIT)),
+});
+
+// The verify setup the first task's builder records, its mutation tool
+// answering that nothing survived.
+const VERIFY_SETUP = Object.freeze({
+  place: 'verify', feature_map: 'verify/features.md', launch: 'true', health: 'true', drive: 'verify/drive.sh', evidence: 'true', cleanup: 'true',
+  mutation: 'echo "[]" > "$LEDGER_RUN/survivors.json"',
+});
+
+// The build's task loop as its skill's prose runs it (the-task-loop.md), for
+// the build's simulations: each brief issued, its agent kept by its role;
+// a builder's worktree made by its isolation at the default branch, as
+// Claude Code's starts at the remote's, whatever the checkout holds, and the
+// task laid out there by `task worktree`; its commits through the door; a
+// round of its pair; its account written once its brief again says it
+// landed, and taken; and its landing, the chain's `next` run once the task
+// is done.
+/** @param {Sim} sim @param {string} wu */
+function buildLoop(sim, wu) {
+  /** @type {string[]} */
+  const trees = [];
+  /** The agent each brief went to, by its role. @type {Map<string, Set<string>>} */
+  const agents = new Map();
+  /** A brief issued. @param {string[]} args */
+  const brief = (args) => {
+    const res = sim.run(['brief', ...args]);
+    agents.set(args[0], new Set([...(agents.get(args[0]) ?? []), res.agent]));
+    return res;
+  };
+  return {
+    agents,
+    brief,
+    /** The worktree a builder's isolation makes for `task`, the task laid out there: its path. @param {string} task @param {string} [agent] the builder, a later one's after a /clear */
+    isolated(task, agent = `agent-${task}`) {
+      const tree = builders.make(agent);
+      trees.push(tree);
+      git(sim.dir, ['worktree', 'add', '-q', '-b', `worktree-${agent}`, tree, 'main']);
+      sim.runIn(tree, ['task', 'worktree', wu, task]);
+      return tree;
+    },
+    /** A change committed through the door from the task's worktree. @param {string} tree @param {string} task @param {Record<string, string>} files @param {string} [message] */
+    committed(tree, task, files, message = `feat(${wu}): task ${task}`) {
+      for (const [file, text] of Object.entries(files)) {
+        fs.mkdirSync(path.dirname(path.join(tree, file)), { recursive: true });
+        fs.writeFileSync(path.join(tree, file), text, { mode: 0o755 });
+      }
+      return sim.runIn(tree, ['commit', '--paths', ...Object.keys(files), '--task', wu, task, '-m', message]);
+    },
+    /** The verify setup recorded from the task's worktree, its scenario run there. @param {string} tree @param {{id: string}} builder its brief @param {string} scenario */
+    setUp(tree, builder, scenario) {
+      const at = placeIn(sim, builder, 'Where the verify setup goes');
+      fs.mkdirSync(path.dirname(at), { recursive: true });
+      fs.writeFileSync(at, JSON.stringify(VERIFY_SETUP));
+      sim.runIn(tree, ['verify', 'setup', wu, '--file', at, '--scenario', scenario]);
+      sim.runIn(tree, ['verify', 'run', wu, scenario]);
+    },
+    /** One round of the task's pair, each reviewer briefed and writing its report. @param {string} task @param {string} [a] @param {string} [b] */
+    pairRound(task, a = PASSED_REPORT, b = PASSED_REPORT) {
+      for (const [letter, report] of [['a', a], ['b', b]]) landed(placeIn(sim, brief(['reviewer', wu, task, '--letter', letter]), 'Where your report goes'), report);
+    },
+    /**
+     * The builder's brief again saying the task landed in its last round, its account of `rounds` written and taken — the
+     * builder a new one after a /clear where `agent` names it, its worktree laid out first.
+     * @param {string} task @param {string[]} rounds each round's summary @param {string} [agent]
+     */
+    accounted(task, rounds, agent) {
+      const back = brief(['builder', wu, task]);
+      if (agent !== undefined) this.isolated(task, agent);
+      assert.match(briefOf(sim, back), new RegExp(`Your reviewers passed the task in round ${rounds.length}: it has landed, so write its account now\\.`));
+      landed(placeIn(sim, back, 'Where your account goes'), [
+        '## What was done', `Task ${task} is built.`, '## Where in the code', '- src/', '## What the tests prove', '- Its scenario.',
+        '## Differs from the task', 'None.', '## Reviews', ...rounds.flatMap((summary, at) => [`### Round ${at + 1}`, summary]),
+      ].join('\n\n'));
+      assert.strictEqual(sim.run(['task', 'account', wu, task]).rounds, rounds.length);
+    },
+    /** Into the phase's stack, then done, then the chain's `next`: the `next`. @param {string} task */
+    landedTask(task) {
+      sim.run(['land', 'open', wu, task]);
+      const { next } = sim.run(['land', 'chain', wu, task]);
+      sim.run(['task', 'done', wu, task]);
+      if (next !== undefined) sim.run(next.argv);
+      return next;
+    },
+    /** Every builder's worktree removed. */
+    cleared: () => trees.splice(0).forEach((tree) => builders.remove(sim, tree)),
+  };
+}
+
+// An epic of one topic through its spec to ready to build's pick in auto:
+// its cut two phases, settling an entry and showing it, the second relying
+// on the first.
+/** @param {Sim} sim @param {string} wu */
+function twoPhaseEpic(sim, wu) {
+  mappedEpic(sim, wu, ['alpha']);
+  const { next } = discussed(sim, wu, 'alpha');
+  handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
+  specEntry(sim, wu, ['alpha']);
+  sim.run(['brief', 'spec-writer', wu]);
+  const [decision] = JSON.parse(sim.read(['ledger', 'record', wu, 'alpha'])).decisions;
+  sim.write(`.ledger/${wu}/spec.md`, [
+    '# Ledgerly', '', '## 1. The ledger', '', '### 1.1 Settling', '', `1.1.1 An entry settles as alpha decided. [${decision.id}]`, '',
+    '### 1.2 Showing', '', `1.2.1 A settled entry shows as alpha decided. [${decision.id}]`, '',
+    '## 1-S. Scenarios for §1', '', '1.S1 Given an entry, when it settles, then it holds as alpha decided. (1.1.1)', '',
+    '1.S2 Given a settled entry, when it is shown, then it reads as alpha decided. (1.2.1)', '',
+  ].join('\n'));
+  sim.run(['spec', 'land', wu]);
+  specReviewed(sim, wu);
+  cutTheSpec(sim, wu, [
+    { name: 'Settling', goal: 'An entry settles.', scenarios: ['1.S1'], sections: ['1.1'], relies_on: [] },
+    { name: 'Showing', goal: 'A settled entry shows.', scenarios: ['1.S2'], sections: ['1.2'], relies_on: [1] },
+  ]);
+  readyToBuild(sim, wu);
+  intoTheBuild(sim, wu, sim.run(answerGate(sim, 'ready to build', '--pick', 'a').next.argv));
+}
+
+// The round under review's read of the spec's area `area`, the first by
+// default, by its pair (14.2), each briefed on the entry's `base`, main
+// unless given: the first's report `report`, the second's passing.
+/** @param {Sim} sim @param {string} wu @param {string} [report] @param {number} [area] @param {string} [base] */
+function areaRead(sim, wu, report = PASSED_REPORT, area = 1, base = 'main') {
+  for (const letter of ['a', 'b']) {
+    landed(placeIn(sim, sim.run(['brief', 'review-area', wu, '--area', String(area), '--base', base, '--letter', letter]), 'Where your report goes'), letter === 'a' ? report : PASSED_REPORT);
+  }
+}
+
+// Claude's own call on a finding at the review, with its reason (14.3.7):
+// the question, then the decision answering it. Answers the decision's id.
+/** @param {Sim} sim @param {string} wu @param {string} question @param {string} text @param {string} why */
+function reviewCall(sim, wu, question, text, why) {
+  const claude = { by: 'claude', who_moved_whom: 'none' };
+  const asked = sim.run(['ledger', 'ask', `${wu}.review`], null, JSON.stringify({ ...claude, text: question })).id;
+  return sim.run(['ledger', 'decide', `${wu}.review`, '--answers', asked], null, JSON.stringify({ ...claude, text, why })).id;
+}
+
+// The round under review recorded from `account` once a stray file is found
+// in the checkout (14.S13): the record refused, the gate over the tree drawn
+// and answered `key`, and the round recorded again. Answers what the record
+// answered.
+/** @param {Sim} sim @param {string} wu @param {object} account @param {string} key */
+function strayRound(sim, wu, account, key) {
+  fs.writeFileSync(path.join(sim.dir, 'stray.txt'), 'left in the checkout\n');
+  const file = sim.write(`.ledger/.cache/${wu}/review/round.json`, account);
+  sim.refuses(['review', 'round', wu, '--file', file], null);
+  sim.render(['review-tree', wu], { expect: 'content' });
+  sim.run(answerGate(sim, 'review tree', '--pick', key).next.argv);
+  return sim.run(['review', 'round', wu, '--file', file]);
+}
+
+// A task built as the build's loop builds it (`taskBuilt`), in a worktree
+// its builder's isolation makes and removes once it is done, adding `file`.
+/** @param {Sim} sim @param {string} wu @param {string} task @param {string} file */
+function builtAside(sim, wu, task, file) {
+  const tree = builders.make(`agent-${task}`);
+  taskBuilt(sim, wu, task, tree, { [file]: 'export const fix = 1;\n' }, false);
+  builders.remove(sim, tree);
+}
+
+// Round 1 of the review failing on a read that never checks its hash, its
+// one fix task written into the fix phase the entry names: the fix task.
+/** @param {Sim} sim @param {string} wu */
+function failedHashRound(sim, wu) {
+  const { fixPhase: phase } = reviewNext(sim, wu);
+  areaRead(sim, wu, '## Findings\n\n- bug: the ledger never checks its hash on read\n  Scenario: an entry read back\n\nVerdict: fail\n');
+  testsRead(sim, wu);
+  writePhaseTasks(sim, wu, phase, 'The review\'s fixes', [{ title: 'Check the hash on read', type: 'fix', scenarios: ['an entry read back'], reference: '§1' }]);
+  sim.run(['review', 'round', wu, '--file', sim.write(`.ledger/.cache/${wu}/review/round.json`, {
+    can_now: ['Keep a ledger.'],
+    findings: [{ area: '1-the-work', scope: 'in', call: 'bug', text: 'The ledger never checks its hash on read.', from: ['1-the-work-a#1'], fix: `${phase}.1` }],
+  })]);
+  return `${phase}.1`;
+}
+
+// A question only the person can answer, asked at the review's place and
+// raised with `call`, Claude's lean among its rows, parking `task` where one
+// is given (12.13.7): what the raise answered.
+/** @param {Sim} sim @param {string} wu @param {string} asks @param {object} call @param {string} [task] */
+function raisedAtReview(sim, wu, asks, call, task) {
+  const onTask = task === undefined ? [] : ['--task', task];
+  const asked = sim.run(['ledger', 'ask', `${wu}.review`, ...onTask], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: asks })).id;
+  const parks = task === undefined ? [] : ['--parks', task];
+  return sim.runAsync(['raise', `${wu}.review`, '--answers', asked, ...parks], null, JSON.stringify({ ...call, question: asks }));
+}
+
+// Nothing able to go on, the stop drawn; the person, ready, answering Q1
+// through its raise with the lean (12.13.22).
+/** @param {Sim} sim @param {string} wu */
+function answeredAtStop(sim, wu) {
+  sim.render(['build-stop', wu], { expect: 'content' });
+  const drawn = sim.run(['raise', 'draw', wu, 'Q1']);
+  sim.run(['raise', 'answer', drawn.raise, '--pick', '1'], null, JSON.stringify({ why: 'A read should not trust the disk.' }));
+}
+
+// The round under review's read of the test surface, by its one reader
+// (14.2), briefed on the entry's `base`, main unless given: its report
+// `report`.
+/** @param {Sim} sim @param {string} wu @param {string} [report] @param {string} [base] */
+function testsRead(sim, wu, report = PASSED_REPORT, base = 'main') {
+  landed(placeIn(sim, sim.run(['brief', 'test-surface', wu, '--base', base]), 'Where your report goes'), report);
+}
+
+// The review phase entered (14.6.1), and what its DATA says comes next, the
+// first that applies in its skill's order: the last round's fix tasks
+// built, their phase's merge at its gate, their builders' notes answered,
+// finish, the next round's reads named, or the round read; and the fix
+// phase its `fix phase` line names, null where it names none.
+/**
+ * @param {Sim} sim @param {string} wu
+ * @returns {{move: 'fixes'|'merge'|'notes'|'closing'|'reads'|'round', data: Record<string, string[]>, fixPhase: number|null}}
+ */
+function reviewNext(sim, wu) {
+  sim.run(['enter', 'review', wu]);
+  /** @type {Record<string, string[]>} */
+  const data = {};
+  for (const [, key, value] of sim.sections.matchAll(/^([a-z ]+): (.*)$/gm)) (data[key] ??= []).push(value);
+  const move = data['fix task waiting'] ? 'fixes'
+    : data['merge waiting'] ? 'merge'
+      : data.round[0].endsWith('builders left are answered, then finish') ? 'notes'
+        : data.round[0].endsWith('finish is next') ? 'closing'
+          : data.reads[0].startsWith('not yet named') ? 'reads' : 'round';
+  const fixPhase = data['fix phase'] ? Number(/^phase (\d+),/.exec(data['fix phase'][0])?.[1]) : null;
+  return { move, data, fixPhase };
+}
+
+// Finish's checklist (14.5): Claude's items marked, then closed, so its
+// gate draws.
+/** @param {Sim} sim @param {string} wu */
+function finishClosed(sim, wu) {
+  for (const { key, by, state } of JSON.parse(sim.read(['checklist', 'show', 'finish', wu])).items) {
+    if (by === 'claude' && state === 'open') sim.run(['checklist', 'done', 'finish', wu, key]);
+  }
+  sim.run(['checklist', 'close', 'finish', wu]);
+}
+
+// A builder's call on `task` going ahead while its blind question waits
+// (16.17.6): the decision point drawing blind for the test `t`, the
+// stand-in labelling the question behaviour, cheap to undo, and the call,
+// Claude leaning to `lean` over `other`, raised parking none.
+/**
+ * @param {import('node:test').TestContext} t @param {Sim} sim @param {string} wu @param {string} task
+ * @param {{question: string, lean: string, other: string}} call
+ */
+async function wentAheadBlind(t, sim, wu, task, { question, lean, other }) {
+  t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.', by: 'counts' }));
+  sim.env = { ...sim.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ [question]: labelAnswers('behaviour'), '': 'no-login' }) };
+  const asked = sim.run(['ledger', 'ask', `${wu}.implementation`, '--task', task], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: question })).id;
+  const drawn = await sim.runAsync(['raise', `${wu}.implementation`, '--answers', asked, '--parks', task], null, JSON.stringify({ ...leaningCall(lean, other), question }));
+  assert.deepStrictEqual([drawn.decision, drawn.task], ['blind', null], 'the call goes ahead, its question parking no task');
+}
+
+// The person's answer to the question `question` of `wu`: a pick of the
+// row whose answer is `text`, wherever its question's id put it. Answers
+// the receipt.
+/** @param {Sim} sim @param {string} wu @param {string} question @param {string} text @returns {string} */
+function pickedRow(sim, wu, question, text) {
+  const { raise } = sim.run(['raise', 'draw', wu, question]);
+  const seals = JSON.parse(fs.readFileSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID, RAISE_SHOWN), 'utf8'));
+  const { key } = seals[raise].call.rows.find((/** @type {{text: string}} */ row) => row.text === text);
+  return sim.run(['raise', 'answer', raise, '--pick', key], null, JSON.stringify({ why: 'The person said why.' })).receipt;
+}
+
+// Finish (14.5): its checklist closed where `closed` does not say it is
+// already, its gate drawn, and the person's yes at it run. Answers the
+// phases each landing landed, and where the yes goes next.
+/** @param {Sim} sim @param {string} wu @param {{closed?: boolean}} [opts] @returns {{landed: number[][], next: Record<string, any>}} */
+function finished(sim, wu, { closed = false } = {}) {
+  if (!closed) finishClosed(sim, wu);
+  sim.render(['finish', wu], { expect: 'content' });
+  const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
+  return { landed: yes.landed.map((/** @type {{phases: {phase: number}[]}} */ { phases }) => phases.map(({ phase }) => phase)), next: yes.next };
+}
+
+module.exports = {
+  Sim, worldFrom, worlds, readyForSim, shownRows, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, labEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, roadmapMenu, pullFromRoadmap, decideTopic, discussed, askedOn,
+  investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, startBare, startWith, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, triagePick, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
+  DECIDED_ITEMS, specWritten, specLanded, specBuilt, readyClosed, builders, taskBuilt, fixTree, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic, wentAheadBlind, pickedRow,
+};

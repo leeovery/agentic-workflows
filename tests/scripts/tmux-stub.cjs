@@ -18,8 +18,8 @@ echo "$@" >> "$TMUX_STUB_LOG"
 [ -n "$TMUX_STUB_FAIL" ] && exit 1
 if [ "$1" = "-S" ]; then shift 2; fi
 cmd="$1"; shift
-name=$(cat "$TMUX_STUB_STATE")
-id=$(cat "$TMUX_STUB_ID")
+IFS= read -r name < "$TMUX_STUB_STATE"
+IFS= read -r id < "$TMUX_STUB_ID"
 target=""; positional=""
 while [ $# -gt 0 ]; do
   case "$1" in

@@ -1,0 +1,8 @@
+{
+  "name": "csv-import",
+  "work_type": "feature",
+  "status": "completed",
+  "created": "2025-12-01",
+  "description": "Bring rows in from a CSV file",
+  "phases": {}
+}

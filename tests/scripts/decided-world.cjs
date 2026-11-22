@@ -1,0 +1,217 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// The decided suites' world and helpers (test-engine-decided-screen.cjs,
+// test-engine-decided-yes.cjs, test-engine-decided-close.cjs, and the
+// board's over it, test-engine-board-views.cjs,
+// test-engine-board-epic.cjs and test-engine-board-units.cjs): an epic, `fumi`, its two topics under
+// discussion, the note window's map written through the ledger's verbs —
+// the person's own answer, Claude's calls of two kinds, each labelled by the
+// stub armed for it (labels.cjs), and one unlabelled, a call handed over —
+// and its decided checklist marked but for the closing
+// pass; and a feature, `solo`, whose one question the person answered, its
+// checklist marked but for the closing pass and its log written. Built once per run and
+// copied for each test, its trust log in a config folder of the test's own.
+// ---------------------------------------------------------------------------
+
+const fs = require('fs');
+const path = require('path');
+const { beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+
+const { ok, output, readManifest, statePath, writeState, layout, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
+const { UNIT, SESSION, SESSION_ID, MADE, NOTE, row } = require('./ledger-world.cjs');
+const { labelling } = require('./labels.cjs');
+
+const SOLO = 'solo';
+const SOLO_AT = `${SOLO}.discussion.${SOLO}`;
+const SOLO_LOG = `${SOLO}/topics/${SOLO}/log.md`;
+const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
+const NO_PAYLOAD = Object.freeze({ lines: [], candidates: [] });
+/** The config folder the hermetic env pinned, put back after each test. */
+const PINNED = /** @type {string} */ (process.env.LEDGER_CONFIG_DIR);
+
+/** Claude's items of the decided checklist, but the closing pass. */
+const MARKED = ['decisions-entered', 'replacements-checked', 'conflicts-read', 'findings-rerun', 'product-lines-shown'];
+
+/** The decided checklist items of `topic` marked but for the closing pass, at `at`. @param {string} at */
+function markedItems(at) {
+  return Object.fromEntries(MARKED.map((item) => [item, { state: 'done', at }]));
+}
+
+/** One ledger write in `dir`: its short id. @param {string} dir @param {string} verb @param {string} at @param {string[]} flags @param {Record<string, unknown>} content @param {Record<string, string>} [env] */
+function writeIn(dir, verb, at, flags, content, env = {}) {
+  return ok(dir, ['ledger', verb, at, ...flags], { env: { ...SESSION, ...env }, stdin: JSON.stringify(content) }).id;
+}
+
+/**
+ * A question asked at `at` and answered as `answer` says, its question
+ * labelled `kind` where it gives one: both short ids.
+ * @param {string} dir @param {string} at @param {string} text @param {Record<string, unknown> & {kind?: import('./labels.cjs').Kind}} answer
+ */
+function answeredIn(dir, at, text, { kind, ...answer }) {
+  const question = writeIn(dir, 'ask', at, [], { ...MADE, text });
+  return { question, answer: writeIn(dir, 'decide', at, ['--answers', question], { why: 'Because.', ...answer }, kind === undefined ? {} : labelling(text, kind)) };
+}
+
+/**
+ * The decided checklist of `unit`'s `topic` marked again but for the
+ * closing pass, now — after its last close, so the marks count — written
+ * as the world writes its first marks; marking an item is the checklist
+ * suite's.
+ * @param {string} dir @param {string} unit @param {string} topic
+ */
+function markAllButTheClosingPass(dir, unit, topic) {
+  const manifest = readManifest(dir, unit);
+  const decided = (manifest.checklists ??= {}).decided ??= {};
+  const record = decided[topic] ??= {};
+  record.items = { ...record.items, ...markedItems(new Date().toISOString()) };
+  createManifest(dir, unit, manifest);
+}
+
+/** The note window's entries, by name, as the world wrote them. @type {Record<string, {question: string, answer: string}>} */
+const NOTE_MAP = {};
+
+const world = fixtureFrom('decided-', (dir) => {
+  const first = '2026-10-01T09:00:00.000Z';
+  createManifest(dir, UNIT, {
+    work_type: 'epic',
+    phases: {
+      discovery: { approved_at: '2026-09-30T09:00:00.000Z', items: { 'note-window': row(1, 'The note window'), 'space-homing': row(2, 'Where notes open') }, dismissed: ['dock-badge'] },
+      discussion: { items: { 'note-window': { status: 'in-progress' }, 'space-homing': { status: 'in-progress' } } },
+    },
+    checklists: { decided: { 'note-window': { items: markedItems(first) } } },
+  });
+  createManifest(dir, SOLO, { phases: { discussion: { items: { [SOLO]: { status: 'in-progress' } } } }, checklists: { decided: { [SOLO]: { items: markedItems(first) } } } });
+  Object.assign(NOTE_MAP, {
+    shape: answeredIn(dir, NOTE, 'How does first run open?', { ...PERSON, text: 'The tour first.' }),
+    title: answeredIn(dir, NOTE, 'What is the screen titled?', { ...MADE, text: 'Welcome.', kind: 'words' }),
+    sync: answeredIn(dir, NOTE, 'Is sync on at first run?', { ...MADE, text: 'On, once a folder is picked.', kind: 'behaviour' }),
+    price: answeredIn(dir, NOTE, 'Is pricing mentioned?', { ...MADE, text: 'Not in first run.', kind: 'behaviour' }),
+    banner: answeredIn(dir, NOTE, 'Is there a login item banner?', { ...MADE, text: 'No banner.' }),
+    corner: answeredIn(dir, NOTE, 'Which corner does a note open in?', { ...MADE, given: 'your-call', text: 'Top left.' }),
+  });
+  answeredIn(dir, SOLO_AT, 'Does a tally reset daily?', { ...PERSON, text: 'At midnight.' });
+  fs.mkdirSync(path.dirname(statePath(dir, SOLO_LOG)), { recursive: true });
+  fs.writeFileSync(statePath(dir, SOLO_LOG), '# Solo\n\nA tally resets at midnight.\n');
+}, { kept: NOTE_MAP });
+
+/**
+ * The world for each test of the calling file, copied before it and
+ * removed after it, its trust log in a config folder of its own.
+ * @returns {() => string} the running test's project
+ */
+function useDecidedWorld() {
+  const config = useTempFolder('decided-config-');
+  /** @type {string} */
+  let dir;
+  beforeEach(() => {
+    dir = world();
+    process.env.LEDGER_CONFIG_DIR = config();
+  });
+  afterEach(() => {
+    process.env.LEDGER_CONFIG_DIR = PINNED;
+    cleanupFixture(dir);
+  });
+  return () => dir;
+}
+
+/**
+ * The decided suites' helpers, over the project `dir()` names.
+ * @param {() => string} dir
+ */
+function decidedHelpers(dir) {
+  /** The closing pass marked done on `unit`'s `topic`, and the checklist closed. @param {string} [unit] @param {string} [topic] */
+  function close(unit = UNIT, topic = 'note-window') {
+    ok(dir(), ['checklist', 'done', 'decided', unit, topic, 'closing-pass'], { env: SESSION });
+    return ok(dir(), ['checklist', 'close', 'decided', unit, topic], { env: SESSION });
+  }
+
+  /** Claude's payload written to the cache: its path. @param {Record<string, unknown>} given */
+  function payload(given) {
+    const file = statePath(dir(), '.cache', 'scratch', `decided-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(given));
+    return file;
+  }
+
+  let drafted = 0;
+
+  /** An epic's candidate, its brief's draft written to a file of its own in the cache. @param {string} name @param {string} reason */
+  function candidate(name, reason) {
+    drafted += 1;
+    const brief = statePath(dir(), '.cache', 'scratch', `brief-${name}-${drafted}.md`);
+    fs.mkdirSync(path.dirname(brief), { recursive: true });
+    fs.writeFileSync(brief, `# ${name}\n\nWhat it is, where it was read, why it matters, its open questions.\n`);
+    return { name, reason, brief };
+  }
+
+  /** The decided screen of `address`, `flags` given. @param {string[]} [flags] @param {string} [address] */
+  function screen(flags = [], address = `${UNIT}.note-window`) {
+    return output(dir(), ['render', 'decided', address, ...flags], { env: SESSION });
+  }
+
+  /** The screen staged from `given`. @param {Record<string, unknown>} given @param {string} [address] */
+  function staged(given, address) {
+    return screen(['--file', payload(given)], address);
+  }
+
+  /** The person's answer at the gate shown: what it leads to. @param {string} name @param {string} key */
+  function answer(name, key) {
+    return ok(dir(), ['gate', name, '--pick', key], { env: SESSION }).next;
+  }
+
+  /** What a gate's `next` of kind engine runs, answered. @param {{kind: string, argv: string[]}} next */
+  function run(next) {
+    assert.strictEqual(next.kind, 'engine');
+    return next.argv[0] === 'render' ? output(dir(), next.argv, { env: SESSION }) : ok(dir(), next.argv, { env: SESSION });
+  }
+
+  /** The person's reversal of Claude's call on the note window: the departure's short id. @param {string} call @param {string} text */
+  function reverse(call, text) {
+    return writeIn(dir(), 'replace', NOTE, ['--replaces', call, '--reason', 'changed-mind'], { by: 'person', drops: ['the old answer'], text, why: 'The person wants it so.' });
+  }
+
+  return { close, payload, candidate, screen, staged, answer, run, reverse };
+}
+
+/**
+ * The board's suites' helpers over the world, over the project `dir()` names.
+ * @param {() => string} dir
+ */
+function decidedBoardHelpers(dir) {
+  /** The board's answer for the world's conversation, its `ok` dropped. @param {string[]} [args] */
+  function board(args = []) {
+    const { ok: _ok, ...answer } = ok(dir(), ['board', SESSION_ID, ...args], { env: SESSION });
+    return answer;
+  }
+
+  /** The conversation's position at a place, as its labelling records it. @param {string[]} place */
+  const at = (place) => ok(dir(), ['session', 'label', ...place], { env: SESSION });
+
+  /** A unit made as Ledger makes one, of `type`: when its manifest was stamped. @param {string} name @param {string} type */
+  function made(name, type) {
+    ok(dir(), ['workunit', 'create', name, type, '--description', `The ${name} work`, '--session-log-file', writeState(dir(), layout.cache(name, 'session-001.md'), `# ${name}\n`)]);
+    return readManifest(dir(), name).created;
+  }
+
+  /** A message sent from one topic of the epic to another, its title given. @param {string} from @param {string} to @param {string} title */
+  function sent(from, to, title) {
+    const file = writeState(dir(), layout.cache(`${from}-${to}.md`), `# ${title}\n\nIt bears on you.\n`);
+    ok(dir(), ['topic', 'send', UNIT, to, '--from', from, '--content', file, '--slug', 'bears'], { env: SESSION });
+  }
+
+  /** An experiment, E1, spawned from the note window's discussion to measure a question of the person's. */
+  function spawned() {
+    const question = writeIn(dir(), 'ask', NOTE, [], { by: 'person', who_moved_whom: 'none', text: 'How fast does a note open?' });
+    const problem = writeState(dir(), layout.cache(UNIT, 'scratch', 'note-open-problem.md'), '# Problem — note-open\n');
+    ok(dir(), ['experiment', 'create', UNIT, 'note-window', '--slug', 'note-open', '--from', 'discussion', '--problem', problem, '--question', question], { env: SESSION });
+  }
+
+  return { board, at, made, sent, spawned };
+}
+
+module.exports = {
+  SOLO, SOLO_AT, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers, decidedBoardHelpers,
+};

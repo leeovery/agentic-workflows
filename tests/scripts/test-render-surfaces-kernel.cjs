@@ -1,0 +1,418 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// The render kernel: the surface primitives
+// (domain/projections/surfaces.cjs), the catalogue's dispatch
+// (domain/render.cjs), the single-source invariants that keep the menu
+// grammar and the render forms in surfaces.cjs alone, and the CLI boundary:
+// `engine render` through the argv entry. Each phase's surfaces are in
+// test-engine-render-surfaces-{phase}.cjs.
+//
+// Layer: verb. World: the project world (setupFixture), a copied git project,
+// its manifests and payloads written per test; a surface renders through
+// `engine render` in process (engine-harness.cjs), every gate payload audited
+// against its menu (gate-audit.cjs). The catalogue dispatch calls the
+// domain's renderSurface: `engine render` answers an unknown name with its
+// usage, so the catalogue's own refusal is reached only there.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+
+const harness = require('./engine-harness.cjs');
+const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
+const { DOTS, section, timedInstruction, STOP_CLAUSE, CONTINUE_CLAUSE, menuFrame, menu, cmdOption, bareOption, promptOption, escapeMarkdown, callout, indentedBody, bulletRow, treeList } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+const { renderSurface, NB, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
+
+/**
+ * A surface rendered through `engine render`, its markers audited and, where
+ * it draws a menu, its gate payload held against it.
+ * @param {string} dir @param {string[]} args
+ */
+function render(dir, args) {
+  const out = harness.output(dir, ['render', ...args]);
+  auditMarkers(out, `render ${args[0]}`);
+  if (out.includes('=== MENU')) announced(() => auditGate(harness.output(dir, ['render', ...args]), `render ${args[0]}`));
+  return out;
+}
+
+describe('surfaces primitives', () => {
+  it('a timed instruction is built from its parts — the form, the moment, then the behaviour clause where there is one', () => {
+    assert.strictEqual(timedInstruction('text', 'after the receipt', CONTINUE_CLAUSE),
+      'emit verbatim as a text code block (```text fence) after the receipt — do not stop; continue as the skill instructs');
+    assert.strictEqual(timedInstruction('markdown', 'after the response', STOP_CLAUSE),
+      "emit verbatim as markdown (not a code block) after the response, then STOP for the user's response");
+    assert.strictEqual(timedInstruction('text', 'after the response'),
+      'emit verbatim as a text code block (```text fence) after the response');
+  });
+
+  it('escapeMarkdown backslash-escapes the markdown-active characters and angle brackets, and nothing else', () => {
+    assert.strictEqual(escapeMarkdown('a *b* _c_ ~d~ `e` [f] <g> \\h, i.'), 'a \\*b\\* \\_c\\_ \\~d\\~ \\`e\\` \\[f\\] \\<g\\> \\\\h, i.');
+  });
+
+  it('menu opens on the rule, glyphs a short label, and never closes the frame', () => {
+    assert.strictEqual(
+      menu('Approve?', ['**`y/yes`**', '**`n/no`**']),
+      [DOTS, '**`◆ Approve?`**', '', '**`y/yes`**', '**`n/no`**'].join('\n'),
+    );
+  });
+
+  it('leaves a long or marked-up label as prose — the glyph span cannot nest markup', () => {
+    const long = 'Whether the pipeline can expose **click windows** belongs to a different topic entirely';
+    const out = menu(long, ['**`y/yes`**'], { question: 'Move it there?' });
+    assert.strictEqual(out, [DOTS, long, '', '**`◆ Move it there?`**', '', '**`y/yes`**'].join('\n'));
+  });
+
+  it('refuses a y/yes row under a statement — a consent gate asks its question', () => {
+    const yes = ['**`y/yes`**', '**`n/no`**'];
+    assert.throws(() => menu('Proceed.', yes), /"Proceed\." is not one/);
+    assert.throws(() => menu('The tree is dirty.', yes, { question: 'Carry on.' }), /"Carry on\." is not one/);
+    assert.throws(() => menu('', ['**`y/yes`** → Apply it']), /no `◆ …\?` line stands above the rows/);
+  });
+
+  it('refuses a y/yes row under a question the label cannot glyph — the split is the fix', () => {
+    const long = 'Does the pipeline exposing **click windows** belong to a different topic entirely?';
+    assert.throws(() => menu(long, ['**`y/yes`**']), /no `◆ …\?` line stands above the rows/);
+    assert.throws(() => menu('The tree is dirty.', ['**`y/yes`**'], { question: long }), /"Does the pipeline exposing .*" is not one/);
+  });
+
+  it('holds a projection-composed frame to the same rule — the check reads the composed lines', () => {
+    const rows = ['**`y/yes`** → Proceed anyway', '**`b/back`** → Return to menu'];
+    const lines = menuFrame(['Two topics sit ahead.', '', '**`◆ Proceed anyway?`**', '', ...rows]).split('\n');
+    assert.deepStrictEqual(lines.slice(0, 5), [DOTS, 'Two topics sit ahead.', '', '**`◆ Proceed anyway?`**', ''], 'a glyphed line makes the leading statement context');
+    assert.throws(() => menuFrame(['Two topics sit ahead.', '', '**`◆ Proceed anyway.`**', '', ...rows]), /"Proceed anyway\." is not one/);
+    assert.throws(() => menuFrame(['Two topics sit ahead.', '', ...rows]), /"Two topics sit ahead\." is not one/);
+    assert.throws(() => menuFrame(['Two topics sit ahead:', ...rows]), /no `◆ …\?` line stands above the rows/);
+  });
+
+  it('refuses an n/no row without a y/yes row — a refusal answers yes, never a verb synonym', () => {
+    assert.throws(() => menu('Proceed?', ['**`p/proceed`** → Carry on', '**`n/no`** → Stop here']), /an n\/no row answers a y\/yes row/);
+  });
+
+  it('a y/yes row passes under a glyphable question — the label itself, or one split beneath a statement', () => {
+    assert.strictEqual(menu('Proceed?', ['**`y/yes`** → Carry on', '**`n/no`** → Stop here']).split('\n')[1], '**`◆ Proceed?`**');
+    assert.strictEqual(
+      menu('The tree is dirty.', ['**`y/yes`**', '**`n/no`**'], { question: 'Carry on?' }),
+      [DOTS, 'The tree is dirty.', '', '**`◆ Carry on?`**', '', '**`y/yes`**', '**`n/no`**'].join('\n'),
+    );
+  });
+
+  it('every menu asks — a route menu under a statement is refused, and passes once a question rides beneath it', () => {
+    const rows = ['**`d/discussion`** → Discuss it', '**`r/research`** → Research it'];
+    assert.throws(() => menu('Where this belongs.', rows), /every menu asks a glyphed question — "Where this belongs\." is not one/);
+    assert.throws(() => menu('', rows), /no `◆ …\?` line stands above the rows/);
+    assert.throws(() => menu('', rows, { question: 'Which one' }), /"Which one" is not one/);
+    assert.deepStrictEqual(
+      menu('Where this belongs.', rows, { question: 'Where should it go?' }).split('\n').slice(1, 4),
+      ['Where this belongs.', '', '**`◆ Where should it go?`**'],
+    );
+  });
+
+  it('the question stands above the rows — one beneath them asks nothing', () => {
+    assert.throws(() => menuFrame(['**`1`** → A', '', '**`◆ Which one?`**']), /no `◆ …\?` line stands above the rows/);
+  });
+
+  it('refuses a menu with no row to press — plain lines and prompt options alone are no menu', () => {
+    assert.throws(() => menu('Which one?', ['a plain line']), /no row to press/);
+    assert.throws(() => menu('Which one?', ['**Comment** → Tell me what you think']), /no row to press/);
+    assert.throws(() => menuFrame(['**`◆ Which one?`**']), /no row to press/);
+  });
+
+  it('command and bare option builders make a row to press', () => {
+    assert.match(menu('Which one?', [cmdOption('1', null, 'A'), promptOption('Ask', 'Ask about it')]), /◆ Which one\?/);
+    assert.match(menu('Proceed?', [bareOption('y', 'yes'), bareOption('n', 'no')]), /◆ Proceed\?/);
+  });
+
+  it('aligns option arrows into one column, leaving non-option lines alone', () => {
+    const out = menu('Which one?', ['**`c/continue`** → Carry on', '**`q`** → Quit', 'a plain line']);
+    const lines = out.split('\n');
+    const arrows = lines.filter((l) => l.includes(' → ')).map((l) => l.indexOf(' → '));
+    assert.strictEqual(new Set(arrows).size, 1, 'arrows share a column');
+    assert.ok(lines.includes('a plain line'), 'non-option lines pass through untouched');
+  });
+
+  // Every frame asks; its rows start three lines down, under the question.
+  const ASK = ['Which one?', ''];
+
+  it('wraps a long option label under the label column with NBSP continuations', () => {
+    const out = menuFrame([
+      ...ASK,
+      '**`1`** → ' + 'alpha '.repeat(12).trim(),
+      '**`i/discovery`** → Continue discovery',
+    ], { width: 40 });
+    const lines = out.split('\n');
+    // column = 11 (i/discovery) → label column 14; every rendered line ≤ 40.
+    assert.strictEqual(lines[3], '**`1`**           → alpha alpha alpha alpha');
+    assert.strictEqual(lines[4], `${NB(14)}alpha alpha alpha alpha`);
+    assert.strictEqual(lines[5], `${NB(14)}alpha alpha alpha alpha`);
+    assert.strictEqual(lines[6], '**`i/discovery`** → Continue discovery');
+  });
+
+  it('closes and reopens spans at a wrap break — every emitted line is self-contained markdown', () => {
+    const out = menuFrame([
+      ...ASK,
+      '**`1`** → Continue "Roles" — *implementation (Phase 5, Task roles-5-44)*',
+      '**`i/discovery`** → Continue discovery',
+    ], { width: 55 });
+    const lines = out.split('\n');
+    assert.strictEqual(lines[3], '**`1`**           → Continue "Roles" — *implementation (Phase*');
+    assert.strictEqual(lines[4], `${NB(14)}*5, Task roles-5-44)*`);
+  });
+
+  it('an escaped marker is text, never a span — a break adds no closing marker', () => {
+    const out = menuFrame([...ASK, '**`1`** → Fix 2\\*3 so every one of the pipeline stages agrees'], { width: 40 });
+    const [first, ...continuations] = out.split('\n').slice(3);
+    assert.ok(continuations.length > 0, 'the label wraps');
+    for (const line of [first, ...continuations]) {
+      assert.ok(!/(^|[^\\])\*$/.test(line), `no closing marker at the break: ${line}`);
+    }
+    for (const line of continuations) {
+      assert.ok(!line.replace(/^ +/, '').startsWith('*'), `no reopened marker on the continuation: ${line}`);
+    }
+  });
+
+  it('a struck in-session row and a code span both survive the break balanced', () => {
+    const struck = menuFrame([
+      ...ASK,
+      '**`1`** → ~~Continue "Topic" — *discussion*~~ · in session (last active 2m ago)',
+    ], { width: 55 });
+    // the ~~…~~ closes before the break here; each line carries balanced markers
+    for (const line of struck.split('\n')) {
+      assert.strictEqual((line.match(/~~/g) || []).length % 2, 0, line);
+    }
+    const code = menuFrame([
+      ...ASK,
+      '**`1`** → Run `one two three four five six seven` now',
+    ], { width: 40 });
+    const codeLines = code.split('\n');
+    assert.ok(codeLines[3].endsWith('`'), 'code span closes at the break');
+    assert.ok(codeLines[4].startsWith(NB(4) + '`'), 'and reopens on the continuation');
+  });
+
+  it('an escaped marker is the character it escapes — it opens no span for a break to close', () => {
+    const out = menuFrame([...ASK, '**`1`** → Fix \\*auth tokens across every service\\* now'], { width: 40 });
+    const lines = out.split('\n');
+    assert.strictEqual(lines[3], '**`1`** → Fix \\*auth tokens across every');
+    assert.strictEqual(lines[4], `${NB(4)}service\\* now`);
+  });
+
+  it('keeps the line whole when the label budget falls below the floor', () => {
+    const out = menuFrame([
+      ...ASK,
+      '**`x/extraordinarily-wide-key-column`** → Continue',
+      '**`1`** → A long label that would wrap at any sane width but must stay whole here',
+    ], { width: 40 });
+    assert.ok(!out.includes(NB(1)), 'no continuation lines at a degenerate budget');
+  });
+
+  it('leaves a single oversized token whole rather than splitting markup', () => {
+    const out = menuFrame([
+      ...ASK,
+      '**`1`** → See supercalifragilistic-hyphenated-identifier-that-cannot-fit for details',
+    ], { width: 40 });
+    const lines = out.split('\n');
+    assert.strictEqual(lines[4], `${NB(4)}supercalifragilistic-hyphenated-identifier-that-cannot-fit`);
+    assert.strictEqual(lines[5], `${NB(4)}for details`);
+  });
+
+  it('section wraps body in a named, instruction-carrying marker and strips trailing newlines', () => {
+    assert.strictEqual(section('MENU: x', 'emit verbatim', 'body\n\n'), '=== MENU: x (emit verbatim) ===\nbody\n');
+  });
+
+  it('callout flags the first line and aligns continuations', () => {
+    assert.strictEqual(callout(['first line', 'second line']), '  ⚑ first line\n    second line');
+  });
+
+  it('menuFrame opens its lines with the canonical rule and does not close them', () => {
+    assert.strictEqual(menuFrame(['Which one?', '', '**`b`** → B']), [DOTS, '**`◆ Which one?`**', '', '**`b`** → B'].join('\n'));
+  });
+
+  it('menuFrame glyphs only a leading short label — no blank beneath means no glyph, so no question', () => {
+    assert.throws(() => menuFrame(['Which one?', '**`b`** → B']), /no `◆ …\?` line stands above the rows/);
+  });
+
+  it('callout wraps a string to the width with the flag gutter subtracted', () => {
+    const out = callout('word '.repeat(30).trim(), { width: 40 });
+    const lines = out.split('\n');
+    assert.ok(lines[0].startsWith('  ⚑ ') && lines[1].startsWith('    '));
+    assert.ok(lines.every((l) => [...l].length <= 40));
+  });
+
+  it('treeList branches each item, gutters continuations, blanks under the last', () => {
+    const out = treeList(['one '.repeat(12).trim(), 'two '.repeat(12).trim()], { width: 40 });
+    const lines = out.split('\n');
+    assert.ok(lines[0].startsWith('     ├─ one'));
+    assert.ok(lines[1].startsWith('     │  one'), 'non-last continuation carries the gutter');
+    const lastBranch = lines.findIndex((l) => l.startsWith('     └─ two'));
+    assert.ok(lastBranch > 0);
+    assert.ok(lines[lastBranch + 1].startsWith('        two'), 'last continuation is blank-guttered');
+  });
+
+  it('indentedBody wraps each paragraph two columns in; indent moves the column and the budget with it', () => {
+    assert.deepStrictEqual(indentedBody(['short', 'lines'], { width: 40 }), ['  short', '  lines']);
+    assert.deepStrictEqual(indentedBody(['x'.repeat(50)], { width: 40 }), [`  ${'x'.repeat(38)}`, `  ${'x'.repeat(12)}`], 'the default budget is the width less two columns');
+    const deep = indentedBody(['beta '.repeat(20).trim()], { indent: '      ', width: 40 });
+    assert.ok(deep.length > 1 && deep.every((l) => l.startsWith('      beta') && [...l].length <= 40));
+  });
+
+  it('bulletRow glyphs at the callout indent by default; indent shifts the glyph, continuations stay under the text', () => {
+    assert.deepStrictEqual(bulletRow('short row', { width: 40 }), ['  • short row']);
+    assert.deepStrictEqual(bulletRow('x'.repeat(50), { width: 40 }), [`  • ${'x'.repeat(36)}`, `    ${'x'.repeat(14)}`], 'the default budget reserves the indent and the glyph');
+    const lines = bulletRow('gamma '.repeat(20).trim(), { indent: '    ', width: 40 });
+    assert.ok(lines[0].startsWith('    • gamma') && lines[1].startsWith('      gamma'));
+    assert.ok(lines.every((l) => [...l].length <= 40));
+  });
+});
+
+describe('CLI boundary — engine render through the argv entry', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', {
+      work_type: 'feature',
+      phases: { discussion: { items: { pay: { status: 'in-progress' } } } },
+    });
+  });
+  afterEach(() => teardown(dir));
+
+  const run = (/** @type {string[]} */ args) => render(dir, args);
+
+  it('flags survive argv: --variant, --file, scalar flags, boolean flags', () => {
+    assert.match(run(['knowledge-gate', '--variant', 'retry', '--provider', 'openai', '--model', 'text-embedding-3-small']), /No OpenAI API key was found/);
+    const missing = writePayload(dir, 'missing.json', { missing: ['notes/ghost.md'] });
+    assert.ok(run(['import-reprompt', '--file', missing]).includes('• notes/ghost.md'));
+    assert.ok(!run(['walkthrough-topic', '--name', 'kinds-of-work', '--content-only']).includes('=== MENU: '), '--content-only must survive boolean-flag registration through argv');
+  });
+
+  it('surface errors surface as failJson on stderr with exit 1', () => {
+    assert.match(harness.refuses(dir, ['render', 'import-reprompt', '--file', 'missing.json']).error,
+      /missing\.json/);
+  });
+});
+
+describe('catalogue dispatch', () => {
+  it('the CLI usage banner lists every registered surface', () => {
+    // A surface reachable from the catalogue but absent from the banner is
+    // invisible to anyone who mistypes a command.
+    let catalogue;
+    try {
+      renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' });
+    } catch (err) {
+      catalogue = String(err.message).match(/surfaces: ([^)]+)\)/)[1].split(', ');
+    }
+    const engineSrc = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'scripts', 'engine.cjs'), 'utf8');
+    const banner = [...engineSrc.matchAll(/^ {2}render (\S+)/gm)].map((m) => m[1]);
+    const missing = catalogue.filter((n) => !banner.includes(n));
+    assert.deepStrictEqual(missing, [], `surfaces missing from the usage banner: ${missing.join(', ')}`);
+  });
+
+  it('unknown surface errors with the catalogue listing', () => {
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: backlog-gate, experiment-approval-gate, experiment-next-gate, experiment-spawn-gate, cancel-gate, postpone-gate, import-reprompt, absorb-target, absorb-confirm-gate, archived-delete-gate, horizon-pick, banner, work-pick, brownfield-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-topic, migrations-applied, migration-gate, state-lost-gate, git-floor-stop, repo-stop, github-rule-gate, label-gate, knowledge-gate, knowledge-ask, knowledge-done, state-merge-gate, ledger-stop, directive-carry-on, directive-arrival, migration-guard-stop, migration-checks-stop, migration-taken-stop, migration-leaving, send-report, map, decided, decided-strike, wait-agents, start-this-work, approve-map, discovery-map, approve-map-strike, ready-to-build, build-headline, task-landed, task-account, step-gate, phase-merge-gate, build-stop, build-progress, review-report, review-calls, review-tree, finish, investigation-plan, investigation-check-in, help, verdicts, start-menu, epic-menu, manage, manage-unit, closed, care, care-kind, care-drop, triage, archived, archived-item, convergence, roadmap, roadmap-harvest, matrix, matrix-replay, environment-setup, drivers, help-topics\)/);
+  });
+});
+
+describe('single-source invariants', () => {
+  it('the menu dot rule literal exists in exactly one module — surfaces.cjs', () => {
+    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'scripts');
+    const offenders = [];
+    (function walk(dir) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(p);
+        else if (entry.isFile() && p.endsWith('.cjs') && fs.readFileSync(p, 'utf8').includes('· · · · · · · · · · · ·')) {
+          offenders.push(path.relative(scriptsRoot, p));
+        }
+      }
+    })(scriptsRoot);
+    assert.deepStrictEqual(offenders, [path.join('domain', 'projections', 'surfaces.cjs')],
+      'menus must frame through surfaces.menuFrame — inline dot rules reintroduce the pre-consolidation drift class');
+  });
+
+  it('the option-line grammar exists in exactly one module — surfaces.cjs', () => {
+    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'scripts');
+    const offenders = [];
+    (function walk(dir) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(p);
+        else if (entry.isFile() && p.endsWith('.cjs') && /\*\*\\?`.+?\\?`\*\* →/.test(fs.readFileSync(p, 'utf8'))) {
+          offenders.push(path.relative(scriptsRoot, p));
+        }
+      }
+    })(scriptsRoot);
+    assert.deepStrictEqual(offenders, [path.join('domain', 'projections', 'surfaces.cjs')],
+      'option lines must build through cmdOption — hand-formatted options reintroduce the drift class');
+  });
+
+  it('the render forms, the menu\'s stop and the continuation exist in exactly one module — surfaces.cjs', () => {
+    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'scripts');
+    const { RENDER_FORMS } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+    const phrases = ['emit verbatim as', ...Object.values(RENDER_FORMS), "then STOP for the user's response", 'do not stop; continue as the skill instructs'];
+    /** @type {Record<string, string[]>} */
+    const homes = Object.fromEntries(phrases.map((phrase) => [phrase, []]));
+    (function walk(dir) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(p);
+        else if (entry.isFile() && p.endsWith('.cjs')) {
+          const src = fs.readFileSync(p, 'utf8');
+          for (const phrase of phrases) if (src.includes(phrase)) homes[phrase].push(path.relative(scriptsRoot, p));
+        }
+      }
+    })(scriptsRoot);
+    const surfaces = [path.join('domain', 'projections', 'surfaces.cjs')];
+    assert.deepStrictEqual(homes, Object.fromEntries(phrases.map((phrase) => [phrase, surfaces])),
+      'a marker instruction is composed from surfaces.cjs (emitAs, timedInstruction, MENU_INSTRUCTION, the clauses) — a second literal drifts on the next reword');
+  });
+
+  // No equivalent invariant for the ⚑ callout: the glyph legitimately appears
+  // in inline one-line display headers (arrivals lines, not-ready blocks), so
+  // a content grep cannot isolate the wrapped-callout idiom without false
+  // positives. Single-sourcing there is enforced structurally — flaggedCallout
+  // delegates to surfaces.callout — and guarded by review.
+
+  it('every drawn walkthrough diagram fits the pinned width — an untagged fence cannot re-flow (D8)', () => {
+    const contentRoot = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'content', 'walkthrough');
+    const offenders = [];
+    (function walk(dir) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, entry.name);
+        if (entry.isDirectory()) { walk(p); continue; }
+        if (!entry.isFile() || !p.endsWith('.md')) continue;
+        // A tagged fence is notation, not a drawing: the engine lays it out
+        // at the pane's width, and its own suite drives it at the floor and
+        // the cap. Only what emits as drawn is measured here.
+        let fence = null;
+        fs.readFileSync(p, 'utf8').split('\n').forEach((line, i) => {
+          if (line.startsWith('```')) { fence = fence === null ? line.slice(3).trim() : null; return; }
+          // Characters, not bytes: the diagrams are drawn with arrows and
+          // box-drawing glyphs, each of which is several bytes wide.
+          if (fence === '' && [...line].length > 65) offenders.push(`${path.relative(contentRoot, p)}:${i + 1}`);
+        });
+      }
+    })(contentRoot);
+    assert.deepStrictEqual(offenders, [],
+      'a fenced line renders as drawn — past the narrowest pane it wraps and the diagram breaks');
+  });
+
+  it('box-glyph frames are retired everywhere — drawn borders never frame content', () => {
+    const skillsRoot = path.join(__dirname, '..', '..', 'skills');
+    const offenders = [];
+    (function walk(dir) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(p);
+        else if (entry.isFile() && (p.endsWith('.cjs') || p.endsWith('.md')) && /[╭╰]/.test(fs.readFileSync(p, 'utf8'))) {
+          offenders.push(path.relative(skillsRoot, p));
+        }
+      }
+    })(skillsRoot);
+    assert.deepStrictEqual(offenders, [],
+      'drawn borders never frame content — a box glyph reintroduces a fixed-width commitment the terminal cannot honour');
+  });
+});

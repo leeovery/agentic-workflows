@@ -1,47 +1,45 @@
-# Documentation
+# Ledger
 
-This is the book of the system for the person about to live inside it: what will happen, in what order, what your role is at each moment, what the system produces, and why it is built to behave the way it does. You reach everything through one command — `/workflow-start` — and these pages explain what unfolds after you type it. The repository's top-level README is the short pitch and the install; this is the full account.
+This is the book of Ledger for the person about to work inside it: what will happen, in what order, what your part is at each moment, what Ledger produces, and why it behaves the way it does. You reach everything through one command, `/ledger`, or by asking Claude for a change in your own words, and these pages explain what unfolds after that. The repository's top-level README is the short pitch and the install; this is the full account.
 
 ## Start here
 
-- [Introduction](introduction.md) — what the system is, the three commitments behind it, and your role in it.
-- [The five work types](work-types.md) — the pipeline shapes, from months-long epic to one-file quick-fix, and how the right one gets chosen.
+- [Introduction](introduction.md) — what Ledger is, the ideas behind it, and your part in it.
+- [How it fits together](how-it-fits-together.md) — the layers, and how a single action travels down through them.
+- [Work types](work-types.md) — epic, feature, bugfix and quick-fix: the shape of each, and how the right one is found.
 
 ## The life of a piece of work
 
-The phases in order — the journey from a rough idea to landed, reviewed code. Each page covers what happens, what you are asked, what comes out, and why it works that way.
+The phases in order, from a rough idea to landed, reviewed code. Each page covers what happens, what you are asked, what comes out, and why.
 
-- [The product roadmap](roadmap.md) — the layer above the work unit: hold the product conversation, stage ideas, bugs and quick-fixes in horizons you name, and pull slices into delivery when they earn it.
-- [Discovery](discovery.md) — the universal first phase: settle what the work is, shape it, and route it into the pipeline.
-- [Research and discussion](research-and-discussion.md) — explore the space, then argue it to a decision, with background agents challenging the work live.
-- [Experiments](experiments.md) — the laboratory those conversations borrow: when a number is about to bear a decision, a controlled measurement designed before it is run.
-- [Investigation and scoping](investigation-and-scoping.md) — the bugfix's route to root cause, and the quick-fix's one-pass shortcut.
-- [Specification](specification.md) — decisions become a standalone contract that everything downstream is built from.
-- [Planning](planning.md) — the spec becomes phases, tasks, and an order to build them in.
-- [Implementation](implementation.md) — the plan becomes code, built and checked task by task in a gated TDD loop.
-- [Review](review.md) — the built work is verified against what was agreed, and remediation loops until they match.
+- [Discovery](discovery.md) — where all work starts: the product's conversation and an epic's map, where nothing is decided yet.
+- [Discussion](discussion.md) — one conversation per topic, research one of its tools, every question and decision on the ledger.
+- [Experiments](experiments.md) — the laboratory a discussion borrows when a number is about to bear a decision.
+- [Investigation](investigation.md) — a bugfix's route from symptoms to a root cause.
+- [Specification](specification.md) — the decided topics become one spec, cut into phases and approved at ready to build.
+- [The build](the-build.md) — the spec becomes code, phase by phase and task by task: the reviews, the pull requests and the drivers.
+- [Review](review.md) — the built change held against the spec, area by area, and finish.
+- [Lifecycle](lifecycle-operations.md) — pivot, absorb, cancel, postpone and bring back: reshaping work as your understanding of it changes.
 
-## How the system holds together
+## How Ledger holds together
 
-- [The knowledge base](knowledge-base.md) — the system's memory: what it remembers, what it deliberately forgets, how the past resurfaces, and why old material fades.
-- [The collaboration model](collaboration.md) — why your involvement is widest at the start and narrows toward delivery, and how the approval gates work.
-- [How it stays reliable](reliability.md) — why the system does not drift, in terms of the guarantees you feel rather than the machinery beneath them.
+- [Trust](trust.md) — the ledger, the ask rule that decides whether a call reaches you, verdicts, and the matrix where you see and correct it.
+- [Verification](verification.md) — how the work proves itself by running the product, and what proven means.
+- [State and git](state-and-git.md) — the state branch, how it is pushed and protected, a second machine, and moving a project across.
+- [Tracking](tracking.md) — the start menu, the inbox and triage, the roadmap and the product record.
+- [The knowledge base](knowledge-base.md) — Ledger's memory across pieces of work: what it remembers, what it never keeps, and why old material fades.
+- [How it stays reliable](reliability.md) — the guarantees that keep the work from drifting.
 
 ## Under the hood
 
-How the system works beneath the conversation — described, not as anything you operate.
+- [The engine](engine.md) — the deterministic core: why it exists, and the doors it holds.
+- [The agents](agents.md) — the twenty agents Ledger sends out, and why work is delegated to them.
+- [History](history.md) — where Ledger came from, and the problems that bent it into its shape.
 
-- [How it fits together](how-it-fits-together.md) — the layers, the skill tiers, and how a single action travels down through them.
-- [The engine](engine.md) — the deterministic core: what it is, and why it was built for token economy, determinism, and safety.
-- [The agents](agents.md) — the workforce of fresh, narrow sub-agents, and why work is delegated to them.
-- [History](history.md) — where the system came from, and the problems that bent it into its current shape.
+## Setting it up
 
-## Day to day
+- [Configuration](configuration.md) — installing and updating, effort, the drivers, the environment setup, and where every setting lives.
 
-- [Capture and the inbox](capture-and-inbox.md) — logging ideas, bugs, and quick-fixes without stopping, then triaging them: start now, put on the roadmap, or decline.
-- [Lifecycle operations](lifecycle-operations.md) — pivot, absorb, cancel, reactivate, postpone, and promote: reshaping work as your understanding of it changes.
-- [Configuration](configuration.md) — installing and updating, the settings that fill themselves in, and where each one lives.
+## Working on Ledger
 
-## Working on the system
-
-- [Contributing](contributing.md) — for changing this repository rather than using it: the gates, the prose tests, and the setup hiccups worth knowing before they cost you an afternoon.
+- [Contributing](contributing.md) — for changing this repository rather than using it: the gates, migrations and the setup hiccups worth knowing first.

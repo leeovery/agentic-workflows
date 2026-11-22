@@ -1,5 +1,7 @@
 'use strict';
 
+// Layer: unit.
+
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
@@ -11,44 +13,42 @@ const {
   wrap,
   wrapWithPrefix,
   signpost,
-  box,
   renderTree,
-} = require('../../skills/workflow-engine/scripts/kernel/render.cjs');
+} = require('../../skills/ledger-engine/scripts/kernel/render.cjs');
 
 const {
   capitalise,
   tag,
-  derivedFrom,
+  stateNote,
   title,
   discoveryGlyph,
   discoveryLifecycleLabel,
-  researchGlyph,
-} = require('../../skills/workflow-engine/scripts/domain/conventions.cjs');
+} = require('../../skills/ledger-engine/scripts/domain/conventions.cjs');
 
 // A realistic discovery-map fixture, composed via the conventions layer (proving
 // the split: conventions builds the strings, the renderer lays them out).
 const MAP = [
   {
-    title: title({ glyph: discoveryGlyph('researching'), label: 'Ai Content Engine' }),
-    tag: 'researching',
+    title: title({ glyph: discoveryGlyph('discussing'), label: 'Ai Content Engine' }),
+    tag: 'discussing',
     body: [
       'AI imagery (enhancement-only v1), description generation, per-tenant tone / base-knowledge primitive, allowance + overage cost shape',
-      derivedFrom('from exploration'),
+      stateNote('from exploration'),
     ],
   },
   {
-    title: title({ glyph: discoveryGlyph('ready_for_discussion'), label: 'Legal And Regulatory' }),
-    tag: 'research complete · ready for discussion',
-    body: ['Data residency, GDPR, age-gating for the competition flows', derivedFrom('from research-analysis')],
+    title: title({ glyph: discoveryGlyph('discussing'), label: 'Legal And Regulatory' }),
+    tag: 'discussing · awaiting E1, E2 · mail waiting',
+    body: ['Data residency, GDPR, age-gating for the competition flows', stateNote('from gap-analysis')],
   },
   {
-    title: title({ glyph: discoveryGlyph('researching'), label: 'Menu And Admin' }),
-    tag: 'researching',
-    body: ['Business-side menu modelling, admin shell (Filament vs custom Vue/Nuxt), JustEat import, staff/roles', derivedFrom('from exploration')],
+    title: title({ glyph: discoveryGlyph('discussing'), label: 'Menu And Admin' }),
+    tag: 'discussing',
+    body: ['Business-side menu modelling, admin shell (Filament vs custom Vue/Nuxt), JustEat import, staff/roles', stateNote('from exploration')],
   },
 ];
 
-// A discussion-map fixture exercising nesting (children).
+// A tree fixture exercising nesting (children).
 const DISCUSSION = [
   { title: '✓ Subsystem Prefix Taxonomy [decided]' },
   {
@@ -163,38 +163,20 @@ describe('render shape: signpost', () => {
   });
 });
 
-describe('render shape: box (phase title)', () => {
-  it('renders a 49-wide bullet-bordered box with a trailing blank line', () => {
-    const out = box('Planning Overview');
-    const lines = out.split('\n');
-    // border, title, border, <visible blank>, "" (final terminator)
-    assert.strictEqual(lines[0], '●' + '─'.repeat(WIDTH - 2) + '●');
-    assert.strictEqual(lines[0].length, WIDTH);
-    assert.strictEqual(lines[1], '  Planning Overview');
-    assert.strictEqual(lines[2], lines[0]);
-    assert.strictEqual(lines[3], ''); // the breathing-room blank line
-    assert.ok(out.endsWith('\n\n'));
-  });
-
-  it('rejects an empty title', () => {
-    assert.throws(() => box(''));
-  });
-});
-
 describe('render shape: renderTree (discovery map)', () => {
   it('reproduces the documented row lines byte-for-byte', () => {
     const lines = renderTree(MAP, { width: 65 }).split('\n');
     // One shared tag column across the whole tree. The longest row sets it;
-    // here the 40-char tag will not fit at width 65, so the column tightens
+    // here the 43-char tag will not fit at width 65, so the column tightens
     // to a single space rather than pushing the tag past the edge.
-    assert.strictEqual(lines[0], '  ├─ ◐ Ai Content Engine    [researching]');
+    assert.strictEqual(lines[0], '  ├─ ◐ Ai Content Engine    [discussing]');
     assert.strictEqual(
       lines.find((l) => l.includes('Legal And Regulatory')),
-      '  ├─ → Legal And Regulatory [research complete · ready for discussion]'
+      '  ├─ ◐ Legal And Regulatory [discussing · awaiting E1, E2 · mail waiting]'
     );
     assert.strictEqual(
       lines.find((l) => l.includes('Menu And Admin')),
-      '  └─ ◐ Menu And Admin       [researching]'
+      '  └─ ◐ Menu And Admin       [discussing]'
     );
   });
 
@@ -220,12 +202,12 @@ describe('render shape: renderTree (discovery map)', () => {
     }
   });
 
-  it('renders provenance as a distinct ↳ -marked, capitalised line', () => {
+  it('renders a ↳ note as a distinct ↳ -marked, capitalised line', () => {
     const out = renderTree(MAP, { width: 72 });
-    assert.ok(out.includes('  │     ↳ From exploration'), 'non-last provenance: gutter + arrow + capitalised');
-    assert.ok(out.includes('        ↳ From exploration'), 'last provenance: 8-space gutter + arrow + capitalised');
-    assert.ok(out.includes('↳ From research-analysis'), 'capitalises whatever the provenance is');
-    assert.ok(!out.includes('from exploration'), 'no lowercase provenance leaks through');
+    assert.ok(out.includes('  │     ↳ From exploration'), 'non-last note: gutter + arrow + capitalised');
+    assert.ok(out.includes('        ↳ From exploration'), 'last note: 8-space gutter + arrow + capitalised');
+    assert.ok(out.includes('↳ From gap-analysis'), 'capitalises whatever the note is');
+    assert.ok(!out.includes('from exploration'), 'no lowercase note leaks through');
   });
 
   it('runs the │ unbroken under non-last topics, drops it under the last', () => {
@@ -269,7 +251,7 @@ describe('render shape: renderTree (discovery map)', () => {
     assert.ok(!out.includes('├─') && !out.includes('┌─'));
   });
 
-  it('nests children with an accumulating gutter (discussion-map shape)', () => {
+  it('nests children with an accumulating gutter', () => {
     const lines = renderTree(DISCUSSION, { width: 72 }).split('\n');
     // Parent is a non-last sibling, so its children sit under a continued │.
     assert.ok(lines.includes('  ├─ → Decision-Point INFO Line Shape [converging]'));
@@ -343,22 +325,15 @@ describe('render shape: renderTree (wrapped titles)', () => {
 
   it('forgoes the reserve when it would starve the title — the tag column tightens as an unwrapped tree\'s does', () => {
     const lines = renderTree(
-      [{ title: '○ A question that runs on past the narrow pane budget', tag: 'research complete · ready for discussion' }],
+      [{ title: '○ A question that runs on past the narrow pane budget', tag: 'discussing · awaiting E1, E2 · mail waiting' }],
       { width: 40, childIndent: 2, wrapTitles: true },
     ).split('\n');
-    assert.strictEqual(lines[0], '  └─ ○ A question that runs on past [research complete · ready for discussion]');
+    assert.strictEqual(lines[0], '  └─ ○ A question that runs on past [discussing · awaiting E1, E2 · mail waiting]');
     assert.strictEqual(lines[1], '       the narrow pane budget');
   });
 });
 
 describe('conventions (domain composition layer)', () => {
-  it('researchGlyph maps thread states to the canonical symbol set', () => {
-    assert.strictEqual(researchGlyph('open'), '○');
-    assert.strictEqual(researchGlyph('digging'), '◐');
-    assert.strictEqual(researchGlyph('learned'), '●');
-    assert.strictEqual(researchGlyph('parked'), '◌');
-    assert.strictEqual(researchGlyph('nope'), '');
-  });
 
   it('tag wraps in square brackets', () => {
     assert.strictEqual(tag('decided'), '[decided]');
@@ -369,20 +344,20 @@ describe('conventions (domain composition layer)', () => {
     assert.strictEqual(capitalise(''), '');
   });
 
-  it('derivedFrom builds a capitalised ↳ line that hangs past its marker', () => {
-    assert.deepStrictEqual(derivedFrom('from research-analysis'), { text: '↳ From research-analysis', hang: 2 });
+  it('stateNote builds a capitalised ↳ line that hangs past its marker', () => {
+    assert.deepStrictEqual(stateNote('discussing · mail waiting'), { text: '↳ Discussing · mail waiting', hang: 2 });
   });
 
   it('title composes glyph + label + [tag], omitting absent parts', () => {
-    assert.strictEqual(title({ glyph: '◐', label: 'Menu And Admin', tag: 'researching' }), '◐ Menu And Admin [researching]');
+    assert.strictEqual(title({ glyph: '◐', label: 'Menu And Admin', tag: 'discussing' }), '◐ Menu And Admin [discussing]');
     assert.strictEqual(title({ label: 'No Glyph', tag: 'pending' }), 'No Glyph [pending]');
     assert.strictEqual(title({ label: 'Bare' }), 'Bare');
   });
 
   it('clamps over-long labels with an ellipsis — glyph and tag survive', () => {
     const long = 'x'.repeat(100);
-    const out = title({ glyph: '◐', label: long, tag: 'researching' });
-    assert.strictEqual(out, `◐ ${'x'.repeat(39)}… [researching]`);
+    const out = title({ glyph: '◐', label: long, tag: 'discussing' });
+    assert.strictEqual(out, `◐ ${'x'.repeat(39)}… [discussing]`);
   });
 
   it('leaves a 40-char label unclamped', () => {
@@ -396,48 +371,21 @@ describe('conventions (domain composition layer)', () => {
     assert.strictEqual(discoveryGlyph('unknown-tier'), '');
   });
 
-  it('discoveryLifecycleLabel names superseded research as such, never as complete', () => {
-    assert.strictEqual(discoveryLifecycleLabel('ready_for_discussion', null, 'completed'), 'research complete · ready for discussion');
-    assert.strictEqual(discoveryLifecycleLabel('ready_for_discussion', null, 'superseded'), 'research superseded · ready for discussion');
-  });
-
-  it('discoveryLifecycleLabel says dead end plainly, whatever the research state', () => {
-    assert.strictEqual(discoveryLifecycleLabel('handled', null, 'completed'), 'dead end');
-    assert.strictEqual(discoveryLifecycleLabel('handled', null, 'superseded'), 'dead end');
-    assert.strictEqual(discoveryLifecycleLabel('handled', null, 'in-progress'), 'dead end');
-    assert.strictEqual(discoveryLifecycleLabel('handled', null, 'cancelled'), 'dead end');
-    assert.strictEqual(discoveryLifecycleLabel('handled', null, null), 'dead end');
-  });
-
   it('discoveryLifecycleLabel appends the mail waiting cue when parked', () => {
-    assert.strictEqual(discoveryLifecycleLabel('fresh', 'research', 'unstarted', true), 'fresh · routed to research · mail waiting');
-    assert.strictEqual(discoveryLifecycleLabel('fresh', null, null, true), 'fresh · mail waiting');
-    // The cue survives on non-fresh rows — a parked cross-phase stub stays visible.
-    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', 'unstarted', true), 'discussing · mail waiting');
-    // Composite labels keep their own tail before the cue.
-    assert.strictEqual(discoveryLifecycleLabel('ready_for_discussion', null, 'completed', true), 'research complete · ready for discussion · mail waiting');
-    assert.strictEqual(discoveryLifecycleLabel('researching', 'research', 'in-progress', true), 'researching · mail waiting');
+    assert.strictEqual(discoveryLifecycleLabel('fresh', true), 'fresh · mail waiting');
+    // The cue survives on non-fresh rows — a parked stub stays visible.
+    assert.strictEqual(discoveryLifecycleLabel('discussing', true), 'discussing · mail waiting');
   });
 
-  it('discoveryLifecycleLabel appends the input moved cue when a reconcile flag is pending', () => {
-    assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', null, false, true), 'decided · input moved');
-    // Both riders compose, mail first.
-    assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', null, true, true), 'decided · mail waiting · input moved');
-    assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', null, false, false), 'decided');
-  });
-
-  it('discoveryLifecycleLabel appends the awaiting cues directly after the lifecycle — research first, then the experiment ids', () => {
+  it('discoveryLifecycleLabel appends the awaited experiment ids directly after the lifecycle', () => {
     const e = (id) => ({ kind: 'experiment', id });
-    const research = { kind: 'research', status: 'in-progress' };
-    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', null, false, false, [e('E1')]), 'discussing · awaiting E1');
-    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', 'unstarted', true, false, [e('E1'), e('E2')]), 'discussing · awaiting E1, E2 · mail waiting');
-    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', 'in-progress', false, false, [research]), 'discussing · awaiting research');
-    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', 'in-progress', false, true, [research, e('E1')]), 'discussing · awaiting research · awaiting E1 · input moved');
-    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', null, false, false, []), 'discussing');
+    assert.strictEqual(discoveryLifecycleLabel('discussing', false, [e('E1')]), 'discussing · awaiting E1');
+    assert.strictEqual(discoveryLifecycleLabel('discussing', true, [e('E1'), e('E2')]), 'discussing · awaiting E1, E2 · mail waiting');
+    assert.strictEqual(discoveryLifecycleLabel('discussing', false, []), 'discussing');
   });
 
   it('discoveryLifecycleLabel renders no cue when mailWaiting is false or omitted', () => {
-    assert.strictEqual(discoveryLifecycleLabel('fresh', 'research', null, false), 'fresh · routed to research');
-    assert.strictEqual(discoveryLifecycleLabel('fresh', 'research', null), 'fresh · routed to research');
+    assert.strictEqual(discoveryLifecycleLabel('fresh', false), 'fresh');
+    assert.strictEqual(discoveryLifecycleLabel('fresh'), 'fresh');
   });
 });

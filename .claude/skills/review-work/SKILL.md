@@ -106,7 +106,7 @@ Scale the fleet to the blast radius. A one-file prose fix warrants two
 dimensions; a change touching the engine, the prose, and the tests
 warrants the full set and a second pass afterwards from a fresh angle.
 
-Never invoke a `workflow-*` skill and never use the Workflow tool — this
+Never invoke `/ledger` or a `ledger-*` skill and never use the Workflow tool — this
 project authors the workflow system, it does not run it.
 
 → Proceed to **Step 4**.
@@ -203,7 +203,7 @@ discover their interactions a PR later.
 
 Then run the gates the change touches — `npm test`, `npm run test:cli`,
 `npm run test:migrations`, `npm run typecheck`, and for a change under
-`skills/workflow-gates*/`, `npm run test:mod` —
+`skills/ledger-gates*/`, `npm run test:mod` —
 and update the pipeline simulation if the change moved an engine verb, a
 prose call sequence, a phase ordering, or a manifest field. Where a finding
 describes a failure the tests would not have caught, add the case that
@@ -213,10 +213,6 @@ Commit and push without being asked — but never onto main, and never onto
 whatever branch happens to be checked out. Where the fix lands was settled
 in Step 2; when that is a new layer, the branch is created before the first
 commit, not after it.
-
-If the diff touched skill prose, run
-`node tests/prose/run.cjs select --diff main` and suggest the intersecting
-cases in the report — never run the walks as part of this pass.
 
 → Proceed to **Step 6**.
 

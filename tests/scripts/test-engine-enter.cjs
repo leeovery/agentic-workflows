@@ -1,0 +1,1059 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// The entry (ledger-engine/scripts/domain/enter.cjs): `engine enter <phase>
+// <unit> [<topic>] [--take] [--move]`, the one call a phase is entered by,
+// discussion its first row and discovery its second. What it refuses, each
+// refusal naming its way on and writing nothing — a unit this project lacks
+// or has closed, a phase the work type has no place for, and at a
+// topic-level row a topic missing, unknown or standing closed, and any topic
+// once the unit has its spec (4.11.2); a unit-level row entered at no topic,
+// its spec no bar; a place another live session holds asked about first,
+// nothing written, and taken over by `--take` (18.4.21, 18.S57); the start
+// of a topic not yet started, nothing written ahead of its opening (9.3.1)
+// and the start committed, under the writer lock, while a resume takes no
+// lock; where the conversation is working, recorded — one topic at a time
+// (9.S42) — with its presence; and the answer: any question before the DATA
+// naming what to read (2.S13), the reads as paths and engine calls
+// (9.3.2–9.3.6, 8.7.7), the topic's own record on a resume (9.S13, 24.S11),
+// the agents the topic was left with landed or lost by whether the process
+// that dispatched them still runs (9.7.8), and the log with the line the
+// conversation opens its first write with, owed until the log names it
+// (8.14.8, 9.S67). Each key a move's carry is read by is named in the
+// Entering of the skill the topic opens in (19.5.16, R26).
+//
+// Discovery's row (discovery-entry.cjs): the product's conversation and an
+// epic's discovery entered with no question (8.S1), a feature, bugfix or
+// quick-fix refused for manage (8.S12) and an epic past its spec for the
+// product's conversation; the open log carried on, or the next opened and
+// committed, the conversation's line written into it where the log's last
+// such line is another's (8.S62, 8.S70, 8.S75); the reads — the product's two latest logs, or
+// once its picture is written the picture, its latest closed sitting by its closing line and
+// the open sitting carried on in full, the picture beside seeds and a type call too, the
+// roadmap, the product record and the research owed (8.S69), an epic's older
+// logs by their closing lines and two latest in full, its first log's
+// pointers, its map and the product record (8.S53) — and a log another
+// conversation left named for catch-up, or its transcript gone, and none
+// where a level move left it on its pointer (8.S65, 8.S75); and the level move, from the product's conversation, an epic's
+// discovery or a topic, its pointer, its sitting and its presence (8.S71,
+// 8.S72, 24.S20). The label the entry applies is `session label`'s own
+// (test-engine-session-label.cjs), and the recovery note
+// test-engine-position.cjs's.
+//
+// Layer: verb. World, built once and copied: an epic, `fumi`, whose map
+// holds a topic for each standing — `onboarding` with its brief and not yet
+// started, `licence` under way with agents a process now gone dispatched,
+// `sync` decided, `removal` cancelled, `widgets` postponed
+// with its roadmap item waiting, `reports` postponed with its item gone to
+// another epic — a spike, and four discovery logs, the fourth open, the
+// first pointing into the product's sessions; an epic, `atlas`, with none;
+// an epic past its spec; the product's conversation with two logs and none
+// open; a feature, `quick-sync`, with discovery's log and a seed; a feature
+// with its spec; a bugfix; a quick-fix; and a cancelled and a completed unit.
+// Each test's conversation has its own system config, and its own Claude
+// Code config holding its transcript.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const {
+  ok, okSections, refusedPristine, statePath, layout, writeState, readState, readManifest, commitAll, stateGit, lastMessage, fixtureFrom, cleanupFixture,
+  lockAttempts, holdLock, withFrozenClock, withEnv, FROZEN_AT,
+} = require('./engine-harness.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
+const { entrySections } = require('../../skills/ledger-engine/scripts/domain/projections/enter.cjs');
+const { ENTRIES, CARRIED, enterThrough } = require('../../skills/ledger-engine/scripts/domain/enter.cjs');
+const { SHAPED_BY } = require('../../skills/ledger-engine/scripts/domain/discovery-entry.cjs');
+
+const EPIC = 'fumi';
+const ATLAS = 'atlas';
+const FEATURE = 'quick-sync';
+const ENGINE = 'node .claude/skills/ledger-engine/scripts/engine.cjs';
+const USAGE = 'Usage: engine enter <discussion|discovery|specification|implementation|review|investigation|experiment> <work-unit|product> [<topic>] [--take] [--move] [--type-call] [--seeds <seeds>] [--record <record>]';
+const TODAY = FROZEN_AT.slice(0, 10);
+
+// A process that no longer runs, and one that does that is not this suite's.
+const GONE = '2147483646';
+const PEER = String(process.ppid);
+
+/** A map row. @param {number} order @param {Record<string, unknown>} [marks] */
+const row = (order, marks = {}) => ({ order, summary: `Topic ${order}`, source: 'discovery', ...marks });
+
+/** A roadmap item a topic of the epic was postponed as. @param {string} topic @param {Record<string, unknown>} [marks] */
+const postponedAs = (topic, marks = {}) => ({ horizon: 'next', summary: topic, origin: `postpone:${EPIC}`, postponed_from: { work_unit: EPIC, topic }, ...marks });
+
+/** An engine call as the process `pid` and conversation `sessionId` run it. @param {string} dir @param {string[]} args @param {string} sessionId @param {string} pid */
+function runAs(dir, args, sessionId, pid) {
+  const config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-enter-other-'));
+  try {
+    return ok(dir, args, { env: { LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: sessionId, CLAUDE_PID: pid, TMUX: undefined } });
+  } finally {
+    fs.rmSync(config, { recursive: true, force: true });
+  }
+}
+
+const world = fixtureFrom('engine-enter-', (dir) => {
+  createManifest(dir, EPIC, {
+    work_type: 'epic',
+    phases: {
+      discovery: {
+        active_session: '004',
+        items: {
+          onboarding: row(1), licence: row(2), sync: row(3),
+          removal: row(5, { cancelled: true }), widgets: row(6, { postponed: true }), reports: row(7, { postponed: true }),
+        },
+      },
+      discussion: {
+        items: {
+          licence: { status: 'in-progress' }, sync: { status: 'completed' },
+          removal: { status: 'cancelled' }, widgets: { status: 'postponed' }, reports: { status: 'postponed' },
+        },
+      },
+    },
+  });
+  const project = JSON.parse(readState(dir, layout.projectManifest));
+  project.roadmap = { horizons: ['next'], items: { widgets: postponedAs('widgets'), reports: postponedAs('reports', { pulled_to: { work_unit: 'other', topic: 'reports' } }) } };
+  writeState(dir, layout.projectManifest, JSON.stringify(project, null, 2));
+  writeState(dir, layout.brief(EPIC, 'onboarding'), '# Onboarding\n');
+  writeState(dir, layout.unit(EPIC, 'spikes', '001-first-run', 'sketch.md'), '# Sketch\n');
+  createManifest(dir, FEATURE, { seeds: [{ path: 'seeds/idea.md', source: 'inbox:idea', seeded_at: '2026-01-01T00:00:00Z' }] });
+  writeState(dir, layout.session(FEATURE, '001'), '# Discovery Session 001\n');
+  writeState(dir, layout.unit(FEATURE, 'seeds', 'idea.md'), '# Idea\n');
+  createManifest(dir, 'specced');
+  writeState(dir, layout.unit('specced', 'spec.md'), '# Spec\n');
+  createManifest(dir, 'crash', { work_type: 'bugfix' });
+  createManifest(dir, 'tweak', { work_type: 'quick-fix' });
+  createManifest(dir, 'retired', { work_type: 'epic', status: 'cancelled' });
+  createManifest(dir, 'shipped', { status: 'completed' });
+  createManifest(dir, ATLAS, { work_type: 'epic' });
+  createManifest(dir, 'built', { work_type: 'epic' });
+  writeState(dir, layout.unit('built', 'spec.md'), '# Spec\n');
+  writeState(dir, layout.session(EPIC, '001'), `${SHAPED_BY}[Pricing](../../.product/sessions/session-001.md#pricing)\n\n## 2026-01-02 · session one\n\nThe map took shape.\n\nLicensing comes first.\n\n## Views of the product\n\n- One-time pricing\n`);
+  writeState(dir, layout.session(EPIC, '002'), '## 2026-01-03 · session two\n\nSync came up.\n\nSync waits on licensing.\n\n## Not taken\n\n- A website — the person dropped it\n\n→ Carried on in the product\'s conversation: [session-002.md](../../.product/sessions/session-002.md)\n');
+  writeState(dir, layout.session(EPIC, '003'), '## 2026-01-04 · session three\n\nExports.\n');
+  writeState(dir, layout.session(EPIC, '004'), '## 2026-01-05 · session four\n\nWhere it stands.\n');
+  writeState(dir, layout.productSession('001'), '## 2026-01-01 · session first\n\nWhat the product is.\n');
+  writeState(dir, layout.productSession('002'), '## 2026-01-02 · session second\n\nPricing.\n');
+  commitAll(dir, 'the world');
+  for (const label of ['landed', 'lost']) runAs(dir, ['agent', 'dispatch', EPIC, 'discussion', 'licence', '--kind', 'deep-dive', '--label', label], 'earlier', GONE);
+  writeState(dir, layout.cache(EPIC, 'discussion', 'licence', 'deep-dive-001-landed.md'), '# Findings\n');
+});
+
+let dir; // the project
+let config; // the system config: the conversations' folders
+let claude; // Claude Code's config: the transcripts
+
+/** The engine as the conversation `sessionId` runs it — null runs it with no id. @param {string|null} [sessionId] */
+function env(sessionId = 'sess-1') {
+  return {
+    LEDGER_CONFIG_DIR: config, CLAUDE_CONFIG_DIR: claude, CLAUDE_CODE_SESSION_ID: sessionId ?? undefined,
+    CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined,
+  };
+}
+
+/** An entry that must succeed: its response and its sections. @param {string[]} args @param {string|null} [sessionId] */
+function enter(args, sessionId) {
+  return okSections(dir, ['enter', ...args], { env: env(sessionId) });
+}
+
+/** The conversation `sessionId` ending, its presence dropped as Claude Code's SessionEnd hook drops it. @param {string} sessionId */
+const ends = (sessionId) => ok(dir, ['presence', 'cleanup', sessionId], { env: env(sessionId) });
+
+/** An entry that must refuse, writing nothing: its error. @param {string[]} args */
+function refused(args) {
+  const { error } = refusedPristine(dir, ['enter', ...args], { env: env() });
+  assert.strictEqual(position(), null, `engine enter ${args.join(' ')} recorded a position on refusing`);
+  return error;
+}
+
+/** The position recorded for a conversation, or null. @param {string} [sessionId] */
+function position(sessionId = 'sess-1') {
+  try { return JSON.parse(fs.readFileSync(path.join(config, 'conversations', sessionId, 'position.json'), 'utf8')); } catch { return null; }
+}
+
+/** A conversation's transcript, where Claude Code keeps it. @param {string} sessionId */
+function transcript(sessionId) {
+  const file = path.join(claude, 'projects', '-Users-person-fumi', `${sessionId}.jsonl`);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, '');
+  return file;
+}
+
+/** A DATA section of `lines`, as the entry draws it. @param {string[]} lines */
+function data(lines) {
+  return `=== DATA (reason from this — never display or parse the sections below) ===\n${lines.join('\n')}\n`;
+}
+
+/** A path in the state, absolute. @param {string} rel */
+const at = (rel) => statePath(dir, rel);
+
+/** The DATA's line naming where the conversation `session` writes start this work's payload, a file of its own. @param {string} session */
+const payloadAt = (session) => `payload: ${at(layout.cache('product', 'discovery', 'product', `start-this-work-payload-${session}.json`))}`;
+
+/** A place's presence record as it stands — at the product's, the conversation `session`'s — or null. @param {string} unit @param {string} topic @param {string} [phase] @param {string} [session] */
+function presence(unit, topic, phase = 'discussion', session = 'sess-1') {
+  const row = unit === 'product' ? `presence-${session}` : 'presence';
+  try { return JSON.parse(fs.readFileSync(at(layout.cache(unit, phase, topic, row)), 'utf8')); } catch { return null; }
+}
+
+beforeEach(() => {
+  dir = world();
+  config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-enter-config-'));
+  claude = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-enter-claude-'));
+});
+
+afterEach(() => {
+  cleanupFixture(dir);
+  for (const d of [config, claude]) fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+});
+
+describe('what cannot be entered is refused, naming the way on, and nothing is written', () => {
+  it('a call that is no entry: a phase not entered through it, a missing unit, an empty topic, a flag it lacks, an extra argument, a move, a type call or seeds into a row that takes none, a type call beside a move or a take, a flag twice, seeds missing or given twice', () => {
+    for (const args of [
+      ['research', EPIC, 'onboarding'], ['discussion'], ['discussion', EPIC, ''], ['discussion', EPIC, '--force'], ['discussion', EPIC, 'onboarding', 'more'],
+      ['discussion', EPIC, 'onboarding', '--move'], ['discovery', 'product', '--take', '--take'],
+      ['discussion', EPIC, 'onboarding', '--type-call'], ['discovery', 'product', '--type-call', '--move'], ['discovery', 'product', '--type-call', '--take'],
+      ['discussion', EPIC, 'onboarding', '--seeds', 'roadmap:loyalty'], ['discovery', 'product', '--seeds'], ['discovery', 'product', '--seeds', '--take'],
+      ['discovery', 'product', '--seeds', 'roadmap:a', '--seeds', 'roadmap:b'],
+    ]) {
+      assert.strictEqual(refused(args), USAGE, args.join(' '));
+    }
+  });
+
+  it('a unit this project lacks, one cancelled and one completed', () => {
+    assert.deepStrictEqual([refused(['discussion', 'nowhere']), refused(['discussion', 'retired', 'any']), refused(['discussion', 'shipped'])], [
+      'there is no work unit "nowhere" — the start menu lists the work in progress',
+      'retired is cancelled — reactivating it comes first',
+      'shipped is completed — new work starts from the start menu',
+    ]);
+  });
+
+  it('a phase the unit\'s work type has no place for', () => {
+    assert.strictEqual(refused(['discussion', 'crash']), 'a bugfix has no discussion — its phases are investigation, specification, implementation, review');
+  });
+
+  it('a topic missing from an epic, not a legal name, or not the unit\'s', () => {
+    assert.deepStrictEqual([refused(['discussion', EPIC]), refused(['discussion', EPIC, 'a.b']), refused(['discussion', FEATURE, 'a.b']), refused(['discussion', EPIC, 'nowhere']), refused(['discussion', FEATURE, 'other'])], [
+      `an epic enters discussion at one of its topics — name the topic: engine enter discussion ${EPIC} <topic>`,
+      '"a.b" is not a legal topic name — dots and slashes break manifest addressing; the epic\'s map holds its topics, and a new one comes through its discovery',
+      '"a.b" is not a legal topic name — dots and slashes break manifest addressing; a feature\'s topic is the unit itself',
+      `${EPIC} has no topic "nowhere" — the epic's map holds its topics, and a new one comes through its discovery`,
+      `${FEATURE} has no topic "other" — a feature's topic is the unit itself`,
+    ]);
+  });
+
+  it('any topic once the unit has its spec — a topic exists only before it (4.11.2)', () => {
+    assert.strictEqual(refused(['discussion', 'specced']), 'specced has its spec — a topic exists only before it, and a change is settled in the spec from here');
+  });
+
+  it('a topic standing closed: cancelled, postponed — its roadmap item waiting or gone to another epic — decided', () => {
+    const through = 'the epic menu\'s discovery row';
+    assert.deepStrictEqual(['removal', 'widgets', 'reports', 'sync'].map((topic) => refused(['discussion', EPIC, topic])), [
+      `the topic "removal" is cancelled — reactivating it goes through ${through}`,
+      `the topic "widgets" is postponed to the roadmap — pulling it forward goes through ${through}`,
+      'the topic "reports" is postponed, and its roadmap item has gone to another epic — it stays postponed here, with no way back',
+      `the topic "sync" is decided — it reopens through a message sent to it, or through ${through}`,
+    ]);
+  });
+
+  it('a start the topic\'s own rules refuse leaves no position and no presence behind', () => {
+    const refusing = { discussion: { ...ENTRIES.discussion, start: () => { throw new Error('the start refuses'); } } };
+    assert.throws(() => withEnv(env(), () => enterThrough(refusing, dir, ['discussion', EPIC, 'onboarding'])), { message: 'the start refuses' });
+    assert.strictEqual(position(), null, 'no position');
+    assert.strictEqual(presence(EPIC, 'onboarding'), null, 'no presence beat');
+  });
+});
+
+describe('a phase entered at the work unit', () => {
+  /** A unit-level row, in this suite alone: it starts by marking the unit's manifest. */
+  const UNIT = Object.freeze({
+    specification: {
+      level: /** @type {'unit'} */ ('unit'),
+      standing: () => null,
+      unstarted: (/** @type {{manifest: Record<string, any>}} */ { manifest }) => manifest.description !== 'started',
+      start: (/** @type {string} */ cwd, /** @type {string} */ unit) => {
+        writeState(cwd, layout.manifest(unit), JSON.stringify({ ...readManifest(cwd, unit), description: 'started' }, null, 2));
+      },
+      questions: () => [],
+      reads: () => [],
+      log: (/** @type {{unit: string}} */ { unit }) => `${unit}/log.md`,
+    },
+  });
+
+  /** An entry through the unit-level table, in this process as the conversation runs it. @param {string[]} args */
+  const enterUnit = (args) => withEnv(env(), () => enterThrough(UNIT, dir, args));
+
+  it('enters at no topic once the spec exists, its start committed under the unit, the place the unit itself', () => {
+    const { response } = enterUnit(['specification', 'specced']);
+    assert.deepStrictEqual(response, { phase: 'specification', unit: 'specced', entered: true, started: true, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
+    assert.strictEqual(lastMessage(dir), 'specification(specced): start');
+    assert.deepStrictEqual(position(), { name: 'specced', phase: 'specification', topic: 'specced' });
+  });
+
+  it('refuses a topic named, naming the call that enters it', () => {
+    assert.throws(() => enterUnit(['specification', EPIC, 'onboarding']), { message: `specification is entered at the work unit — name no topic: engine enter specification ${EPIC}` });
+    assert.strictEqual(position(), null);
+  });
+});
+
+describe('a place another live session holds (18.4.21)', () => {
+  it('asks first, naming when that session was last active, and writes nothing — no start, no position, its hold left as it stands', () => {
+    runAs(dir, ['presence', 'beat', EPIC, 'discussion', 'onboarding'], 'peer', PEER);
+    const held = presence(EPIC, 'onboarding');
+    const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
+    const { res, sections } = enter(['discussion', EPIC, 'onboarding']);
+    assert.deepStrictEqual(res, { ok: true, phase: 'discussion', unit: EPIC, topic: 'onboarding', entered: false });
+    assert.match(sections, /^=== MENU: held topic gate /);
+    assert.match(sections, /"Onboarding" is open in another session — last active \d+s ago\./);
+    assert.doesNotMatch(sections, /=== DATA/);
+    assert.deepStrictEqual([readManifest(dir, EPIC).phases.discussion.items.onboarding, stateGit(dir, ['rev-parse', 'HEAD']).trim(), position(), presence(EPIC, 'onboarding')], [undefined, head, null, held]);
+  });
+
+  it('proceeding is the entry again with --take, which takes the hold and enters; leaving it goes back to the epic\'s menu', () => {
+    runAs(dir, ['presence', 'beat', EPIC, 'discussion', 'onboarding'], 'peer', PEER);
+    enter(['discussion', EPIC, 'onboarding']);
+    const { next } = ok(dir, ['gate', 'held topic gate', '--pick', 'y'], { env: env() });
+    assert.deepStrictEqual(next, { kind: 'engine', argv: ['enter', 'discussion', EPIC, 'onboarding', '--take'] });
+    const { res } = enter(next.argv.slice(1));
+    assert.deepStrictEqual([res.entered, res.started, presence(EPIC, 'onboarding')?.session_id, position()], [true, true, 'sess-1', { name: EPIC, phase: 'discussion', topic: 'onboarding' }]);
+    enter(['discussion', EPIC, 'licence']);
+    runAs(dir, ['presence', 'beat', EPIC, 'discussion', 'licence'], 'peer', PEER);
+    enter(['discussion', EPIC, 'licence']);
+    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'n'], { env: env() }).next, { kind: 'handoff', skill: 'ledger-continue-epic', args: [EPIC] });
+  });
+
+  it('a move from the product\'s conversation into an epic\'s discovery another session holds stays a move past the question', () => {
+    enter(['discovery', 'product']);
+    runAs(dir, ['presence', 'beat', EPIC, 'discovery', EPIC], 'peer', PEER);
+    assert.strictEqual(enter(['discovery', EPIC, '--move']).res.entered, false);
+    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'y'], { env: env() }).next.argv, ['enter', 'discovery', EPIC, '--take', '--move']);
+  });
+
+  it('a single-topic unit has no menu to go back to: leaving it carries on, to the end of the turn', () => {
+    runAs(dir, ['presence', 'beat', FEATURE, 'discussion', FEATURE], 'peer', PEER);
+    assert.strictEqual(enter(['discussion', FEATURE]).res.entered, false);
+    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'n'], { env: env() }).next, { kind: 'continue' });
+  });
+
+  it('a hold of this conversation\'s own, or of a process gone, asks nothing', () => {
+    enter(['discussion', EPIC, 'licence']);
+    assert.strictEqual(enter(['discussion', EPIC, 'licence']).res.entered, true);
+    runAs(dir, ['presence', 'beat', EPIC, 'discussion', 'licence'], 'peer', GONE);
+    assert.strictEqual(enter(['discussion', EPIC, 'licence']).res.entered, true);
+  });
+});
+
+describe('a topic not yet started', () => {
+  it('starts it and commits the start, writing nothing ahead of its opening (9.3.1)', () => {
+    const before = stateGit(dir, ['rev-parse', 'HEAD']).trim();
+    const { res } = enter(['discussion', EPIC, 'onboarding']);
+    assert.deepStrictEqual(res, {
+      ok: true, phase: 'discussion', unit: EPIC, topic: 'onboarding', entered: true, started: true, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(),
+    });
+    assert.deepStrictEqual(readManifest(dir, EPIC).phases.discussion.items.onboarding, { status: 'in-progress' });
+    assert.strictEqual(lastMessage(dir), `discussion(${EPIC}): start onboarding`);
+    assert.deepStrictEqual(stateGit(dir, ['diff', '--name-only', before, 'HEAD']).trim().split('\n'), [layout.manifest(EPIC)]);
+    assert.deepStrictEqual(fs.readdirSync(at(layout.topic(EPIC, 'onboarding'))), ['brief.md'], 'nothing under the topic\'s folder but its brief');
+  });
+
+  it('holds the writer lock around the start: a live holder keeps the topic unstarted until it lets go', (t) => {
+    const lock = holdLock(at(layout.lock));
+    /** @type {unknown[]} */
+    const whileHeld = [];
+    const attempts = lockAttempts(t, lock, () => {
+      whileHeld.push(readManifest(dir, EPIC).phases.discussion.items.onboarding);
+      fs.unlinkSync(lock);
+    });
+    enter(['discussion', EPIC, 'onboarding']);
+    assert.deepStrictEqual([attempts, whileHeld], [['taken', 'made'], [undefined]]);
+  });
+
+  it('a feature\'s topic is the unit itself, named or not', () => {
+    assert.strictEqual(enter(['discussion', FEATURE]).res.topic, FEATURE);
+    assert.deepStrictEqual(enter(['discussion', FEATURE, FEATURE]).res, { ok: true, phase: 'discussion', unit: FEATURE, topic: FEATURE, entered: true, started: false });
+  });
+});
+
+describe('a topic under way', () => {
+  it('resumes it, taking no lock and committing nothing', (t) => {
+    const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
+    const attempts = lockAttempts(t, holdLock(at(layout.lock)), () => {
+      throw new Error('the resume tried the writer lock');
+    });
+    assert.deepStrictEqual(enter(['discussion', EPIC, 'licence']).res, { ok: true, phase: 'discussion', unit: EPIC, topic: 'licence', entered: true, started: false });
+    assert.deepStrictEqual([attempts, stateGit(dir, ['rev-parse', 'HEAD']).trim()], [[], head]);
+  });
+});
+
+describe('where the conversation is working', () => {
+  it('records the position at the topic, and moves it when another topic is entered — one topic at a time (9.S42)', () => {
+    enter(['discussion', EPIC, 'onboarding']);
+    assert.deepStrictEqual(position(), { name: EPIC, phase: 'discussion', topic: 'onboarding' });
+    enter(['discussion', EPIC, 'licence']);
+    assert.deepStrictEqual(position(), { name: EPIC, phase: 'discussion', topic: 'licence' });
+  });
+
+  it('records when it entered the place, beside its presence, afresh at each entry — the product\'s conversation at product/discovery/product — and nothing on an entry that asks first', (t) => {
+    /** The place entered, `args`, the clock at `ms`. @param {string[]} args @param {number} ms */
+    const enterAt = (args, ms) => {
+      t.mock.timers.enable({ apis: ['Date'], now: ms });
+      try {
+        return enter(args);
+      } finally {
+        t.mock.timers.reset();
+      }
+    };
+    /** When the place was last entered, as recorded; null where it is not. @param {string} unit @param {string} phase @param {string} topic */
+    const entered = (unit, phase, topic) => {
+      try { return JSON.parse(fs.readFileSync(at(layout.cache(unit, phase, topic, 'entered.json')), 'utf8')); } catch { return null; }
+    };
+    const later = Date.parse(FROZEN_AT) + 60 * 60 * 1000;
+
+    enterAt(['discussion', EPIC, 'licence'], Date.parse(FROZEN_AT));
+    const first = entered(EPIC, 'discussion', 'licence');
+    enterAt(['discussion', EPIC, 'licence'], later);
+    enterAt(['discovery', 'product'], later);
+    runAs(dir, ['presence', 'beat', EPIC, 'discussion', 'onboarding'], 'peer', PEER);
+    const asked = enter(['discussion', EPIC, 'onboarding']).res.entered;
+
+    assert.deepStrictEqual([first, entered(EPIC, 'discussion', 'licence'), entered('product', 'discovery', 'product')], [{ at: FROZEN_AT }, { at: new Date(later).toISOString() }, { at: new Date(later).toISOString() }]);
+    assert.deepStrictEqual([asked, entered(EPIC, 'discussion', 'onboarding')], [false, null]);
+  });
+
+  it('beats the topic\'s presence as this process\'s', () => {
+    enter(['discussion', EPIC, 'licence']);
+    assert.deepStrictEqual(ok(dir, ['presence', 'scan', EPIC], { env: env() }).sessions.map((s) => [s.phase, s.topic, s.held, s.session_id, s.pid]), [['discussion', 'licence', true, 'sess-1', process.pid]]);
+  });
+});
+
+describe('the answer', () => {
+  it('any question comes before the DATA naming what to read (2.S13)', () => {
+    const question = '=== DISPLAY: mail (emit verbatim as markdown) ===\n1 message waiting\n';
+    assert.strictEqual(entrySections([question], [['log', '/a/log.md']]), `${question}${data(['log: /a/log.md'])}`);
+  });
+
+  it('an opening reads the brief, the record of each topic decided so far, the product record with what discovery found of the product, the unit and the topic, and the unit\'s spikes, then names the log (9.3.6, 9.3.12)', () => {
+    transcript('sess-1');
+    const { sections } = withFrozenClock(() => enter(['discussion', EPIC, 'onboarding']));
+    assert.strictEqual(sections, data([
+      `brief: ${at(layout.brief(EPIC, 'onboarding'))}`,
+      `decided: \`${ENGINE} ledger record ${EPIC} sync\``,
+      `product: \`${ENGINE} ledger product ${EPIC} onboarding\``,
+      `spike: ${at(layout.unit(EPIC, 'spikes', '001-first-run'))}`,
+      `log: ${at(layout.topic(EPIC, 'onboarding', 'log.md'))}`,
+      `log header: ## ${TODAY} · session sess-1 · transcript ${path.join(claude, 'projects', '-Users-person-fumi', 'sess-1.jsonl')}`,
+    ]));
+  });
+
+  it('the record of the person is named between the reads and the log wherever its file stands — care entries alone, care entries that do not read, a newer release\'s — and never read, so no record refuses an entry; none while it has no file (E17, 16.18.4)', () => {
+    transcript('sess-1');
+    const record = path.join(config, 'person.md');
+    const first = withFrozenClock(() => enter(['discussion', EPIC, 'onboarding'])).sections;
+    assert.ok(!first.includes('person: '), 'a record with no file was named');
+    const records = [
+      `# The record of you\n\n## Care entries\n\n- Fumi: look · ${'Fumi'.padEnd(21, '0')} · 2026-01-01T00:00:00.000Z\n`,
+      '# The record of you\n\n## Care entries\n\n- Fumi: look\n',
+      '<!-- Ledger: the record of you, version 9 -->\n\nAnything at all\n',
+    ];
+
+    for (const text of records) {
+      fs.writeFileSync(record, text);
+      const { sections } = withFrozenClock(() => enter(['discussion', EPIC, 'onboarding']));
+      assert.ok(sections.includes(`\naffected: \`${ENGINE} ledger affected ${EPIC} onboarding\`\nperson: ${record}\nlog: ${at(layout.topic(EPIC, 'onboarding', 'log.md'))}\n`), sections);
+    }
+  });
+
+  it('a unit\'s one topic reads discovery\'s log and the unit\'s seeds (8.7.7)', () => {
+    const { sections } = withFrozenClock(() => enter(['discussion', FEATURE]));
+    assert.strictEqual(sections, data([
+      `discovery log: ${at(layout.session(FEATURE, '001'))}`,
+      `seed: ${at(layout.unit(FEATURE, 'seeds', 'idea.md'))}`,
+      `product: \`${ENGINE} ledger product ${FEATURE} ${FEATURE}\``,
+      `log: ${at(layout.topic(FEATURE, FEATURE, 'log.md'))}`,
+      `log header: ## ${TODAY} · session sess-1`,
+    ]));
+  });
+
+  it('an epic\'s topic postponed in another epic and pulled here reads at its first opening the record it left there — its brief, its ledger record, its log and its mail — and a resume reads it no more (18.8.17)', () => {
+    const manifest = readManifest(dir, EPIC);
+    manifest.phases.discovery.items.onboarding.prior = { work_unit: 'older', topic: 'billing' };
+    writeState(dir, layout.manifest(EPIC), JSON.stringify(manifest, null, 2));
+    writeState(dir, layout.brief('older', 'billing'), '# Billing\n');
+    writeState(dir, layout.topic('older', 'billing', 'log.md'), '## 2026-01-01 · session old\n');
+    writeState(dir, layout.mailbox('older', 'billing', '001-tax.md'), 'Tax\nFrom Discovery · 1 Jan\n\nWhich tax?\n');
+    commitAll(dir, 'pulled from older');
+    const earlier = [
+      `earlier brief: ${at(layout.brief('older', 'billing'))}`,
+      `earlier record: \`${ENGINE} ledger earlier older billing\``,
+      `earlier log: ${at(layout.topic('older', 'billing', 'log.md'))}`,
+      `earlier mail: ${at(layout.mailbox('older', 'billing', '001-tax.md'))}`,
+    ];
+    const opening = withFrozenClock(() => enter(['discussion', EPIC, 'onboarding'])).sections;
+    assert.ok(opening.includes(`${[`spike: ${at(layout.unit(EPIC, 'spikes', '001-first-run'))}`, ...earlier].join('\n')}\n`), opening);
+    const resume = withFrozenClock(() => enter(['discussion', EPIC, 'onboarding'])).sections;
+    assert.ok(!resume.includes('earlier'), resume);
+    assert.strictEqual(readState(dir, layout.brief('older', 'billing')), '# Billing\n', 'the earlier record is read, never changed');
+  });
+
+  it('a unit\'s one topic reads the earlier record of the roadmap item it was started from, which an epic postponed (18.8.17)', () => {
+    const project = JSON.parse(readState(dir, layout.projectManifest));
+    project.roadmap.items.widgets.pulled_to = { work_unit: FEATURE };
+    writeState(dir, layout.projectManifest, JSON.stringify(project, null, 2));
+    writeState(dir, layout.topic(EPIC, 'widgets', 'log.md'), '## 2026-01-01 · session old\n');
+    commitAll(dir, 'widgets started as a feature');
+    const { sections } = withFrozenClock(() => enter(['discussion', FEATURE]));
+    assert.ok(sections.includes([
+      `product: \`${ENGINE} ledger product ${FEATURE} ${FEATURE}\``,
+      `earlier record: \`${ENGINE} ledger earlier ${EPIC} widgets\``,
+      `earlier log: ${at(layout.topic(EPIC, 'widgets', 'log.md'))}`,
+      `log: ${at(layout.topic(FEATURE, FEATURE, 'log.md'))}`,
+    ].join('\n')), sections);
+  });
+
+  it('a resume adds the topic\'s own record, its map and the entries a replacement changed under it, and the agents a process now gone left: the report landed since, the agent lost with it — one of its own still running neither (9.S13, 24.S11, 9.3.6, 9.7.8)', () => {
+    ok(dir, ['agent', 'dispatch', EPIC, 'discussion', 'licence', '--kind', 'deep-dive', '--label', 'mine'], { env: env() });
+    const { sections } = withFrozenClock(() => enter(['discussion', EPIC, 'licence']));
+    assert.strictEqual(sections, data([
+      `decided: \`${ENGINE} ledger record ${EPIC} sync\``,
+      `product: \`${ENGINE} ledger product ${EPIC} licence\``,
+      `spike: ${at(layout.unit(EPIC, 'spikes', '001-first-run'))}`,
+      `record: \`${ENGINE} ledger record ${EPIC} licence\``,
+      `map: \`${ENGINE} ledger map ${EPIC} licence\``,
+      `affected: \`${ENGINE} ledger affected ${EPIC} licence\``,
+      `landed: ${at(layout.cache(EPIC, 'discussion', 'licence', 'deep-dive-001-landed.md'))}`,
+      'lost: deep-dive-002-lost',
+      `log: ${at(layout.topic(EPIC, 'licence', 'log.md'))}`,
+      `log header: ## ${TODAY} · session sess-1`,
+    ]));
+  });
+
+  it('a topic with mail waiting opens on it: each message headed by the line naming its sender, its title over the rest, raised before anything is read, and named first in what to read (10.S3, 10.4.2, 2.S18)', () => {
+    writeState(dir, layout.mailbox(EPIC, 'licence', '001-lost-key.md'), '# The licence window carries a "Lost your key?" link\nFrom Commercialization · 16 Oct\n\n↳ Their reasoning: a new Mac has no key to hand.\n');
+    writeState(dir, layout.mailbox(EPIC, 'licence', '002-trial.md'), 'A trial runs fourteen days\nFrom Onboarding · 17 Oct\n');
+    const { sections } = enter(['discussion', EPIC, 'licence']);
+    const [mail, reads] = sections.split(/(?==== DATA )/);
+    assert.strictEqual(mail, [
+      '=== DISPLAY: waiting mail (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===',
+      '2 messages waiting — raised before anything else',
+      '',
+      'From Commercialization · 16 Oct',
+      'The licence window carries a "Lost your key?" link',
+      '  ↳ Their reasoning: a new Mac has no key to hand.',
+      '',
+      'From Onboarding · 17 Oct',
+      'A trial runs fourteen days',
+      '',
+    ].join('\n'));
+    assert.deepStrictEqual(reads.split('\n').slice(1, 3), [
+      `mail: ${at(layout.mailbox(EPIC, 'licence', '001-lost-key.md'))}`, `mail: ${at(layout.mailbox(EPIC, 'licence', '002-trial.md'))}`,
+    ]);
+  });
+
+  it('a conversation resumed under its own session id, the process that dispatched its agent gone: the agent is lost', () => {
+    runAs(dir, ['agent', 'dispatch', EPIC, 'discussion', 'licence', '--kind', 'deep-dive', '--label', 'crashed'], 'sess-1', GONE);
+    assert.match(enter(['discussion', EPIC, 'licence']).sections, /^lost: deep-dive-003-crashed$/m);
+  });
+
+  it('a live peer\'s agents are its own: neither landed nor lost', () => {
+    for (const label of ['running', 'reported']) runAs(dir, ['agent', 'dispatch', EPIC, 'discussion', 'licence', '--kind', 'deep-dive', '--label', label], 'peer', PEER);
+    writeState(dir, layout.cache(EPIC, 'discussion', 'licence', 'deep-dive-004-reported.md'), '# Findings\n');
+    const { sections } = enter(['discussion', EPIC, 'licence', '--take']);
+    assert.deepStrictEqual(sections.match(/^(landed|lost): .*$/gm), [`landed: ${at(layout.cache(EPIC, 'discussion', 'licence', 'deep-dive-001-landed.md'))}`, 'lost: deep-dive-002-lost']);
+  });
+
+  it('a report already read in is neither landed nor lost', () => {
+    ok(dir, ['agent', 'scan', EPIC, 'discussion', 'licence'], { env: env() });
+    ok(dir, ['agent', 'ack', EPIC, 'discussion', 'licence', 'deep-dive-001-landed', '--clean'], { env: env() });
+    assert.doesNotMatch(enter(['discussion', EPIC, 'licence']).sections, /^landed:/m);
+  });
+
+  it('the log\'s header line is owed until the log\'s last conversation line is the conversation\'s own, again once another has written since, and each conversation is owed its own (9.S67)', () => {
+    const header = (/** @type {string|null} */ sessionId) => enter(['discussion', EPIC, 'licence'], sessionId).sections.match(/^log header: (.*)$/m)?.[1] ?? null;
+    const first = withFrozenClock(() => header('sess-1'));
+    assert.strictEqual(first, `## ${TODAY} · session sess-1`);
+    writeState(dir, layout.topic(EPIC, 'licence', 'log.md'), `${first}\n\nWhat we talked about.\n`);
+    assert.strictEqual(header('sess-1'), null, 'the log names the conversation');
+    const second = withFrozenClock(() => header('sess-2'));
+    assert.strictEqual(second, `## ${TODAY} · session sess-2`);
+    fs.appendFileSync(at(layout.topic(EPIC, 'licence', 'log.md')), `\n${second}\n\nMore of it.\n`);
+    assert.strictEqual(withFrozenClock(() => header('sess-1')), `## ${TODAY} · session sess-1`, 'another conversation having written since, the line is owed again');
+    assert.strictEqual(header(null), null, 'no session id names none');
+  });
+});
+
+/** The project manifest, with `fields` set over what it holds. @param {Record<string, unknown>} fields */
+function project(fields) {
+  writeState(dir, layout.projectManifest, JSON.stringify({ ...JSON.parse(readState(dir, layout.projectManifest)), ...fields }, null, 2));
+}
+
+/** The files the state's last commit touched, sorted. */
+function committedFiles() {
+  return stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
+}
+
+/** The state's head, short. */
+const shortHead = () => stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim();
+
+/** A level move that must refuse, writing nothing and leaving the position where it was: its error. @param {string[]} args */
+function moveRefused(args) {
+  const before = position();
+  const { error } = refusedPristine(dir, ['enter', ...args], { env: env() });
+  assert.deepStrictEqual(position(), before, `engine enter ${args.join(' ')} moved the position on refusing`);
+  return error;
+}
+
+/** A skill's `## Entering` section. @param {string} skill */
+function entering(skill) {
+  const text = fs.readFileSync(path.join(__dirname, '../../skills', skill, 'SKILL.md'), 'utf8');
+  const at = text.indexOf('\n## Entering\n');
+  return text.slice(at, text.indexOf('\n## ', at + 1));
+}
+
+describe('what a move carries, read by the skill a topic opens in (19.5.16, R26)', () => {
+  it('every key a move\'s carry is read by is read where the topic opens, in the discussion and the investigation: an `earlier` one in full as input never changed, and each piece of work kept named to the person', () => {
+    const kept = [CARRIED.branch, CARRIED.work];
+    const earlier = Object.values(CARRIED).filter((key) => !kept.includes(key));
+
+    assert.ok(earlier.every((key) => key.startsWith('earlier ')), 'every carried file is read as an `earlier` key');
+    for (const skill of ['ledger-discussion-process', 'ledger-investigation-process']) {
+      const text = entering(skill);
+      assert.ok(text.includes('read what the DATA names, each in full, an `earlier` one as input never changed'), `${skill} reads every key the DATA names`);
+      assert.deepStrictEqual(kept.filter((key) => !text.includes(`\`${key}\``)), [], `${skill} names each piece of work kept`);
+    }
+  });
+});
+
+describe('discovery: what cannot be entered (8.6.5, 8.2.11)', () => {
+  it('a feature, a bugfix or a quick-fix, whose discovery ended at start this work: its work carries on from the start menu', () => {
+    const ended = 'its discovery ended at start this work: carry on its work where it stands, from the start menu';
+    assert.deepStrictEqual([FEATURE, 'crash', 'tweak'].map((unit) => refused(['discovery', unit])), [
+      `${FEATURE} is a feature — ${ended}`, `crash is a bugfix — ${ended}`, `tweak is a quick-fix — ${ended}`,
+    ]);
+  });
+
+  it('an epic past its spec, entered or moved to: its talk belongs in the product\'s conversation (8.S71)', () => {
+    const closed = 'built has its spec, so its map is closed — talk about it belongs in the product\'s conversation, where what comes of it lands as roadmap items: engine enter discovery product';
+    assert.deepStrictEqual([refused(['discovery', 'built']), refused(['discovery', 'built', '--move'])], [closed, closed]);
+  });
+
+  it('a topic named, at the product or an epic; and a row the product does not enter reads it as no unit', () => {
+    assert.deepStrictEqual([refused(['discovery', 'product', 'pricing']), refused(['discovery', EPIC, 'onboarding']), refused(['discussion', 'product', 'pricing'])], [
+      'discovery is entered at the product — name no topic: engine enter discovery product',
+      `discovery is entered at the work unit — name no topic: engine enter discovery ${EPIC}`,
+      'there is no work unit "product" — the start menu lists the work in progress',
+    ]);
+  });
+});
+
+describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
+  it('a first entry opens the next session and commits it, writes the conversation\'s line into its log, and reads the two latest logs, the roadmap, the product record and whether research is owed, with no question first (8.S1, 8.S69, 8.S75)', () => {
+    const file = transcript('sess-1');
+    const { res, sections } = withFrozenClock(() => enter(['discovery', 'product']));
+    assert.deepStrictEqual(res, { ok: true, phase: 'discovery', unit: 'product', entered: true, started: true, committed: shortHead() });
+    assert.deepStrictEqual([lastMessage(dir), committedFiles()], ['discovery(product): start', [layout.productSession('003'), layout.projectManifest].sort()]);
+    assert.strictEqual(JSON.parse(readState(dir, layout.projectManifest)).product_session, '003');
+    assert.strictEqual(readState(dir, layout.productSession('003')), `## ${TODAY} · session sess-1 · transcript ${file}\n`);
+    assert.strictEqual(sections, data([
+      `session log: ${at(layout.productSession('001'))}`,
+      `session log: ${at(layout.productSession('002'))}`,
+      `roadmap: \`${ENGINE} roadmap state\``,
+      `product: \`${ENGINE} ledger product\``,
+      'research owed: no',
+      payloadAt('sess-1'),
+      `log: ${at(layout.productSession('003'))}`,
+    ]));
+    assert.deepStrictEqual([position(), presence('product', 'product', 'discovery')?.session_id], [{ name: 'product' }, 'sess-1']);
+    assert.ok(!fs.existsSync(at('product')), 'the product has no unit');
+  });
+
+  it('18.S60: a start from seeds reads the seeds and only those — each inbox item, each roadmap item\'s note and the logs its other sources point at — and no session log; a return with none reads the two latest holding talk, a log opened and said nothing in never pushing the talk out (8.2.10, 18.8.15)', () => {
+    const idea = '.ledger/.inbox/ideas/2026-01-03--dark-mode.md';
+    writeState(dir, '.inbox/ideas/2026-01-03--dark-mode.md', '# Dark mode\n');
+    writeState(dir, '.product/notes/2026-01-02--pinned.md', '# Pinned above every window\n');
+    project({ roadmap: { horizons: ['next'], items: {
+      pinned: { horizon: 'next', summary: 'pinned above every window', kind: 'idea', origin: 'inbox:2026-01-02--pinned', sources: ['.product/notes/2026-01-02--pinned.md', layout.productSession('001')] },
+    } } });
+    const seeded = enter(['discovery', 'product', '--seeds', `${idea},roadmap:pinned`]).sections;
+    assert.strictEqual(seeded, data([
+      `seed: ${at('.inbox/ideas/2026-01-03--dark-mode.md')}`,
+      'roadmap seed: pinned',
+      `note: ${at('.product/notes/2026-01-02--pinned.md')}`,
+      `source: ${at(layout.productSession('001'))}`,
+      `roadmap: \`${ENGINE} roadmap state\``,
+      `product: \`${ENGINE} ledger product\``,
+      'research owed: no',
+      payloadAt('sess-1'),
+      `log: ${at(layout.productSession('003'))}`,
+    ]));
+    const read = () => enter(['discovery', 'product']).sections.match(/^session log: .*$/gm);
+    const logs = (/** @type {string[]} */ ...numbers) => numbers.map((n) => `session log: ${at(layout.productSession(n))}`);
+    const opened = read();
+    fs.appendFileSync(at(layout.productSession('003')), '\nDark mode first.\n');
+    assert.deepStrictEqual([opened, read()], [logs('001', '002'), logs('002', '003')]);
+  });
+
+  describe('once the conversation has written its picture', () => {
+    const PICTURE = '# Where the product stands\n';
+    beforeEach(() => writeState(dir, layout.productPicture, PICTURE));
+
+    it('a return reads the picture in full and the latest closed log by its closing line — the prose under a fixed heading its closing line, never an entry there — in place of the latest logs in full', () => {
+      writeState(dir, layout.productSession('002'), '## 2026-01-02 · session second\n\nPricing.\n\n## Not taken\n\n- A web client — the Mac is the product\n\nWhere it got to: pockets small, pricing next.\n\n## Views of the product\n\n- One-time pricing\n');
+      assert.strictEqual(enter(['discovery', 'product']).sections, data([
+        `picture: ${at(layout.productPicture)}`,
+        `latest sitting: ${at(layout.productSession('002'))} — Where it got to: pockets small, pricing next.`,
+        `roadmap: \`${ENGINE} roadmap state\``,
+        `product: \`${ENGINE} ledger product\``,
+        'research owed: no',
+        payloadAt('sess-1'),
+        `log: ${at(layout.productSession('003'))}`,
+      ]));
+    });
+
+    /** Each of `units`, `[name, type, created]`, made and registered. @param {[string, string, string][]} units */
+    function started(units) {
+      const project = JSON.parse(readState(dir, layout.projectManifest));
+      for (const [unit, type, created] of units) {
+        createManifest(dir, unit, { work_type: type, created });
+        project.work_units = { ...project.work_units, [unit]: { work_type: type } };
+      }
+      writeState(dir, layout.projectManifest, JSON.stringify(project, null, 2));
+    }
+
+    it('a return names each unit started since the latest closed sitting\'s first conversation began — on its day or after, whichever door started it — with what it carries, and none from before it', () => {
+      writeState(dir, layout.productSession('002'), '## 2026-01-02 · session second\n\nPricing.\n\n## 2026-01-04 · session third\n\nGifting.\n');
+      started([['old-work', 'feature', '2026-01-01'], ['gifting', 'epic', '2026-01-03'], ['payouts', 'epic', '2026-01-04'], ['saved-filters', 'feature', '2026-01-04'], ['pricing-page', 'quick-fix', '2026-01-05']]);
+      writeState(dir, layout.fromBefore('gifting'), '# From before\n\n- D5: Gifts expire (planning/decision-log.md)\n');
+      writeState(dir, layout.session('payouts', '001'), '## 2026-01-04 · session one\n');
+      writeState(dir, layout.brief('saved-filters', 'saved-filters'), '# Saved filters\n');
+
+      assert.deepStrictEqual(enter(['discovery', 'product']).sections.match(/^started since: .*$/gm), [
+        `started since: gifting epic — ${at(layout.fromBefore('gifting'))}`,
+        `started since: payouts epic — ${at(layout.session('payouts', '001'))}`,
+        `started since: saved-filters feature — ${at(layout.brief('saved-filters', 'saved-filters'))}`,
+        'started since: pricing-page quick-fix — its description: Test: pricing-page',
+      ]);
+    });
+
+    it('with no sitting closed, a return to the one held open names each unit started since its first conversation began, one that carries nothing yet by its name alone', () => {
+      writeState(dir, layout.productSession('001'), '## 2026-01-01 · session first\n');
+      writeState(dir, layout.productSession('002'), '## 2026-01-01 · session second\n');
+      withFrozenClock(() => enter(['discovery', 'product']));
+      fs.appendFileSync(at(layout.productSession('003')), '\nGifting, sent between shops.\n');
+      started([['old-work', 'feature', '2025-12-31'], ['gifting', 'epic', TODAY]]);
+
+      assert.deepStrictEqual(enter(['discovery', 'product'], 'sess-2').sections.match(/^started since: .*$/gm), ['started since: gifting epic']);
+    });
+
+    it('carrying on the open sitting another conversation left reads that log in full beside the picture, the latest closed log by its closing line, and the catch-up brings the picture up to date with the log', () => {
+      const first = transcript('sess-1');
+      enter(['discovery', 'product']);
+      fs.appendFileSync(at(layout.productSession('003')), '\nPricing tiers, leaning three.\n');
+      ends('sess-1');
+      assert.strictEqual(enter(['discovery', 'product'], 'sess-2').sections, data([
+        `picture: ${at(layout.productPicture)}`,
+        `latest sitting: ${at(layout.productSession('002'))} — Pricing.`,
+        `session log: ${at(layout.productSession('003'))}`,
+        `roadmap: \`${ENGINE} roadmap state\``,
+        `product: \`${ENGINE} ledger product\``,
+        'research owed: no',
+        payloadAt('sess-2'),
+        `catch up: read ${first} from the log's last write onward, and add to the log and the picture what they are missing`,
+        `log: ${at(layout.productSession('003'))}`,
+      ]));
+      ends('sess-2');
+      assert.match(enter(['discovery', 'product'], 'sess-3').sections,
+        /^catch up: the transcript of session sess-2, which last wrote the log, is gone — say so in one line, and carry on from the log, bringing the picture up to date from it$/m);
+    });
+
+    it('a start from seeds reads the seeds beside the picture, and a type call the picture with the seeds, the roadmap and the inbox, to read and never write', () => {
+      const idea = '.ledger/.inbox/ideas/2026-01-03--dark-mode.md';
+      writeState(dir, '.inbox/ideas/2026-01-03--dark-mode.md', '# Dark mode\n');
+      const seeded = enter(['discovery', 'product', '--seeds', idea]).sections;
+      const called = enter(['discovery', 'product', '--type-call', '--seeds', idea], 'caller').sections;
+      assert.deepStrictEqual([seeded, called], [data([
+        `seed: ${at('.inbox/ideas/2026-01-03--dark-mode.md')}`,
+        `picture: ${at(layout.productPicture)}`,
+        `roadmap: \`${ENGINE} roadmap state\``,
+        `product: \`${ENGINE} ledger product\``,
+        'research owed: no',
+        payloadAt('sess-1'),
+        `log: ${at(layout.productSession('003'))}`,
+      ]), data([
+        `seed: ${at('.inbox/ideas/2026-01-03--dark-mode.md')}`,
+        `picture: ${at(layout.productPicture)}`,
+        `roadmap: \`${ENGINE} roadmap state\``,
+        `inbox: ${at('.inbox')}`,
+        payloadAt('caller'),
+      ])]);
+      assert.strictEqual(readState(dir, layout.productPicture), PICTURE);
+    });
+  });
+
+  it('8.2.9: a piece of work\'s type call, with another live session in the product\'s conversation, asks nothing first and opens, writes, commits and records nothing — no session, no position, no presence, the other\'s hold left as it stands — and reads the roadmap and the live inbox, and the seeds where it starts from any; refused at an epic, writing nothing', () => {
+    runAs(dir, ['presence', 'beat', 'product', 'discovery', 'product'], 'peer', PEER);
+    const held = presence('product', 'product', 'discovery', 'peer');
+    const [head, manifest] = [stateGit(dir, ['rev-parse', 'HEAD']).trim(), readState(dir, layout.projectManifest)];
+    const called = enter(['discovery', 'product', '--type-call']);
+    const idea = '.ledger/.inbox/ideas/2026-01-03--dark-mode.md';
+    writeState(dir, '.inbox/ideas/2026-01-03--dark-mode.md', '# Dark mode\n');
+    const seeded = enter(['discovery', 'product', '--type-call', '--seeds', idea]).sections;
+    assert.deepStrictEqual(called, { res: { ok: true, phase: 'discovery', unit: 'product', entered: true, started: false }, sections: data([
+      `roadmap: \`${ENGINE} roadmap state\``,
+      `inbox: ${at('.inbox')}`,
+      payloadAt('sess-1'),
+    ]) });
+    assert.strictEqual(seeded, data([`seed: ${at('.inbox/ideas/2026-01-03--dark-mode.md')}`, `roadmap: \`${ENGINE} roadmap state\``, `inbox: ${at('.inbox')}`, payloadAt('sess-1')]));
+    assert.deepStrictEqual([stateGit(dir, ['rev-parse', 'HEAD']).trim(), readState(dir, layout.projectManifest), fs.existsSync(at(layout.productSession('003')))], [head, manifest, false]);
+    assert.deepStrictEqual([position(), presence('product', 'product', 'discovery', 'peer')], [null, held]);
+    assert.strictEqual(refused(['discovery', EPIC, '--type-call']), `the type call is the product's, for work not yet started — "${EPIC}" is started: enter discovery ${EPIC}`);
+  });
+
+  it('seeds an epic\'s discovery takes in are named to take in (18.8.4); seeds are refused, writing nothing, as the handoff refuses them', () => {
+    project({ roadmap: { horizons: ['next'], items: {
+      loyalty: { horizon: 'next', summary: 'rewards', kind: 'idea', origin: 'harvest' },
+      'colour-drift': { horizon: 'next', summary: 'tag colours drift', kind: 'bug', origin: 'harvest' },
+    } } });
+    assert.deepStrictEqual([
+      refused(['discovery', EPIC, '--seeds', 'roadmap:colour-drift']),
+      refused(['discovery', 'product', '--seeds', 'roadmap:ghost']),
+    ], [
+      'roadmap item "colour-drift" is a bug — only an idea joins an epic; a bug or a quick-fix starts work of its own, through w on the roadmap',
+      'the roadmap has no item "ghost" to seed the work',
+    ]);
+    assert.match(enter(['discovery', EPIC, '--seeds', 'roadmap:loyalty']).sections, /^take in: loyalty$/m);
+  });
+
+  it('research is owed while the brownfield offer is accepted (8.12.13)', () => {
+    project({ brownfield_offer: 'accepted' });
+    assert.match(enter(['discovery', 'product']).sections, /^research owed: yes$/m);
+  });
+
+  it('a return carries on in the open log — nothing opened, committed or moved on — adding the new conversation\'s line, and names the conversation that left the log for catch-up from its transcript (8.S62, 8.S65, 8.S70)', () => {
+    const first = transcript('sess-1');
+    withFrozenClock(() => enter(['discovery', 'product']));
+    fs.appendFileSync(at(layout.productSession('003')), '\nPricing tiers, leaning three.\n');
+    ends('sess-1');
+    const [head, manifest] = [stateGit(dir, ['rev-parse', 'HEAD']).trim(), readState(dir, layout.projectManifest)];
+    const { res, sections } = withFrozenClock(() => enter(['discovery', 'product'], 'sess-2'));
+    assert.deepStrictEqual(res, { ok: true, phase: 'discovery', unit: 'product', entered: true, started: false });
+    assert.deepStrictEqual([stateGit(dir, ['rev-parse', 'HEAD']).trim(), readState(dir, layout.projectManifest), fs.existsSync(at(layout.productSession('004')))], [head, manifest, false]);
+    assert.strictEqual(readState(dir, layout.productSession('003')), `## ${TODAY} · session sess-1 · transcript ${first}\n\nPricing tiers, leaning three.\n\n## ${TODAY} · session sess-2\n`);
+    assert.strictEqual(sections, data([
+      `session log: ${at(layout.productSession('002'))}`,
+      `session log: ${at(layout.productSession('003'))}`,
+      `roadmap: \`${ENGINE} roadmap state\``,
+      `product: \`${ENGINE} ledger product\``,
+      'research owed: no',
+      payloadAt('sess-2'),
+      `catch up: read ${first} from the log's last write onward, and add to the log what it is missing`,
+      `log: ${at(layout.productSession('003'))}`,
+    ]));
+  });
+
+  it('the conversation that last wrote the log, entering again, writes no second line and has nothing to catch up', () => {
+    enter(['discovery', 'product']);
+    const log = readState(dir, layout.productSession('003'));
+    assert.doesNotMatch(enter(['discovery', 'product']).sections, /^catch up:/m);
+    assert.strictEqual(readState(dir, layout.productSession('003')), log);
+  });
+
+  it('a conversation entering again after another wrote takes its line again, so the log\'s last line names its last writer and the next conversation catches up from that one (8.14.8, 8.S65)', () => {
+    const log = at(layout.productSession('003'));
+    const turns = [['A', 'A wrote.'], ['B', 'B wrote.'], ['A', 'A wrote again, last.']];
+    for (const [sessionId, line] of turns) {
+      enter(['discovery', 'product'], sessionId);
+      fs.appendFileSync(log, `\n${line}\n`);
+      ends(sessionId);
+    }
+    const caughtUp = (/** @type {string} */ sessionId) => {
+      const sections = enter(['discovery', 'product'], sessionId).sections;
+      ends(sessionId);
+      return sections.match(/^catch up: the transcript of session (\S+),/m)?.[1];
+    };
+    assert.deepStrictEqual([caughtUp('B'), caughtUp('C')], ['A', 'B']);
+    assert.deepStrictEqual(readState(dir, layout.productSession('003')).match(/^## .* · session \S+/gm)?.map((line) => line.split(' ').at(-1)), ['A', 'B', 'A', 'B', 'C']);
+  });
+
+  it('a log left by a conversation whose transcript is gone: one line says so (8.S75)', () => {
+    enter(['discovery', 'product'], 'sess-gone');
+    ends('sess-gone');
+    assert.match(enter(['discovery', 'product']).sections,
+      /^catch up: the transcript of session sess-gone, which last wrote the log, is gone — say so in one line, and carry on from the log$/m);
+  });
+
+  it('a conversation live there that did not last write the log holds no catch-up back: the entry catches up from the one that did, once it ended (18.4.21)', () => {
+    enter(['discovery', 'product'], 'writer');
+    fs.appendFileSync(at(layout.productSession('003')), '\nPricing tiers, leaning three.\n');
+    ends('writer');
+    runAs(dir, ['presence', 'beat', 'product', 'discovery', 'product'], 'peer', PEER);
+    assert.match(enter(['discovery', 'product']).sections, /^catch up: the transcript of session writer,/m);
+  });
+
+  describe('a keep from another conversation (8.14.12, 8.14.8)', () => {
+    const LOG = layout.productSession('003');
+    /** A view kept from the conversation `sessionId`, outside the product's. @param {string} sessionId @param {string} view */
+    const keep = (sessionId, view) => ok(dir, ['discovery-log', 'view', 'product', '--text', view], { env: env(sessionId) });
+    /** The conversations the open log names, in order. */
+    const named = () => [...readState(dir, LOG).matchAll(/^## \S+ · session (\S+)/gm)].map(([, sessionId]) => sessionId);
+    /** The conversation an entry is told to catch up from, by its transcript; null where none. @param {string} [sessionId] */
+    const caughtUpFrom = (sessionId) => enter(['discovery', 'product'], sessionId).sections.match(/^catch up: read \S+\/(\S+)\.jsonl from/m)?.[1] ?? null;
+
+    it('writes no line of its own, so the next return catches up from the conversation that talked, never from the keep\'s', () => {
+      transcript('sess-1');
+      transcript('coder');
+      enter(['discovery', 'product']);
+      fs.appendFileSync(at(LOG), '\nPricing tiers, leaning three.\n');
+
+      keep('coder', 'Notes are furniture.');
+      ends('sess-1');
+
+      assert.strictEqual(caughtUpFrom('sess-2'), 'sess-1');
+      assert.deepStrictEqual(named(), ['sess-1', 'sess-2']);
+    });
+
+    it('with the product\'s conversation live in another window, its talk after the keep stays its own: nothing to catch up on its next entry, and once it ends the next conversation catches up from it', () => {
+      transcript('sess-1');
+      transcript('coder');
+      enter(['discovery', 'product']);
+      keep('coder', 'Notes are furniture.');
+      fs.appendFileSync(at(LOG), '\n## Pricing\n\nOne-time.\n');
+
+      assert.strictEqual(caughtUpFrom(), null);
+      ends('sess-1');
+      assert.strictEqual(caughtUpFrom('sess-2'), 'sess-1');
+      assert.deepStrictEqual(named(), ['sess-1', 'sess-2']);
+    });
+
+    it('with the product\'s conversation live in another window, a second joining it has nothing to catch up from it: that one writes its own (18.4.21)', () => {
+      runAs(dir, ['enter', 'discovery', 'product'], 'live', PEER);
+      fs.appendFileSync(at(LOG), '\n## Pricing\n\nOne-time.\n');
+      keep('coder', 'Notes are furniture.');
+
+      assert.doesNotMatch(enter(['discovery', 'product'], 'sess-2').sections, /^catch up:/m);
+      assert.deepStrictEqual(named(), ['live', 'sess-2']);
+    });
+
+    it('one that opened the session leaves the first entry no conversation to catch up from', () => {
+      transcript('coder');
+      keep('coder', 'Notes are furniture.');
+
+      assert.strictEqual(caughtUpFrom(), null);
+      assert.deepStrictEqual(named(), ['sess-1']);
+    });
+  });
+
+  it('another live session in it is asked about nothing: the entry joins it, each conversation with its own row there (8.14.11)', () => {
+    runAs(dir, ['presence', 'beat', 'product', 'discovery', 'product'], 'peer', PEER);
+    const { res, sections } = enter(['discovery', 'product']);
+    assert.deepStrictEqual([res.entered, /=== MENU: held topic gate /.test(sections), position(), presence('product', 'product', 'discovery', 'peer')?.session_id, presence('product', 'product', 'discovery', 'sess-1')?.session_id],
+      [true, false, { name: 'product' }, 'peer', 'sess-1']);
+  });
+});
+
+describe('discovery: an epic\'s (8.6.7)', () => {
+  it('four logs, the fourth open: the older two by their closing lines, never an entry of the fixed lists recorded after one, the latest two in full, the first log\'s pointers into the product\'s sessions, the points from before it carries, the map and the product record; the open log carried on, and the conversation that last wrote it named for catch-up (8.S53, 8.S62)', () => {
+    writeState(dir, layout.fromBefore(EPIC), '# From before\n\n- D101: One gift shape (planning/decision-log.md)\n');
+    const four = transcript('four');
+    const { res, sections } = withFrozenClock(() => enter(['discovery', EPIC]));
+    assert.deepStrictEqual(res, { ok: true, phase: 'discovery', unit: EPIC, entered: true, started: false });
+    assert.strictEqual(sections, data([
+      `older log: ${at(layout.session(EPIC, '001'))} — Licensing comes first.`,
+      `older log: ${at(layout.session(EPIC, '002'))} — Sync waits on licensing.`,
+      `session log: ${at(layout.session(EPIC, '003'))}`,
+      `session log: ${at(layout.session(EPIC, '004'))}`,
+      `shaped by: ${at(layout.productSession('001'))}#pricing`,
+      `from before: ${at(layout.fromBefore(EPIC))}`,
+      `map: \`${ENGINE} render discovery-map ${EPIC}\``,
+      `product: \`${ENGINE} ledger product ${EPIC}\``,
+      `catch up: read ${four} from the log's last write onward, and add to the log what it is missing`,
+      `log: ${at(layout.session(EPIC, '004'))}`,
+    ]));
+    assert.match(readState(dir, layout.session(EPIC, '004')), new RegExp(`Where it stands\\.\\n\\n## ${TODAY} · session sess-1\\n$`));
+    assert.deepStrictEqual([position(), presence(EPIC, EPIC, 'discovery')?.session_id], [{ name: EPIC, phase: 'discovery', topic: EPIC }, 'sess-1']);
+  });
+
+  it('an epic with no session open opens its first, committed under the unit', () => {
+    const { res, sections } = enter(['discovery', ATLAS]);
+    assert.deepStrictEqual([res.started, res.committed, lastMessage(dir), committedFiles()], [true, shortHead(), `discovery(${ATLAS}): start`, [layout.session(ATLAS, '001'), layout.manifest(ATLAS)].sort()]);
+    assert.strictEqual(readManifest(dir, ATLAS).phases.discovery.active_session, '001');
+    assert.strictEqual(sections, data([
+      `map: \`${ENGINE} render discovery-map ${ATLAS}\``,
+      `product: \`${ENGINE} ledger product ${ATLAS}\``,
+      `log: ${at(layout.session(ATLAS, '001'))}`,
+    ]));
+  });
+});
+
+describe('discovery: a level move, in the same session (8.2.11, 8.2.12, 24.1.8)', () => {
+  it('from the product\'s conversation into an epic\'s discovery: the product\'s log ends on a pointer to the epic\'s, which takes the conversation\'s line, the position and the presence move, and the move is committed, with no handoff (8.S71, 24.S20)', () => {
+    withFrozenClock(() => enter(['discovery', 'product']));
+    const { res } = withFrozenClock(() => enter(['discovery', EPIC, '--move']));
+    assert.deepStrictEqual(res, { ok: true, phase: 'discovery', unit: EPIC, entered: true, started: false, committed: shortHead() });
+    assert.deepStrictEqual([lastMessage(dir), committedFiles()], [`discovery(${EPIC}): carried on from product`, [layout.productSession('003')]]);
+    assert.strictEqual(readState(dir, layout.productSession('003')),
+      `## ${TODAY} · session sess-1\n\n→ Carried on in the discovery of "${EPIC}": [session-004.md](../../${EPIC}/discovery/session-004.md)\n`);
+    assert.match(readState(dir, layout.session(EPIC, '004')), new RegExp(`\\n## ${TODAY} · session sess-1\\n$`));
+    assert.deepStrictEqual([position(), presence('product', 'product', 'discovery'), presence(EPIC, EPIC, 'discovery')?.session_id],
+      [{ name: EPIC, phase: 'discovery', topic: EPIC }, null, 'sess-1']);
+  });
+
+  it('from an epic\'s discovery out to the product\'s conversation, its session opened for it: the same move the other way', () => {
+    enter(['discovery', EPIC]);
+    const { res } = withFrozenClock(() => enter(['discovery', 'product', '--move']));
+    assert.deepStrictEqual([res.started, res.committed, lastMessage(dir)], [true, shortHead(), `discovery(product): carried on from ${EPIC} › discovery`]);
+    assert.deepStrictEqual(committedFiles(), [layout.session(EPIC, '004'), layout.productSession('003'), layout.projectManifest].sort());
+    assert.match(readState(dir, layout.session(EPIC, '004')), /\n\n→ Carried on in the product's conversation: \[session-003\.md\]\(\.\.\/\.\.\/\.product\/sessions\/session-003\.md\)\n$/);
+    assert.strictEqual(readState(dir, layout.productSession('003')), `## ${TODAY} · session sess-1\n`);
+    assert.deepStrictEqual([position(), presence(EPIC, EPIC, 'discovery')], [{ name: 'product' }, null]);
+  });
+
+  it('a topic\'s talk moving up to its epic: the sitting committed and the topic\'s presence gone as the conversation carries on in the epic\'s discovery (8.S72, 24.S20)', () => {
+    enter(['discussion', EPIC, 'licence']);
+    writeState(dir, layout.topic(EPIC, 'licence', 'log.md'), '## 2026-01-06 · session sess-1\n\nThe sitting.\n');
+    enter(['discovery', EPIC, '--move']);
+    assert.deepStrictEqual([lastMessage(dir), committedFiles()], [`discovery(${EPIC}): carried on from ${EPIC} › discussion › licence`, [layout.topic(EPIC, 'licence', 'log.md')]]);
+    assert.deepStrictEqual([position(), presence(EPIC, 'licence'), presence(EPIC, EPIC, 'discovery')?.session_id], [{ name: EPIC, phase: 'discovery', topic: EPIC }, null, 'sess-1']);
+  });
+
+  it('a topic\'s talk moving up to the product\'s conversation: the sitting committed, the topic\'s presence gone, the position the product\'s (8.2.12, 24.S20)', () => {
+    enter(['discussion', EPIC, 'licence']);
+    writeState(dir, layout.topic(EPIC, 'licence', 'log.md'), '## 2026-01-06 · session sess-1\n\nThe sitting.\n');
+    enter(['discovery', 'product', '--move']);
+    assert.strictEqual(lastMessage(dir), `discovery(product): carried on from ${EPIC} › discussion › licence`);
+    assert.ok(committedFiles().includes(layout.topic(EPIC, 'licence', 'log.md')), 'the sitting is committed with the move');
+    assert.deepStrictEqual([position(), presence(EPIC, 'licence'), presence('product', 'product', 'discovery')?.session_id], [{ name: 'product' }, null, 'sess-1']);
+  });
+
+  it('a log a level move left ends on its pointer, so the next conversation entering it has nothing to catch up, whichever way the move went', () => {
+    enter(['discovery', 'product'], 'mover');
+    enter(['discovery', EPIC, '--move'], 'mover');
+    assert.doesNotMatch(enter(['discovery', 'product'], 'next').sections, /^catch up:/m, 'product to epic');
+    enter(['discovery', EPIC], 'mover');
+    enter(['discovery', 'product', '--move'], 'mover');
+    assert.doesNotMatch(enter(['discovery', EPIC], 'after').sections, /^catch up:/m, 'epic to product');
+    fs.appendFileSync(at(layout.productSession('003')), '\nThe mover talked on here.\n');
+    ends('mover');
+    assert.match(enter(['discovery', 'product'], 'later').sections, /^catch up: the transcript of session mover,/m, 'talk written after the pointer is caught up as any is');
+  });
+
+  it('refused, writing nothing, where the conversation holds no place, is in the home already, is a topic moving to another epic than its own, or works anywhere but discovery or a topic\'s discussion', () => {
+    const errors = [moveRefused(['discovery', EPIC, '--move'])];
+    enter(['discovery', EPIC]);
+    errors.push(moveRefused(['discovery', EPIC, '--move']));
+    enter(['discussion', EPIC, 'licence']);
+    errors.push(moveRefused(['discovery', ATLAS, '--move']));
+    ok(dir, ['session', 'label', EPIC], { env: env() });
+    errors.push(moveRefused(['discovery', ATLAS, '--move']));
+    assert.deepStrictEqual(errors, [
+      `a level move carries this conversation on from where it is working, and it holds no place — enter without --move: engine enter discovery ${EPIC}`,
+      `this conversation is in the discovery of "${EPIC}" already — carry on there`,
+      `a topic's talk moves up to its own epic's discovery or the product's conversation — "licence" is a topic of "${EPIC}"`,
+      `a level move carries the conversation on from discovery or a topic's discussion — this one is working in ${EPIC}; enter without --move`,
+    ]);
+  });
+});

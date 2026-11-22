@@ -1,0 +1,16 @@
+#!/bin/sh
+# The stand-in tick the drivers' check reads, first on the PATH of every call
+# the engine harness makes: it answers `tick version` as Tick 0.3.2 prints
+# it, at TICK_STUB_VERSION or the driver's floor, 0.3.0, or prints
+# TICK_STUB_SAID instead; anything else goes to the next tick on the PATH,
+# the machine's, which the task verbs' suites run against.
+if [ "$1" = version ]; then
+  echo "${TICK_STUB_SAID:-tick version ${TICK_STUB_VERSION:-0.3.0}}"
+  exit 0
+fi
+IFS=:
+for dir in $PATH; do
+  [ -x "$dir/tick" ] && [ ! "$dir/tick" -ef "$0" ] && exec "$dir/tick" "$@"
+done
+echo "tick: command not found" >&2
+exit 127

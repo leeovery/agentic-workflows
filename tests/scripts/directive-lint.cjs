@@ -1,0 +1,91 @@
+'use strict';
+
+// The lint over the migration's directives (21.S34; the format is the
+// header of skills/ledger-migrate/scripts/migrate.cjs): each directive,
+// `NNN-{slug}.md`, opens on its title, then its head — `## Touches`, the
+// files it may touch, and `## Asks`, what it asks the person, each a list
+// of one item or more and nothing else, an item wrapped onto lines indented
+// beneath it — and its check sits beside it, `NNN-{slug}.check.cjs`,
+// exporting the check's shape as the engine reads it (`isCheck`). It names
+// no model and no effort: an agent it dispatches fixes its own in its
+// definition (21.10.5). Each section its check names `briefed`, which its
+// agents' briefs draw, is a heading it holds, and none calls the engine:
+// those calls are the session's.
+
+const fs = require('fs');
+const path = require('path');
+const { isCheck, briefedSections } = require('../../skills/ledger-engine/scripts/domain/directives.cjs');
+
+const HEAD = ['Touches', 'Asks'];
+
+const MODEL_WORDS = /\b(model|effort|opus|sonnet|haiku)\b/i;
+
+/**
+ * What a directive's text lacks of its title and its head, one sentence each.
+ * @param {string} text
+ * @returns {string[]}
+ */
+function headProblems(text) {
+  const lines = text.split('\n');
+  /** @type {string[]} */
+  const problems = [];
+  if (!/^# \S/.test(lines[0])) problems.push('it opens on no title');
+  const headings = lines.flatMap((line, at) => (at > 0 && /^#{1,6} /.test(line) ? [{ line, at }] : []));
+  HEAD.forEach((name, place) => {
+    const heading = headings[place];
+    if (heading === undefined || heading.line.trimEnd() !== `## ${name}`) {
+      problems.push(`its head's ${place === 0 ? 'first' : 'second'} section is not ## ${name}`);
+      return;
+    }
+    const body = lines.slice(heading.at + 1, headings[place + 1]?.at ?? lines.length).filter((line) => line.trim() !== '');
+    if (body.length === 0) problems.push(`## ${name} lists nothing`);
+    else if (!/^- \S/.test(body[0]) || !body.every((line) => /^(- |\s+)\S/.test(line))) problems.push(`## ${name} holds more than its list`);
+  });
+  return problems;
+}
+
+/** What a directive's text says of a model or an effort, one sentence. @param {string} text @returns {string[]} */
+function modelProblems(text) {
+  const named = MODEL_WORDS.exec(text);
+  return named === null ? [] : [`it names "${named[0]}" — an agent's model and effort are its definition's`];
+}
+
+/** How a directive's command calls the engine. */
+const ENGINE_CALL = 'ledger-engine/scripts/engine.cjs';
+
+/**
+ * What the sections a directive's check names `briefed` lack, one sentence
+ * each: none where it names none; a heading the directive lacks; a section
+ * calling the engine, the session's work.
+ * @param {string} text @param {unknown} briefed @returns {string[]}
+ */
+function briefedProblems(text, briefed) {
+  if (briefed === undefined) return [];
+  try {
+    return briefedSections('the directive', text, briefed).filter((lines) => lines.some((line) => line.includes(ENGINE_CALL)))
+      .map(([heading]) => `its section ${heading.replace(/^#+ /, '')}, which its agents' briefs draw, calls the engine — the session's work`);
+  } catch (err) {
+    return [/** @type {Error} */ (err).message];
+  }
+}
+
+/**
+ * Every problem of every directive in a migrations folder, each named by
+ * its file: its head, and its check beside it.
+ * @param {string} folder
+ * @returns {string[]}
+ */
+function lintDirectives(folder) {
+  return fs.readdirSync(folder).filter((name) => /^[0-9]+-.+\.md$/.test(name)).sort().flatMap((name) => {
+    const check = path.join(folder, name.replace(/\.md$/, '.check.cjs'));
+    /** @type {string[]} */
+    const text = fs.readFileSync(path.join(folder, name), 'utf8');
+    const problems = [...headProblems(text), ...modelProblems(text)];
+    if (!fs.existsSync(check)) problems.push('no check sits beside it');
+    else if (!isCheck(require(check))) problems.push('its check exports no check() beside what it counts');
+    else problems.push(...briefedProblems(text, require(check).briefed));
+    return problems.map((problem) => `${name}: ${problem}`);
+  });
+}
+
+module.exports = { headProblems, modelProblems, briefedProblems, lintDirectives };

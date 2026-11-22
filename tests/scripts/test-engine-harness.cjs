@@ -1,39 +1,68 @@
 'use strict';
 
-// The shared engine runner's own contract: each shape answers what its name
-// says, the refusal shape asserts the refusal, the call's environment and
-// stdin reach the engine, the git fixture is a repo an engine commit lands
-// in, and a keyword-only checkout is one a transaction's index builds a real
-// store in.
+// The shared engine runner's own contract: what its shapes add to the
+// in-process entry (test-engine-run.cjs owns the entry itself) — `call`
+// handing on the call's stdin and asserting nothing, `output` the whole
+// stdout, `ok` and `refuses` failing on the wrong outcome, and `okSections`
+// — the git fixture is a repo with its state worktree that an engine commit
+// lands in, every remote in the tests is a bare repo that runs no
+// maintenance, a test's git runs within a time limit, a world made once per
+// run is copied whole and apart, what its build keeps set in a process that
+// takes it built elsewhere, a keyword-only checkout is one a transaction's
+// index builds a real store in, a call's attempts at a lock are seen as it
+// makes them, and the `ps` that fails does.
+//
+// Layer: verb, and process for a world taken from another process.
 
 require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const { execFileSync, spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
-const { call, ok, okSections, refuses, output, git, setupGitFixture, cleanupFixture } = harness;
+const { worldKey } = require('./run-worlds.cjs');
+const { GIT_TIMEOUT_MS, layout, writeState } = require('./discovery-test-utils.cjs');
+const io = require('../../skills/ledger-engine/scripts/kernel/manifest-io.cjs');
+const {
+  call, ok, okSections, refuses, output, git, stateGit, statePath, commitAll, setupGitFixture, cleanupFixture,
+} = harness;
 
 const OWN = { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-own' };
-const PEER = { CLAUDE_PID: '1', CLAUDE_CODE_SESSION_ID: 'sess-peer' };
 
-/** A feature with one research item, committed. */
+/** The feature's topic's record copy, state-relative. */
+const RECORD = layout.record('card', 'card');
+
+/** The investigation's log, state-relative. */
+const LOG = 'pay/topics/pay/log.md';
+
+/** A bugfix with one investigation item and its log, committed. */
 function seed(dir, { commit = true } = {}) {
-  const wu = path.join(dir, '.workflows', 'pay');
-  fs.mkdirSync(path.join(wu, 'research'), { recursive: true });
+  const wu = statePath(dir, 'pay');
+  fs.mkdirSync(path.dirname(statePath(dir, LOG)), { recursive: true });
   fs.writeFileSync(path.join(wu, 'manifest.json'), JSON.stringify({
     name: 'pay',
-    work_type: 'feature',
+    work_type: 'bugfix',
     status: 'in-progress',
-    phases: { research: { items: { pay: { status: 'in-progress' } } } },
+    phases: { investigation: { items: { pay: { status: 'in-progress' } } } },
   }, null, 2) + '\n');
-  fs.writeFileSync(path.join(wu, 'research', 'pay.md'), '# Research\n');
-  if (commit) {
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'init']);
-  }
+  fs.writeFileSync(statePath(dir, LOG), '# Investigation\n');
+  if (commit) commitAll(dir, 'init');
+}
+
+/** A feature in progress, its topic's record copy on disk, committed — a pivot re-indexes it. */
+function recordedFeature(dir) {
+  const wu = statePath(dir, 'card');
+  fs.mkdirSync(wu, { recursive: true });
+  fs.writeFileSync(statePath(dir, 'manifest.json'), JSON.stringify({ work_units: { card: { work_type: 'feature' } } }, null, 2) + '\n');
+  fs.writeFileSync(path.join(wu, 'manifest.json'), JSON.stringify({
+    name: 'card', work_type: 'feature', status: 'in-progress', created: '2026-01-01', phases: {},
+  }, null, 2) + '\n');
+  writeState(dir, RECORD, '# Card\n\nCards ship first.\n');
+  commitAll(dir, 'init');
 }
 
 describe('engine harness — the shapes', () => {
@@ -42,30 +71,26 @@ describe('engine harness — the shapes', () => {
   afterEach(() => cleanupFixture(dir));
 
   it('ok answers the parsed response line of a call that succeeds', () => {
-    assert.deepStrictEqual(ok(dir, ['manifest', 'set', 'pay.research.pay', 'brief_incorporated', 'true']),
-      { ok: true, path: 'pay.research.pay', set: { brief_incorporated: true } });
+    assert.deepStrictEqual(ok(dir, ['manifest', 'set', 'pay.investigation.pay', 'brief_incorporated', 'true']),
+      { ok: true, path: 'pay.investigation.pay', set: { brief_incorporated: true } });
   });
 
   it('ok fails loudly when the engine refuses', () => {
-    assert.throws(() => ok(dir, ['topic', 'complete', 'pay', 'research', 'absent']),
-      /engine topic complete pay research absent failed/);
+    assert.throws(() => ok(dir, ['manifest', 'set', 'pay', 'status', 'bogus']),
+      /engine manifest set pay status bogus failed/);
   });
 
   it('okSections answers the response and everything after it', () => {
-    const pure = okSections(dir, ['manifest', 'set', 'pay.research.pay', 'brief_incorporated', 'true']);
+    const pure = okSections(dir, ['manifest', 'set', 'pay.investigation.pay', 'brief_incorporated', 'true']);
     assert.strictEqual(pure.res.ok, true);
     assert.strictEqual(pure.sections, '', 'a transaction answers with pure JSON');
 
-    ok(dir, ['presence', 'beat', 'pay', 'research', 'pay'], { env: PEER });
-    const scan = okSections(dir, ['presence', 'scan', 'pay'], { env: OWN });
-    assert.strictEqual(scan.res.held_sources, 1);
-    assert.match(scan.sections, /Analyses deferred/, 'the sections after the response line');
-  });
-
-  it('refuses answers the refusal, and asserts exit 1 with nothing on stdout', () => {
-    const before = fs.readFileSync(path.join(dir, '.workflows/pay/manifest.json'), 'utf8');
-    assert.match(refuses(dir, ['topic', 'complete', 'pay', 'research', 'absent']).error, /absent/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/pay/manifest.json'), 'utf8'), before);
+    fs.mkdirSync(statePath(dir, 'v1'), { recursive: true });
+    fs.writeFileSync(statePath(dir, 'v1/manifest.json'), JSON.stringify({ name: 'v1', work_type: 'epic', status: 'in-progress', phases: {} }));
+    const brief = writeState(dir, layout.cache('scratch', 'auth.md'), '# Auth\n');
+    const added = okSections(dir, ['topic', 'add', 'v1', 'auth', '--summary', 'Signing in', '--brief', brief], { env: OWN });
+    assert.strictEqual(added.res.ok, true);
+    assert.match(added.sections, /^=== /, 'the sections after the response line');
   });
 
   it('refuses fails loudly when the call succeeds instead', () => {
@@ -74,34 +99,24 @@ describe('engine harness — the shapes', () => {
   });
 
   it('output answers the whole stdout of a call that must succeed', () => {
-    const rendered = output(dir, ['render', 'resume-gate', 'pay.research.pay']);
+    const rendered = output(dir, ['render', 'banner']);
     assert.match(rendered, /^=== /, 'the render surface, sections and all');
-    assert.strictEqual(output(dir, ['manifest', 'get', 'pay.research.pay', 'status']), 'in-progress\n',
+    assert.strictEqual(output(dir, ['manifest', 'get', 'pay.investigation.pay', 'status']), 'in-progress\n',
       'a bare read is its raw stdout, trailing newline included');
   });
 
   it('call answers the three parts and asserts nothing — an expected miss included', () => {
-    assert.deepStrictEqual(call(dir, ['manifest', 'exists', 'pay.research.absent']),
+    assert.deepStrictEqual(call(dir, ['manifest', 'exists', 'pay.investigation.absent']),
       { stdout: 'false\n', stderr: '', code: 0 });
-    const miss = call(dir, ['manifest', 'key-of', 'pay.research', 'items', 'absent']);
+    const miss = call(dir, ['manifest', 'key-of', 'pay.investigation', 'items', 'absent']);
     assert.strictEqual(miss.code, 2);
     assert.match(miss.stderr, /^Error: Value "absent" not found/);
   });
 
-  it('the call\'s environment reaches the engine, and a key it takes away is gone', () => {
-    ok(dir, ['presence', 'beat', 'pay', 'research', 'pay'], { env: OWN });
-    const record = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/.cache/pay/research/pay/presence'), 'utf8'));
-    assert.strictEqual(record.session_id, 'sess-own');
-
-    ok(dir, ['presence', 'beat', 'pay', 'research', 'pay'], { env: { ...OWN, CLAUDE_CODE_SESSION_ID: undefined } });
-    const anonymous = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/.cache/pay/research/pay/presence'), 'utf8'));
-    assert.strictEqual(anonymous.session_id, null, 'the engine saw no session id at all');
-  });
-
   it('the call\'s stdin reaches the engine', () => {
-    ok(dir, ['presence', 'beat', 'pay', 'research', 'pay'], { env: OWN });
+    ok(dir, ['presence', 'beat', 'pay', 'investigation', 'pay'], { env: OWN });
     const swept = ok(dir, ['presence', 'cleanup'], { stdin: JSON.stringify({ session_id: 'sess-own' }) });
-    assert.deepStrictEqual(swept.cleared, [{ work_unit: 'pay', phase: 'research', topic: 'pay' }]);
+    assert.deepStrictEqual(swept.cleared, [{ work_unit: 'pay', phase: 'investigation', topic: 'pay' }]);
   });
 });
 
@@ -110,51 +125,262 @@ describe('engine harness — the git fixture', () => {
   beforeEach(() => { dir = setupGitFixture('harness-test-'); });
   afterEach(() => cleanupFixture(dir));
 
-  it('is a repo on main with a `.workflows/` tree and an identity that can commit', () => {
-    assert.ok(fs.existsSync(path.join(dir, '.workflows')));
+  it('is a repo on main, its path the one the engine names it by, with an identity that can commit', () => {
+    assert.strictEqual(fs.realpathSync(dir), dir);
     assert.strictEqual(git(dir, ['symbolic-ref', '--short', 'HEAD']).trim(), 'main');
     seed(dir);
     assert.strictEqual(git(dir, ['log', '-1', '--pretty=%an']).trim(), 'Test');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%an %s']).trim(), 'Test init');
   });
 
-  it('is a repo an engine commit lands in', () => {
+  it('holds its state worktree, locked on the state branch, and the code tree ignores it', () => {
+    assert.strictEqual(stateGit(dir, ['symbolic-ref', '--short', 'HEAD']).trim(), 'ledger-state');
+    assert.match(git(dir, ['worktree', 'list', '--porcelain']),
+      new RegExp(`worktree ${statePath(dir)}\nHEAD [0-9a-f]+\nbranch refs/heads/ledger-state\nlocked Ledger state, do not remove`));
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), '.ledger/\n');
     seed(dir);
-    fs.writeFileSync(path.join(dir, '.workflows/pay/research/pay.md'), '# Research\n\nMore.\n');
-    const res = ok(dir, ['commit', 'pay', '-m', 'research(pay): notes', '--topic', 'research/pay']);
-    assert.strictEqual(res.committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'research(pay): notes');
+    assert.deepStrictEqual(git(dir, ['ls-files']).trim().split('\n'), ['.gitignore']);
+    assert.strictEqual(git(dir, ['status', '--porcelain']), '', 'the code tree is clean');
+  });
+
+  it('is its own world: a write in one fixture lands in no other', () => {
+    const other = setupGitFixture('harness-test-');
+    try {
+      seed(dir);
+      assert.strictEqual(fs.existsSync(statePath(other, 'pay')), false);
+      assert.strictEqual(stateGit(other, ['rev-list', '--count', 'HEAD']).trim(), '1');
+    } finally {
+      cleanupFixture(other);
+    }
+  });
+
+  it('is a repo an engine commit lands in — the state on the state branch, none on main', () => {
+    seed(dir);
+    const head = git(dir, ['rev-parse', 'HEAD']).trim();
+    fs.writeFileSync(statePath(dir, LOG), '# Investigation\n\nMore.\n');
+    const res = ok(dir, ['commit', 'pay', '-m', 'investigation(pay): notes', '--topic', 'investigation/pay']);
+    assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'investigation(pay): notes');
+    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
+  });
+
+  it('runs no auto maintenance after a commit, so nothing of git\'s outlives the call', () => {
+    const trace = path.join(dir, '.git', 'trace.log');
+    fs.writeFileSync(path.join(dir, 'a.txt'), 'a\n');
+    git(dir, ['add', 'a.txt']);
+    execFileSync('git', ['commit', '-q', '-m', 'a'], { cwd: dir, env: { ...process.env, GIT_TRACE: trace } });
+    assert.match(fs.readFileSync(trace, 'utf8'), /built-in: git commit/, 'the trace caught nothing');
+    assert.doesNotMatch(fs.readFileSync(trace, 'utf8'), /maintenance/);
+  });
+
+  it('pushes to a bare remote that runs no auto maintenance on receiving', () => {
+    const world = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-remote-'));
+    try {
+      const bare = harness.bareRepo(path.join(world, 'remote.git'));
+      const trace = path.join(world, 'trace.log');
+      execFileSync('git', ['push', '-q', bare, 'main'], { cwd: dir, env: { ...process.env, GIT_TRACE: trace } });
+      assert.match(fs.readFileSync(trace, 'utf8'), /receive-pack/, 'the trace caught nothing of the remote');
+      assert.doesNotMatch(fs.readFileSync(trace, 'utf8'), /maintenance/);
+      assert.strictEqual(git(bare, ['rev-parse', 'main']), git(dir, ['rev-parse', 'main']));
+    } finally {
+      cleanupFixture(world);
+    }
+  });
+
+  it('is the one bare init in the tests: every other remote comes from it, so none runs maintenance', () => {
+    const tests = path.join(__dirname, '..');
+    const inits = /** @type {string[]} */ (fs.readdirSync(tests, { recursive: true }))
+      .filter((name) => /\.(cjs|js|sh)$/.test(name) && !name.includes('node_modules'))
+      .filter((name) => /\binit\b.*--bare/.test(fs.readFileSync(path.join(tests, name), 'utf8')))
+      .sort();
+    assert.deepStrictEqual(inits, ['scripts/discovery-test-utils.cjs']);
+  });
+
+  it('runs a test\'s git within GIT_TIMEOUT_MS, so a git that hangs fails its test', (t) => {
+    const limits = harness.childLimits(t, path.join(__dirname, 'discovery-test-utils.cjs'), (/** @type {typeof import('./discovery-test-utils.cjs')} */ fresh) => {
+      fresh.git(dir, ['--version']);
+    });
+
+    assert.deepStrictEqual(limits, [GIT_TIMEOUT_MS]);
+  });
+});
+
+describe('engine harness — a world made once and copied', () => {
+  /** @type {string[]} */
+  const made = [];
+  const world = harness.fixtureFrom('harness-test-', (at) => {
+    made.push(at);
+    seed(at);
+  });
+  /** @type {string[]} */
+  let copies = [];
+  afterEach(() => { copies.forEach(cleanupFixture); copies = []; });
+
+  it('is built once, at the first copy, and each copy holds what the build left', () => {
+    copies = [world(), world()];
+    assert.strictEqual(made.length, 1);
+    for (const copy of copies) {
+      assert.strictEqual(stateGit(copy, ['log', '-1', '--pretty=%s']).trim(), 'init');
+      assert.strictEqual(fs.readFileSync(statePath(copy, LOG), 'utf8'), '# Investigation\n');
+    }
+  });
+
+  it('is a world of its own each time: its state worktree is its own repository\'s, and a commit in one reaches neither the other nor the template', () => {
+    copies = [world(), world()];
+    const [one, two] = copies;
+    assert.strictEqual(stateGit(one, ['rev-parse', '--path-format=absolute', '--git-common-dir']).trim(), path.join(one, '.git'));
+    fs.writeFileSync(statePath(one, LOG), '# Investigation\n\nMore.\n');
+    ok(one, ['commit', 'pay', '-m', 'investigation(pay): notes', '--topic', 'investigation/pay']);
+    for (const other of [two, made[0]]) {
+      assert.strictEqual(stateGit(other, ['log', '-1', '--pretty=%s']).trim(), 'init');
+      assert.strictEqual(fs.readFileSync(statePath(other, LOG), 'utf8'), '# Investigation\n');
+    }
+  });
+
+  it('is copied to the folder given, where one is', () => {
+    const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-test-')));
+    copies = [root];
+    const at = world(path.join(root, 'project'));
+    assert.strictEqual(at, path.join(root, 'project'));
+    assert.strictEqual(stateGit(at, ['log', '-1', '--pretty=%s']).trim(), 'init');
+  });
+
+  /**
+   * The world `name` asked for, and copied, where the run's folder is
+   * `folder`, or where there is none: the folder it was built in, and the copy.
+   * @param {string|undefined} folder @param {string} name @param {unknown[]} [by]
+   */
+  const askedWhere = (folder, name, by) => harness.withEnv({ LEDGER_TEST_WORLDS: folder }, () => {
+    /** @type {string[]} */
+    const built = [];
+    const copy = harness.fixtureFrom(name, (at) => { built.push(at); seed(at); }, { by })();
+    copies.push(copy);
+    return { built: built[0], copy };
+  });
+
+  it('is built once per run under its name, in the run\'s folder; each copy in a temp folder named for it', () => {
+    const run = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-test-run-')));
+    copies.push(run);
+    const { built, copy } = askedWhere(run, 'harness-test-in-run-');
+    assert.strictEqual(built, path.join(run, worldKey('harness-test-in-run-')));
+    assert.match(path.basename(copy), /^harness-test-in-run-(?!template-)/);
+  });
+
+  it('outside a run, is built in a template folder of its own, and adds no exit listener of its own: every template is removed by the one the fixture library holds', () => {
+    const listeners = process.listenerCount('exit');
+    const { built, copy } = askedWhere(undefined, 'harness-test-alone-');
+    assert.match(path.basename(built), /^harness-test-alone-template-/);
+    assert.match(path.basename(copy), /^harness-test-alone-(?!template-)/);
+    assert.strictEqual(process.listenerCount('exit'), listeners);
+  });
+
+  it('is known by what a helper wrapping its build was given: the same name asked with another refused, naming the suite', () => {
+    askedWhere(undefined, 'harness-test-given-', ['one']);
+    assert.throws(() => askedWhere(undefined, 'harness-test-given-', ['another']), new RegExp(`^Error: the world harness-test-given- has two builders, at ${__filename}:\\d+:\\d+ and at ${__filename}:\\d+:\\d+:`));
+  });
+
+  it('sets what its build set in `kept` in a process that takes the world another process built', async () => {
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-test-run-'));
+    // Each asker a process of its own, building the world or taking it.
+    const asker = () => harness.contend(1, [
+      `const harness = require(${JSON.stringify(require.resolve('./engine-harness.cjs'))});`,
+      "const path = require('path');",
+      'const kept = { minted: "" };',
+      'const world = harness.fixtureFrom("harness-test-kept-", () => { kept.minted = `q-${process.pid}`; }, { kept });',
+      'atBarrier();',
+      'const copy = world();',
+      'const copied = fs.existsSync(path.join(copy, ".git"));',
+      'harness.cleanupFixture(copy);',
+      'report({ kept, pid: process.pid, copied });',
+    ].join('\n'), [], { ...process.env, LEDGER_TEST_WORLDS: folder });
+    try {
+      const [built] = await asker();
+      const [took] = await asker();
+      assert.deepStrictEqual(built, { kept: { minted: `q-${built.pid}` }, pid: built.pid, copied: true });
+      assert.deepStrictEqual(took, { kept: { minted: `q-${built.pid}` }, pid: took.pid, copied: true }, 'what the builder minted, set here without building');
+    } finally {
+      fs.rmSync(folder, { recursive: true, force: true });
+    }
   });
 });
 
 describe('engine harness — a keyword-only checkout', () => {
   let dir;
-  beforeEach(() => { dir = setupGitFixture('harness-kb-'); seed(dir); });
+  beforeEach(() => { dir = setupGitFixture('harness-kb-'); recordedFeature(dir); });
+  const pivot = () => ok(dir, ['workunit', 'pivot', 'card', '--summary', 'A card']);
   afterEach(() => cleanupFixture(dir));
 
   it('is one a transaction indexes into: the store is real, and says what it holds', () => {
     harness.keywordOnlyKnowledge(dir);
-    const res = ok(dir, ['topic', 'complete', 'pay', 'research', 'pay']);
+    const res = pivot();
     assert.deepStrictEqual(res.warnings, []);
-    assert.deepStrictEqual(harness.indexedFiles(dir), ['.workflows/pay/research/pay.md']);
+    assert.deepStrictEqual(harness.indexedFiles(dir), [RECORD]);
   });
 
-  it('holds nothing where the checkout was never set up — the index a warning, no store built', () => {
-    const res = ok(dir, ['topic', 'complete', 'pay', 'research', 'pay']);
+  it('holds nothing where the checkout was never set up — the index a warning, no store built, and a read of what it holds refused', () => {
+    const res = pivot();
     assert.match(res.warnings[0], /^knowledge index failed: No knowledge store here/);
-    assert.deepStrictEqual(harness.indexedFiles(dir), []);
+    assert.strictEqual(harness.hasStore(dir), false);
+    assert.throws(() => harness.indexedFiles(dir), { message: `no knowledge store in ${dir}` });
   });
 
   it('is one whose index fails, deterministically, where the store cannot be loaded', () => {
     harness.unreadableKnowledge(dir);
-    const res = ok(dir, ['topic', 'complete', 'pay', 'research', 'pay']);
-    assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at /);
+    const res = pivot();
+    assert.deepStrictEqual(res.warnings.map((w) => w.replace(/ at .*$/, '')), ['knowledge remove failed: loadStore: corrupted store file', 'knowledge index failed: loadStore: corrupted store file']);
   });
 
   it('answers a command that waits on the embedding provider through callAsync', async () => {
     harness.keywordOnlyKnowledge(dir);
-    ok(dir, ['topic', 'complete', 'pay', 'research', 'pay']);
-    const answer = await harness.callAsync(dir, ['knowledge', 'query', 'research']);
+    pivot();
+    const answer = await harness.callAsync(dir, ['knowledge', 'query', 'cards']);
     assert.strictEqual(answer.code, 0);
     assert.match(answer.stdout, /^\[keyword-only mode — configure embedding provider for semantic search\]\n\[1 results\]\n/);
+  });
+});
+
+describe('engine harness — locks, and a `ps` that fails', () => {
+  let dir;
+  beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-lock-')); });
+  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
+
+  it('records each attempt at the lock, a lock file\'s or a claim\'s, made or taken — onTaken run before the attempt answers — and no other file\'s', (t) => {
+    const lock = path.join(dir, '.lock');
+    fs.writeFileSync(lock, String(process.pid));
+    /** @type {boolean[]} */
+    const heldAt = [];
+    const attempts = harness.lockAttempts(t, lock, (taken) => {
+      heldAt.push(fs.existsSync(lock));
+      if (taken === 2) fs.unlinkSync(lock);
+    });
+
+    io.acquireLockFile(lock, 'Timed out', io.LOCK_TIMEOUT_MS);
+    io.releaseLockFile(lock);
+    /** @type {() => void} */ (io.tryClaimFile(lock))();
+    /** @type {() => void} */ (io.tryClaimFile(path.join(dir, 'other')))();
+
+    assert.deepStrictEqual(attempts, ['taken', 'taken', 'made', 'made']);
+    assert.deepStrictEqual(heldAt, [true, true]);
+  });
+
+  it('puts each driver\'s stand-ins first on the PATH, so a call finds no tool of the machine\'s ahead of them', () => {
+    const dirs = (process.env.PATH ?? '').split(path.delimiter);
+
+    assert.ok(harness.STAND_INS.length > 0, 'a driver stands its tools in');
+    assert.deepStrictEqual(dirs.slice(0, harness.STAND_INS.length), [...harness.STAND_INS]);
+  });
+
+  it('toolless makes a PATH holding git and ps alone', () => {
+    const bin = harness.toolless(dir);
+
+    assert.deepStrictEqual(fs.readdirSync(bin).sort(), ['git', 'ps']);
+    assert.strictEqual(spawnSync('git', ['--version'], { env: { PATH: bin }, encoding: 'utf8' }).status, 0);
+  });
+
+  it('failingPs puts first on the PATH a `ps` that answers nothing and fails, logging what each run asked for', () => {
+    const ps = harness.failingPs(dir);
+    const res = spawnSync('ps', ['-p', String(process.pid), '-o', 'lstart='], { env: { ...process.env, PATH: ps.path }, encoding: 'utf8' });
+    assert.deepStrictEqual([res.status, res.stdout], [1, '']);
+    assert.deepStrictEqual(ps.runs(), [`-p ${process.pid} -o lstart=`]);
   });
 });

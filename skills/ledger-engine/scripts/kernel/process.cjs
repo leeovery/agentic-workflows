@@ -1,0 +1,133 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Kernel: process identity — pid + kernel-recorded start time uniquely
+// identify a process (a recycled pid carries a different start time). The
+// domains that record an owning Claude process (presence heartbeats, session-
+// label stashes, background-agent rows) share these to answer "does that
+// process still run" and "is that record the calling session's own". The
+// calling session is the id
+// Claude Code hands every command it runs, `CLAUDE_CODE_SESSION_ID`, read
+// here alone (`handedSession`).
+// ---------------------------------------------------------------------------
+
+const { execFileSync } = require('./spawn.cjs');
+const { dropReads } = require('./git-reads.cjs');
+
+/**
+ * Block the thread for `ms` without burning CPU: Atomics.wait on a throwaway
+ * buffer is never notified, so it sleeps the full timeout. A wait, so what
+ * the verb has read of git goes (kernel/git-reads).
+ * @param {number} ms
+ */
+function sleepSync(ms) {
+  dropReads();
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+// How long `ps` has to answer, far past the moment it takes.
+const PS_TIMEOUT_MS = 10000;
+
+/**
+ * The process's kernel-recorded start time. Null when the pid is gone, or
+ * `ps` is unavailable or has not answered within PS_TIMEOUT_MS.
+ * @param {number} pid @returns {string|null}
+ */
+function processStartTime(pid) {
+  try {
+    // `lstart` is printed in the caller's timezone and locale; the recorded
+    // string is compared verbatim by whichever session reads it later, so
+    // both are pinned or two terminals with different TZs never match.
+    const out = execFileSync('ps', ['-p', String(pid), '-o', 'lstart='], {
+      encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env: { ...process.env, TZ: 'UTC', LC_ALL: 'C' }, timeout: PS_TIMEOUT_MS,
+    });
+    return out.trim() || null;
+  } catch { return null; }
+}
+
+/** @type {string|null} */
+let ownStart = null;
+
+/**
+ * This process's own start time, read once — it never changes. A read that
+ * fails is tried again at the next call.
+ * @returns {string|null}
+ */
+function ownStartTime() {
+  ownStart ??= processStartTime(process.pid);
+  return ownStart;
+}
+
+/**
+ * Memoised process start times — one `ps` per pid across a whole read.
+ * @returns {(pid: number) => string|null|undefined}
+ */
+function startTimeReader() {
+  /** @type {Map<number, string|null>} */
+  const cache = new Map();
+  return (pid) => {
+    if (!cache.has(pid)) cache.set(pid, processStartTime(pid));
+    return cache.get(pid);
+  };
+}
+
+/** Zero-signal existence probe; EPERM means alive. @param {number} pid */
+function processAlive(pid) {
+  try { process.kill(pid, 0); return true; }
+  catch (err) { return /** @type {NodeJS.ErrnoException} */ (err).code === 'EPERM'; }
+}
+
+/**
+ * Does the record's owning process still run? Identity is pid + start time
+ * where the record carries both (a recycled pid carries a different start
+ * time), bare aliveness where it predates start times. A record with no pid
+ * carries no identity to verify and is never alive. A start time that
+ * cannot be read — `ps` failed to spawn or answered nothing — proves
+ * nothing, so a pid that is there counts as the record's: only a pid that
+ * is gone, or a start time read and found different, reads as dead.
+ * `startOf` lets a scan memoise the `ps` read across records.
+ * @param {{pid?: number|null, pid_start?: string|null}} record
+ * @param {(pid: number) => string|null|undefined} [startOf]
+ * @returns {boolean}
+ */
+function ownerAlive(record, startOf = processStartTime) {
+  if (!record.pid || !processAlive(record.pid)) return false;
+  if (!record.pid_start) return true;
+  const start = startOf(record.pid);
+  return start == null || start === record.pid_start;
+}
+
+/** The session id Claude Code handed the command, null where it handed none. @returns {string|null} */
+function handedSession() {
+  return process.env.CLAUDE_CODE_SESSION_ID || null;
+}
+
+/**
+ * The calling Claude process and conversation, as a record names its owner:
+ * the process (`CLAUDE_PID`) with its start time, and the session id — each
+ * null where Claude Code handed none.
+ * @returns {{pid: number|null, pid_start: string|null, session_id: string|null}}
+ */
+function callerIdentity() {
+  const pid = Number(process.env.CLAUDE_PID) || null;
+  return { pid, pid_start: pid === null ? null : processStartTime(pid), session_id: handedSession() };
+}
+
+/**
+ * Does the calling session own this record? Its own session id, or its own
+ * pid where the record predates a session id — so a later conversation in
+ * the same process owns its predecessor's records. The one home for the
+ * question, because every surface that marks or gates on a peer's record
+ * must exclude the caller's own — a session must never gate against, or
+ * strike through, itself — and the sweeps that restore a session's own
+ * state must recognise it.
+ * @param {{session_id?: string|null, pid?: number|null}} record
+ * @returns {boolean}
+ */
+function ownsRow(record) {
+  const mySession = handedSession();
+  const myPid = Number(process.env.CLAUDE_PID) || null;
+  return (mySession !== null && record.session_id === mySession) || (myPid !== null && record.pid === myPid);
+}
+
+module.exports = { PS_TIMEOUT_MS, handedSession, callerIdentity, sleepSync, processStartTime, ownStartTime, startTimeReader, processAlive, ownerAlive, ownsRow };

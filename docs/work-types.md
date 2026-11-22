@@ -1,37 +1,52 @@
-# The five work types
+# The kinds of work
 
-Not all work is the same size. A one-line rename and a multi-month platform initiative both deserve a process, but not the *same* process — forcing a typo fix through months of discovery would be absurd, and letting a platform rewrite skip straight to code would be reckless. So the system recognises five shapes of work, each with a pipeline sized to fit, and it picks the right one for you before any real work begins.
+Not every piece of work deserves the same process. A tweak to a settled feature and a months-long initiative both benefit from some structure, but forcing the tweak through weeks of discussion would be absurd, and letting the initiative skip straight to code would be reckless. So Ledger has four kinds of work, each with a route sized to fit, and the kind is settled for you at the start from how you describe what you want.
 
-You do not have to know which shape your work is. You describe it in your own words and [discovery](discovery.md) settles the type in conversation. Naming a type when you start is only a hint; the shape is confirmed before the pipeline commits to it, and it can change mid-conversation if the work turns out bigger or smaller than it first looked.
+You never have to choose. You describe the work in your own words and [discovery](discovery.md) works out the kind in conversation, tells you its read and the signals behind it, and asks whether it is right before anything is created. A kind you name yourself is a hint it trusts, reconsidered only on a clear signal the other way.
 
-## The shapes
+## The kinds
 
-| Type | What it is | Pipeline |
+| Kind | What it is | Its route |
 |---|---|---|
-| **Epic** | A large initiative that fans out into several distinct concerns; multi-topic, multi-session. | Discovery → per topic: (Research) → (Experiment) → Discussion → Specification → Planning → Implementation → Review |
-| **Feature** | One coherent, shippable thing. | Discovery → (Research) → (Experiment) → Discussion → Specification → Planning → Implementation → Review |
-| **Bugfix** | Something that used to work is now failing. | Discovery → Investigation → Specification → Planning → Implementation → Review |
-| **Quick-fix** | A small, known, mechanical change. | Discovery → Scoping → Implementation → Review |
-| **Cross-cutting** | A pattern, policy, or convention to define — nothing shippable at the end. | Discovery → (Research) → (Experiment) → Discussion → Specification |
+| **Epic** | Several distinct things wearing one name, each needing decisions of its own. | Discovery → Discussion per topic (Experiment) → Specification → Build → Review |
+| **Feature** | One coherent thing to build, needing real discussion. | Discovery → Discussion (Experiment) → Specification → Build → Review |
+| **Bugfix** | Something that used to work and now fails, its cause still to find. | Discovery → Investigation → Specification → Build → Review |
+| **Quick-fix** | Settled work of any size, needing no decision beyond a quick call. | Discovery → its fixes → its close (Review, if you ask) |
 
-Parenthesised phases are optional. Every shape begins in discovery, because that is where the shape itself is decided — see [why every work type starts in discovery](discovery.md).
+An experiment is in brackets because it is never a phase you enter on purpose: a discussion spawns one when a decision is about to rest on a number nobody has measured, and its result goes back to the conversation that asked ([experiments](experiments.md)).
 
-The differences are not cosmetic. A **feature** runs the full arc from a decision-making discussion through to a verified build. A **bugfix** swaps discussion for **investigation**, because you cannot decide how to fix something until you know why it broke. A **quick-fix** collapses the whole middle into a single **scoping** pass — there is nothing to debate and nothing to diagnose, so context, spec, and plan are written in one sitting and the work goes straight to building. A **cross-cutting** concern is terminal at specification: you are establishing a standard the rest of the codebase will follow, not shipping a unit of work, so there is nothing to plan or build. An **epic** is a feature's pipeline run many times over, once per topic, held together by a map of everything the initiative contains. And wherever a shape carries the experiment slot, it is never entered directly at all: a research or discussion conversation [spawns an experiment](experiments.md) when it hits a question only measurement can settle, and the result feeds back into the conversation that asked.
+The differences are not cosmetic.
+
+- **A feature** runs the full journey: a [discussion](discussion.md) that decides it, a [specification](specification.md) that turns the decisions into a contract, [the build](the-build.md), and a [review phase](review.md) that holds the change to the contract. Discovery leans to a feature over an epic when in doubt, since a feature that grows can become an epic later.
+- **An epic** is a feature's journey run once per topic up to the decision, then one specification, one build and one review for the whole. Its topics are talked through in conversations of their own, held together by the epic's map and lived through its menu.
+- **A bugfix** swaps discussion for an [investigation](investigation.md), because you cannot decide how to fix something until you know why it broke. Its build opens with a task that proves the bug with a failing test before anything is fixed.
+- **A quick-fix** has no discussion, no specification and no plan before the work. A known cause with a settled fix is a quick-fix, not a bugfix, and so is a small update to an existing feature or a very small new one, logic changes included. Its fixes are built and reviewed one at a time, from the first to its close, in one conversation; it has a review phase only if you ask for one at the close.
+
+Something that is a pattern or principle for the whole project, rather than a piece of work, is none of these. It belongs to the product's conversation, and it is decided in the first topic it bears on, where it becomes part of the product record.
 
 ## The three stages
 
-Whatever the shape, its phases group into three stages — the arc every piece of work travels:
+Whatever the kind, its phases group into three stages:
 
-- **Discovery** — explore and decide. Settling what the work is, then exploring it: research, experiment, discussion, investigation.
-- **Definition** — specify and plan. Turning decisions into a standalone specification and a concrete plan; quick-fix scoping lives here too.
-- **Delivery** — build and verify. Implementation, then review.
+- **Discovery** — explore and decide: discovery, discussion, experiment, investigation.
+- **Definition** — specify: the specification, cut into the phases the build will follow.
+- **Delivery** — build and verify: the build, then the review phase.
 
-This grouping is more than a label. It maps the collaboration arc directly: Discovery is where you talk most, Definition is where you approve, Delivery is where you step back and let the loop run. It is also how an epic's dashboard organises itself, so a large initiative reads as three bands of progress rather than a flat list of phases.
+The stage tells you how much a phase will ask of you. Discovery-stage phases are conversations, the specification is yours to approve, and delivery runs largely on its own, stopping only for what needs you.
 
 ## Work units and topics
 
-Two words recur throughout this documentation. A **work unit** is one named instance of a work type — "auth-flow" might be a feature work unit, "payments-overhaul" an epic. Each gets its own home in your repository and its own record. A **topic** is a unit of work *within* a phase. For a feature, bugfix, or quick-fix there is only ever one topic and it shares the work unit's name, so the distinction is invisible. For an epic, topics are the distinct concerns the initiative breaks into — each with its own name, its own routing, its own trip through the pipeline. When later pages say "per topic," this is what they mean: an epic runs the pipeline once for each named concern on its map.
+A **work unit** is one named piece of work of one kind, such as a feature called `saved-filters` or an epic called `billing-overhaul`. Each has its own folder in `.ledger/` and its own record. "A piece of work" is the plain phrase; work unit is the formal one.
 
-## When the shape turns out wrong
+A **topic** is one part of an epic, with its own name, its own brief and its own conversation. For a feature or a bugfix there is only ever one topic and it is the work itself, so the word never comes up. For an epic, the topics are the distinct parts it breaks into, each travelling the discussion on its own until every one is decided, cancelled or postponed, and then the epic is specified and built as one.
 
-Work is not locked to the shape it started with. A feature that grows past a single topic can **pivot** into an epic; a feature that belongs inside a larger initiative can be **absorbed** into an epic as one of its topics. Both are deliberate operations you invoke, covered in [lifecycle operations](lifecycle-operations.md). The point is that guessing the shape wrong at the start costs you nothing — the system is built to reshape work as your understanding of it sharpens.
+## When the kind turns out wrong
+
+Getting the kind wrong at the start costs little, because the kind was a reading made before the work had shown its size.
+
+- A feature that turns out to be several things **pivots** into an epic in place, its discussion becoming the epic's first topic.
+- A feature that belongs inside a larger effort is **absorbed** into an epic as one of its topics.
+- A quick-fix that turns out to need a real decision **moves** to a feature, or to a bugfix where a cause is still to find, within its own conversation, before any of its fixes has landed.
+- A bugfix whose cause sits in the design can be reworked as a feature, once its root cause has been validated.
+
+Pivot and absorb work until the specification is written. [Lifecycle operations](lifecycle-operations.md) covers all of them, and the cancels, postpones and returns beside them.

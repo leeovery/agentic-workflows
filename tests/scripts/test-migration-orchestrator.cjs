@@ -3,12 +3,34 @@
 //
 // Tests for the Node migration orchestrator (migrate.cjs).
 //
-// Two layers:
-//   - Real fleet: run the actual migrate.cjs against a temp project — the
-//     bash-3.2 execution path, idempotency, PROJECT_DIR pinning.
+// Three layers:
+//   - Real fleet: run the actual migrate.cjs against a temp project, as far
+//     as its first directive — the bash-3.2 execution path, idempotency,
+//     PROJECT_DIR pinning, and a project with no state in its code tree left
+//     untouched, the reshape's directives recorded by their IDs alone.
 //   - Synthetic fleet: a copy of migrate.cjs beside a controlled migrations/
-//     dir — mixed .sh/.cjs numeric ordering, legacy tracking-log honouring,
-//     failure-aborts-without-recording (both extensions), delete-log-reruns.
+//     dir — mixed .sh/.cjs numeric ordering, the migrations record the caller names,
+//     failure-aborts-without-recording (both extensions), delete-log-reruns,
+//     a run killed as it writes a journal losing nothing journaled before,
+//     the code-tree fleet recorded without running where there is no
+//     code-tree state;
+//     a directive stopping the run, there too past the reshape's sequence;
+//     and a run with nothing pending reading the migrations folder once
+//     (21.10.4; the engine's side is test-migration-directives.cjs's); a
+//     refusal from any migration but the reshape's guard failing the run.
+//   - The reshape's contract, over the synthetic fleet: the handbacks kept
+//     while the reshape is owed; the guard run first while it is owed, its
+//     refusal writing nothing, and the record
+//     seeded from the old one, whole, a kill at the seed's rename included
+//     (the real guard is test-migration-074.cjs's); the stop before the
+//     reshape's move for the checks the chain before the guard handed back,
+//     marked made once recorded so, its notices handed on to the run's end,
+//     and none where it handed back nothing or a notice alone, where the
+//     code tree holds no state, or for a handback after the guard; its
+//     frozen steps and the runtime's old-layout.cjs never loading each
+//     other; and no migration's requires reaching the engine.
+//
+// Layer: process.
 //
 
 require('./hermetic-env.cjs');
@@ -22,8 +44,9 @@ const { spawnSync } = require('child_process');
 
 const REAL_MIGRATE = path.join(
   __dirname,
-  '../../skills/workflow-migrate/scripts/migrate.cjs'
+  '../../skills/ledger-migrate/scripts/migrate.cjs'
 );
+const { LAST_CODE_TREE_MIGRATION, LAST_CODE_TREE_DIRECTIVE } = require(REAL_MIGRATE);
 
 // Stock /bin/bash is 3.2.57 on macOS — the whole point of the .sh path being
 // bash-3.2-safe. Pin it explicitly where the .sh execution path is under test.
@@ -33,9 +56,14 @@ function tmp(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 
-/** Run a migrate.cjs at `migrate` with cwd `project`. */
-function run(migrate, project, env = {}) {
-  const res = spawnSync('node', [migrate], {
+// Where boot keeps the migrations record, the state's own, and the runner's
+// journals, in the state's cache.
+const RECORD = '.ledger/.state/migrations';
+const JOURNALS = '.ledger/.cache/migrate';
+
+/** Run a migrate.cjs at `migrate` with cwd `project`, recording into the state's migrations record. */
+function run(migrate, project, env = {}, args = ['--record', path.join(project, RECORD), '--journals', path.join(project, JOURNALS)]) {
+  const res = spawnSync('node', [migrate, ...args], {
     cwd: project,
     encoding: 'utf8',
     env: { ...process.env, ...env },
@@ -43,28 +71,31 @@ function run(migrate, project, env = {}) {
   return { status: res.status, stdout: res.stdout || '', stderr: res.stderr || '' };
 }
 
-/** Copy migrate.cjs into a fresh scripts/ dir and write the given migration
- *  files into its sibling migrations/. Returns the copied migrate path. */
+/** Copy migrate.cjs and the modules it loads into a fresh scripts/
+ *  dir and write the given migration files into its sibling migrations/.
+ *  Returns the copied migrate path. */
 function synthFleet(migrations) {
   const root = tmp('mig-orch-synth-');
   const scripts = path.join(root, 'scripts');
   const migDir = path.join(scripts, 'migrations');
   fs.mkdirSync(migDir, { recursive: true });
-  fs.copyFileSync(REAL_MIGRATE, path.join(scripts, 'migrate.cjs'));
+  for (const script of ['migrate.cjs', 'migration-ids.cjs', 'old-layout.cjs']) fs.copyFileSync(path.join(path.dirname(REAL_MIGRATE), script), path.join(scripts, script));
   for (const [name, content] of Object.entries(migrations)) {
     fs.writeFileSync(path.join(migDir, name), content);
   }
   return { migrate: path.join(scripts, 'migrate.cjs'), root };
 }
 
+// A project whose code tree still holds the state the fleet up to 072 was
+// written for — the synthetic fleet's ids fall in that range, so they run.
 function freshProject() {
   const project = tmp('mig-orch-proj-');
-  fs.mkdirSync(path.join(project, '.workflows', '.state'), { recursive: true });
+  fs.mkdirSync(path.join(project, '.workflows'), { recursive: true });
   return project;
 }
 
 function trackingLog(project) {
-  const p = path.join(project, '.workflows', '.state', 'migrations');
+  const p = path.join(project, RECORD);
   return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
 }
 
@@ -86,34 +117,126 @@ function runReport(stdout) {
 const shMig = (id) =>
   `#!/bin/bash\necho "${id}" >> "\${PROJECT_DIR:-.}/order.log"\nreport_update\nreturn 0\n`;
 
+// A directive's check, as its module exports it.
+const CHECK = `'use strict';\nmodule.exports = { does: 'This step writes a record of each topic.', counts: { one: 'topic', many: 'topics' }, done: 'with their records', partWay: 'A record it was in the middle of is amended from where it stood.', check: () => [] };\n`;
+
+// A directive: its title, its head, and its instructions.
+const directive = (title) =>
+  `# ${title}\n\n## Touches\n\n- Nothing.\n\n## Asks\n\n- Nothing.\n\n## Instructions\n\nCarry it out.\n`;
+
+// A preload recording each fs call a run makes on a path under COUNT_UNDER,
+// by method and path, written to COUNT_TO as the run exits.
+const FS_COUNTER = path.join(tmp('mig-orch-counter-'), 'count-fs.cjs');
+fs.writeFileSync(FS_COUNTER, `'use strict';
+const fs = require('fs');
+const path = require('path');
+const under = process.env.COUNT_UNDER;
+const calls = [];
+const write = fs.writeFileSync;
+for (const name of ['existsSync', 'statSync', 'lstatSync', 'readdirSync', 'readFileSync', 'openSync']) {
+  const real = fs[name];
+  fs[name] = function counted(target, ...rest) {
+    if (typeof target === 'string' && (target === under || target.startsWith(under + path.sep))) calls.push(name + ' ' + (path.relative(under, target) || '.'));
+    return real.call(this, target, ...rest);
+  };
+}
+process.on('exit', () => write(process.env.COUNT_TO, JSON.stringify(calls)));
+`);
+
 // A .cjs migration that appends its id to order.log and reports an update.
-const cjsMig = (id) =>
+// `report` is `reportSkip` for one that changes nothing.
+const cjsMig = (id, report = 'reportUpdate') =>
   `'use strict';\nconst fs = require('fs');\nconst path = require('path');\n` +
   `module.exports = {\n  id: '${id}',\n  description: 'synthetic ${id}',\n` +
-  `  run({ projectDir, reportUpdate }) {\n` +
+  `  run({ projectDir, ${report} }) {\n` +
   `    fs.appendFileSync(path.join(projectDir, 'order.log'), '${id}\\n');\n` +
-  `    reportUpdate();\n  },\n};\n`;
+  `    ${report}();\n  },\n};\n`;
+
+// The real fleet's migrations by id, and the directives among them, the
+// first of which a project holding `.workflows/` stops at.
+const REAL_NAMES = fs.readdirSync(path.join(path.dirname(REAL_MIGRATE), 'migrations')).filter((name) => /^[0-9]+-/.test(name) && !name.endsWith('.check.cjs'));
+const idOf = (/** @type {string} */ name) => name.slice(0, name.indexOf('-'));
+const REAL_IDS = REAL_NAMES.map(idOf).sort();
+const REAL_DIRECTIVES = REAL_NAMES.filter((name) => name.endsWith('.md')).sort();
+const FIRST_DIRECTIVE = REAL_DIRECTIVES[0].replace(/\.md$/, '');
+
+// The record the layout before the state branch kept, in the project's folder.
+const OLD_RECORD = '.workflows/.state/migrations';
+
+// A .cjs migration that hands back a check and a notice, each naming its id.
+const tellingMig = (/** @type {string} */ id) =>
+  `'use strict';\nmodule.exports = { id: '${id}', description: 'telling ${id}', info: 'What ${id} does.',\n` +
+  `  run({ reportUpdate }) { reportUpdate(); return { verify: 'Check ${id} by hand.', notice: '${id} ran.' }; } };\n`;
+
+// A .cjs migration that hands back a notice alone, as a telling one words it.
+const noticeMig = (/** @type {string} */ id) =>
+  `'use strict';\nmodule.exports = { id: '${id}', description: 'telling ${id}', run({ reportUpdate }) { reportUpdate(); return { notice: '${id} ran.' }; } };\n`;
+
+// What a telling migration hands back, each kind as the runner journals it.
+const toldBy = (/** @type {string} */ id) => ({
+  verify: { id, description: `telling ${id}`, info: `What ${id} does.`, verify: `Check ${id} by hand.` },
+  notice: { id, description: `telling ${id}`, notice: `${id} ran.` },
+});
+
+// The line the record holds once the checks before the reshape's move are made.
+const CHECKS_DONE = 'old-chain-checks';
+
+// A .cjs migration that refuses to run, with the facts `refused`.
+const refusing = (/** @type {string} */ id, /** @type {object} */ refused) =>
+  `'use strict';\nmodule.exports = { id: '${id}', description: 'refusing ${id}', run() { throw Object.assign(new Error('refused'), { refused: ${JSON.stringify(refused)} }); } };\n`;
+
+/**
+ * A project that owes the reshape: a repository whose code branch holds its
+ * `.workflows/`, its old migrations record `old` where given, and no state
+ * branch.
+ * @param {string} [old]
+ */
+function owingProject(old) {
+  const project = freshProject();
+  const sh = (/** @type {string[]} */ args) => spawnSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', ...args], { cwd: project, encoding: 'utf8' });
+  fs.writeFileSync(path.join(project, '.workflows/manifest.json'), '{}\n');
+  if (old !== undefined) {
+    fs.mkdirSync(path.join(project, OLD_RECORD, '..'), { recursive: true });
+    fs.writeFileSync(path.join(project, OLD_RECORD), old);
+  }
+  sh(['init', '-q', '-b', 'main']);
+  sh(['add', '-A']);
+  sh(['commit', '-q', '-m', 'the old layout']);
+  return project;
+}
 
 describe('migrate.cjs — real fleet', () => {
-  it('runs the whole fleet under stock /bin/bash 3.2 and writes the tracking file', () => {
+  it('runs the fleet under stock /bin/bash 3.2 as far as its first directive, writing each migration before it to the migrations record', () => {
     const project = freshProject();
-    const res = run(REAL_MIGRATE, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(REAL_MIGRATE, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, `stderr: ${res.stderr}`);
     assert.ok(!/mapfile|command not found/i.test(res.stdout + res.stderr), 'no bash-3.2 failure');
-    assert.ok(
-      fs.existsSync(path.join(project, '.workflows/.state/migrations')),
-      'tracking file written'
-    );
+    assert.strictEqual(res.stdout.trimEnd().split('\n').at(-1), `---DIRECTIVE: ${FIRST_DIRECTIVE}---`);
+    assert.deepStrictEqual(trackingLog(project).trim().split('\n').sort(), REAL_IDS.filter((id) => id < idOf(FIRST_DIRECTIVE)));
+    assert.ok(JSON.parse(fs.readFileSync(path.join(project, JOURNALS, 'pending-tally.json'), 'utf8')).ran > 0, 'the fleet ran against the code tree\'s state');
   });
 
-  it('is idempotent — a second run reports no changes', () => {
-    const project = freshProject();
-    run(REAL_MIGRATE, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
-    const second = run(REAL_MIGRATE, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+  it('leaves a project with no state in its code tree untouched, recording the code-tree fleet and the reshape\'s directives by their IDs alone', () => {
+    const project = tmp('mig-orch-none-');
+    const res = run(REAL_MIGRATE, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
-    assert.strictEqual(second.status, 0);
-    assert.ok(second.stdout.includes('[SKIP] No changes needed'), second.stdout);
+    assert.strictEqual(res.status, 0, `stderr: ${res.stderr}`);
+    assert.deepStrictEqual(fs.readdirSync(project), ['.ledger'], 'nothing written but the record');
+    assert.deepStrictEqual(fs.readdirSync(path.join(project, '.ledger/.state')), ['migrations']);
+    // The code-tree fleet and the reshape's directives are recorded by their IDs alone, nothing recorded beside them; the code migrations past it run and find nothing to do.
+    const directives = new Set(REAL_DIRECTIVES.map(idOf));
+    assert.deepStrictEqual(trackingLog(project).trim().split('\n').sort(), [...REAL_IDS].sort(), 'every migration recorded');
+    assert.deepStrictEqual(runReport(res.stdout), { ran: REAL_IDS.filter((id) => Number(id) > LAST_CODE_TREE_MIGRATION && !directives.has(id)).length });
+  });
+
+  it('is idempotent — a second run runs nothing again, stopping at the same directive, the record as the first left it', () => {
+    const project = freshProject();
+    run(REAL_MIGRATE, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
+    const recorded = trackingLog(project);
+    const second = run(REAL_MIGRATE, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.deepStrictEqual([second.status, second.stdout, trackingLog(project)], [0, `---DIRECTIVE: ${FIRST_DIRECTIVE}---\n`, recorded]);
   });
 
   it('pins PROJECT_DIR to "." — a hostile export cannot redirect the fleet', () => {
@@ -132,7 +255,7 @@ describe('migrate.cjs — real fleet', () => {
       '{"name":"wu2","work_type":"feature","status":"active","phases":{}}\n'
     );
 
-    run(REAL_MIGRATE, proj, { PROJECT_DIR: decoy, WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    run(REAL_MIGRATE, proj, { PROJECT_DIR: decoy, LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     const status = (p) => JSON.parse(fs.readFileSync(p, 'utf8')).status;
     assert.strictEqual(
@@ -158,7 +281,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, res.stderr);
     assert.strictEqual(
@@ -173,7 +296,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     );
   });
 
-  it('reports the migrations it ran and the ledger it recorded them in — a run that changed no file included', () => {
+  it('reports the migrations it ran — a run that changed no file included', () => {
     // 002 runs and reports nothing changed: it still recorded, and the report
     // counts runs, not files — the case the stop gate cannot speak for.
     const { migrate } = synthFleet({
@@ -183,28 +306,56 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const first = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const first = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(first.status, 0, first.stderr);
-    assert.deepStrictEqual(runReport(first.stdout), { ran: 2, tracking: '.workflows/.state/migrations' });
+    assert.deepStrictEqual(runReport(first.stdout), { ran: 2 });
 
     // Fully recorded: nothing ran, and the report says so.
-    const second = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const second = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(second.status, 0, second.stderr);
     assert.ok(second.stdout.includes('[SKIP] No changes needed'), second.stdout);
-    assert.deepStrictEqual(runReport(second.stdout), { ran: 0, tracking: '.workflows/.state/migrations' });
+    assert.deepStrictEqual(runReport(second.stdout), { ran: 0 });
   });
 
-  it('reports the ledger where it ended up, not where it was found — a legacy log is stabilised first', () => {
+  it('records into the migrations record the caller names, its folder made where missing', () => {
     const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001') });
-    const project = tmp('mig-orch-legacy-');
-    fs.mkdirSync(path.join(project, 'docs/workflow/.cache'), { recursive: true });
-    fs.writeFileSync(path.join(project, 'docs/workflow/.cache/migrations.log'), '');
+    const project = freshProject();
+    const record = path.join(tmp('mig-orch-record-'), 'deep/record');
 
-    const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }, ['--record', record, '--journals', path.join(project, JOURNALS)]);
 
     assert.strictEqual(res.status, 0, res.stderr);
-    assert.deepStrictEqual(runReport(res.stdout), { ran: 1, tracking: 'docs/workflow/.state/migrations' });
-    assert.strictEqual(fs.readFileSync(path.join(project, 'docs/workflow/.state/migrations'), 'utf8'), '001\n');
+    assert.strictEqual(fs.readFileSync(record, 'utf8'), '001\n');
+    assert.strictEqual(fs.existsSync(path.join(project, RECORD)), false);
+  });
+
+  it('refuses to run without a migrations record or a folder to journal in, running nothing', () => {
+    const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001') });
+    const project = freshProject();
+
+    for (const args of [[], ['--record', path.join(project, RECORD)], ['--journals', path.join(project, JOURNALS)]]) {
+      const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }, args);
+
+      assert.notStrictEqual(res.status, 0);
+      assert.match(res.stderr, /usage: migrate\.cjs --record <path> --journals <dir>/);
+    }
+    assert.strictEqual(fs.existsSync(path.join(project, 'order.log')), false);
+  });
+
+  it('records the code-tree fleet (to 072) without running it where the code tree holds no state, and runs what follows', () => {
+    const { migrate } = synthFleet({
+      '001-a.sh': shMig('001'),
+      '072-b.cjs': cjsMig('072'),
+      '073-c.cjs': cjsMig('073'),
+    });
+    const project = tmp('mig-orch-none-');
+
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '073\n', 'only 073 ran');
+    assert.deepStrictEqual(trackingLog(project).trim().split('\n'), ['001', '072', '073']);
+    assert.deepStrictEqual(runReport(res.stdout), { ran: 1 });
   });
 
   it('an aborted run reports nothing — there is no completed run to account for', () => {
@@ -215,7 +366,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.notStrictEqual(res.status, 0);
     assert.strictEqual(runReport(res.stdout), null);
@@ -233,7 +384,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const first = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const first = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(first.status, 0, first.stderr);
     const lines = first.stdout.split('\n');
     const mi = lines.findIndex((l) => l.trim() === '---VERIFY_ADDENDA---');
@@ -246,7 +397,7 @@ describe('migrate.cjs — synthetic fleet', () => {
       verify: 'Check the things code cannot see.',
     }], 'the skip-path migration still hands over its checks');
 
-    const second = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const second = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(second.status, 0, second.stderr);
     assert.ok(!second.stdout.includes('---VERIFY_ADDENDA---'), 'recorded migrations never re-emit');
   });
@@ -262,7 +413,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const first = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const first = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.notStrictEqual(first.status, 0, 'the fleet aborts on 002');
     assert.ok(!first.stdout.includes('---VERIFY_ADDENDA---'), 'an aborted run emits nothing');
     assert.deepStrictEqual(trackingLog(project).trim().split('\n'), ['001'], '001 recorded, 002 not');
@@ -270,24 +421,46 @@ describe('migrate.cjs — synthetic fleet', () => {
     // Fix 002 and re-run: 001 never re-runs, but its journaled addendum rides.
     fs.writeFileSync(path.join(root, 'scripts/migrations/002-b.cjs'),
       `'use strict';\nmodule.exports = { id: '002', description: 'fixed', run({ reportSkip }) { reportSkip(); } };\n`);
-    const second = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const second = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(second.status, 0, second.stderr);
     const lines = second.stdout.split('\n');
     const mi = lines.findIndex((l) => l.trim() === '---VERIFY_ADDENDA---');
     assert.notStrictEqual(mi, -1, 'the recovered run emits the journal');
     const addenda = JSON.parse(lines[mi + 1]);
     assert.deepStrictEqual(addenda.map((a) => a.id), ['001'], "001's addendum survived the abort");
-    assert.ok(!fs.existsSync(path.join(project, '.workflows/.state/pending-verify.json')), 'journal cleared after emission');
+    assert.ok(second.stdout.includes('---STOP_GATE: FILES_UPDATED---'), "001's update is still owed its review");
+    assert.ok(!fs.existsSync(path.join(project, JOURNALS, 'pending-verify.json')), 'journal cleared after emission');
 
-    const third = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const third = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.ok(!third.stdout.includes('---VERIFY_ADDENDA---'), 'emitted once, never again');
+  });
+
+  it('a run killed as it writes a journal loses nothing the journals held: the next run\'s review holds every hand-back journaled before the kill, and the tally', () => {
+    const telling = (/** @type {string} */ id) => `'use strict';\nmodule.exports = { id: '${id}', description: 'telling ${id}', info: 'What ${id} does.',\n  run({ reportUpdate }) { reportUpdate(); return { verify: 'Check ${id} by hand.', notice: '${id} ran.' }; } };\n`;
+    const { migrate, root } = synthFleet({ '001-a.cjs': telling('001'), '002-b.cjs': telling('002') });
+    const project = freshProject();
+    const kill = path.join(root, 'kill-journal.cjs');
+    fs.writeFileSync(kill, "const fs = require('fs');\nconst path = require('path');\nconst real = fs.writeFileSync;\nlet writes = 0;\nfs.writeFileSync = (file, data, ...rest) => { if (path.basename(String(file)).startsWith('pending-verify.json') && ++writes === 2) { real(file, String(data).slice(0, 10)); process.exit(9); } return real(file, data, ...rest); };\n");
+
+    assert.strictEqual(run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH, NODE_OPTIONS: `--require ${kill}` }).status, 9);
+    const again = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.deepStrictEqual([
+      markerPayload(again.stdout, '---VERIFY_ADDENDA---'),
+      markerPayload(again.stdout, '---MIGRATION_NOTICES---'),
+      again.stdout.split('\n').filter((line) => /^\d+ migration\(s\) applied/.test(line)),
+    ], [
+      [{ id: '001', description: 'telling 001', info: 'What 001 does.', verify: 'Check 001 by hand.' }],
+      [{ id: '001', description: 'telling 001', notice: '001 ran.' }],
+      ['2 migration(s) applied, 2 file(s) updated.'],
+    ]);
   });
 
   it('emits no addenda when no executed migration declares verify', () => {
     const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001'), '002-b.sh': shMig('002') });
     const project = freshProject();
 
-    const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, res.stderr);
     assert.ok(!res.stdout.includes('---VERIFY_ADDENDA---'));
@@ -307,7 +480,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const first = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const first = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(first.status, 0, first.stderr);
     assert.deepStrictEqual(markerPayload(first.stdout, '---MIGRATION_NOTICES---'), [{
       id: '002',
@@ -316,9 +489,9 @@ describe('migrate.cjs — synthetic fleet', () => {
     }], 'trimmed, and a blank notice is no notice');
     assert.deepStrictEqual(markerPayload(first.stdout, '---VERIFY_ADDENDA---').map((a) => a.verify),
       ['Check the things code cannot see.'], 'the checks travel on their own');
-    assert.ok(!fs.existsSync(path.join(project, '.workflows/.state/pending-notices.json')), 'journal cleared after emission');
+    assert.ok(!fs.existsSync(path.join(project, JOURNALS, 'pending-notices.json')), 'journal cleared after emission');
 
-    const second = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const second = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(second.status, 0, second.stderr);
     assert.ok(!second.stdout.includes('---MIGRATION_NOTICES---'), 'recorded migrations never re-emit');
   });
@@ -332,19 +505,19 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const first = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const first = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.notStrictEqual(first.status, 0, 'the fleet aborts on 002');
     assert.ok(!first.stdout.includes('---MIGRATION_NOTICES---'), 'an aborted run emits nothing');
 
     fs.writeFileSync(path.join(root, 'scripts/migrations/002-b.cjs'),
       `'use strict';\nmodule.exports = { id: '002', description: 'fixed', run({ reportSkip }) { reportSkip(); } };\n`);
-    const second = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const second = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(second.status, 0, second.stderr);
     assert.deepStrictEqual(markerPayload(second.stdout, '---MIGRATION_NOTICES---').map((n) => n.notice),
       ['Something was removed.'], "001's notice survived the abort");
   });
 
-  it('honours a legacy tracking log written by the old migrate.sh', () => {
+  it('runs only what the record does not hold, appending after what it does', () => {
     const { migrate } = synthFleet({
       '001-a.sh': shMig('001'),
       '002-b.cjs': cjsMig('002'),
@@ -352,10 +525,10 @@ describe('migrate.cjs — synthetic fleet', () => {
       '004-d.cjs': cjsMig('004'),
     });
     const project = freshProject();
-    // A log the bash orchestrator would have left: numeric IDs, one per line.
-    fs.writeFileSync(path.join(project, '.workflows/.state/migrations'), '001\n003\n');
+    fs.mkdirSync(path.dirname(path.join(project, RECORD)), { recursive: true });
+    fs.writeFileSync(path.join(project, RECORD), '001\n003\n');
 
-    const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, res.stderr);
     assert.strictEqual(
@@ -379,7 +552,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.notStrictEqual(res.status, 0, 'non-zero exit');
     assert.match(res.stderr, /002-boom\.sh failed/);
@@ -399,7 +572,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.notStrictEqual(res.status, 0, 'non-zero exit');
     assert.match(res.stderr, /kaboom-002/);
@@ -416,17 +589,17 @@ describe('migrate.cjs — synthetic fleet', () => {
     });
     const project = freshProject();
 
-    run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '001\n002\n');
 
     // Second run: nothing to do.
-    const noop = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const noop = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.ok(noop.stdout.includes('[SKIP] No changes needed'));
     assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '001\n002\n');
 
     // Delete the log — every migration re-runs.
-    fs.rmSync(path.join(project, '.workflows/.state/migrations'));
-    run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    fs.rmSync(path.join(project, RECORD));
+    run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(
       fs.readFileSync(path.join(project, 'order.log'), 'utf8'),
       '001\n002\n001\n002\n',
@@ -434,16 +607,256 @@ describe('migrate.cjs — synthetic fleet', () => {
     );
   });
 
+  it('stops at a directive the record does not hold — what comes before it run and recorded, nothing after, the directive not recorded, no counts, handbacks or run report printed — and carries on past it once recorded, the run that completes owning what came before: its review and its notice', () => {
+    const { migrate } = synthFleet({
+      '001-a.cjs':
+        `'use strict';\nmodule.exports = { id: '001', description: 'synthetic 001',\n` +
+        `  run({ reportUpdate }) { reportUpdate(); return { notice: 'Something moved.' }; } };\n`,
+      '002-records.md': directive('Records'),
+      '002-records.check.cjs': CHECK,
+      '003-c.cjs': cjsMig('003', 'reportSkip'),
+    });
+    const project = freshProject();
+
+    const stopped = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.strictEqual(stopped.status, 0, stopped.stderr);
+    assert.strictEqual(stopped.stdout, '---DIRECTIVE: 002-records---\n');
+    assert.strictEqual(fs.existsSync(path.join(project, 'order.log')), false, '003 never ran');
+    assert.deepStrictEqual(trackingLog(project).trim().split('\n'), ['001']);
+
+    fs.appendFileSync(path.join(project, RECORD), '002\n');
+    const carried = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.strictEqual(carried.status, 0, carried.stderr);
+    assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '003\n');
+    assert.deepStrictEqual(markerPayload(carried.stdout, '---MIGRATION_NOTICES---').map((n) => n.notice), ['Something moved.'], 'the journaled notice waits for the run that completes');
+    assert.ok(carried.stdout.includes('2 migration(s) applied, 1 file(s) updated.\n'), carried.stdout);
+    assert.ok(carried.stdout.includes('---STOP_GATE: FILES_UPDATED---\n'), "001's update is owed its review, though 003 changed nothing");
+    assert.deepStrictEqual(runReport(carried.stdout), { ran: 2 });
+    assert.deepStrictEqual(fs.readdirSync(path.join(project, JOURNALS)), [], 'what was owed is cleared once reported');
+  });
+
+  it('stops at a directive past the reshape\'s sequence where the code tree holds no state, as anywhere', () => {
+    const later = String(LAST_CODE_TREE_DIRECTIVE + 1).padStart(3, '0');
+    const { migrate } = synthFleet({ [`${later}-later.md`]: directive('Later') });
+    const project = tmp('mig-orch-none-');
+
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.deepStrictEqual([res.stdout, trackingLog(project)], [`---DIRECTIVE: ${later}-later---\n`, '']);
+  });
+
+  it('a run with nothing pending looks at the migrations folder once and reads nothing in it', () => {
+    const { migrate, root } = synthFleet({
+      '001-a.sh': shMig('001'),
+      '002-b.cjs': cjsMig('002'),
+      '003-records.md': directive('Records'),
+      '003-records.check.cjs': CHECK,
+    });
+    const project = freshProject();
+    fs.mkdirSync(path.dirname(path.join(project, RECORD)), { recursive: true });
+    fs.writeFileSync(path.join(project, RECORD), '001\n002\n003\n');
+    const counted = path.join(root, 'counted.json');
+
+    const res = run(migrate, project, {
+      LEDGER_MIGRATE_BASH: SYSTEM_BASH,
+      NODE_OPTIONS: `--require ${FS_COUNTER}`,
+      COUNT_UNDER: path.join(root, 'scripts/migrations'),
+      COUNT_TO: counted,
+    });
+
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(counted, 'utf8')), ['existsSync .', 'readdirSync .']);
+  });
+
   it('runs a .sh migration under stock /bin/bash 3.2 with the report helpers', () => {
     const { migrate } = synthFleet({ '001-a.sh': shMig('001') });
     const project = freshProject();
 
-    const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, res.stderr);
     assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '001\n');
     // report_update fired under 3.2 → the summary reflects one updated file.
     assert.match(res.stdout, /1 migration\(s\) applied, 1 file\(s\) updated\./);
     assert.ok(res.stdout.includes('---STOP_GATE: FILES_UPDATED---'));
+  });
+
+  it('a refusal from any migration but the reshape\'s guard fails the run like any throw: no marker printed, nothing recorded for it and nothing after it run', () => {
+    const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001'), '002-b.cjs': refusing('002', { cause: 'busy' }), '003-c.cjs': cjsMig('003') });
+    const project = freshProject();
+
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.deepStrictEqual([res.status, res.stdout], [1, '']);
+    assert.match(res.stderr, /^migration run failed: Error: refused/);
+    assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '001\n');
+    assert.strictEqual(trackingLog(project), '001\n');
+  });
+});
+
+describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
+  it('runs the reshape\'s guard first while the reshape is owed, ahead of the chain that brings an older project up; where it is not owed, in its place', () => {
+    const fleet = { '001-a.cjs': cjsMig('001'), '002-b.sh': shMig('002'), '074-guard.cjs': cjsMig('074', 'reportSkip') };
+    const owing = owingProject();
+    const settled = freshProject();
+
+    for (const project of [owing, settled]) assert.strictEqual(run(synthFleet(fleet).migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }).status, 0);
+
+    assert.deepStrictEqual([fs.readFileSync(path.join(owing, 'order.log'), 'utf8'), trackingLog(owing)], ['074\n001\n002\n', '074\n001\n002\n']);
+    assert.deepStrictEqual([fs.readFileSync(path.join(settled, 'order.log'), 'utf8'), trackingLog(settled)], ['001\n002\n074\n', '001\n002\n074\n']);
+  });
+
+  it('a refusal of the guard writes nothing at all — no record, no seed, no journal — and runs nothing of the chain', () => {
+    const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001'), '074-guard.cjs': refusing('074', { cause: 'dirty', unit: null, phase: null, topic: null, active: null }) });
+    const project = owingProject('001\n');
+
+    const res = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.deepStrictEqual([res.status, res.stdout], [0, '---REFUSED: 074---\n{"cause":"dirty","unit":null,"phase":null,"topic":null,"active":null}\n']);
+    assert.ok(!fs.existsSync(path.join(project, '.ledger')), 'nothing written for the state');
+    assert.ok(!fs.existsSync(path.join(project, 'order.log')));
+  });
+
+  it('seeds a record holding no line from the old one, written whole — a project part-way through the chain runs the rest of it — and never one that holds a line', () => {
+    const fleet = { '001-a.cjs': cjsMig('001'), '002-b.sh': shMig('002'), '003-c.cjs': cjsMig('003') };
+    const seeded = freshProject();
+    fs.mkdirSync(path.join(seeded, OLD_RECORD, '..'), { recursive: true });
+    fs.writeFileSync(path.join(seeded, OLD_RECORD), '001\n002');
+    const held = freshProject();
+    fs.mkdirSync(path.join(held, OLD_RECORD, '..'), { recursive: true });
+    fs.writeFileSync(path.join(held, OLD_RECORD), '001\n002\n');
+    fs.mkdirSync(path.join(held, RECORD, '..'), { recursive: true });
+    fs.writeFileSync(path.join(held, RECORD), '001\n');
+
+    for (const project of [seeded, held]) assert.strictEqual(run(synthFleet(fleet).migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }).status, 0);
+
+    assert.deepStrictEqual([fs.readFileSync(path.join(seeded, 'order.log'), 'utf8'), trackingLog(seeded)], ['003\n', '001\n002\n003\n']);
+    assert.deepStrictEqual([fs.readFileSync(path.join(held, 'order.log'), 'utf8'), trackingLog(held)], ['002\n003\n', '001\n002\n003\n']);
+  });
+
+  it('a run that completes while the reshape is owed emits what the runs journaled and keeps it — so every run until the migration\'s commit hands the review the same — where a run of a project that owes none emits it once', () => {
+    const telling = `'use strict';\nmodule.exports = { id: '001', description: 'telling 001', info: 'What 001 does.',\n  run({ reportUpdate }) { reportUpdate(); return { verify: 'Check 001 by hand.', notice: '001 ran.' }; } };\n`;
+    const owing = owingProject();
+    const settled = freshProject();
+    const handedBack = (/** @type {string} */ stdout) => [markerPayload(stdout, '---VERIFY_ADDENDA---'), markerPayload(stdout, '---MIGRATION_NOTICES---'), stdout.split('\n').filter((line) => /^\d+ migration\(s\) applied/.test(line))];
+    const told = [
+      [{ id: '001', description: 'telling 001', info: 'What 001 does.', verify: 'Check 001 by hand.' }],
+      [{ id: '001', description: 'telling 001', notice: '001 ran.' }],
+      ['1 migration(s) applied, 1 file(s) updated.'],
+    ];
+
+    const runs = [owing, owing, settled, settled].map((project) => run(synthFleet({ '001-a.cjs': telling }).migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }).stdout);
+
+    assert.deepStrictEqual(runs.map(handedBack), [told, told, told, [undefined, undefined, []]]);
+  });
+
+  it('stops before the reshape\'s move where the chain before the guard handed back checks: printing them under their marker, then the stop\'s line, the chain recorded and nothing after it run, every run until the record holds the checks made; then the run marks them made and carries on past the stop, its end handing on the chain\'s checks marked made and its notices verbatim beside the rest (21.10.13)', () => {
+    const { migrate } = synthFleet({ '050-a.cjs': tellingMig('050'), '075-b.cjs': cjsMig('075'), '076-c.cjs': tellingMig('076') });
+    const project = owingProject();
+    const told = toldBy('050');
+    const stop = ['---VERIFY_ADDENDA---', JSON.stringify([told.verify]), '---CHECKS---', ''].join('\n');
+
+    const stopped = [1, 2].map(() => run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }));
+
+    assert.deepStrictEqual(stopped.map(({ status, stdout }) => ({ status, stdout })), [{ status: 0, stdout: stop }, { status: 0, stdout: stop }]);
+    assert.deepStrictEqual([trackingLog(project), fs.existsSync(path.join(project, 'order.log'))], ['050\n', false]);
+
+    fs.appendFileSync(path.join(project, RECORD), `${CHECKS_DONE}\n`);
+    const carried = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.strictEqual(carried.status, 0, carried.stderr);
+    assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '075\n');
+    assert.deepStrictEqual([markerPayload(carried.stdout, '---VERIFY_ADDENDA---'), markerPayload(carried.stdout, '---MIGRATION_NOTICES---')], [[{ ...told.verify, made: true }, toldBy('076').verify], [told.notice, toldBy('076').notice]]);
+    assert.ok(carried.stdout.includes('3 migration(s) applied, 3 file(s) updated.\n'), carried.stdout);
+    assert.deepStrictEqual(trackingLog(project), `050\n${CHECKS_DONE}\n075\n076\n`);
+  });
+
+  it('carries on past the guard with no stop where the chain before it handed back nothing, or a notice alone, which the run\'s end hands on, where the code tree holds no state, where no reshape is owed or under way, and for a handback after the guard', () => {
+    const quiet = owingProject();
+    const noticed = owingProject();
+    const stateless = tmp('mig-orch-none-');
+    const owesNone = freshProject();
+    const after = owingProject();
+
+    const told = run(synthFleet({ '050-a.cjs': noticeMig('050'), '075-b.cjs': cjsMig('075') }).migrate, noticed, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
+    const runs = [
+      told,
+      run(synthFleet({ '050-a.cjs': cjsMig('050'), '075-b.cjs': cjsMig('075') }).migrate, quiet, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }),
+      run(synthFleet({ '073-a.cjs': tellingMig('073'), '075-b.cjs': cjsMig('075') }).migrate, stateless, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }),
+      run(synthFleet({ '050-a.cjs': tellingMig('050'), '075-b.cjs': cjsMig('075') }).migrate, owesNone, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }),
+    ];
+    const split = synthFleet({ '076-a.cjs': tellingMig('076'), '077-records.md': directive('Records'), '077-records.check.cjs': CHECK, '078-c.cjs': cjsMig('078') });
+    assert.strictEqual(run(split.migrate, after, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }).stdout, '---DIRECTIVE: 077-records---\n');
+    fs.appendFileSync(path.join(after, RECORD), '077\n');
+    runs.push(run(split.migrate, after, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }));
+
+    assert.deepStrictEqual(runs.map(({ status, stdout }) => [status, stdout.includes('---CHECKS---'), runReport(stdout)]), [1, 2, 3, 4, 5].map(() => [0, false, { ran: 2 }]));
+    assert.deepStrictEqual([noticed, quiet, stateless, owesNone, after].map((project) => fs.readFileSync(path.join(project, 'order.log'), 'utf8')), ['075\n', '050\n075\n', '075\n', '075\n', '078\n']);
+    assert.deepStrictEqual(markerPayload(told.stdout, '---MIGRATION_NOTICES---'), [toldBy('050').notice]);
+  });
+
+  it('no migration loads the engine: every require on the paths from each migration is a literal, and none reaches skills/ledger-engine/', () => {
+    const scripts = path.dirname(REAL_MIGRATE);
+    const skills = path.resolve(scripts, '..', '..');
+    const engine = path.join(skills, 'ledger-engine') + path.sep;
+    const migrations = path.join(scripts, 'migrations');
+    /** @type {string[]} */
+    const found = [];
+    const seen = new Set();
+    const follow = (/** @type {string} */ file) => {
+      if (seen.has(file)) return;
+      seen.add(file);
+      for (const [, arg] of fs.readFileSync(file, 'utf8').matchAll(/\brequire\(([^)]*)\)/g)) {
+        const literal = /^\s*(['"])([^'"]+)\1\s*$/.exec(arg);
+        if (literal === null) found.push(`${path.relative(skills, file)} requires ${arg.trim()}, which no scan can follow`);
+        else if (literal[2].startsWith('.')) {
+          const target = path.resolve(path.dirname(file), literal[2]);
+          if (target.startsWith(engine)) found.push(`${path.relative(skills, file)} loads ${path.relative(skills, target)}`);
+          else follow(target);
+        }
+      }
+    };
+    const entries = fs.readdirSync(migrations, { recursive: true, encoding: 'utf8' }).filter((rel) => rel.endsWith('.cjs')).map((rel) => path.join(migrations, rel));
+
+    for (const file of entries) follow(file);
+
+    assert.deepStrictEqual(found, []);
+    assert.ok(seen.has(path.join(migrations, 'reshape/shared.cjs')) && seen.has(path.join(migrations, 'reshape/linters.cjs')), 'the scan follows what the migrations load');
+  });
+
+  it('the reshape\'s frozen steps and the runtime never load each other: nothing in migrations/ loads old-layout.cjs, and nothing outside it loads migrations/reshape/', () => {
+    const scripts = path.dirname(REAL_MIGRATE);
+    const skills = path.resolve(scripts, '..', '..');
+    const migrations = path.join(scripts, 'migrations');
+    const runtime = path.join(scripts, 'old-layout.cjs');
+    const frozen = path.join(migrations, 'reshape');
+    const loads = (/** @type {string} */ file) => [...fs.readFileSync(file, 'utf8').matchAll(/require\((['"])(\.{1,2}\/[^'"]+)\1\)/g)].map((m) => path.resolve(path.dirname(file), m[2]));
+    const files = fs.readdirSync(skills, { recursive: true, encoding: 'utf8' }).filter((rel) => rel.endsWith('.cjs')).map((rel) => path.join(skills, rel));
+
+    const crossing = files.flatMap((file) => loads(file)
+      .filter((target) => (file.startsWith(migrations + path.sep) ? target === runtime : target.startsWith(frozen + path.sep)))
+      .map((target) => `${path.relative(skills, file)} loads ${path.relative(skills, target)}`));
+
+    assert.deepStrictEqual(crossing, []);
+    assert.ok(loads(path.join(migrations, '074-reshape-guard.cjs')).includes(path.join(frozen, 'shared.cjs')), 'the scan reads a frozen step\'s loads');
+    assert.ok(loads(path.join(skills, 'ledger-engine/scripts/domain/state-checks.cjs')).includes(runtime), 'the scan reads the runtime\'s loads');
+  });
+
+  it('a run killed as the seed is renamed into place leaves no record, and the next seeds it whole', () => {
+    const { migrate, root } = synthFleet({ '001-a.cjs': cjsMig('001'), '002-b.cjs': cjsMig('002') });
+    const project = freshProject();
+    fs.mkdirSync(path.join(project, OLD_RECORD, '..'), { recursive: true });
+    fs.writeFileSync(path.join(project, OLD_RECORD), '001\n');
+    const kill = path.join(root, 'kill-rename.cjs');
+    fs.writeFileSync(kill, `const fs = require('fs');\nconst real = fs.renameSync;\nfs.renameSync = (from, to) => { if (String(to).endsWith(${JSON.stringify(RECORD)})) process.exit(9); return real(from, to); };\n`);
+
+    const killed = run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH, NODE_OPTIONS: `--require ${kill}` });
+    assert.strictEqual(killed.status, 9);
+    assert.strictEqual(trackingLog(project), '');
+
+    assert.strictEqual(run(migrate, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH }).status, 0);
+    assert.deepStrictEqual([fs.readFileSync(path.join(project, 'order.log'), 'utf8'), trackingLog(project)], ['002\n', '001\n002\n']);
   });
 });

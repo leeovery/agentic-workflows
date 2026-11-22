@@ -1,5 +1,7 @@
 'use strict';
 
+// Layer: unit.
+
 require('./hermetic-env.cjs');
 
 const fs = require('fs');
@@ -7,10 +9,10 @@ const path = require('path');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { chunk, sourceLines, lineStarts, lineHolding, MAX_CHUNK_CHARS, CHUNKER_VERSION } = require('../../skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs');
+const { chunk, sourceLines, lineStarts, lineHolding, MAX_CHUNK_CHARS, CHUNKER_VERSION } = require('../../skills/ledger-engine/scripts/kernel/knowledge/chunker.cjs');
 
 const FIXTURE_DIR = path.resolve(__dirname, '..', 'fixtures', 'knowledge');
-const CHUNKING_DIR = path.resolve(__dirname, '..', '..', 'skills', 'workflow-engine', 'content', 'knowledge', 'chunking');
+const CHUNKING_DIR = path.resolve(__dirname, '..', '..', 'skills', 'ledger-engine', 'content', 'knowledge', 'chunking');
 
 function loadFixture(name) {
   return fs.readFileSync(path.join(FIXTURE_DIR, name), 'utf8');
@@ -21,6 +23,12 @@ function loadConfig(phase) {
     fs.readFileSync(path.join(CHUNKING_DIR, phase + '.json'), 'utf8')
   );
 }
+
+/** Split on headings, a file under 50 lines kept whole: the chunker's mechanics, no phase's config. */
+const HEADING = Object.freeze({
+  phase: 'heading', confidence: 'low', strategy: 'split-on-heading', primary_level: 2, fallback_level: 3,
+  keep_whole_below: 50, strip_frontmatter: true, skip_empty_sections: true,
+});
 
 /** The markdown's body, past its opening frontmatter, as the chunker reads it. */
 function bodyOf(markdown) {
@@ -39,7 +47,6 @@ function baseConfig(overrides = {}) {
     primary_level: 2,
     fallback_level: 3,
     keep_whole_below: 0, // disable whole-file gate by default
-    special_sections: {},
     strip_frontmatter: true,
     skip_empty_sections: true,
     ...overrides,
@@ -200,95 +207,6 @@ describe('knowledge chunker', () => {
     assert.match(result[0].content, /## With Body/);
   });
 
-  it('handles own-chunk special sections', () => {
-    const md = [
-      '## Regular',
-      'regular body',
-      '',
-      '## Discussion Map',
-      'map body',
-      '',
-      '## Another',
-      'another body',
-    ].join('\n');
-    const result = chunk(
-      md,
-      baseConfig({ special_sections: { 'Discussion Map': 'own-chunk' } })
-    );
-    assert.strictEqual(result.length, 3);
-    const mapChunk = result.find((c) => /## Discussion Map/.test(c.content));
-    assert.ok(mapChunk);
-    assert.match(mapChunk.content, /map body/);
-  });
-
-  it('handles skip special sections', () => {
-    const md = [
-      '## Keep',
-      'keep body',
-      '',
-      '## Drop',
-      'drop body',
-      '',
-      '## AlsoKeep',
-      'also keep body',
-    ].join('\n');
-    const result = chunk(
-      md,
-      baseConfig({ special_sections: { Drop: 'skip' } })
-    );
-    assert.strictEqual(result.length, 2);
-    for (const c of result) {
-      assert.doesNotMatch(c.content, /drop body/);
-      assert.doesNotMatch(c.content, /## Drop/);
-    }
-  });
-
-  it('handles merge-up special sections', () => {
-    const md = [
-      '## Parent',
-      'parent body',
-      '',
-      '## Footnote',
-      'footnote body',
-      '',
-      '## Next',
-      'next body',
-    ].join('\n');
-    const result = chunk(
-      md,
-      baseConfig({ special_sections: { Footnote: 'merge-up' } })
-    );
-    assert.strictEqual(result.length, 2);
-    const parent = result[0];
-    assert.match(parent.content, /## Parent/);
-    assert.match(parent.content, /parent body/);
-    assert.match(parent.content, /## Footnote/);
-    assert.match(parent.content, /footnote body/);
-    // No standalone Footnote chunk.
-    assert.strictEqual(
-      result.filter((c) => /^## Footnote/.test(c.content.trimStart())).length,
-      0
-    );
-  });
-
-  it('handles merge-up on the first section (promotes to its own chunk)', () => {
-    const md = [
-      '## Footnote',
-      'footnote body',
-      '',
-      '## Parent',
-      'parent body',
-    ].join('\n');
-    const result = chunk(
-      md,
-      baseConfig({ special_sections: { Footnote: 'merge-up' } })
-    );
-    assert.strictEqual(result.length, 2);
-    assert.match(result[0].content, /## Footnote/);
-    assert.match(result[0].content, /footnote body/);
-    assert.match(result[1].content, /## Parent/);
-  });
-
   it('treats H1 + pre-H2 content as the first chunk', () => {
     const md = [
       '# Document Title',
@@ -386,8 +304,7 @@ describe('knowledge chunker', () => {
 // ---------------------------------------------------------------------------
 
 describe('knowledge chunker — character budget', () => {
-  const discussion = loadConfig('discussion');
-  const research = loadConfig('research');
+  const heading = HEADING;
 
   // A paragraph of `size` characters of words on one line, tagged so order
   // and survival can be checked.
@@ -410,25 +327,15 @@ describe('knowledge chunker — character budget', () => {
     assert.ok(chunks.map((c) => bodyText(c.content)).join('') === bodyText(body), 'the chunks lost or reordered body content');
   }
 
-  it('splits an over-budget own-chunk Summary into paragraph groups, packed up to the budget', () => {
+  it('splits an over-budget section with no heading inside into paragraph groups, packed up to the budget', () => {
     const paras = Array.from({ length: 40 }, (_, i) => paragraph('summary-' + i, 1500));
     const src = ['# Topic', '', 'Intro.', '', '## Context', '', 'Some context.', '', '## Summary', '', paras.join('\n\n'), ''].join('\n');
-    const chunks = chunk(src, discussion);
+    const chunks = chunk(src, heading);
     const summary = chunks.filter((c) => c.content.includes('summary-'));
     assert.ok(summary.length >= 4, 'expected the Summary split into several groups');
     assert.ok(summary[0].content.startsWith('## Summary'), 'the first group carries the heading');
     assert.ok(summary.every((c) => c.content.length > MAX_CHUNK_CHARS - 1600), 'groups are packed, not one paragraph each');
     assertFaithful(chunks, src);
-  });
-
-  it('keeps an own-chunk Summary under the budget as one chunk', () => {
-    const paras = Array.from({ length: 5 }, (_, i) => paragraph('summary-' + i, 1500));
-    const context = Array.from({ length: 60 }, (_, i) => 'context line ' + i).join('\n');
-    const src = ['## Context', '', context, '', '## Summary', '', paras.join('\n\n'), ''].join('\n');
-    const chunks = chunk(src, discussion);
-    const summary = chunks.filter((c) => c.content.startsWith('## Summary'));
-    assert.strictEqual(summary.length, 1);
-    assert.match(summary[0].content, /summary-4/);
   });
 
   it('recurses through H3, H4 and H5 until each piece fits', () => {
@@ -459,7 +366,7 @@ describe('knowledge chunker — character budget', () => {
       block('s3', 3),
       '',
     ].join('\n');
-    const chunks = chunk(src, research);
+    const chunks = chunk(src, heading);
     const openers = chunks.map((c) => c.content.split('\n')[0]);
     assert.deepStrictEqual(openers, ['## Deep', '### Level 3', '#### Level 4', '##### Level 5a', '##### Level 5b', '### Sibling 3']);
     assertFaithful(chunks, src);
@@ -468,7 +375,7 @@ describe('knowledge chunker — character budget', () => {
   it('packs one giant paragraph by lines', () => {
     const lines = Array.from({ length: 600 }, (_, i) => 'line ' + i + ' ' + 'z'.repeat(80));
     const src = ['## Wall', lines.join('\n'), ''].join('\n');
-    const chunks = chunk(src, research);
+    const chunks = chunk(src, heading);
     assert.ok(chunks.length >= 3);
     assert.ok(chunks[0].content.startsWith('## Wall'));
     assertFaithful(chunks, src);
@@ -477,7 +384,7 @@ describe('knowledge chunker — character budget', () => {
   it('splits a fenced block only when the fence alone exceeds the budget', () => {
     const code = Array.from({ length: 900 }, (_, i) => '  statement(' + i + ');' + ' '.repeat(2) + '// ' + 'c'.repeat(20)).join('\n');
     const src = ['## Code', '', 'Before the fence.', '', '```js', code, '```', '', 'After the fence.', ''].join('\n');
-    const chunks = chunk(src, research);
+    const chunks = chunk(src, heading);
     assert.ok(chunks.length >= 3, 'the over-budget fence is split');
     assertFaithful(chunks, src);
   });
@@ -488,7 +395,7 @@ describe('knowledge chunker — character budget', () => {
     const before = Array.from({ length: 10 }, (_, i) => paragraph('before-' + i, 1200)).join('\n\n');
     const after = Array.from({ length: 10 }, (_, i) => paragraph('after-' + i, 1200)).join('\n\n');
     const src = ['## Mixed', '', before, '', fence, '', after, ''].join('\n');
-    const chunks = chunk(src, research);
+    const chunks = chunk(src, heading);
     const holding = chunks.filter((c) => c.content.includes('fenced '));
     assert.strictEqual(holding.length, 1, 'the fence lands whole in one chunk');
     assert.ok(holding[0].content.includes(fence));
@@ -499,29 +406,29 @@ describe('knowledge chunker — character budget', () => {
     const giant = Array.from({ length: 5000 }, (_, i) => 'word' + i).join(' ');
     assert.ok(giant.length > MAX_CHUNK_CHARS * 2);
     const src = ['## One Line', '', giant, ''].join('\n');
-    const chunks = chunk(src, research);
+    const chunks = chunk(src, heading);
     assert.ok(chunks.length >= 3);
     assertFaithful(chunks, src);
   });
 
   it('slices a ~200k-char unbroken run verbatim, every character kept', () => {
     const src = ['## Blob', '', 'Before blob.', '', 'a'.repeat(200000), '', 'After blob.', ''].join('\n');
-    const chunks = chunk(src, research);
+    const chunks = chunk(src, heading);
     assert.ok(chunks.length >= Math.ceil(200000 / MAX_CHUNK_CHARS));
     assertFaithful(chunks, src);
   });
 
   it('splits a file under keep_whole_below lines when it is over the budget', () => {
     const src = Array.from({ length: 10 }, (_, i) => paragraph('short-file-' + i, 5000)).join('\n\n');
-    assert.ok(src.split('\n').length < research.keep_whole_below);
-    const chunks = chunk(src, research);
+    assert.ok(src.split('\n').length < heading.keep_whole_below);
+    const chunks = chunk(src, heading);
     assert.ok(chunks.length >= 4);
     assertFaithful(chunks, src);
   });
 
   it('keeps a file under keep_whole_below lines and under the budget as one chunk', () => {
     const src = ['## A', 'body a', '', '## B', 'body b'].join('\n');
-    const chunks = chunk(src, research);
+    const chunks = chunk(src, heading);
     assert.strictEqual(chunks.length, 1);
     assert.strictEqual(chunks[0].content, src);
   });
@@ -529,22 +436,22 @@ describe('knowledge chunker — character budget', () => {
   it('drops the heading-only piece a split leaves behind', () => {
     const block = (tag) => Array.from({ length: 12 }, (_, i) => paragraph(tag + '-' + i, 1000)).join('\n\n');
     const src = ['## Parent', '', '### Child A', '', block('a'), '', '### Child B', '', block('b'), ''].join('\n');
-    const chunks = chunk(src, research);
+    const chunks = chunk(src, heading);
     assert.deepStrictEqual(chunks.map((c) => c.content.split('\n')[0]), ['### Child A', '### Child B']);
     assert.ok(chunks.every((c) => !c.content.includes('## Parent')), 'the parent heading is dropped');
     assertFaithful(chunks, src);
   });
 
   it('holds the budget and the verbatim slice across every real fixture', () => {
-    for (const [fixture, phase] of [
-      ['discussion-fixture.md', 'discussion'],
-      ['spec-folio-fixture.md', 'specification'],
-      ['spec-deep-nested-fixture.md', 'specification'],
-      ['specification-fixture.md', 'specification'],
-      ['research-oversized-h3-fixture.md', 'research'],
+    for (const [fixture, config] of [
+      ['discussion-fixture.md', HEADING],
+      ['spec-folio-fixture.md', HEADING],
+      ['spec-deep-nested-fixture.md', HEADING],
+      ['specification-fixture.md', HEADING],
+      ['research-oversized-h3-fixture.md', HEADING],
     ]) {
       const src = loadFixture(fixture);
-      const chunks = chunk(src, loadConfig(phase));
+      const chunks = chunk(src, config);
       for (const c of chunks) {
         assert.ok(c.content.length <= MAX_CHUNK_CHARS, fixture);
         assert.ok(bodyOf(src).includes(c.content), fixture);
@@ -559,10 +466,9 @@ describe('phase chunking configs', () => {
 
   const chunkingDir = CHUNKING_DIR;
 
-  // Every indexable phase ships a validated config — driven from the source
-  // of truth so a new phase cannot land without one.
-  const { INDEXED_PHASES } = require('../../skills/workflow-engine/scripts/domain/knowledge/artifacts.cjs');
-  const phases = INDEXED_PHASES;
+  // Every phase a chunk carries ships a validated config.
+  const { RECORD_PHASE, SUMMARY_PHASE } = require('../../skills/ledger-engine/scripts/domain/knowledge/artifacts.cjs');
+  const phases = [RECORD_PHASE, SUMMARY_PHASE];
 
   for (const phase of phases) {
     it('has a valid ' + phase + '.json config with required fields', () => {
@@ -573,179 +479,39 @@ describe('phase chunking configs', () => {
       assert.strictEqual(cfg.strategy, 'split-on-heading');
       assert.strictEqual(cfg.primary_level, 2);
       assert.strictEqual(cfg.fallback_level, 3);
-      assert.strictEqual(cfg.keep_whole_below, 50);
+      // A record's copy, and a quick-fix's short record, cut at every heading
+      // however short it is, so each question, finding and entry from
+      // elsewhere, and each fix's record, is a chunk of its own.
+      assert.strictEqual(cfg.keep_whole_below, 0);
       assert.strictEqual(cfg.strip_frontmatter, true);
       assert.strictEqual(cfg.skip_empty_sections, true);
-      assert.strictEqual(typeof cfg.special_sections, 'object');
       assert.strictEqual(typeof cfg.confidence, 'string');
     });
   }
 
-  it('discussion.json declares Discussion Map and Summary as own-chunk', () => {
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(chunkingDir, 'discussion.json'), 'utf8')
-    );
-    assert.strictEqual(cfg.special_sections['Discussion Map'], 'own-chunk');
-    assert.strictEqual(cfg.special_sections['Summary'], 'own-chunk');
-  });
-
-  it('specification.json declares Corrigenda as own-chunk — the only config that does', () => {
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(chunkingDir, 'specification.json'), 'utf8')
-    );
-    assert.deepStrictEqual(cfg.special_sections, { Corrigenda: 'own-chunk' });
-    for (const phase of ['research', 'discussion', 'investigation', 'imports', 'analysis', 'seeds', 'discovery']) {
-      const other = JSON.parse(
-        fs.readFileSync(path.join(chunkingDir, phase + '.json'), 'utf8')
-      );
-      assert.strictEqual(other.special_sections['Corrigenda'], undefined, phase);
+  it('indexes a topic\'s record, and never a log — the research, the discussion\'s, discovery\'s, the roadmap\'s sessions — nor the baseline, nor the spec, nor the old investigation file or imports, nor a seed, nor the gap analysis (4.11.16, 8.14.7, 9.2.2, 11.1.2, 22.6.12)', () => {
+    assert.ok(phases.includes('record'));
+    for (const phase of ['research', 'discussion', 'discovery', 'roadmap', 'baseline', 'specification', 'investigation', 'imports', 'seeds', 'analysis']) {
+      assert.ok(!phases.includes(phase), phase);
+      assert.strictEqual(fs.existsSync(path.join(chunkingDir, phase + '.json')), false, phase);
     }
   });
 
-  it('non-discussion, non-specification configs have empty special_sections', () => {
-    for (const phase of ['research', 'investigation', 'imports', 'analysis']) {
-      const cfg = JSON.parse(
-        fs.readFileSync(path.join(chunkingDir, phase + '.json'), 'utf8')
-      );
-      assert.deepStrictEqual(cfg.special_sections, {});
-    }
-  });
-
-  it('a bottom Corrigenda section chunks in isolation — whole under the budget, split past it', () => {
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(chunkingDir, 'specification.json'), 'utf8')
-    );
-    const entries = (count) => Array.from({ length: count }, (_, i) => [
-      '### 2026-08-0' + ((i % 9) + 1) + ' — batch ' + i,
-      '',
-      '> **Corrigendum 2026-08-0' + ((i % 9) + 1) + '** (from `other`): "claim ' + i + '" — corrected: truth ' + i + '.',
-    ].join('\n')).join('\n');
-    const spec = (count) => [
-      '# Billing Specification',
-      '',
-      'Intro paragraph.',
-      '',
-      '## Scope',
-      '',
-      Array.from({ length: 60 }, (_, i) => 'scope line ' + (i + 1)).join('\n'),
-      '',
-      '## Corrigenda',
-      '',
-      entries(count),
-      '',
+  it('cuts a short record copy at every question and finding, where a config keeping a short file whole keeps it whole', () => {
+    const copy = [
+      '# fumi / note-window', '',
+      '## Is a note a window?', '', 'Asked by Claude.', '', 'A floating panel.', '',
+      '## Does a panel take focus?', '', 'Not decided yet.', '',
+      '## Finding: Panels float above every Space.', '', 'Panels float above every Space.', '',
     ].join('\n');
-
-    const small = chunk(spec(70), cfg);
-    const corrigenda = small.filter((c) => c.content.startsWith('## Corrigenda'));
-    assert.strictEqual(corrigenda.length, 1, 'exactly one Corrigenda chunk');
-    assert.ok(corrigenda[0].content.includes('claim 69'), 'the whole section in one chunk');
-    assert.strictEqual(small.filter((c) => c.content.startsWith('### 2026')).length, 0);
-    const intro = small.find((c) => c.content.startsWith('# Billing Specification'));
-    assert.ok(intro && !intro.content.includes('Corrigendum'), 'title chunk free of corrigenda');
-
-    const big = chunk(spec(400), cfg);
-    assert.ok(big.filter((c) => c.content.startsWith('### 2026')).length > 1, 'an over-budget own-chunk splits');
-    for (const c of big) assert.ok(c.content.length <= MAX_CHUNK_CHARS);
-    assert.ok(big.some((c) => c.content.includes('claim 399')));
+    assert.deepStrictEqual(chunk(copy, loadConfig('record')).map((c) => c.headings), [
+      ['fumi / note-window', 'Is a note a window?'],
+      ['fumi / note-window', 'Does a panel take focus?'],
+      ['fumi / note-window', 'Finding: Panels float above every Space.'],
+    ]);
+    assert.strictEqual(chunk(copy, HEADING).length, 1);
   });
 
-  it('imports.json declares low confidence (matches research tier)', () => {
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(chunkingDir, 'imports.json'), 'utf8')
-    );
-    assert.strictEqual(cfg.confidence, 'low');
-  });
-
-  it('imports config chunks a multi-section seed file into per-section chunks', () => {
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(chunkingDir, 'imports.json'), 'utf8')
-    );
-    const src = [
-      '# Seed Conversation',
-      '',
-      '## OAuth Notes',
-      '',
-      Array.from({ length: 60 }, (_, i) => 'oauth line ' + (i + 1)).join('\n'),
-      '',
-      '## Identity Strategy',
-      '',
-      Array.from({ length: 60 }, (_, i) => 'identity line ' + (i + 1)).join('\n'),
-      '',
-    ].join('\n');
-    const chunks = chunk(src, cfg);
-    assert.ok(chunks.length >= 2, 'expected at least one chunk per H2 section');
-    const contents = chunks.map((c) => c.content);
-    assert.ok(
-      contents.some((c) => /## OAuth Notes/.test(c)),
-      'expected an OAuth Notes chunk'
-    );
-    assert.ok(
-      contents.some((c) => /## Identity Strategy/.test(c)),
-      'expected an Identity Strategy chunk'
-    );
-  });
-
-  it('analysis.json declares low confidence (analysis caches are surfacing aids, not source of truth)', () => {
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(chunkingDir, 'analysis.json'), 'utf8')
-    );
-    assert.strictEqual(cfg.confidence, 'low');
-  });
-
-  it('analysis config preserves H3-section content under a single H2 (Topics)', () => {
-    // Real analysis caches have one H2 (## Topics) with H3 subsections per theme.
-    // The config's primary_level=2 keeps the Topics section whole when small;
-    // assert chunks are emitted and the H3 content survives intact.
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(chunkingDir, 'analysis.json'), 'utf8')
-    );
-    const src = [
-      '# discovery-gap-analysis',
-      '',
-      '## Topics',
-      '',
-      '### Caching Layer',
-      '',
-      '- **Summary**: Recurring caching theme.',
-      '- **Sources**: discussion/foo.md',
-      '',
-      '### Rate Limiting',
-      '',
-      '- **Summary**: Per-service vs edge gateway.',
-      '- **Sources**: discussion/baz.md',
-      '',
-    ].join('\n');
-    const chunks = chunk(src, cfg);
-    assert.ok(chunks.length >= 1, 'expected at least one chunk emitted');
-    const combined = chunks.map((c) => c.content).join('\n');
-    assert.ok(/Caching Layer/.test(combined), 'expected Caching Layer content preserved');
-    assert.ok(/Rate Limiting/.test(combined), 'expected Rate Limiting content preserved');
-  });
-
-  it('analysis config falls back to H3 splitting when the H2 section is over the budget', () => {
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(chunkingDir, 'analysis.json'), 'utf8')
-    );
-    const body = (tag) => Array.from({ length: 120 }, (_, i) => tag + ' line ' + (i + 1) + ' ' + 'y'.repeat(60)).join('\n');
-    const src = [
-      '# discovery-gap-analysis',
-      '',
-      '## Topics',
-      '',
-      '### Caching Layer',
-      '',
-      body('caching'),
-      '',
-      '### Rate Limiting',
-      '',
-      body('rate'),
-      '',
-    ].join('\n');
-    const chunks = chunk(src, cfg);
-    const openers = chunks.map((c) => c.content.split('\n')[0]);
-    assert.ok(openers.includes('### Caching Layer'), 'expected a Caching Layer chunk');
-    assert.ok(openers.includes('### Rate Limiting'), 'expected a Rate Limiting chunk');
-  });
 });
 
 describe('knowledge chunker — real fixtures', () => {
@@ -778,7 +544,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('chunks a research fixture into expected sections', () => {
     const src = loadFixture('research-fixture.md');
-    const cfg = loadConfig('research');
+    const cfg = HEADING;
     const chunks = chunk(src, cfg);
 
     // cc-tool-plan.md has 12 H2 sections plus an H1+intro chunk.
@@ -811,9 +577,9 @@ describe('knowledge chunker — real fixtures', () => {
     assertVerbatim(chunks, src);
   });
 
-  it('chunks a discussion fixture with Discussion Map and Summary as own-chunks', () => {
+  it('chunks a discussion fixture into its H2 sections, the Discussion Map and the Summary among them', () => {
     const src = loadFixture('discussion-fixture.md');
-    const cfg = loadConfig('discussion');
+    const cfg = HEADING;
     const chunks = chunk(src, cfg);
 
     // application-architecture.md: Context, Discussion Map, App Structure,
@@ -838,25 +604,9 @@ describe('knowledge chunker — real fixtures', () => {
     assertVerbatim(chunks, src);
   });
 
-  it('handles discussion without Discussion Map gracefully', () => {
-    const src = loadFixture('discussion-no-map-fixture.md');
-    const cfg = loadConfig('discussion');
-    const chunks = chunk(src, cfg);
-
-    // Chunker must not crash or produce weird output when the configured
-    // special section isn't present. Expect the file to split on its H2s
-    // normally.
-    assert.ok(chunks.length >= 2);
-    // No chunk should claim to be a Discussion Map.
-    for (const c of chunks) {
-      assert.doesNotMatch(c.content.split('\n')[0], /^## Discussion Map$/);
-    }
-    assertVerbatim(chunks, src);
-  });
-
   it('chunks an investigation fixture into Symptoms, Analysis, Fix Direction sections', () => {
     const src = loadFixture('investigation-fixture.md');
-    const cfg = loadConfig('investigation');
+    const cfg = HEADING;
     const chunks = chunk(src, cfg);
 
     // 3 H2s (Symptoms, Analysis, Fix Direction) plus possibly an
@@ -877,7 +627,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('chunks a specification fixture into expected sections', () => {
     const src = loadFixture('specification-fixture.md');
-    const cfg = loadConfig('specification');
+    const cfg = HEADING;
     const chunks = chunk(src, cfg);
 
     // 12 H2 sections in the portal spec (Overview through Dependencies).
@@ -912,7 +662,7 @@ describe('knowledge chunker — real fixtures', () => {
     // The single H2 runs to ~250 lines but well under the character budget,
     // so its three H3 observations stay together.
     const src = loadFixture('research-single-section-fixture.md');
-    const cfg = loadConfig('research');
+    const cfg = HEADING;
     const chunks = chunk(src, cfg);
 
     const section = chunks.filter((c) => /^## /.test(c.content.split('\n')[0]));
@@ -927,7 +677,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('returns minimal spec as single chunk (below keep_whole_below)', () => {
     const src = loadFixture('spec-minimal-fixture.md');
-    const cfg = loadConfig('specification');
+    const cfg = HEADING;
     const chunks = chunk(src, cfg);
 
     assert.strictEqual(chunks.length, 1);
@@ -941,7 +691,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('handles code blocks with headings without false splits', () => {
     const src = loadFixture('artifact-with-codeblocks-fixture.md');
-    const cfg = loadConfig('specification');
+    const cfg = HEADING;
     const chunks = chunk(src, cfg);
 
     // Exactly two real H2 sections. Anything matching the fake code-block
@@ -972,7 +722,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('returns no-headings fixture as single chunk', () => {
     const src = loadFixture('artifact-no-headings-fixture.md');
-    const cfg = loadConfig('research');
+    const cfg = HEADING;
     const chunks = chunk(src, cfg);
 
     assert.strictEqual(chunks.length, 1);
@@ -983,27 +733,26 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('ensures each chunks content is a verbatim substring of the source (all fixtures)', () => {
     const cases = [
-      ['research-fixture.md', 'research'],
-      ['discussion-fixture.md', 'discussion'],
-      ['discussion-no-map-fixture.md', 'discussion'],
-      ['investigation-fixture.md', 'investigation'],
-      ['specification-fixture.md', 'specification'],
-      ['research-single-section-fixture.md', 'research'],
-      ['spec-minimal-fixture.md', 'specification'],
-      ['artifact-with-codeblocks-fixture.md', 'specification'],
-      ['artifact-no-headings-fixture.md', 'research'],
+      ['research-fixture.md', HEADING],
+      ['discussion-fixture.md', HEADING],
+      ['discussion-no-map-fixture.md', HEADING],
+      ['investigation-fixture.md', HEADING],
+      ['specification-fixture.md', HEADING],
+      ['research-single-section-fixture.md', HEADING],
+      ['spec-minimal-fixture.md', HEADING],
+      ['artifact-with-codeblocks-fixture.md', HEADING],
+      ['artifact-no-headings-fixture.md', HEADING],
     ];
-    for (const [fixture, phase] of cases) {
+    for (const [fixture, config] of cases) {
       const src = loadFixture(fixture);
-      const cfg = loadConfig(phase);
-      const chunks = chunk(src, cfg);
+      const chunks = chunk(src, config);
       assertVerbatim(chunks, src);
     }
   });
 
   it('handles CRLF line endings', () => {
     const src = loadFixture('investigation-fixture.md').replace(/\n/g, '\r\n');
-    const cfg = loadConfig('investigation');
+    const cfg = HEADING;
     // Should not throw. CRLF is just LF preceded by a \r — headings still
     // parse because the regex is anchored by ^ and the \r sits at end of
     // line before the \n delimiter.
@@ -1013,7 +762,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('does not produce an empty trailing chunk when file ends with blank lines', () => {
     const src = loadFixture('investigation-fixture.md') + '\n\n\n';
-    const cfg = loadConfig('investigation');
+    const cfg = HEADING;
     const chunks = chunk(src, cfg);
     for (const c of chunks) {
       assert.notStrictEqual(c.content.trim(), '');
@@ -1030,7 +779,7 @@ describe('knowledge chunker — real fixtures', () => {
     // lines, stays whole). Verifies that a real artifact with one huge
     // parent H2 splits at its H3s.
     const src = loadFixture('spec-deep-nested-fixture.md');
-    const cfg = loadConfig('specification');
+    const cfg = HEADING;
     const chunks = chunk(src, cfg);
 
     assert.ok(chunks.length >= 11, 'expected >= 11 chunks, got ' + chunks.length);
@@ -1053,7 +802,7 @@ describe('knowledge chunker — real fixtures', () => {
     // tick v1 research exploration.md has an H3 "Session 1" under "Open
     // Questions to Explore" that runs to ~310 lines.
     const src = loadFixture('research-oversized-h3-fixture.md');
-    const cfg = loadConfig('research');
+    const cfg = HEADING;
     const chunks = chunk(src, cfg);
 
     assert.ok(chunks.length >= 2);
@@ -1067,7 +816,7 @@ describe('knowledge chunker — real fixtures', () => {
     // the chunker copes with discussion variants that don't match the
     // design doc's canonical discussion shape.
     const src = loadFixture('discussion-q-style-fixture.md');
-    const cfg = loadConfig('discussion');
+    const cfg = HEADING;
     const chunks = chunk(src, cfg);
 
     assert.ok(chunks.length >= 8);
@@ -1086,155 +835,12 @@ describe('knowledge chunker — real fixtures', () => {
     // various sizes — structurally different from both portal and tick
     // specs.
     const src = loadFixture('spec-folio-fixture.md');
-    const cfg = loadConfig('specification');
+    const cfg = HEADING;
     const chunks = chunk(src, cfg);
 
     assert.ok(chunks.length >= 10);
     assertWithinBudget(chunks);
     assertVerbatim(chunks, src);
-  });
-
-  // -------------------------------------------------------------------------
-  // Sub-level special_sections — "own-chunk: regardless of heading level"
-  // -------------------------------------------------------------------------
-
-  it('extracts a sub-level own-chunk section from inside a regular parent', () => {
-    // The fixture puts "### Discussion Map" inside "## Plan" (a regular
-    // H2 with its own intro content). The discussion config declares
-    // Discussion Map as own-chunk. With sub-level matching, the H3
-    // Discussion Map must be extracted from its parent even though the
-    // split level is 2.
-    const src = loadFixture('sub-level-special-fixture.md');
-    const cfg = loadConfig('discussion');
-    const chunks = chunk(src, cfg);
-
-    const mapChunk = chunks.find((c) =>
-      /^### Discussion Map/.test(c.content.split('\n')[0])
-    );
-    assert.ok(mapChunk, 'sub-level Discussion Map must be extracted as own-chunk');
-    assert.match(mapChunk.content, /Option A/);
-    assert.match(mapChunk.content, /Option C/);
-
-    // The parent "## Plan" section should still emit as its own chunk,
-    // containing its intro content but NOT the Discussion Map body.
-    const planChunk = chunks.find((c) =>
-      /^## Plan/.test(c.content.split('\n')[0])
-    );
-    assert.ok(planChunk, 'parent Plan section still emitted after extraction');
-    assert.match(planChunk.content, /Plan intro paragraph one/);
-    assert.doesNotMatch(planChunk.content, /Option A/);
-
-    // "## Context" and "## Summary" must still be their own chunks — the
-    // surrounding H2 boundaries are unaffected by sub-level extraction.
-    const context = chunks.find((c) => /^## Context/.test(c.content.split('\n')[0]));
-    const summary = chunks.find((c) => /^## Summary/.test(c.content.split('\n')[0]));
-    assert.ok(context);
-    assert.ok(summary);
-
-    assertVerbatim(chunks, src);
-  });
-
-  it('preserves the parent-wins rule when a split-level heading matches special_sections', () => {
-    // When the parent H2 itself matches special_sections (e.g. the
-    // discussion fixture has "## Discussion Map" at H2), the parent's
-    // action wins and no sub-carving happens. The real discussion fixture
-    // already covers this — re-assert here to make the rule explicit.
-    const src = loadFixture('discussion-fixture.md');
-    const cfg = loadConfig('discussion');
-    const chunks = chunk(src, cfg);
-
-    // Only one Discussion Map chunk (the H2), not a carved-out H3 version.
-    const mapChunks = chunks.filter((c) =>
-      /^##+ Discussion Map/.test(c.content.split('\n')[0])
-    );
-    assert.strictEqual(mapChunks.length, 1);
-    assert.match(mapChunks[0].content, /^## Discussion Map/);
-  });
-
-  // -------------------------------------------------------------------------
-  // Merge-up verbatim invariant — Issue #1 fix validation
-  // -------------------------------------------------------------------------
-
-  it('merge-up chunks are verbatim source slices, even with non-empty separators', () => {
-    // Craft a source where the gap between the parent section and the
-    // merge-up section is NOT a plain "\n\n" — a blank line with trailing
-    // spaces, then two newlines. Under the old implementation (join with
-    // '\n\n'), the merged chunk content would not match the source
-    // verbatim. Under the new implementation (source slice), it does.
-    const md = [
-      '## Parent',          // 0
-      '',                   // 1
-      'parent body line 1', // 2
-      'parent body line 2', // 3
-      '   ',                // 4  (trailing-whitespace blank line)
-      '',                   // 5
-      '## Footnote',        // 6
-      'footnote body',      // 7
-      '',                   // 8
-      '## Other',           // 9
-      'other body',         // 10
-    ].join('\n');
-
-    const cfg = {
-      phase: 'test',
-      strategy: 'split-on-heading',
-      primary_level: 2,
-      fallback_level: 3,
-      keep_whole_below: 0,
-      special_sections: { Footnote: 'merge-up' },
-      strip_frontmatter: false,
-      skip_empty_sections: true,
-    };
-    const chunks = chunk(md, cfg);
-
-    assert.strictEqual(chunks.length, 2);
-
-    // First chunk contains both Parent content and the merged Footnote —
-    // and critically, every character must appear verbatim in the source.
-    const merged = chunks[0];
-    assert.match(merged.content, /## Parent/);
-    assert.match(merged.content, /parent body line 1/);
-    assert.match(merged.content, /## Footnote/);
-    assert.match(merged.content, /footnote body/);
-
-    // Verbatim invariant — merged chunk must be a substring of the source.
-    assert.strictEqual(
-      md.includes(merged.content),
-      true,
-      'merged chunk must be a verbatim substring of the source, got:\n' +
-        merged.content
-    );
-
-    // Second chunk is the regular Other section.
-    assert.match(chunks[1].content, /^## Other/);
-  });
-
-  it('merge-up from the first section promotes to its own chunk and stays verbatim', () => {
-    const md = [
-      '## Footnote',
-      'footnote body',
-      '',
-      '## Parent',
-      'parent body',
-    ].join('\n');
-    const cfg = {
-      strategy: 'split-on-heading',
-      primary_level: 2,
-      fallback_level: 3,
-      keep_whole_below: 0,
-      special_sections: { Footnote: 'merge-up' },
-      strip_frontmatter: false,
-      skip_empty_sections: true,
-    };
-    const chunks = chunk(md, cfg);
-    assert.strictEqual(chunks.length, 2);
-    for (const c of chunks) {
-      assert.strictEqual(
-        md.includes(c.content),
-        true,
-        'chunk must be a verbatim substring of the source'
-      );
-    }
   });
 });
 
@@ -1310,7 +916,7 @@ describe('knowledge chunker — version', () => {
           { content: '## Rotation\n\nWeekly.', headings: ['Auth', 'Rotation'] },
         ],
       },
-      'what a chunk records changed: bump CHUNKER_VERSION in skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs, then update this golden to the new version and chunks',
+      'what a chunk records changed: bump CHUNKER_VERSION in skills/ledger-engine/scripts/kernel/knowledge/chunker.cjs, then update this golden to the new version and chunks',
     );
   });
 });

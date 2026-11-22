@@ -1,380 +1,134 @@
 'use strict';
 
+// ---------------------------------------------------------------------------
+// Discovery's sessions (ledger-engine/scripts/domain/discovery-session.cjs),
+// `engine discovery-session close <work-unit|product>`, at either of its
+// places (8.1.4): an epic's logs in `{unit}/discovery/session-NNN.md`, its
+// marker on the unit's manifest; the product's conversation's in
+// `.product/sessions/session-NNN.md`, its picture beside them, its marker
+// `product_session` on the project manifest. close clears the marker and
+// commits the place's scope with the caller's message, indexing nothing
+// (8.14.7); every refusal writes and commits nothing. The open is the entry's
+// (test-engine-enter.cjs); what a commit takes with a log — the files it
+// links — is test-engine-state-commit-layout.cjs's; `commit --discovery`
+// and `--product` are test-engine-commit-door-state.cjs's.
+//
+// Layer: verb. World: a project with its state worktree from the fixture
+// library holding an epic mid-session (logs 001 and 002, the marker on 002)
+// and the product's logs 001 and 004, no session open — built once,
+// committed, and copied for each test.
+// ---------------------------------------------------------------------------
+
 require('./hermetic-env.cjs');
 
-const { describe, it, afterEach } = require('node:test');
+const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
-const path = require('path');
 
-const { git, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = require('./engine-harness.cjs');
+const {
+  ok, refusedPristine, lastMessage, touched, stateGit, statePath, layout, readState, writeState, readManifest,
+  fixtureFrom, cleanupFixture, commitAll, keywordOnlyKnowledge, hasStore,
+} = require('./engine-harness.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
 
-function writeFile(dir, rel, content) {
-  const full = path.join(dir, rel);
-  fs.mkdirSync(path.dirname(full), { recursive: true });
-  fs.writeFileSync(full, content);
+const EPIC = 'payments';
+const DISCOVERY = Object.freeze({ items: { fees: { source: 'discovery', summary: 'Fees' } }, dismissed: ['dead-idea'] });
+
+const world = fixtureFrom('discovery-session-', (template) => {
+  createManifest(template, EPIC, { work_type: 'epic', phases: { discovery: { ...DISCOVERY, active_session: '002' } } });
+  writeState(template, layout.projectManifest, JSON.stringify({ work_units: { [EPIC]: { work_type: 'epic' } } }, null, 2));
+  for (const n of ['001', '002']) writeState(template, layout.session(EPIC, n), `# Session ${n}\n`);
+  for (const n of ['001', '004']) writeState(template, layout.productSession(n), `# Product session ${n}\n`);
+  commitAll(template, 'init');
+});
+
+/** @type {string} */
+let dir;
+
+beforeEach(() => {
+  dir = world();
+});
+
+afterEach(() => {
+  cleanupFixture(dir);
+});
+
+/** A call that must succeed: its response. @param {string[]} args */
+const session = (args) => ok(dir, ['discovery-session', ...args]);
+
+/** A call that must be refused, writing and committing nothing: its error. @param {string[]} args */
+const refused = (args) => refusedPristine(dir, ['discovery-session', ...args]).error;
+
+/** The epic between sessions: its marker cleared, committed. */
+function epicClosed() {
+  createManifest(dir, EPIC, { work_type: 'epic', phases: { discovery: DISCOVERY } });
+  commitAll(dir, 'between sessions');
 }
 
-/** An epic mid-session: the marker names session 002, both logs on disk. */
-function epicManifest(overrides = {}) {
-  return {
-    name: 'payments',
-    work_type: 'epic',
-    status: 'in-progress',
-    created: '2026-06-01',
-    description: 'payments overhaul',
-    phases: {
-      discovery: {
-        active_session: '002',
-        items: { 'fee-model': { routing: 'discussion', source: 'discovery', summary: 'Fees' } },
-        dismissed: ['dead-idea'],
-      },
-    },
-    ...overrides,
-  };
+/** The product's conversation with session 005 open, as the entry leaves it, committed. */
+function productOpen() {
+  writeState(dir, layout.productSession('005'), '');
+  const project = JSON.parse(readState(dir, layout.projectManifest));
+  writeState(dir, layout.projectManifest, JSON.stringify({ ...project, product_session: '005' }, null, 2));
+  commitAll(dir, 'the product open');
 }
 
-/** A git-repo project carrying the epic and its session logs. */
-function setupFixture({ epic = epicManifest() } = {}) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-disc-session-'));
-  const project = path.join(root, 'project');
-  fs.mkdirSync(project, { recursive: true });
-  git(project, ['init', '-q', '-b', 'main']);
-  git(project, ['config', 'user.email', 'test@example.com']);
-  git(project, ['config', 'user.name', 'Test']);
-  git(project, ['config', 'commit.gpgsign', 'false']);
+/** The files the state branch's last commit touched. */
+const committed = () => touched(statePath(dir), 'HEAD');
 
-  // The knowledge directory is checkout-local, never committed.
-  writeFile(project, '.workflows/.gitignore', '.knowledge/\n');
-  writeFile(project, '.workflows/manifest.json', JSON.stringify({
-    work_units: { payments: { work_type: 'epic' } },
-  }, null, 2) + '\n');
-  writeFile(project, '.workflows/payments/manifest.json', JSON.stringify(epic, null, 2) + '\n');
-  writeFile(project, '.workflows/payments/discovery/sessions/session-001.md', '# Discovery Session 001\n\n## Conclusion\n\n2 topic(s) added.\n');
-  writeFile(project, '.workflows/payments/discovery/sessions/session-002.md', '# Discovery Session 002\n\n## Conclusion\n\n(none)\n');
-  git(project, ['add', '-A']);
-  git(project, ['commit', '-q', '-m', 'init']);
-  keywordOnlyKnowledge(project);
+describe('an epic\'s session (8.1.4, 8.S40)', () => {
+  it('close clears the marker and commits the unit\'s discovery with the caller\'s message, the log with it — never a peer\'s topic, and nothing indexed (8.14.7)', () => {
+    keywordOnlyKnowledge(dir);
+    writeState(dir, layout.session(EPIC, '002'), '# Session 002\n\nThree topics found.\n');
+    writeState(dir, layout.experiment(EPIC, 'refunds', 'E1-x', 'design.md'), '# A peer session mid-turn\n');
 
-  return { root, project };
-}
-
-/**
- * Run the engine expecting success; returns the first stdout line parsed as
- * JSON (the machine contract). Any appended transaction sections are stashed
- * in `engine.lastSections`.
- */
-function engine(fix, args, env = {}) {
-  const { res, sections } = okSections(fix.project, args, { env });
-  engine.lastSections = sections;
-  return res;
-}
-engine.lastSections = '';
-
-/** Run the engine expecting failure; returns the parsed stderr JSON. */
-const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env });
-
-function readManifest(fix, wu) {
-  return JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows', wu, 'manifest.json'), 'utf8'));
-}
-
-function shortHead(fix) {
-  return git(fix.project, ['rev-parse', '--short', 'HEAD']).trim();
-}
-
-/** Every file under `.workflows/`, rel path → content — the pristine check. */
-function treeSnapshot(fix) {
-  /** @type {Record<string, string>} */
-  const files = {};
-  const walk = (dir) => {
-    for (const name of fs.readdirSync(dir)) {
-      const full = path.join(dir, name);
-      if (fs.statSync(full).isDirectory()) walk(full);
-      else files[path.relative(fix.project, full)] = fs.readFileSync(full, 'utf8');
-    }
-  };
-  walk(path.join(fix.project, '.workflows'));
-  return {
-    files,
-    commits: git(fix.project, ['rev-list', '--count', 'HEAD']).trim(),
-    status: git(fix.project, ['status', '--porcelain']),
-  };
-}
-
-const CLOSE = ['discovery-session', 'close', 'payments', '-m', 'discovery(payments): synthesise 2 new topic(s)'];
-
-describe('engine discovery-session close — happy path', () => {
-  let fix;
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-
-  it('clears the marker, indexes the closed log, and commits the session dirt with the caller message', () => {
-    fix = setupFixture();
-    // The session's uncommitted dirt — the model's Conclusion write.
-    const finalised = '# Discovery Session 002\n\n## Conclusion\n\n2 topic(s) added. Map now has 3 topics.\n';
-    writeFile(fix.project, '.workflows/payments/discovery/sessions/session-002.md', finalised);
-    writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
-    const res = engine(fix, CLOSE);
+    const res = session(['close', EPIC, '-m', `discovery(${EPIC}): three topics`]);
 
     assert.deepStrictEqual(res, {
-      ok: true,
-      work_unit: 'payments',
-      session: '002',
-      session_log: '.workflows/payments/discovery/sessions/session-002.md',
-      committed: shortHead(fix),
-      warnings: [],
+      ok: true, session: '002', session_log: statePath(dir, layout.session(EPIC, '002')), committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), warnings: [],
     });
-    assert.strictEqual(engine.lastSections, '', 'a clean close appends no sections');
-
-    // Marker gone, the rest of the discovery phase intact; the log content is
-    // untouched — the engine never writes prose.
-    const m = readManifest(fix, 'payments');
-    assert.deepStrictEqual(m.phases.discovery, {
-      items: { 'fee-model': { routing: 'discussion', source: 'discovery', summary: 'Fees' } },
-      dismissed: ['dead-idea'],
-    });
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/discovery/sessions/session-002.md'), 'utf8'), finalised);
-
-    // The marker's log — not a re-glob — is what gets indexed.
-    assert.deepStrictEqual(indexedFiles(fix.project), ['.workflows/payments/discovery/sessions/session-002.md']);
-
-    // One commit scoped to the work unit with the caller's message; the
-    // Conclusion write rides along; unrelated files stay out.
-    assert.strictEqual(git(fix.project, ['rev-list', '--count', 'HEAD']).trim(), '2');
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'discovery(payments): synthesise 2 new topic(s)');
-    const staged = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.deepStrictEqual(staged.sort(), [
-      '.workflows/payments/discovery/sessions/session-002.md',
-      '.workflows/payments/manifest.json',
-    ]);
-    assert.match(git(fix.project, ['status', '--porcelain']), /\?\? unrelated\.txt/);
+    assert.deepStrictEqual(readManifest(dir, EPIC).phases.discovery, DISCOVERY);
+    assert.strictEqual(lastMessage(dir), `discovery(${EPIC}): three topics`);
+    assert.deepStrictEqual(committed(), [`M\t${layout.session(EPIC, '002')}`, `M\t${layout.manifest(EPIC)}`].sort());
+    assert.strictEqual(fs.existsSync(statePath(dir, layout.experiment(EPIC, 'refunds', 'E1-x', 'design.md'))), true);
+    assert.strictEqual(hasStore(dir), false, 'the close indexed the log');
   });
 
-  it('accepts --message as the long form', () => {
-    fix = setupFixture();
-    const res = engine(fix, ['discovery-session', 'close', 'payments', '--message', 'discovery(payments): finalise session log']);
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'discovery(payments): finalise session log');
-  });
-
-  it('a marker-only close still commits — the marker delete is the dirt', () => {
-    fix = setupFixture();
-    const res = engine(fix, CLOSE);
-    assert.strictEqual(res.committed, shortHead(fix));
-    assert.strictEqual(git(fix.project, ['rev-list', '--count', 'HEAD']).trim(), '2');
-    assert.strictEqual(readManifest(fix, 'payments').phases.discovery.active_session, undefined);
-  });
-
-  it('KB failure is a warning, never a block — the close still lands and commits, pure JSON', () => {
-    fix = setupFixture();
-    unreadableKnowledge(fix.project);
-    const res = engine(fix, CLOSE);
-    assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /^knowledge index \(discovery\/sessions\/session-002\.md\) failed: loadStore: corrupted store file at /);
-    assert.strictEqual(res.committed, shortHead(fix));
-    assert.strictEqual(readManifest(fix, 'payments').phases.discovery.active_session, undefined);
-    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
-    const receipt = output(fix.project, ['render', 'session-receipt', 'payments', '--warn']);
-    assert.match(receipt, /=== DISPLAY: kb warning \(emit verbatim as a text code block \(```text fence\) — do not stop; continue as the workflow instructs\) ===\n  ⚑ Knowledge indexing warning\n    The session is closed\. The next start retries the indexing\./);
-    assert.strictEqual(output(fix.project, ['render', 'session-receipt', 'payments']), '',
-      'no --warn, no advisory — an empty receipt');
+  it('refuses a close with no session open, and one whose marker names no log on disk', () => {
+    createManifest(dir, EPIC, { work_type: 'epic', phases: { discovery: { ...DISCOVERY, active_session: '007' } } });
+    commitAll(dir, 'a marker with no log');
+    assert.strictEqual(refused(['close', EPIC, '-m', 'm']), `session log missing on disk: ${statePath(dir, layout.session(EPIC, '007'))} — the active-session marker names a session with no log`);
+    epicClosed();
+    assert.strictEqual(refused(['close', EPIC, '-m', 'm']), `no discovery session is open for "${EPIC}" — nothing to close`);
   });
 });
 
-describe('engine discovery-session close — guards refuse loudly, everything pristine', () => {
-  let fix;
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+describe('the product\'s conversation (8.1.4, 4.11.16, 8.14.3)', () => {
+  it('close clears the marker and commits its logs, its picture and the project manifest with the caller\'s message — never a unit\'s brief', () => {
+    productOpen();
+    writeState(dir, layout.productSession('005'), '## 2026-01-06 · session five\n');
+    writeState(dir, layout.productPicture, '# Where the product stands\n');
+    writeState(dir, layout.topic(EPIC, 'fees', 'brief.md'), '# Fees\n');
 
-  /** Assert the refusal leaves every `.workflows/` byte identical, no commit, nothing indexed. */
-  function refusedPristine(args, pattern) {
-    const before = treeSnapshot(fix);
-    const err = engineFails(fix, args);
-    assert.match(err.error, pattern);
-    assert.deepStrictEqual(treeSnapshot(fix), before);
-    assert.deepStrictEqual(indexedFiles(fix.project), []);
-    return err;
-  }
+    const res = session(['close', 'product', '-m', 'product: session 005']);
 
-  it('refuses an unknown work unit', () => {
-    fix = setupFixture();
-    refusedPristine(['discovery-session', 'close', 'ghost', '-m', 'msg'], /manifest not found/);
+    assert.strictEqual(res.session, '005');
+    assert.strictEqual('product_session' in JSON.parse(readState(dir, layout.projectManifest)), false);
+    assert.strictEqual(lastMessage(dir), 'product: session 005');
+    assert.deepStrictEqual(committed(), [`M\t${layout.productSession('005')}`, `A\t${layout.productPicture}`, `M\t${layout.projectManifest}`].sort());
   });
 
-  it('refuses when no marker is set — a browse-only session has nothing to close', () => {
-    const epic = epicManifest();
-    delete epic.phases.discovery.active_session;
-    fix = setupFixture({ epic });
-    refusedPristine(CLOSE, /no active discovery session for "payments"/);
-  });
-
-  it('refuses a marker naming a session with no log on disk', () => {
-    const epic = epicManifest();
-    epic.phases.discovery.active_session = '003';
-    fix = setupFixture({ epic });
-    refusedPristine(CLOSE, /session log missing on disk: \.workflows\/payments\/discovery\/sessions\/session-003\.md/);
-  });
-
-  it('rejects a missing message, extra positionals, and unknown subcommands', () => {
-    fix = setupFixture();
-    assert.match(engineFails(fix, ['discovery-session', 'close', 'payments']).error, /Usage: engine discovery-session close/);
-    assert.match(engineFails(fix, ['discovery-session', 'close', '-m', 'msg']).error, /Usage: engine discovery-session close/);
-    assert.match(engineFails(fix, ['discovery-session', 'close', 'payments', 'extra', '-m', 'msg']).error, /unexpected argument "extra"/);
-    assert.match(engineFails(fix, ['discovery-session', 'finalise', 'payments']).error, /Usage: engine discovery-session <open\|close>/);
-    assert.match(engineFails(fix, ['discovery-session']).error, /Usage: engine discovery-session <open\|close>/);
+  it('refuses a close with none open', () => {
+    assert.strictEqual(refused(['close', 'product', '-m', 'm']), 'no discovery session is open for "product" — nothing to close');
   });
 });
 
-const DRAFT_REL = '.workflows/.cache/payments/discovery/session-draft.md';
-const DRAFT_CONTENT = '# Discovery Session 003\n\nDate: 2026-07-19\nWork unit: payments\n\n## Exploration\n\nFirst pause of the session.\n';
-const OPEN = ['discovery-session', 'open', 'payments', '--session-log-file', DRAFT_REL];
-
-/** An epic between sessions: logs 001–002 closed on disk, no marker. */
-function closedEpicManifest() {
-  const epic = epicManifest();
-  delete epic.phases.discovery.active_session;
-  return epic;
-}
-
-describe('engine discovery-session open — happy path', () => {
-  let fix;
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-
-  it('allocates past the highest on-disk log, moves the draft into place, sets the marker, and does NOT commit', () => {
-    fix = setupFixture({ epic: closedEpicManifest() });
-    writeFile(fix.project, DRAFT_REL, DRAFT_CONTENT);
-    const res = engine(fix, OPEN);
-
-    assert.deepStrictEqual(res, {
-      ok: true,
-      work_unit: 'payments',
-      session: '003',
-      path: '.workflows/payments/discovery/sessions/session-003.md',
-    });
-
-    // Moved, not copied: installed verbatim, the draft is gone.
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/discovery/sessions/session-003.md'), 'utf8'), DRAFT_CONTENT);
-    assert.strictEqual(fs.existsSync(path.join(fix.project, DRAFT_REL)), false);
-
-    // Marker set, the rest of the discovery phase intact.
-    const m = readManifest(fix, 'payments');
-    assert.deepStrictEqual(m.phases.discovery, {
-      items: { 'fee-model': { routing: 'discussion', source: 'discovery', summary: 'Fees' } },
-      dismissed: ['dead-idea'],
-      active_session: '003',
-    });
-
-    // No commit, nothing indexed — the session is live; the calling flow's
-    // commit cadence picks up the log and marker.
-    assert.strictEqual(git(fix.project, ['rev-list', '--count', 'HEAD']).trim(), '1');
-    const status = git(fix.project, ['status', '--porcelain']);
-    assert.match(status, /\.workflows\/payments\/manifest\.json/);
-    assert.match(status, /\.workflows\/payments\/discovery\/sessions\/session-003\.md/);
-    assert.deepStrictEqual(indexedFiles(fix.project), []);
-
-    // Lock released.
-    assert.strictEqual(fs.existsSync(path.join(fix.project, '.workflows/payments/.lock')), false);
-  });
-
-  it('a template-literal {NNN} in the draft resolves to the allocated number at install', () => {
-    fix = setupFixture({ epic: closedEpicManifest() });
-    writeFile(fix.project, DRAFT_REL, '# Discovery Session {NNN}\n\nMore exploration ({NNN}).\n');
-    const res = engine(fix, OPEN);
-    assert.strictEqual(res.session, '003');
-    assert.strictEqual(
-      fs.readFileSync(path.join(fix.project, '.workflows/payments/discovery/sessions/session-003.md'), 'utf8'),
-      '# Discovery Session 003\n\nMore exploration (003).\n',
-      'the durable header matches the filename');
-  });
-
-  it('a legacy manifest with no discovery phase and no logs opens session 001', () => {
-    const epic = closedEpicManifest();
-    epic.phases = {};
-    fix = setupFixture({ epic });
-    fs.rmSync(path.join(fix.project, '.workflows/payments/discovery'), { recursive: true });
-    writeFile(fix.project, DRAFT_REL, DRAFT_CONTENT);
-    const res = engine(fix, OPEN);
-
-    assert.strictEqual(res.session, '001');
-    assert.strictEqual(res.path, '.workflows/payments/discovery/sessions/session-001.md');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, res.path), 'utf8'), DRAFT_CONTENT);
-    assert.deepStrictEqual(readManifest(fix, 'payments').phases, { discovery: { active_session: '001' } });
-  });
-
-  it('the response is one JSON line on stdout', () => {
-    fix = setupFixture({ epic: closedEpicManifest() });
-    writeFile(fix.project, DRAFT_REL, DRAFT_CONTENT);
-    const out = output(fix.project, [...OPEN]);
-    assert.strictEqual(out, JSON.stringify({
-      ok: true,
-      work_unit: 'payments',
-      session: '003',
-      path: '.workflows/payments/discovery/sessions/session-003.md',
-    }) + '\n');
-  });
-
-  it('open then close roundtrips — the marker pairs with the installed log', () => {
-    fix = setupFixture({ epic: closedEpicManifest() });
-    writeFile(fix.project, DRAFT_REL, DRAFT_CONTENT);
-    engine(fix, OPEN);
-    const res = engine(fix, ['discovery-session', 'close', 'payments', '-m', 'discovery(payments): finalise session log']);
-    assert.strictEqual(res.session, '003');
-    assert.strictEqual(res.committed, shortHead(fix));
-    assert.strictEqual(readManifest(fix, 'payments').phases.discovery.active_session, undefined);
-  });
-});
-
-describe('engine discovery-session open — guards refuse loudly, everything pristine', () => {
-  let fix;
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-
-  /** Assert the refusal leaves every `.workflows/` byte identical (the draft included), no commit, nothing indexed. */
-  function refusedPristine(args, pattern) {
-    const before = treeSnapshot(fix);
-    const err = engineFails(fix, args);
-    assert.match(err.error, pattern);
-    assert.deepStrictEqual(treeSnapshot(fix), before);
-    assert.deepStrictEqual(indexedFiles(fix.project), []);
-    return err;
-  }
-
-  it('refuses an unknown work unit', () => {
-    fix = setupFixture({ epic: closedEpicManifest() });
-    writeFile(fix.project, DRAFT_REL, DRAFT_CONTENT);
-    refusedPristine(['discovery-session', 'open', 'ghost', '--session-log-file', DRAFT_REL], /manifest not found/);
-  });
-
-  it('refuses a non-epic — single-phase work gets its log at workunit create', () => {
-    const feature = closedEpicManifest();
-    feature.work_type = 'feature';
-    fix = setupFixture({ epic: feature });
-    writeFile(fix.project, DRAFT_REL, DRAFT_CONTENT);
-    refusedPristine(OPEN, /discovery-session open is epic-only — "payments" is work_type "feature"/);
-  });
-
-  it('refuses a second open while a session is active', () => {
-    fix = setupFixture();
-    writeFile(fix.project, DRAFT_REL, DRAFT_CONTENT);
-    refusedPristine(OPEN, /a discovery session \("002"\) is already open for "payments"/);
-  });
-
-  it('refuses a missing draft file', () => {
-    fix = setupFixture({ epic: closedEpicManifest() });
-    refusedPristine(OPEN, /session log draft not found: \.workflows\/\.cache\/payments\/discovery\/session-draft\.md/);
-  });
-
-  it('refuses an empty draft file — whitespace-only included', () => {
-    fix = setupFixture({ epic: closedEpicManifest() });
-    writeFile(fix.project, DRAFT_REL, '');
-    refusedPristine(OPEN, /session log draft is empty/);
-    fs.writeFileSync(path.join(fix.project, DRAFT_REL), '  \n\n\t\n');
-    refusedPristine(OPEN, /session log draft is empty/);
-  });
-
-  it('rejects a missing work unit, a missing draft flag, and extra positionals', () => {
-    fix = setupFixture({ epic: closedEpicManifest() });
-    assert.match(engineFails(fix, ['discovery-session', 'open']).error, /Usage: engine discovery-session open/);
-    assert.match(engineFails(fix, ['discovery-session', 'open', 'payments']).error, /Usage: engine discovery-session open/);
-    assert.match(engineFails(fix, ['discovery-session', 'open', '--session-log-file', DRAFT_REL]).error, /Usage: engine discovery-session open/);
-    assert.match(engineFails(fix, ['discovery-session', 'open', 'payments', 'extra', '--session-log-file', DRAFT_REL]).error, /unexpected argument "extra"/);
+describe('the verb\'s argv', () => {
+  it('refuses a missing message, a positional too many, and a subcommand it lacks — open among them, the entry\'s — each with its usage', () => {
+    for (const [args, said] of [
+      [['close', EPIC], 'Usage: engine discovery-session close <work-unit|product> -m <message>'],
+      [['close', EPIC, 'extra', '-m', 'm'], 'unexpected argument "extra"'],
+      [['open', EPIC], 'Usage: engine discovery-session close <work-unit|product> -m <message>'],
+    ]) assert.strictEqual(refused(args), said);
   });
 });

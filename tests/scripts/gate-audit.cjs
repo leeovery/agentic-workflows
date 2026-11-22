@@ -6,22 +6,29 @@
 // state nothing the MENU does not draw, and what it states is the text the
 // person reads — never the markup that draws it. Beside it, every section a
 // person is shown names how it renders in one of the four forms, so no older
-// or reworded form comes back.
+// or reworded form comes back. The gate it states is named as the trust log
+// keys it, so every gate a render draws, a templated name's every variant
+// among them, is held to the gate event's rule wherever it renders.
 
 const assert = require('node:assert');
-const { RENDER_FORMS: FORMS, emitAs } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { RENDER_FORMS: FORMS, emitAs, openGate } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+const { SCHEMA } = require('../../skills/ledger-engine/scripts/domain/trust-events.cjs');
 
-const SURFACE_ENV = 'WORKFLOWS_GATE_SURFACE';
+const SURFACE_ENV = 'LEDGER_GATE_SURFACE';
 const GATE_MARKER = '=== GATE (json for a gate surface — never display) ===';
 const MENU_RULE = '· · · · · · · · · · · ·';
 const CONTINUATION = /^ +/;
 const GLYPHED_LINE = /^\*\*`◆ (.*)`\*\*$/;
-const MARKUP = /`([^`]*)`|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]/g;
+const MARKUP = /(?<!`)(`+)(?!`)(.*?[^`])\1(?!`)|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]/g;
+// The gates that draw another's words as written, each code span in them
+// kept whole in the payload: the raise, Claude's (projections/raise.cjs,
+// `wordsAsWritten`).
+const LITERAL_GATES = new Set(['raise']);
 
 // The same markup one token at a time: a code span and an escape carry their
 // text, a strike or an italic marker toggles its span, bold and a stray
 // backtick drop, and everything else is text.
-const LABEL_TOKEN = /`([^`]*)`|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]|[^`\\*~]+|[\s\S]/g;
+const LABEL_TOKEN = /(?<!`)(`+)(?!`)(.*?[^`])\1(?!`)|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]|[^`\\*~]+|[\s\S]/g;
 
 const TAIL_SEPARATOR = ' — ';
 const NOTE_SEPARATOR = ' · ';
@@ -29,6 +36,9 @@ const RECOMMENDED_MARKER = ' (recommended)';
 
 const SHOWN_MARKER = /^=== (?:TITLE|DISPLAY|MENU)\b.*? \((.*)\) ===$/;
 const RENDER_FORMS = Object.keys(FORMS).map((form) => emitAs(form));
+// The gate event's rule for a gate's name, and where a declared entry's name ends.
+const GATE_NAME = SCHEMA.events.gate.fields.find((/** @type {{name: string}} */ f) => f.name === 'gate')?.type;
+const ENTRY_SEPARATOR = ' — ';
 
 /** @typedef {{key: string, word: string|null, head: string, tail: string|null, cue: string|null, holder: string|null, detail: string|null, struck: boolean, recommended: boolean}} GateOption */
 /** @typedef {{label: string, description: string, detail: string|null}} GateTyped */
@@ -65,12 +75,12 @@ function squashed(text) {
 
 /**
  * Menu text read plain, as the payload has to state it: a code span's
- * content and an escaped character stay as text, every other marker comes
- * off.
- * @param {string} text
+ * content — the span whole, in a gate drawing another's words as written —
+ * and an escaped character stay as text, every other marker comes off.
+ * @param {string} text @param {boolean} literal
  */
-function plainText(text) {
-  return squash(text.replace(MARKUP, (_, code, escaped) => code ?? escaped ?? ''));
+function plainText(text, literal) {
+  return squash(text.replace(MARKUP, (whole, _run, code, escaped) => (code === undefined ? escaped ?? '' : literal ? whole : code)));
 }
 
 // A MENU line read back as the row it draws: a code span is a key the user
@@ -101,24 +111,24 @@ function squashGlyphs(glyphs) {
  * A drawn label read as the characters it shows, each marked with the spans
  * it sits in. Whitespace runs read as one space, so a span a wrap closed and
  * reopened reads whole.
- * @param {string|null} label @returns {Glyph[]}
+ * @param {string|null} label @param {boolean} literal @returns {Glyph[]}
  */
-function drawnGlyphs(label) {
+function drawnGlyphs(label, literal) {
   /** @type {Glyph[]} */
   const glyphs = [];
   let struck = false;
   let italic = false;
-  for (const [token, code, escaped] of (label ?? '').matchAll(LABEL_TOKEN)) {
+  for (const [token, , code, escaped] of (label ?? '').matchAll(LABEL_TOKEN)) {
     if (token === '~~') struck = !struck;
     else if (token === '*') italic = !italic;
-    else if (token !== '**' && token !== '`') for (const ch of code ?? escaped ?? token) glyphs.push({ ch, struck, italic });
+    else if (token !== '**' && token !== '`') for (const ch of (literal && code !== undefined ? token : code) ?? escaped ?? token) glyphs.push({ ch, struck, italic });
   }
   return squashGlyphs(glyphs);
 }
 
 /**
  * The characters a payload row's parts show, each marked where the option
- * grammar draws it (CONVENTIONS.md: Menus): the tail italic after a dash, the
+ * grammar draws it (domain/projections/surfaces.cjs, its header's Menus): the tail italic after a dash, the
  * cue plain after a dot, the strike over all of it when a holder stands
  * plain after the strike, the recommendation last. The parts are read as the
  * text they state, so a part still carrying markup or an escape shows
@@ -156,8 +166,8 @@ function reading(glyphs) {
 // its glyphed line — is the question; every other line is the statement, in
 // order. Every value the payload states is held as it stands against the menu
 // read plain.
-/** @param {GatePayload} gate @param {string[]} body @param {string} label @returns {void} */
-function assertPayloadDrawsMenu(gate, body, label) {
+/** @param {GatePayload} gate @param {string[]} body @param {string} label @param {boolean} literal a gate drawing another's words as written @returns {void} */
+function assertPayloadDrawsMenu(gate, body, label, literal) {
   /** @type {DrawnRow[]} */ const rows = [];
   /** @type {{text: string, glyphed: boolean}[]} */ const prose = [];
   /** @type {DrawnRow|null} */ let under = null;
@@ -174,9 +184,9 @@ function assertPayloadDrawsMenu(gate, body, label) {
       rows.push(row);
       under = row;
     } else if (under !== null && !glyphed) {
-      under.detail = plainText(`${under.detail ?? ''} ${line}`);
+      under.detail = plainText(`${under.detail ?? ''} ${line}`, literal);
     } else {
-      prose.push({ text: plainText(glyphed?.[1] ?? line), glyphed: glyphed !== null });
+      prose.push({ text: plainText(glyphed?.[1] ?? line, literal), glyphed: glyphed !== null });
     }
   }
   const askAt = prose.findIndex((p) => p.glyphed);
@@ -189,13 +199,13 @@ function assertPayloadDrawsMenu(gate, body, label) {
   const typed = rows.filter((r) => r.typed);
   assert.deepStrictEqual(gate.options.map((o) => (o.word ? `${o.key}/${o.word}` : o.key)), keys.map((r) => r.name),
     `[${label}] the payload's keys are not the menu's`);
-  const drawn = keys.map((r) => drawnGlyphs(r.label));
+  const drawn = keys.map((r) => drawnGlyphs(r.label, literal));
   assert.deepStrictEqual(
     gate.options.map((o, i) => [reading(partsGlyphs(o, drawn[i])), o.struck, squashed(o.detail)]),
     keys.map((r, i) => [reading(drawn[i]), drawn[i].some((g) => g.struck), r.detail]),
     `[${label}] the payload's option parts are not what the menu's rows draw — text, strike, italics, detail`);
   assert.deepStrictEqual(gate.typed.map((t) => [t.label, squash(t.description), squashed(t.detail)]),
-    typed.map((r) => [plainText(r.name), plainText(r.label ?? ''), r.detail]),
+    typed.map((r) => [plainText(r.name, literal), plainText(r.label ?? '', literal), r.detail]),
     `[${label}] the payload's typed rows are not the menu's`);
 }
 
@@ -216,9 +226,9 @@ function auditMarkers(out, label) {
 }
 
 /**
- * The GATE payload in an announced response, held against its MENU: it sits
- * directly above the first MENU, asks a question over at least one row to
- * press, and states the whole of the menu. Null when the response carries no
+ * The GATE payload in an announced response, held against its MENU — a
+ * response carries one at most: it sits directly above the MENU, asks a
+ * question over at least one row to press, and states the whole of the menu. Null when the response carries no
  * menu, which then carries no gate either, and when the menu draws nothing,
  * which leaves nothing to state.
  * @param {string} out  the response's stdout
@@ -228,6 +238,7 @@ function auditMarkers(out, label) {
 function auditGate(out, label) {
   auditMarkers(out, label);
   const lines = out.split('\n');
+  assert.ok(lines.filter((l) => l.startsWith('=== MENU')).length <= 1, `[${label}] a response carries one MENU at most`);
   const menuAt = lines.findIndex((l) => l.startsWith('=== MENU'));
   if (menuAt === -1) {
     assert.ok(!lines.includes(GATE_MARKER), `[${label}] a response with no menu carries no gate`);
@@ -241,16 +252,19 @@ function auditGate(out, label) {
     return null;
   }
   const gate = JSON.parse(lines[menuAt - 1]);
+  const name = gate.gate.split(ENTRY_SEPARATOR)[0];
+  assert.ok(GATE_NAME?.test(name), `[${label}] the gate "${name}" is no name the trust log keys — ${GATE_NAME?.is}`);
   assert.notStrictEqual(gate.question, '', `[${label}] every menu asks — the payload states no question`);
   assert.ok(gate.options.length > 0, `[${label}] every menu has a row to press — the payload states none`);
-  assertPayloadDrawsMenu(gate, body, label);
+  assertPayloadDrawsMenu(gate, body, label, LITERAL_GATES.has(name));
   return gate;
 }
 
 /**
  * A render-surface caller that audits as it renders: every render's markers
  * name their forms, and every render that draws a menu is drawn again with
- * the gate surface announced, and its payload held against that menu.
+ * the gate surface announced, opened as a command opens it, and its payload
+ * held against that menu.
  * @param {(dir: string, surface: string, args: object) => string} renderSurface
  * @returns {(dir: string, surface: string, args: object) => string}
  */
@@ -258,7 +272,12 @@ function auditingRender(renderSurface) {
   return (dir, surface, args) => {
     const out = renderSurface(dir, surface, args);
     auditMarkers(out, `render ${surface}`);
-    if (out.includes('=== MENU')) auditGate(announced(() => renderSurface(dir, surface, args)), `render ${surface}`);
+    if (out.includes('=== MENU')) {
+      auditGate(announced(() => {
+        openGate();
+        return renderSurface(dir, surface, args);
+      }), `render ${surface}`);
+    }
     return out;
   };
 }

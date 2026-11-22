@@ -1,0 +1,42 @@
+{
+  "name": "payments-overhaul",
+  "work_type": "epic",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Overhaul how payments are taken and reconciled",
+  "phases": {
+    "discovery": {
+      "items": {
+        "card-capture": {
+          "source": "discovery",
+          "summary": "How card details are taken and stored.",
+          "description": "How card details are taken and stored.",
+          "order": 1
+        },
+        "reconciliation": {
+          "source": "discovery",
+          "summary": "Matching settlements against invoices.",
+          "description": "Matching settlements against invoices.",
+          "order": 2
+        },
+        "refunds": {
+          "source": "discovery",
+          "summary": "Giving money back, in part or in full.",
+          "description": "Giving money back, in part or in full.",
+          "order": 3
+        }
+      },
+      "approved_at": "2026-01-01T09:00:00.000Z"
+    },
+    "discussion": {
+      "items": {
+        "card-capture": {
+          "status": "completed"
+        },
+        "reconciliation": {
+          "status": "in-progress"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,3009 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: the records a brief is filled from (6.5.4, 13.11.2), each
+// drawn in one fixed form, so what an agent is told is what the records
+// say and nothing else (6.5.6):
+//
+//   task           the task's text whole, as the tracker holds it, each of
+//                  its headings a level down, under the template's own; then
+//                  each addition, in order, under a heading of its own saying
+//                  whether the orchestrator or the person added it (13.11.3)
+//   spec-sections  each section the task's spec reference cites, verbatim
+//                  from the unit's spec (spec-sections.cjs); for a
+//                  quick-fix's task, which has no spec, the line saying its
+//                  acceptance in its own words stands for them (19.5.24);
+//                  for a task the plan from before Ledger wrote, holding
+//                  no spec reference, each area joined from an old spec
+//                  its text cites by its path (21.8.5) — or, citing none
+//                  of them, its phase's sections and scenarios, as the cut
+//                  holds them
+//   decided-calls  the unit's current decisions at its own level, the
+//                  person's and Claude's alike — the builder's own calls
+//                  among them (13.11.10) — in the ledger's order, each one
+//                  list item: its id, whose it is, its answer and why,
+//                  every line after its first indented; a unit's record,
+//                  drawn for a task's brief and a phase's alike
+//   linters        the project's linters, each its name and its command,
+//                  and its fix where it has one, from the environment on the project manifest (22.5.12,
+//                  environment.cjs); a quick-fix's, where the project has
+//                  no environment setup, the line sending the agent to
+//                  the tests and linters it finds (22.5.10)
+//   diff-range     in each repository holding the task's branch, by the
+//                  landing's rule (landing-git.cjs), under a heading naming
+//                  the repository, the range from its base to the branch,
+//                  `{base}...{branch}`, and its `git diff --stat` — never
+//                  the diff's text, which can run to thousands of lines and
+//                  is read in the range. A quick-fix's task's is its own
+//                  commits alone (task-base.cjs, `ownWork`), under a heading
+//                  naming the repository and the quick-fix's one branch,
+//                  each by its short sha and subject, oldest first, with
+//                  each one's `git show --stat`, the other fixes' between
+//                  them never its — refused where it has none yet. The
+//                  base is the engine's: where
+//                  the task was laid out, the commit `task worktree`
+//                  recorded there (task-worktree.cjs), or the tip of the
+//                  work below it that its branch holds since, its own
+//                  phase's chain for a task of the cut, whichever is
+//                  later — else the branch the repository lands on; or,
+//                  where `--base` names one, that branch where the
+//                  repository has it, else the repository's default branch:
+//                  a nested repository's may be named otherwise, and a
+//                  stack's base branch be in some only
+//   scratch-layout where the reviewer's scratch worktree lays out every
+//                  repository of the project, each before those nested in
+//                  it, as the builder's worktree held them all
+//                  (task-worktree.cjs): one holding work on the task's
+//                  branch at that branch, a clone otherwise at the task's
+//                  branch, or the branch it lands on where the task's
+//                  branch is not made there; then the
+//                  calls, by the engine's absolute path, that lay it out
+//                  so at those commits, prepared as a builder's worktree
+//                  is, and take it apart (scratch.cjs) — named for the
+//                  reviewer, so its brief again lays out the same one;
+//                  where the project has steps for each worktree, which
+//                  the call runs, that it can take minutes, to wait for it
+//                  where it is moved to the background and never run it
+//                  again while it runs, and that a step failing is the
+//                  project's setup, said in the report
+//   reports        the task's last review round's reports, one per
+//                  reviewer of the count (13.3.4), each verbatim under a
+//                  heading naming its reviewer (round-report.cjs), and
+//                  nothing else; refused where the task changed since a
+//                  brief to its builder last went past it, its brief going
+//                  first, carrying the task and its calls as they stand;
+//                  issued, it records what the builder's brief records
+//   account-to     where the builder writes the task's account as it
+//                  lands: the task's `build/tasks/{task}.md` (task-account.cjs,
+//                  12.14), as `task account` reads it; then, once the task's
+//                  review has ended — its last round passed, or settled, the
+//                  settlement's text beneath — and no account written there
+//                  covers it, that it has landed and its account is owed
+//                  now, and where an account written there does not read,
+//                  every fault, so a refused account goes back to its
+//                  builder in its brief; but while the task changed under
+//                  that round (round-report.cjs), that it changed, and its
+//                  builder builds what changed for its pair to read again;
+//                  and while a question parks it, that it waits, owing no
+//                  account. Refused while a round its pair was briefed
+//                  for is not reported whole, naming each reviewer's way
+//                  on (round-report.cjs, `readRefusal`); refused for a
+//                  one-line task, which has no builder; issued, it records
+//                  the freeing and the changes it went past
+//   engine         the engine the builder runs, by the absolute path of the
+//                  one filling the brief, in the checkout the orchestrator
+//                  runs in, so a builder's worktree started at the remote's
+//                  default branch never runs one older or missing there
+//   chain          whether the task's branch holds its phase's chain as it
+//                  stands: where the work below it (review-change.cjs) has
+//                  moved past it in a repository holding the branch, the
+//                  merge of that tip back onto it there, children first,
+//                  each committed through the door before the next; then the
+//                  account where one is owed, reported accounted, else
+//                  reported merged; a quick-fix's task's, that its branch
+//                  is the quick-fix's one, with no chain
+//   workplace      where the builder builds, runs and commits: the worktree
+//                  it was started in, laid out by `task worktree` for the
+//                  task — with scratch-layout's words on the steps where
+//                  the project has steps for each worktree, a step failing
+//                  stopping the builder — a quick-fix's task, the
+//                  quick-fix's worktree, on its one branch (fix-branch.cjs)
+//   setup-to       where the builder writes the verify setup its task
+//                  builds or changes, for `verify setup --file`: the
+//                  unit's `.cache/{unit}/build/verify-setup.json`, outside
+//                  the checkout, as the setup's trial needs; then the setup
+//                  recorded now, fenced as JSON without its run, which the
+//                  file starts from, or that none is recorded yet
+//   round-report-to where the reviewer `--letter` names writes its report
+//                  of the round under review (13.5.9): the task's
+//                  `round-{N}-{letter}.md`, N read from the task's reports
+//                  on disk (round-report.cjs), so it holds across a
+//                  `/clear` and for both reviewers of a round — a passed
+//                  round read again in the round after where the task
+//                  changed under it (round-report.cjs); a report there that
+//                  does not read named as the one it replaces. Issued, it
+//                  records the round its pair was briefed for, which a
+//                  change marks itself against (round-report.cjs)
+//
+// A discussion topic's records, each read from the ledger as its read verb
+// answers it (ledger-read.cjs) or from the topic's agent store
+// (agent-state.cjs) — never a word of the conversation (26.1.5):
+//
+//   topic-record   the topic's record as `ledger record` answers it, its
+//                  current entries each with what it replaced (9.2.5),
+//                  fenced as JSON
+//   topic-log      the path of the topic's log, `topics/{topic}/log.md`
+//                  (9.2.10), for the agent to read
+//   other-records  the record of each other live topic of the unit that
+//                  shows anything, under a heading naming the topic — never
+//                  its log, and none of a topic set aside (5.8.17, 9.3.4)
+//   product-record the product record, and what discovery found of the
+//                  product, the unit and the topic, as `ledger product`
+//                  answers it for the topic — for a unit's brief, the
+//                  unit's — fenced as JSON
+//   question       the question `--question` names, by any wording, in its
+//                  current wording: its short id and its text. It is an
+//                  open question standing on the topic, and the dispatch
+//                  `--agent` names is bound to it (agent-state.cjs)
+//   pair-question  the question the perspectives of that synthesis
+//                  dispatch's set were each briefed on, in its current
+//                  wording — one question, so a synthesis reconciles what
+//                  its pair argued
+//   dive-kind      the kind of dive `--kind` names (survey, read,
+//                  feasibility, landscape, verify), and for a read the path
+//                  of the file `--path` names, which only a read takes
+//   gap-review     whether a gap review has run since the topic's last
+//                  decision, naming it where one has (9.9.6, agent-state.cjs)
+//   dismissed      the names the person struck as candidates or removed
+//                  from the map, the unit's answer that nothing proposes
+//                  them again (8.10.11), one a line — a unit's record,
+//                  drawn for a topic's brief and a unit's alike
+//   report-to      where the agent writes its report: the file of the
+//                  dispatch `--agent` names, of the kind its role is briefed
+//                  for and still in flight
+//   lens           the lens that perspective dispatch was labelled with
+//   perspectives   the report of each perspective in that synthesis
+//                  dispatch's set, verbatim, in the order they were
+//                  dispatched
+//
+// The phase cut's records, each of the unit the brief is for, read from its
+// `spec.md` by the spec's one grammar (spec-sections.cjs) and from the
+// unit's entries (unit-entries.cjs):
+//
+//   spec-outline   the spec's path, then its areas, each with its parts, by
+//                  address and title, in the spec's order
+//   spec-scenarios each scenario by id, with the area it proves and its
+//                  wording, the statements it draws on closing it; for a
+//                  quick-fix, which has no spec, the line saying so, then
+//                  each criterion of its fixes' acceptance in its own
+//                  words, by its scenario where it opens with one, and
+//                  the fix it is of (fix-acceptance.cjs, 19.5.24)
+//   relies-on-graph each pair of the spec's parts where one relies on the
+//                  other (11.5.6): a statement or a screen of part A cites
+//                  an entry relying on one — in its current form, or
+//                  through the unit's entries no line cites — that a line
+//                  of part B cites, with each line and chain of entries
+//                  that links them. A part citing nothing has no edges; nor
+//                  has a cite naming none of the unit's entries, which the
+//                  trace lists (spec-trace.cjs), so a link to another
+//                  unit's entry is left out
+//   cut-refusal    what `cut` refuses of the cut staged for the unit, as it
+//                  says it, read without writing (cut.cjs); none recorded
+//                  where nothing is staged or the cut would land
+//   cut-to         where the agent writes the cut: the unit's staged cut
+//   cut-requests   the unit's current decisions made at its own level at
+//                  the spec since the last cut's brief that a land took —
+//                  every one before any cut (spec-passes.cjs) — verbatim,
+//                  each with where it stands and what it replaced: what
+//                  the person asked of the cut among them; the brief keeps
+//                  its own mark, a take the cut's land commits
+//
+// The sweep's records, each of the unit the brief is for (11.2.2), with the
+// product record and the names struck, above:
+//
+//   unit-records   the unit's current entries (unit-entries.cjs), under a
+//                  heading for each live topic by its title, its key in
+//                  brackets after it, then the unit's own — those at its
+//                  level — then any made there standing on another unit's
+//                  place; each one list item, `{short id} {kind}: {text}`,
+//                  a "don't care" decision's kind `decision, don't care`
+//                  (P2), every line after its first indented; none
+//                  recorded under a heading with none
+//   sweep-refusal  what `sweep take` refuses of the unit's sweep report, as
+//                  it says it, read without writing (sweep-take.cjs); none
+//                  recorded where no report is written or it would be taken
+//   sweep-to       where the agent writes its report: the unit's sweep
+//                  report (sweep.cjs); refused once the sweep is taken, one
+//                  sweep for the spec, naming approve the map where its
+//                  candidates wait on the person
+//
+// The spec's records, each of the unit the brief is for, with its records,
+// above, from its entries (unit-entries.cjs), its `spec.md` read by the
+// spec's one grammar (spec-sections.cjs) and its loop (spec-passes.cjs):
+//
+//   topic-logs     the path of each live topic's log, a bugfix's its
+//                  investigation, as the spec's entry reads them
+//                  (spec-entry.cjs)
+//   canonical-assets the path of each file the unit's current entries link
+//                  as canonical (11.6.3)
+//   builder-calls  the calls the sweep left to the builder (sweep.cjs),
+//                  each with why
+//   changed-entries the unit's current entries waiting for the writer —
+//                  made at its own level at the spec since the last take a
+//                  land committed (spec-passes.cjs) — each with where it
+//                  stands and what it replaced
+//   land-refusal   what `spec land` refuses of `spec.md` as written, as it
+//                  says it (spec-land.cjs); none recorded where none is
+//                  written or it would land
+//   review-findings the report of each pass waiting for the writer,
+//                  verbatim; the writer's brief keeps what it took, the
+//                  wording file it carried among it, a take the next land
+//                  commits (spec-passes.cjs)
+//   wording-changes the wording the person agreed on the review page, the
+//                  file `--wording` names verbatim, one change a line, each
+//                  naming its line (11.11); none recorded where no file is
+//                  named
+//   spec-to        where the writer writes: the unit's `spec.md`
+//   changed-sections the spec's path, then the sections the review's pass
+//                  reads, each verbatim, the title and introduction one of
+//                  them, an area's own text without its parts: every one at
+//                  the first pass, then those changed since the last pass
+//                  reported, and those gone; the dispatch `--agent` names is
+//                  bound to the land it reviews, and closed where the brief
+//                  is refused before it is bound
+//   invented-lines each statement and screen of `spec.md` that does not
+//                  trace, with why (spec-trace.cjs); none recorded where
+//                  none is written or its grammar refuses it
+//   measured-findings each of the unit's current findings recording the
+//                  command that measured it, with its result
+//   product-cites  each product-wide entry of the unit the spec cites, with
+//                  the lines citing it
+//   report-refusal each pass refused since the last whose report was taken
+//                  in, with what of its report did not read (agent-state.cjs)
+//   unit-report-to where the agent writes its report: the file of the
+//                  dispatch `--agent` names in the unit's agent store — a
+//                  validation's, its investigation's — of the kind its role
+//                  is briefed for and still in flight
+//   investigation  for a bugfix, what its spec is assembled from (19.4.15):
+//                  the root cause and the fix its investigation rests on,
+//                  each where it rests on one (investigation-log.cjs), and
+//                  the rules it keeps — the investigation's other current
+//                  decisions at its topic, never a permission for the
+//                  hunt asked at its own level, `{unit}.investigation`
+//                  (19.4.20) — each by its short id and its text; none
+//                  recorded for any other type
+//
+// A bugfix's validations' records, each of the unit the brief is for, its
+// investigation open (investigation-log.cjs, 19.4.7):
+//
+//   hunt-log       the path of its investigation's log, the topic's
+//                  (19.4.3), for the agent to read
+//   hunt-record    its topic's record as `ledger record` answers it, fenced
+//                  as JSON
+//   hunt-root-cause the root cause its investigation rests on, by its short
+//                  id with its text; refused where it rests on none
+//   hunt-fix       the fix it rests on, the current answer of the fix
+//                  direction's question, by its short id with its text,
+//                  then that question; refused likewise
+//   code           each repository of the project, by its absolute path,
+//                  where the code is read as it stands
+//
+// A build phase's records, each of the phase of the unit's cut the brief is
+// for (11.5), its tasks read from the tracker — each phase to it as its
+// list, its own phase's tasks whole, once (task-verbs.cjs) — its sections
+// and scenarios from the unit's `spec.md`, never the whole spec (12.5.6,
+// 11.3.6):
+//
+//   cut-phase      the phase as the cut holds it: its number, the unit and
+//                  its name, its goal, and what it relies on, an earlier
+//                  phase by its number or another unit by its name
+//   phase-sections the spec's path; each section the phase names, and
+//                  whether it is first built in this phase or an earlier
+//                  one — the phase that builds a section being the first
+//                  naming it, a part of it or the area holding it (11.5.2),
+//                  so an invariant in one first built here is this phase's
+//                  to check (15.8.2); then each verbatim, in the cut's
+//                  order, a part whose own area the phase names left to the
+//                  area
+//   phase-scenarios each scenario the phase holds, by id with its wording
+//   held-notes     the notes for later held for this phase (12.9.10,
+//                  notes.cjs), each verbatim under its heading
+//   written-tasks  the phase's tasks the tracker holds so far, each by its
+//                  number with its title and where it stands; or that the
+//                  phase is not written in the tracker yet
+//   earlier-tasks  every task of an earlier phase not yet ended, likewise,
+//                  which a task of this phase may wait on (12.6.4)
+//   build-calls    the unit's current decisions made in the build — at
+//                  `{unit}.implementation` or `{unit}.review` — the
+//                  person's and Claude's, in the ledger's order, each with
+//                  the task it was made for and what it replaced
+//   affected-entries the entries waiting in the unit for a replacement they
+//                  rely on (11.9.1), as `ledger affected` answers them
+//                  (ledger-affected.cjs), fenced as JSON
+//   task-files-to  the folder in the unit's cache the agent writes each
+//                  task's file in, for `task create --file`: the phase's,
+//                  `.cache/{unit}/build/phase-{N}/{role}`, the task writer's
+//                  apart from the consolidation agent's
+//   reproducing-test for a bugfix's phase 1, that its first task, 1.1,
+//                  writes the test that reproduces the bug and nothing else,
+//                  of type `test`, holding the phase's scenario the bug
+//                  breaks, and names the command that runs that test alone
+//                  (bug-proven.cjs, 15.5.1), the fix linked after it and
+//                  every other task of the phase after the fix; for any
+//                  other phase, that it has none
+//   phase-notes    the notes the phase has to take at its end (notes.cjs),
+//                  each verbatim under its heading
+//   phase-tasks    each task of the phase, whole, as `task` draws it, under
+//                  a heading naming its number, with where it stands
+//   phase-criteria each task of the phase not closed: its acceptance
+//                  scenarios, then each addition, under a heading naming the
+//                  task
+//   relied-on      each phase the phase relies on (12.11.2): its name, goal
+//                  and sections, and its tasks with where each stands; and
+//                  each other unit it relies on, by its name
+//   phase-diff-range in each repository holding work on the branch of a task
+//                  of the phase not closed, under a heading naming it, the
+//                  range from its base — the branch the repository lands
+//                  on, where the phase's chain leaves it, where none is
+//                  named, else as diff-range picks it — to the stack's tip
+//                  there — the branch every other the phase's
+//                  tasks hold there descends from — `{base}...{tip}`, and its
+//                  `git diff --stat`, never the diff's text
+//   phase-scratch-layout the phase review's scratch worktree, laid out as
+//                  scratch-layout lays it out, one holding work at the
+//                  stack's tip there, a clone holding none at the branch
+//                  it lands on
+//   recorded-runs  each scenario the phase holds, by id with what its runs
+//                  of the change prove read at the phase's tips — the
+//                  stack's tip in each repository holding its work, as
+//                  phase-diff-range picks it — so the runs nearest them
+//                  decide (runs.cjs, 15.3.5); then each run counted, its
+//                  verdict, when it was recorded and its file
+//   mutants        what survived the verify setup's mutation tool on the
+//                  lines the phase changed, each by its path and line with
+//                  its mutant, as `verify mutants` left it in the unit's
+//                  cache run at the phase's tips (verify.cjs, 15.6.3); that
+//                  none survived; or that the setup names no mutation tool.
+//                  The brief never runs the tool
+//   phase-report-to where the reviewer `--letter` names writes its report
+//                  of the phase review: the phase's `review-{letter}.md`,
+//                  likewise
+//   consolidation-to where the consolidation agent writes its report: the
+//                  phase's `consolidation.md` (notes.cjs)
+//
+// The review phase's records, each of the unit the brief is for, in the
+// round under review (review-phase.cjs): an area's, the area `--area`
+// names by its number, never merged with another (14.2.3) — a quick-fix's
+// one, the change (review-phase.cjs); the change's, the whole change across
+// every repository (review-change.cjs):
+//
+//   area-sections  the spec's path, then the area verbatim, its parts in it;
+//                  a quick-fix's change, the line saying it has no spec,
+//                  the change asked for, its record, `summary.md`, whole,
+//                  and its fixes' acceptance as spec-scenarios draws it
+//                  (19.5.14)
+//   area-meets     the spec's other areas, by number and title; then each
+//                  pair of parts, one in the area and one outside it, where
+//                  one relies on the other, as relies-on-graph draws them;
+//                  a quick-fix's change, the line saying it meets none
+//   unit-calls     every current decision of the unit's, at any of its
+//                  places, in the ledger's order, each with whose it is,
+//                  how the person handed it over where they did, where it
+//                  was made, the question it answers and why — the ledger
+//                  whole, for calls fine alone and wrong in combination
+//                  (16.17.8, P18)
+//   change-commits in each repository holding the change, under a heading
+//                  naming it, the unit's own work, never what others
+//                  landed beside it: each landing, `{commit}` and its
+//                  subject, read against its first parent — for a unit
+//                  with a branch of its own there, that branch against the
+//                  base instead, `{from}..{branch}` under "The unit's
+//                  branch against {base}" (14.1.6) — then the work not
+//                  landed, `{from}..{tip}`, read from where its stack
+//                  leaves the base or the unit's branch — each with its
+//                  `git diff --stat`, the base the branch `--base` names
+//                  where the repository has it
+//   change-scratch-layout the reviewer's scratch worktree, laid out as
+//                  scratch-layout lays it out, one holding the change at
+//                  its tip there, a clone holding none at the branch it
+//                  lands on
+//   area-runs      each scenario of the area — a quick-fix's change, each
+//                  its fixes' acceptance names — by id with what its runs
+//                  prove at the change's tips, and its wording; then each
+//                  run counted, as recorded-runs draws it (15.3.3)
+//   area-report-to where the reviewer `--letter` names writes its report
+//                  of the area in the round under review:
+//                  `review/round-{N}/{area}-{letter}.md`; refused for an
+//                  area the round does not read (14.3.3)
+//   tests-report-to where the test surface's one reader writes its report
+//                  of the round: `review/round-{N}/tests-a.md` (14.2.4);
+//                  refused where the round does not read it
+//
+// Each is refused where the round cannot be read: the review phase cannot
+// be entered, a round ended it, the round before's fix tasks wait, or a
+// later round's areas are not named (review-phase.cjs, `roundRefusal`).
+//
+// The plain-search helper's one record is the conversation's (22.6.10):
+//
+//   knowledge-query the conversation's last `knowledge query`, as it kept
+//                  it (knowledge/last-query.cjs): its terms, its filters,
+//                  and what it returned, or that it failed and why, or that
+//                  it never finished
+//
+// The migration's records, for the agents of a directive carrying topics —
+// the records directive — each of a topic `--topic` names,
+// `<unit>.<phase>.<topic>`, as the migration moved it, a topic of a unit
+// cancelled among them (21.6.2), read by the check of the directive
+// `--directive` names and refused for one whose check carries no topic's work:
+//
+//   directive      the sections of the migration's directive `--directive`
+//                  names that its check names `briefed`, verbatim, each
+//                  with what nests beneath it, its heading set at the
+//                  brief's second level and those beneath it kept in step:
+//                  what an agent does, never the session's own work
+//                  (21.10.2)
+//   migrated-topic the topic: the unit, its work type and status — of a
+//                  cancelled unit, that its record holds what its sources
+//                  settle as any does, its decisions governing nothing,
+//                  and marks no point to raise — the phase
+//                  its record is carried in — discovery for an epic's topic
+//                  never started — whether it never started or leaves its
+//                  building unit at the cut, and the phases the directive
+//                  carries a topic of that it is in, the state's place and the
+//                  project's in the main checkout, each file of the topic's
+//                  folder but its mail, the unit's discovery sessions, the
+//                  other topics they may speak of with their subjects, to
+//                  judge whose a point is by, and as the directive's check
+//                  reads them its specs — each where it is cited, the part
+//                  of the unit's spec.md it makes where it was joined
+//                  there, and whether it was approved, on the date its
+//                  old manifest gives, a spec joined there always, or is a
+//                  draft — the unit's approved
+//                  specs it does not draw on, the later answer to its
+//                  points, each with that date, the project's other units
+//                  cancelled, a corrigendum one wrote no later answer, its
+//                  old map and the threads still open it carries, each
+//                  with its research where that is not of its name — a
+//                  unit's own record's those of research under no topic's
+//                  name; every
+//                  file of the unit's assets but a dotfile and its specs,
+//                  with where each came from, but its legacy files, named
+//                  by their place and how many, those the record walks apart
+//                  from the rest, one its own files hold word for word
+//                  among the rest, the import the record owes a link, or an
+//                  import's file gone and linked by none; and where
+//                  the topic's record is composed, and whether it is yet,
+//                  the verifier's findings, rulings and verdicts on it
+//                  written, the findings its composer hands back, and a
+//                  carry's refusal of it kept (21.10.5)
+//   composed-record that topic's record as composed, fenced as JSON
+//                  (21.10.7), refused while findings its composer handed
+//                  back stand unsettled, or while its last verifier,
+//                  having written its findings, gave no verdict on each
+//                  entry its brief asked one of, or named one the record
+//                  it read does not hold; the last verifier's
+//                  findings, rulings and verdicts kept as a round once
+//                  drawn and cleared, for the verifier to write afresh —
+//                  no file is no verdict yet — and the record it reads
+//                  noted beside it, `.verifying.json`: its hash, the refs
+//                  it gives a verdict on, each entry hashed, the sections
+//                  it walks and what the rounds before left
+//   walk-sheet     that record laid against its sources for the verifier's
+//                  walk, as the directive's check lays it (`sheetOf`):
+//                  each file under its path, each section by its heading
+//                  path and lines, with every entry citing it, or none;
+//                  from the second round each entry marked passed
+//                  unchanged, changed, new or not passed, each section
+//                  passed unchanged closed, and each entry removed since
+//                  the last round listed with its cites (later-rounds.cjs)
+//   verifier-findings the last verifier's findings on that record, verbatim
+//                  — kept until a verifier reads the record again; refused
+//                  as `composed-record` is while its verdicts miss an entry
+//   verifier-rulings every verifier's rulings on that record so far, the
+//                  points of its sources each ruled are not the record's
+//                  or a later answer replaced, each under its round
+//   earlier-findings every verifier's findings on that record so far, each
+//                  under its round with its rulings, the last's among them,
+//                  as `.rounds.md` beside the record keeps them
+//   settled-points the points of that record the session settled where a
+//                  verifier reversed an earlier round, verbatim, as
+//                  `.settled.md` beside the record holds them
+//   carry-refusal  what `ledger carry` refused that record for, verbatim,
+//                  cleared once drawn, so it reaches no later brief
+//   record-check   the call that checks that record as the carry would,
+//                  writing nothing: `ledger carry --dry-run` on the topic
+//
+// And for the agents of a directive carrying units — the cut and the
+// merges — each of one phase, `--phase`, of the cut of the unit the brief
+// is for, a unit whose building started, as cut-merges.cjs lays the cut
+// out from the directive's check (`unitSourcesOf`); refused for a check
+// carrying no unit's work, a phase the cut lacks, and one the join writes
+// itself (21.10.5, E7):
+//
+//   migrated-phase the unit: its work type and status, the state's place
+//                  and the project's, its joined spec's areas, and every
+//                  phase of its cut; what its plan depends on; and the
+//                  phase — its old plan's phase or its area, the sections
+//                  the spec numbers in that area, its plan's tasks' file and
+//                  its own section of the plan by heading, its tasks as the
+//                  cut's adoption names them, each still to
+//                  build with its text as the tracker holds it, read writing
+//                  nothing (task-verbs.cjs), where the manifest and the
+//                  tracker disagree over it — the folder kept as legacy, and
+//                  where its piece goes
+//   composed-piece that phase's piece as composed, fenced as JSON, the
+//                  last verifier's findings on it kept as a round once
+//                  drawn and cleared, for the verifier to write afresh: no
+//                  file is no verdict yet; and the piece it reads kept
+//                  beside it, `{N}.verifying.json`, the one before it the
+//                  piece verified, `{N}.verified.json`, where the last
+//                  verifier wrote its findings
+//   piece-changes  what changed in that piece since the last verifier to
+//                  write its findings read it, field by field, each
+//                  scenario, note and correction added or removed; none in
+//                  a first round (later-rounds.cjs)
+//   piece-findings the verifier's findings on that piece, verbatim — kept
+//                  until the verifier reads the piece composed again
+//   earlier-piece-findings every verifier's findings on that piece so far,
+//                  each under its round, the last's among them
+//   settled-piece-points the points of that piece the session settled
+//                  where a verifier reversed an earlier round, verbatim
+//   piece-check    the call that checks that piece as the join would,
+//                  writing nothing: `migrate join --phase --dry-run`
+//
+// A record taking a flag names it, and its role takes every flag its records
+// name, once, and no other — every one but a flag a record holds optional;
+// a flag carries a name, an id or a path, never text that reaches the brief
+// (6.5.6). A record the project holds none of
+// yet is drawn as none recorded. One that cannot be read refuses the brief:
+// a section the spec lacks, linters of
+// another shape, a task's branch no repository holds work on, a base no
+// repository holding it has as a local branch, a phase's sections or
+// scenarios the spec lacks, a phase not yet written whose tasks or range a
+// record draws, a task of it with no type, its tasks held as no one stack in
+// a repository, no repository holding work on them, no verify setup
+// recorded, a tool that has not run over the phase at its tips, a letter
+// none of the reviewers',
+// a report already written for its round that reads, a task whose review
+// passed — a task with no review
+// round's reports, a round missing a reviewer's report or holding one
+// that does not read, a last round that passed; a review phase that cannot
+// be entered or is over, a round waiting on the round before's fix tasks,
+// an area the spec lacks or the round does not read, a change no
+// repository holds; a question that is none, no longer current,
+// stands elsewhere or is not open, or one its dispatch was not first briefed
+// on; a dispatch the topic's store lacks, of another kind, no longer in
+// flight; a perspective of the set with no report, or briefed on no question
+// or another than its pair; a dive of no kind, a read naming no file, another
+// kind naming one; a conversation that has run no knowledge query; a
+// directive the migrations lack, a migrated topic its unit lacks, a composed
+// record missing or empty; a unit with no spec, or one its grammar refuses;
+// a unit the land refuses, or whose spec waits on a gap put to the person,
+// for its writer; and for its reviewer, a spec that has not landed as
+// written, one unchanged since a pass reported, and a dispatch bound to
+// another landing. Nothing else of the project reaches a brief — its
+// CLAUDE.md and its skills reach the agent without it (6.5.5).
+// ---------------------------------------------------------------------------
+
+const fs = require('fs');
+const path = require('path');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { git } = require('../kernel/git.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
+const { projectRepos } = require('../kernel/repos.cjs');
+const { linters, confirmedAt, verifySetup, stepsAt } = require('./environment.cjs');
+const { readShown, readLedgerVerb } = require('./ledger-read.cjs');
+const {
+  recordOf, standingOf, factsOf, wordingOf, inPlace, questionStands, currentsOf,
+} = require('./ledger-fold.cjs');
+const { resolveId } = require('./ledger-ids.cjs');
+const { manifestOf, liveTopics } = require('./ledger-units.cjs');
+const { topicLog } = require('./topic-log.cjs');
+const {
+  dismissedNames, topicTitle, cutPhases, quickFixBuild, specJoined, builtSince, nothingBuiltSince, landedBefore, landedAnyBefore, citedAreas, areaBuilt,
+} = require('./derivations.cjs');
+const {
+  UNIT_PHASE, dispatchedRows, gapReviewSince, bindQuestion, bindSpec, closeUnbriefed, refusedReports,
+} = require('./agent-state.cjs');
+const { lastQuery } = require('./knowledge/last-query.cjs');
+const { ROLES } = require('./brief-names.cjs');
+const {
+  SPEC_FILE, readCitedSections, headingLevels, readSpec, specPath, specSections, specStatements,
+} = require('./spec-sections.cjs');
+const { withUnitEntries, unitEntries } = require('./unit-entries.cjs');
+const { huntOf, huntLog, huntEntries, rootCauseNow, openInvestigation } = require('./investigation-log.cjs');
+const { specTopics } = require('./spec-standing.cjs');
+const { sweepPath, builderCalls, sweepTaken, sweepWait } = require('./sweep.cjs');
+const { sweepRefusal } = require('./sweep-take.cjs');
+const { stagedCutPath, stagedCutRefusal } = require('./cut.cjs');
+const { inventedLines } = require('./spec-trace.cjs');
+const { specSources } = require('./spec-entry.cjs');
+const { landRefusal, unitRefusal } = require('./spec-land.cjs');
+const { heldPlaces } = require('./spec-review.cjs');
+const {
+  ownTexts, recordTaking, recordCutTaking, outstanding, cutRequests, reviewedSpec, sectionsToReview, waitingGaps, gapsWaiting, passesRunningOn, waitingOn,
+} = require('./spec-passes.cjs');
+const { messageOf, ENGINE_RUN } = require('../kernel/call.cjs');
+const { specReferenceOf, scenariosOf, isOneLine } = require('./task-file.cjs');
+const {
+  taskFolder, taskRounds, roundReportPath, roundUnderReview, unbuiltRefusal, phaseReviewPath, reportFaults, roundStanding, readRefusal, recordReviewer, recordBuilder, pendingChange, briefedOf,
+  lettersOf,
+} = require('./round-report.cjs');
+const { workBranch, builtOnBases, ownWork } = require('./task-base.cjs');
+const { freedAt } = require('./task-parks.cjs');
+const { reviewReportFaults } = require('./review-report.cjs');
+const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
+const { taskName, shownTask, phaseName } = require('./task-id.cjs');
+const { taskBranch, quickFixBranch } = require('./landing-names.cjs');
+const { branches, branchesHeldBy, holdingBranch, landingBranch, latestOf, quoted } = require('./landing-git.cjs');
+const { childrenFirst } = require('../kernel/repos.cjs');
+const { repoNamed, phaseStack, tipCommits } = require('./phase-stack.cjs');
+const { readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
+const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
+const { ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
+const { unitSources, unitPhases, oldReliances, piecePaths, specAddresses } = require('./cut-merges.cjs');
+const { notesToTake, notesHeldFor, consolidationPath } = require('./notes.cjs');
+const { runsOf } = require('./runs.cjs');
+const { cachedSurvivors } = require('./verify.cjs');
+const { REPRODUCING, isBugfix } = require('./bug-proven.cjs');
+const { scratchName } = require('./scratch.cjs');
+const { accountPath, accountOwed, landingStage, reviewOverWay } = require('./task-account.cjs');
+const { directiveOf, loadCheck, briefedSections } = require('./directives.cjs');
+const {
+  TESTS, TESTS_LETTER, roundRefusal, readsWords, areaReportPath, unitCalls, fixPhase, filesUnder,
+} = require('./review-phase.cjs');
+const { reviewHeld } = require('./review-entry.cjs');
+const { reading, reposOf } = require('./phase-checks.cjs');
+const { changeOf, changeTips, workBelow } = require('./review-change.cjs');
+const { fixAcceptance, fixScenarios, fixNamed } = require('./fix-acceptance.cjs');
+const { fixWorktree } = require('./fix-branch.cjs');
+const { summaryFile } = require('./knowledge/artifacts.cjs');
+const { CARRY_VERB, DRY_RUN, topicPlace, placePath, recordName, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, noteVerifying, briefedOn, lastVerdicts, uncheckedRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath } = require('./ledger-carry.cjs');
+const { entryHashes, entriesHeld, pastOf, markedSheet, pieceChanges, pieceVerified, notePiece } = require('./later-rounds.cjs');
+const { OLD_STATE, OLD_PLAN_FILE } = require('../../../ledger-migrate/scripts/old-layout.cjs');
+
+/** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
+/** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
+/** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
+/** @typedef {import('../kernel/repos.cjs').Repo} Repo */
+/** @typedef {import('./runs.cjs').RepoCommit} RepoCommit */
+
+/** A discussion topic of a unit. @typedef {{unit: string, topic: string}} TopicPlace */
+
+/**
+ * What a brief is filled for: the project; its role; the task where its
+ * role takes one, as the tracker holds it, the phase where it takes one,
+ * with every task of each phase to it as the tracker holds them — null for
+ * a phase not written — or the topic where it takes one; the unit of any,
+ * or the unit alone where its role takes that; each flag given, by its
+ * name; and the conversation it is issued in.
+ * @typedef {{
+ *   cwd: string, role: string, ref: TaskRef|null, task: TaskDetail|null, phase: number|null, phases: (TaskRow[]|null)[]|null, written: TaskDetail[]|null, place: TopicPlace|null, unit: string|null,
+ *   given: Readonly<Record<string, string>>, session: string,
+ * }} Filling
+ */
+
+/**
+ * A flag a record takes: its name, its value as a usage line shows it, and
+ * whether a brief may go without it.
+ * @typedef {{name: string, value: string, optional?: boolean}} BriefFlag
+ */
+
+/**
+ * A record: whether it is a task's, a phase's, a topic's, a unit's or none's, the
+ * flags it takes, its drawn form, what it binds once every record of the
+ * brief is drawn, and what it closes where the brief is refused; what a
+ * read said on the way pushed to `warnings`.
+ * @typedef {{
+ *   of: 'task'|'phase'|'topic'|'unit'|null, flags?: BriefFlag[], draw: (filling: Filling, warnings: string[]) => string, bind?: (filling: Filling, warnings: string[]) => void,
+ *   refused?: (filling: Filling) => void,
+ * }} BriefRecord
+ */
+
+const NONE = 'None recorded.';
+
+/** Whose an entry is, as a brief says it. @type {Readonly<Record<string, string>>} */
+const WHOSE = Object.freeze({ person: 'the person\'s', claude: 'Claude\'s' });
+
+/** A drawn list, a line an item, or none recorded. @param {string[]} items */
+function listed(items) {
+  return items.length === 0 ? NONE : items.join('\n');
+}
+
+/** Drawn blocks, a blank line between each, or none recorded. @param {string[]} items */
+function blocks(items) {
+  return items.length === 0 ? NONE : items.join('\n\n');
+}
+
+/** The task, and the ref it was read by, for a record that is a task's. @param {Filling} filling */
+function taskOf({ ref, task }) {
+  if (ref === null || task === null) throw new Error('brief-records: a task\'s record is drawn for a task');
+  return { ref, task };
+}
+
+/** Markdown with each heading a level down, a fenced block's lines aside. @param {string} text */
+function headingsDown(text) {
+  const lines = text.split('\n');
+  const levels = headingLevels(lines);
+  return lines.map((line, at) => (levels[at] > 0 ? `#${line}` : line)).join('\n');
+}
+
+/** Text whose every line after its first is indented, to stay in a list item. @param {string} text */
+const indented = (text) => text.split('\n').join('\n  ');
+
+/** A task's text opening on its title: as written where it opens on a heading at level one, else its title over it. @param {TaskDetail} task */
+const titledText = ({ title, text }) => (/^# /.test(text) ? text : `# ${title}\n\n${text.trim()}`);
+
+/** @param {Filling} filling */
+function drawTask(filling) {
+  const { task } = taskOf(filling);
+  return [headingsDown(titledText(task)), ...task.additions.map(({ by, text }) => `## Added by the ${by}\n\n${text}`)].join('\n\n');
+}
+
+/**
+ * Each section the task's spec reference cites; for a task of the plan from
+ * before Ledger, the areas the migration's cut found it citing (21.8.8,
+ * `citedAreas`), with its phase's scenarios; or, citing none, its phase's
+ * sections and scenarios. For a quick-fix's task, the line saying its
+ * acceptance, in its own words, stands for them (19.5.24).
+ * @param {Filling} filling
+ */
+function drawSpecSections(filling) {
+  const { ref, task } = taskOf(filling);
+  if (ofQuickFixTask(filling)) return `${ref.unit} is a quick-fix, which has no spec: the task's acceptance scenarios, in their own words, stand for its sections.`;
+  const cited = citedAreas(unitManifest(filling))(ref);
+  if (cited.length > 0) return [...cited.map((area) => areaSectionText(filling, area)), 'Its phase\'s scenarios:', scenarioLines(filling, ref.phase)].join('\n\n');
+  const reference = specReferenceOf(task.text);
+  if (reference !== null) return readCitedSections(filling.cwd, ref.unit, reference).map((section) => section.text).join('\n\n');
+  return [`${taskName(ref)} cites no section of the spec, so its phase's stand for it, with its phase's scenarios:`, ...sectionTexts(filling, ref.phase), scenarioLines(filling, ref.phase)].join('\n\n');
+}
+
+/** An area of the spec, verbatim, refused where the spec lacks it. @param {Filling} filling @param {string} area */
+function areaSectionText(filling, area) {
+  const section = unitSpec(filling).sections.get(area);
+  if (section === undefined) throw new Error(`the spec has no §${area}`);
+  return section.text;
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawDecidedCalls(filling, warnings) {
+  const unit = unitOf(filling);
+  return readShown(stateRoot(filling.cwd), warnings, ({ folded, show }) => listed(
+    recordOf(folded, unit, null).decisions
+      .filter((id) => standingOf(folded, id).topic === null)
+      .map((id) => {
+        const { id: short, by, text, why } = show(id);
+        return `- ${short}, ${WHOSE[/** @type {string} */ (by)]}: ${indented(String(text))}\n  Why: ${indented(String(why))}`;
+      }),
+  ));
+}
+
+/**
+ * The project's linters, once the person has confirmed its environment
+ * setup; a quick-fix's before that, the line sending its agent to those it
+ * finds (22.5.10).
+ * @param {Filling} filling
+ */
+function drawLinters(filling) {
+  if (confirmedAt(filling.cwd) === null && filling.unit !== null && quickFixBuild(unitManifest(filling))) return 'None confirmed: the project\'s environment setup is not confirmed yet, so run the tests and linters you find in the repository, asking nothing.';
+  return listed(linters(filling.cwd).map(({ name, command, fix }) => `- ${name}: ${command}${fix === undefined ? '' : `, its fix ${fix}`}`));
+}
+
+// Named from the repo's folder, a root inside a larger repository reading
+// only its own. Off a terminal git fits a stat to 80 columns, cutting a long
+// path from its front; a width past any path keeps each whole, and the graph
+// is held to git's own 40 columns, which the width would otherwise stretch.
+const STAT = ['--relative', '--stat=1000', '--stat-graph-width=40'];
+
+/**
+ * The range in one repository, under a heading naming it, and its stat.
+ * @param {Repo} repo @param {string} base @param {string} branch
+ */
+function rangeIn(repo, base, branch) {
+  const where = repoNamed(repo);
+  const commit = /^[0-9a-f]{40}$/.test(base);
+  const stat = git(repo.path, ['diff', '--no-color', ...STAT, `${commit ? base : `refs/heads/${base}`}...refs/heads/${branch}`, '--']);
+  return `## In ${where}: \`${commit ? base.slice(0, 7) : base}...${branch}\`\n\n${stat === '' ? 'Nothing changed in the range.' : `\`\`\`\n${stat}\`\`\``}`;
+}
+
+/**
+ * Each repository's base for the range: the one given where it is a local
+ * branch there, else the branch the repository lands the unit's work on,
+ * as the landing picks it; refused where no repository has the one given,
+ * so a misnamed base never passes as the default.
+ * @param {string} cwd @param {string} unit @param {Repo[]} holding @param {string} given @param {string} what the branch, as a refusal names it
+ */
+function basesOf(cwd, unit, holding, given, what) {
+  const has = holding.map((repo) => branches(repo.path).has(given));
+  if (!has.includes(true)) throw new Error(`the base ${given} is no local branch in any repository holding ${what}`);
+  return holding.map((repo, at) => (has[at] ? given : landingBranch(cwd, repo, unit)));
+}
+
+/** Where a repository is laid out: what the brief names, its commit, and why there. @typedef {{named: string, commit: string, why: string}} Laid */
+/** Why a repository holding a task's or a phase's work is laid out at its tip. */
+const RANGE_TIP = 'the range\'s tip there';
+
+/** A repository laid out on a branch. @param {Repo} repo @param {string} branch @param {string} why @returns {Laid} */
+const onBranch = (repo, branch, why) => ({ named: branch, commit: git(repo.path, ['rev-parse', '--verify', `refs/heads/${branch}^{commit}`]).trim(), why });
+
+/** Each repository holding a range's work laid out at its tip branch. @param {Map<Repo, string>} tips @returns {Map<Repo, Laid>} */
+const rangeTips = (tips) => new Map([...tips].map(([repo, branch]) => [repo, onBranch(repo, branch, RANGE_TIP)]));
+
+/**
+ * What a call laying a worktree out asks of the agent making it where the
+ * project has steps for each worktree, which the call runs (worktree-prep.cjs),
+ * a step that fails `failed` says how; none where it has none.
+ * @param {string} cwd @param {string} failed @returns {string}
+ */
+function stepsRunning(cwd, failed) {
+  if (stepsAt(cwd, 'worktree').length === 0) return '';
+  return ` The call then runs the project's steps that prepare the worktree, which can take minutes: where it is moved to the background, wait for its notification before going on, and never run it again while it runs. A step that fails is the project's setup, ${failed}, changing nothing to make it pass.`;
+}
+
+/**
+ * Where the reviewer's scratch worktree lays out every repository of the
+ * project, each before those nested in it, as the builder's worktree held
+ * them all (task-worktree.cjs): one holding work at its tip there, as
+ * `tips` says it; any other as `otherwise` lays it out. Then the calls
+ * that lay the scratch worktree `name` out so, prepared, and take it apart
+ * (scratch.cjs).
+ * @param {string} cwd @param {Repo[]} repos @param {Map<Repo, Laid>} tips where each repository holding work is laid out, at its tip
+ * @param {(repo: Repo) => Laid} otherwise @param {string} name
+ */
+function layoutOf(cwd, repos, tips, otherwise, name) {
+  /** @type {Map<string, string>} */
+  const laid = new Map();
+  const lines = repos.map((repo) => {
+    const place = tips.get(repo) ?? otherwise(repo);
+    laid.set(repo.dir, place.commit);
+    return `- ${repoNamed(repo)}: \`${place.named}\` — ${place.why}`;
+  });
+  const children = repos.slice(1).map((repo) => ` ${quoted(`${repo.dir}=${laid.get(repo.dir)}`)}`).join('');
+  return [
+    lines.join('\n'),
+    '',
+    `Lay it out from the project's checkout with the first call below, which prepares it as the project's own checkout is, its ignored files and linked folders among it; its answer's \`path\` is the project's folder there.${stepsRunning(cwd, 'never the change: say so in your report')} Take it apart with the second once your report is written.`,
+    '',
+    '```bash',
+    `${ENGINE_RUN} scratch lay ${name} ${laid.get('')}${children}`,
+    `${ENGINE_RUN} scratch remove ${name}`,
+    '```',
+  ].join('\n');
+}
+
+/**
+ * The project's repositories, the task's branch, and those of them holding
+ * work on it; refused where none does.
+ * @param {Filling} filling @returns {{repos: Repo[], branch: string, holding: Repo[], what: string}}
+ */
+function taskHolding(filling) {
+  const { ref, task } = taskOf(filling);
+  const branch = workBranch(filling.cwd, ref, task);
+  const what = `${taskName(ref)}'s branch, ${branch}`;
+  const repos = projectRepos(codeRoot(filling.cwd));
+  const { holding } = holdingBranch(ref.unit, repos, branch);
+  if (holding.length === 0) throw new Error(`no repository of the project holds work on ${what}`);
+  return { repos, branch, holding, what };
+}
+
+/**
+ * A quick-fix's task's own commits in one repository, each by its short
+ * sha and subject, with each one's stat.
+ * @param {Repo} repo @param {{sha: string, subject: string}[]} commits @param {string} branch
+ */
+function commitsIn(repo, commits, branch) {
+  const listed = commits.map(({ sha, subject }) => `- \`${sha.slice(0, 7)}\` ${subject}`).join('\n');
+  const stat = git(repo.path, ['show', '--no-color', ...STAT, '--format=%h %s', ...commits.map(({ sha }) => sha), '--']);
+  return `## In ${repoNamed(repo)}: its commits on \`${branch}\`\n\n${listed}\n\n\`\`\`\n${stat.trim()}\n\`\`\``;
+}
+
+/**
+ * A quick-fix's task's change, its own commits alone in each repository
+ * holding any (the header's); refused where it has none.
+ * @param {Filling} filling @param {TaskRef} ref @param {Repo[]} holding @param {string} branch
+ */
+function ownRange(filling, ref, holding, branch) {
+  const own = ownWork(filling.cwd, ref, holding);
+  if (own.length === 0) throw new Error(`${taskName(ref)} has no commit of its own on ${branch} — its builder commits its change through the door first`);
+  const lead = `The task's change is its own commits alone, each stamped with it — ${branch} holds the other fixes' among them, which are not its: read each, \`git show <sha>\`, in its repository.`;
+  return [lead, ...own.map(({ repo, commits }) => commitsIn(repo, commits, branch))].join('\n\n');
+}
+
+/** @param {Filling} filling */
+function drawDiffRange(filling) {
+  const { ref } = taskOf(filling);
+  const { branch, holding, what } = taskHolding(filling);
+  const { base } = filling.given;
+  if (base === undefined && ofQuickFixTask(filling)) return ownRange(filling, ref, holding, branch);
+  const bases = base === undefined ? builtOnBases(filling.cwd, ref, holding, branch) : basesOf(filling.cwd, ref.unit, holding, base, what);
+  return holding.map((repo, at) => rangeIn(repo, bases[at], branch)).join('\n\n');
+}
+
+/** @param {Filling} filling */
+function drawScratchLayout(filling) {
+  const { ref } = taskOf(filling);
+  const { repos, branch, holding } = taskHolding(filling);
+  return layoutOf(filling.cwd, repos, rangeTips(new Map(holding.map((repo) => [repo, branch]))), (repo) => (
+    branches(repo.path).has(branch) ? onBranch(repo, branch, 'the task\'s branch') : onBranch(repo, landingBranch(filling.cwd, repo, ref.unit), 'the branch it lands on, the task\'s branch not made there')
+  ), scratchName.task(ref.unit, shownTask(ref), letterOf(filling)));
+}
+
+/**
+ * The task's last round's reports, refused where it has none, or the round
+ * passed: a round with nothing serious and no bug sends nothing back to the
+ * builder, its nits the orchestrator's to fix (13.4.4, 13.4.5); where no
+ * builder of the task was sent its own brief in this conversation, a new
+ * one sent it first (24.2.4); and where the task changed since its
+ * builder's last brief, which carries the task and its calls as they stand
+ * and goes first (round-report.cjs).
+ * @param {Filling} filling
+ */
+function drawReports(filling) {
+  const { ref } = taskOf(filling);
+  const rounds = taskRounds(filling.cwd, ref);
+  const last = rounds.at(-1);
+  if (last === undefined) throw new Error(`${taskName(ref)} has no review round's reports — its reviewers write them in ${taskFolder(ref)}/`);
+  if (last.passes) throw new Error(`round ${last.round} of ${taskName(ref)} passed — a round with nothing serious and no bug sends nothing back to the builder; its nits are the orchestrator's to fix`);
+  if (briefedOf(filling.cwd, ref).session !== filling.session) {
+    throw new Error(`${taskName(ref)} has no builder briefed in this conversation, so none to send the round back to: send a new builder its brief first, engine brief builder ${ref.unit} ${shownTask(ref)}, which carries the task, the engine and where it builds, then this fix brief`);
+  }
+  if (pendingChange(filling.cwd, ref)) {
+    throw new Error(`${taskName(ref)} changed since its builder's last brief — something was added to it, or one of its calls decided against its lean: send its builder its brief again first, engine brief builder ${ref.unit} ${shownTask(ref)}, which carries the task and its calls as they stand, then this fix brief`);
+  }
+  return last.reports.map(({ reviewer, text }) => `# Reviewer ${reviewer.toUpperCase()}'s report\n\n${text}`).join('\n\n');
+}
+
+/** The topic a topic's record is drawn for. @param {Filling} filling @returns {TopicPlace} */
+function placeOf({ place }) {
+  if (place === null) throw new Error('brief-records: a topic\'s record is drawn for a topic');
+  return place;
+}
+
+/** Text fenced, the fence longer than any run of backticks the text holds. @param {string} lang @param {string} text */
+function fenced(lang, text) {
+  const fence = '`'.repeat(Math.max(3, ...[...text.matchAll(/`+/g)].map(([run]) => run.length + 1)));
+  return `${fence}${lang}\n${text}\n${fence}`;
+}
+
+/**
+ * A ledger read's answer, what the read warned of pushed to `warnings`.
+ * @param {string} cwd @param {string} verb @param {string[]} args @param {string[]} warnings
+ * @returns {Record<string, any>}
+ */
+function ledgerRead(cwd, verb, args, warnings) {
+  const { warnings: read = [], ...answer } = readLedgerVerb(cwd, verb, args);
+  warnings.push(.../** @type {string[]} */ (read));
+  return answer;
+}
+
+/** What a record or the product record shows, by the lists it shows them in. */
+const SHOWN = ['questions', 'findings', 'decisions', 'moved', 'merged', 'other_topics', 'discovery'];
+
+/** A read record fenced as JSON, or none recorded where it shows nothing. @param {Record<string, any>} record */
+function recordJson(record) {
+  return SHOWN.some((list) => Array.isArray(record[list]) && record[list].length > 0) ? fenced('json', JSON.stringify(record, null, 2)) : NONE;
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawTopicRecord(filling, warnings) {
+  const { unit, topic } = placeOf(filling);
+  return recordJson(ledgerRead(filling.cwd, 'record', [unit, topic], warnings));
+}
+
+/** @param {Filling} filling */
+function drawTopicLog(filling) {
+  const { unit, topic } = placeOf(filling);
+  const file = statePath(filling.cwd, topicLog(unit, topic));
+  return fs.existsSync(file) ? `\`${file}\`` : NONE;
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawOtherRecords(filling, warnings) {
+  const { unit, topic } = placeOf(filling);
+  const others = liveTopics(unit, /** @type {Record<string, any>} */ (manifestOf(stateRoot(filling.cwd), unit))).filter((other) => other !== topic);
+  const drawn = others.map((other) => ({ other, json: recordJson(ledgerRead(filling.cwd, 'record', [unit, other], warnings)) })).filter(({ json }) => json !== NONE);
+  return drawn.length === 0 ? NONE : drawn.map(({ other, json }) => `## ${other}\n\n${json}`).join('\n\n');
+}
+
+/** The product's lists the openings read, which no brief carries: an agent never weighs the person's views as decisions (8.9.15). */
+const OPENINGS_ONLY = ['not_taken', 'views', 'spikes'];
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawProductRecord(filling, warnings) {
+  const scope = filling.place === null ? [unitOf(filling)] : [filling.place.unit, filling.place.topic];
+  const read = ledgerRead(filling.cwd, 'product', scope, warnings);
+  return recordJson(Object.fromEntries(Object.entries(read).filter(([list]) => !OPENINGS_ONLY.includes(list))));
+}
+
+/** A question as a brief draws it: its short id and its text. @param {(id: string) => Record<string, unknown>} show @param {string} wording */
+function questionLine(show, wording) {
+  const { id: short, text } = show(wording);
+  return `${short}: ${indented(String(text))}`;
+}
+
+/**
+ * The question each fill asked for: its first wording, and its line.
+ * @type {WeakMap<Filling, {root: string, line: string}>}
+ */
+const ASKED = new WeakMap();
+
+/**
+ * The open question `--question` names on the topic, read once a fill:
+ * its first wording, and its current wording's line.
+ * @param {Filling} filling @param {string[]} warnings
+ */
+function askedQuestion(filling, warnings) {
+  const known = ASKED.get(filling);
+  if (known !== undefined) return known;
+  const { unit, topic } = placeOf(filling);
+  const given = filling.given.question;
+  const asked = readShown(stateRoot(filling.cwd), warnings, ({ folded, show }) => {
+    const id = resolveId(given, folded.facts.keys());
+    if (factsOf(folded, id).kind !== 'question') throw new Error(`brief: ${given} names no question — --question takes a question on ${unit}/${topic}'s map`);
+    const wording = wordingOf(folded, id);
+    if (wording === null) throw new Error(`brief: question ${given} is no longer current`);
+    const standing = standingOf(folded, wording);
+    if (!inPlace(standing, unit, topic)) throw new Error(`brief: question ${given} stands on ${standing.unit}/${standing.topic ?? '(the unit\'s level)'}, not ${unit}/${topic}`);
+    const stands = questionStands(folded, wording);
+    if (stands !== 'open') throw new Error(`brief: question ${given} is ${stands} — a deep dive or a perspective is briefed on an open question`);
+    return { root: factsOf(folded, wording).root, line: questionLine(show, wording) };
+  });
+  ASKED.set(filling, asked);
+  return asked;
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawQuestion(filling, warnings) {
+  return askedQuestion(filling, warnings).line;
+}
+
+/** The dispatch `--agent` names bound to the question its brief draws. @param {Filling} filling @param {string[]} warnings */
+function bindAsked(filling, warnings) {
+  const { unit, topic } = placeOf(filling);
+  bindQuestion(filling.cwd, unit, topic, filling.given.agent, askedQuestion(filling, warnings).root);
+}
+
+/** @param {Filling} filling */
+function drawGapReview(filling) {
+  const { unit, topic } = placeOf(filling);
+  const run = gapReviewSince(filling.cwd, unit, topic);
+  return run === null ? 'No gap review has run since this topic\'s last decision.' : `A gap review has run since this topic's last decision: ${run}.`;
+}
+
+/** @param {Filling} filling */
+function drawDismissed(filling) {
+  return listed(dismissedNames(readWorkUnitManifest(stateRoot(filling.cwd), unitOf(filling))).map((name) => `- ${name}`));
+}
+
+/**
+ * The agent store a brief's dispatch is in, and how a refusal names it: the
+ * topic's discussion store, or for a unit's role the unit's own — at its
+ * spec, or at the phase its role names.
+ * @param {Filling} filling @returns {{unit: string, phase: string, topic: string, where: string}}
+ */
+function storeOf(filling) {
+  if (filling.place !== null) return { ...filling.place, phase: 'discussion', where: `${filling.place.unit}/${filling.place.topic}` };
+  const unit = unitOf(filling);
+  const phase = ROLES[filling.role].phase ?? UNIT_PHASE;
+  return { unit, phase, topic: unit, where: phase === UNIT_PHASE ? `${unit}'s spec` : `${unit}'s ${phase}` };
+}
+
+/**
+ * The dispatch `--agent` names in its agent store, refused where the store
+ * lacks it, it is of another kind than its role is briefed for, or it is no
+ * longer in flight; and every row of the store.
+ * @param {Filling} filling
+ */
+function dispatchOf(filling) {
+  const {
+    unit, phase, topic, where,
+  } = storeOf(filling);
+  const { kind } = ROLES[filling.role];
+  const id = filling.given.agent;
+  const rows = dispatchedRows(filling.cwd, unit, phase, topic);
+  const row = rows.find((dispatched) => dispatched.id === id);
+  if (row === undefined) throw new Error(`brief: ${where} has no agent ${id} — \`engine agent dispatch\` records one, and --agent names the id it answers`);
+  if (row.kind !== kind) throw new Error(`brief: ${id} is a ${row.kind} dispatch, and the ${filling.role}'s brief is for a ${kind}`);
+  if (row.status !== 'in-flight') throw new Error(`brief: ${id} is ${row.status} — a brief is issued for a dispatch still in flight`);
+  return { row, rows };
+}
+
+/** @param {Filling} filling */
+function drawReportTo(filling) {
+  return `\`${dispatchOf(filling).row.file}\``;
+}
+
+/** @param {Filling} filling */
+function drawLens(filling) {
+  return `\`${dispatchOf(filling).row.label}\``;
+}
+
+/** The perspectives of the set a synthesis dispatch joins. @param {Filling} filling */
+function setOf(filling) {
+  const { row, rows } = dispatchOf(filling);
+  return rows.filter((dispatched) => dispatched.kind === 'perspective' && dispatched.set === row.set);
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawPairQuestion(filling, warnings) {
+  const set = setOf(filling);
+  const unbriefed = set.find((perspective) => perspective.question === undefined);
+  if (unbriefed !== undefined) throw new Error(`brief: ${unbriefed.id} was briefed on no question — each perspective of a set is briefed before its synthesis`);
+  const questions = [...new Set(set.map((perspective) => perspective.question))];
+  if (questions.length > 1) throw new Error(`brief: the perspectives of set ${set[0].set} were briefed on different questions — a synthesis reconciles a pair argued on one`);
+  return readShown(stateRoot(filling.cwd), warnings, ({ folded, show }) => {
+    const wording = wordingOf(folded, String(questions[0]));
+    if (wording === null) throw new Error(`brief: the question set ${set[0].set} argued is no longer current`);
+    return questionLine(show, wording);
+  });
+}
+
+/** @param {Filling} filling */
+function drawPerspectives(filling) {
+  return setOf(filling).map(({ id, file }) => {
+    const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+    if (text.trim() === '') throw new Error(`brief: ${id}'s report, ${file}, is not written — a synthesis reads every perspective of its set`);
+    return text.replace(/\n+$/, '');
+  }).join('\n\n');
+}
+
+/** The flag naming a ledger question. @type {BriefFlag} */
+const QUESTION = Object.freeze({ name: 'question', value: 'id' });
+
+/** The flag naming a dispatch in the topic's agent store. @type {BriefFlag} */
+const AGENT = Object.freeze({ name: 'agent', value: 'id' });
+
+/** The kinds of deep dive (9.1.5), each named as the agent's definition names it. */
+const DIVE_KINDS = Object.freeze(['survey', 'read', 'feasibility', 'landscape', 'verify']);
+
+/** The kind of dive, and the file a read reads. @param {Filling} filling */
+function drawDiveKind({ cwd, given }) {
+  const kind = given.kind;
+  if (!DIVE_KINDS.includes(kind)) throw new Error(`brief: ${JSON.stringify(kind)} is no kind of dive — --kind takes ${DIVE_KINDS.join(', ')}`);
+  if (kind !== 'read') {
+    if (given.path !== undefined) throw new Error(`brief: --path names the file a read dive reads, and a ${kind} dive reads none`);
+    return kind;
+  }
+  if (given.path === undefined) throw new Error('brief: a read dive names the file it reads — --path <file>');
+  const file = path.resolve(cwd, given.path);
+  if (!fs.statSync(file, { throwIfNoEntry: false })?.isFile()) throw new Error(`brief: --path names no file — ${file}`);
+  return `read — \`${file}\``;
+}
+
+/** The conversation's last knowledge query, drawn for the search that follows it. @param {Filling} filling */
+function drawKnowledgeQuery({ session }) {
+  const query = lastQuery(session);
+  if (query === null) throw new Error('brief: this conversation has run no knowledge query — a plain search follows the `engine knowledge query` it carries on from');
+  const filters = query.filters.length === 0 ? 'none' : query.filters.map((filter) => `\`${filter}\``).join(', ');
+  const head = `Terms: ${query.terms.map((term) => `\`${term}\``).join(' ')}\nFilters: ${filters}`;
+  if (query.outcome === null) return `${head}\n\nIt never finished.`;
+  if ('failed' in query.outcome) return `${head}\n\nIt failed: ${query.outcome.failed}`;
+  return `${head}\n\nIt returned:\n\n${fenced('', query.outcome.returned.replace(/\n+$/, ''))}`;
+}
+
+/** The flag naming a migrated topic, by its place. @type {BriefFlag} */
+const MIGRATED = Object.freeze({ name: 'topic', value: 'unit.phase.topic' });
+
+/** The flag naming the migration's directive a record draws for. @type {BriefFlag} */
+const DIRECTIVE = Object.freeze({ name: 'directive', value: 'id' });
+
+/** The level a migration agent's brief draws each section of its directive at, under the brief's own heading. */
+const BRIEFED_LEVEL = 2;
+
+/**
+ * The directive as a migration agent's brief draws it: the sections its
+ * check names `briefed` (directives.cjs), in that order, each with what
+ * nests beneath it, its heading at the brief's second level and those
+ * beneath it kept in step.
+ * @param {Filling} filling
+ */
+function drawDirective({ given }) {
+  const { briefed } = /** @type {Record<string, unknown>} */ (loadCheck(given.directive));
+  const text = fs.readFileSync(directiveOf(given.directive).file, 'utf8');
+  return briefedSections(given.directive, text, briefed).map((lines) => {
+    const levels = headingLevels(lines);
+    const shift = BRIEFED_LEVEL - levels[0];
+    return lines.map((line, at) => (levels[at] > 0 ? `${'#'.repeat(levels[at] + shift)}${line.slice(levels[at])}` : line)).join('\n');
+  }).join('\n\n');
+}
+
+/**
+ * The check of the directive a migrated topic's record draws for, refused
+ * where it carries no topic's sources (`sourcesOf`, the records
+ * directive's).
+ * @param {Filling} filling
+ * @returns {any}
+ */
+function topicRules({ given }) {
+  const rules = /** @type {Record<string, unknown>} */ (loadCheck(given.directive));
+  if (typeof rules.sourcesOf !== 'function') throw new Error(`brief: ${given.directive} carries no topic's work — its pieces are not topics`);
+  return rules;
+}
+
+/** @param {Filling} filling */
+const migratedTopic = (filling) => topicPlace(filling.cwd, filling.given.topic, 'brief', topicRules(filling));
+
+/**
+ * One of the unit's assets, as the records directive's check reads it.
+ * @typedef {{path: string, kind: string, origin: string|null, owner: string|null, listed: boolean, held: boolean, walkers: (string|null)[]}} MigratedAsset
+ */
+
+/** Where an asset came from, by its kind, an import's from where its manifest says. */
+const ASSET_FROM = new Map([
+  ['spec', 'a spec'],
+  ['research', 'research a legacy split superseded'],
+]);
+
+/** An asset as a record's brief lists it, by its whole path: where it came from, and whether the record owes it a link, an import its unit's manifest lists. @param {string} root @param {MigratedAsset} asset @param {string|null} topic */
+function assetLine(root, { path: at, kind, origin, owner, listed: imported, held }, topic) {
+  const from = kind === 'import' ? (origin === null ? 'an import' : `which came in from ${origin}`) : ASSET_FROM.get(kind);
+  const owed = !held ? ' — its file is gone, so no entry links it' : imported && owner === topic ? ` — this ${topic === null ? 'record' : 'topic'}'s to link` : '';
+  return `- ${path.join(root, at)}, ${from}${owed}`;
+}
+
+// The unit's assets no agent reads, listed by their folder and how many: its
+// legacy files, kept each at its path from the unit's old folder (078).
+const FOLDED = new Map([
+  ['legacy', { folder: '/assets/legacy/', counted: (/** @type {number} */ count) => `${count} ${count === 1 ? 'file' : 'files'} kept as legacy, each at its path from the unit's old folder` }],
+]);
+
+/**
+ * The unit's assets as a record's brief lists them: those it walks, then
+ * the rest but its specs, listed as its specs — one it would walk that its
+ * own files hold word for word among the rest, so said; its legacy files
+ * by their folder and how many, never each, where the first stands: a
+ * project may keep thousands, and no agent reads one.
+ * @param {string} root @param {MigratedAsset[]} assets @param {string|null} topic @param {string[]} held the paths of those its own files hold @param {string[]} [specs] the paths of the topic's specs
+ */
+function assetSections(root, assets, topic, held, specs = []) {
+  const walks = (/** @type {MigratedAsset} */ { path: at, walkers }) => walkers.includes(topic) && !held.includes(at);
+  const others = assets.filter((asset) => !walks(asset) && !specs.includes(asset.path));
+  const folded = (/** @type {MigratedAsset} */ asset) => {
+    const { folder, counted } = /** @type {{folder: string, counted: (count: number) => string}} */ (FOLDED.get(asset.kind));
+    const kind = others.filter(({ kind: each }) => each === asset.kind);
+    if (asset !== kind[0]) return [];
+    return [`- ${path.join(root, asset.path.slice(0, asset.path.indexOf(folder) + folder.length))}, ${counted(kind.length)}`];
+  };
+  return [
+    '## The unit\'s assets it walks',
+    '',
+    listed(assets.filter(walks).map((asset) => assetLine(root, asset, topic))),
+    '',
+    '## The unit\'s other assets, never walked',
+    '',
+    listed(others.flatMap((asset) => (FOLDED.has(asset.kind) ? folded(asset)
+      : [`${assetLine(root, asset, topic)}${held.includes(asset.path) ? ' — its own files hold it word for word' : ''}`]))),
+  ];
+}
+
+/** The paths of the unit's assets a record walks, but those its own files hold word for word. @param {{assets: MigratedAsset[], held: string[]}} sources @param {string|null} topic */
+const walkedBy = ({ assets, held }, topic) => assets.filter(({ path: at, walkers }) => walkers.includes(topic) && !held.includes(at)).map(({ path: at }) => at);
+
+/** Where a record goes, and what is said of it beside it, as its brief lists them, each by its whole path. @param {string} root @param {string} unit @param {string|null} topic */
+function recordGoes(root, unit, topic) {
+  const whole = (/** @type {(unit: string, topic: string|null) => string} */ rel) => path.join(root, rel(unit, topic));
+  return [
+    `- The record composed: ${whole(composedPath)}, ${fs.existsSync(whole(composedPath)) ? 'composed already' : 'not composed yet'}`,
+    `- The verifier's findings on it: ${whole(findingsPath)}`,
+    `- The verifier's rulings on it: ${whole(rulingsPath)}`,
+    `- The verifier's verdict on each entry: ${whole(checkedPath)}`,
+    `- The findings its composer hands back to the session: ${whole(handbackPath)}`,
+    `- The points of it the session settled: ${whole(settledPath)}`,
+    `- A carry's refusal of it: ${whole(refusedPath)}`,
+  ].join('\n');
+}
+
+/** The state line of a record's brief: where the state is, and how an entry cites or links a file the brief names. @param {string} root */
+const stateLine = (root) => `- **The state:** ${root} — each file below named by its whole path, which an entry cites or links by its path from here`;
+
+/**
+ * Each of a record's sources holding a heading with text its own words name
+ * none of alone, a line each, by its whole path: those headings, each as a
+ * cite names it, as the records directive's check reads them (`heldTwice`).
+ * @param {Filling} filling @param {string} root @param {string} unit @param {string[]} files state-relative
+ */
+function heldTwice(filling, root, unit, files) {
+  const held = topicRules(filling).heldTwice({ stateDir: root, unit, files });
+  return listed(held.map((/** @type {{path: string, names: string[]}} */ { path: at, names }) => `- ${path.join(root, at)}: ${names.map((name) => `"${name}"`).join(', ')}`));
+}
+
+/** The heading a record's brief lists its sources' headings held more than once under. */
+const HELD_TWICE = '## Headings held more than once, each as a cite names it';
+
+/**
+ * Each topic a record's sessions may speak of besides its own, as its brief
+ * lists them: of another unit, or moved to one, so named, and its subject
+ * where it has one.
+ * @param {{topic: string, unit: string, to: string|null, subject: string|null}[]} others @param {string} unit
+ */
+const otherLines = (others, unit) => others.map(({ topic, unit: of, to, subject }) => `- ${topic}${of === unit ? '' : `, of ${of}`}${to === null ? '' : `, moved to ${to}`}${subject === null ? '' : `: ${subject}`}`);
+
+/** What a record's brief says of a cancelled unit's record. */
+const CANCELLED_RECORD = 'its record holds what its sources settle, as any record does, its decisions carried as decisions, which govern nothing while the unit is cancelled; it marks no point to raise, for its points wait with it';
+
+/** A record's unit as its brief names it: its work type and status, and for a cancelled unit what its record holds. @param {string} unit @param {Record<string, any>} manifest */
+const unitLine = (unit, manifest) => `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}${manifest.status === 'cancelled' ? ` — ${CANCELLED_RECORD}` : ''}`;
+
+/**
+ * A unit's own record as its brief draws it: the unit, the discovery
+ * sessions and the assets it is composed from — each point of them bearing
+ * on no topic's subject — the unit's topics with their subjects, each
+ * carrying the points bearing on its own, one moved to another unit
+ * carried there; the unit's assets and where the record goes.
+ * @param {Filling} filling @param {string} root @param {string} unit
+ */
+function drawOwnRecord(filling, root, unit) {
+  const manifest = readWorkUnitManifest(root, unit);
+  const sources = topicRules(filling).sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic: null });
+  return [
+    unitLine(unit, manifest),
+    `- **The record:** the unit's own, carried in discovery — each point of its discovery sessions and the assets it walks bearing on no topic's subject`,
+    stateLine(root),
+    '',
+    '## The unit\'s discovery sessions',
+    '',
+    listed(sources.sessions.map((/** @type {string} */ at) => `- ${path.join(root, at)}`)),
+    '',
+    '## The unit\'s topics, each carrying the points of the sessions and the assets bearing on its subject: for judging whose a point is, never sources',
+    '',
+    listed(otherLines(sources.others, unit)),
+    '',
+    '## The threads still open of its research under no topic\'s name',
+    '',
+    threadLines(sources.threads, null),
+    '',
+    ...assetSections(root, sources.assets, null, sources.held),
+    '',
+    HELD_TWICE,
+    '',
+    heldTwice(filling, root, unit, [...sources.sessions, ...walkedBy(sources, null)]),
+    '',
+    '## Where the record goes',
+    '',
+    recordGoes(root, unit, null),
+  ].join('\n');
+}
+
+/** @param {Filling} filling */
+function drawMigratedTopic(filling) {
+  const { root, unit, phase: carried, topic } = migratedTopic(filling);
+  if (topic === null) return drawOwnRecord(filling, root, unit);
+  const manifest = readWorkUnitManifest(root, unit);
+  const rules = topicRules(filling);
+  const phases = rules.phases.filter((phase) => rules.holds(manifest, phase, topic)).map((phase) => {
+    const { status } = manifest.phases[phase].items[topic];
+    return typeof status === 'string' ? `${phase}, ${status}` : phase;
+  });
+  const folder = path.join(root, unit, 'topics', topic);
+  const files = (fs.existsSync(folder) ? filesUnder(folder) : []).filter((file) => !file.startsWith('mail/')).map((file) => `${unit}/topics/${topic}/${file}`).sort();
+  const sources = rules.sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic });
+  const sessions = sources.sessions.map((/** @type {string} */ at) => (at.startsWith(`${unit}/`) ? `- ${path.join(root, at)}` : `- ${path.join(root, at)}, of ${at.split('/')[0]}, which it moved from`));
+  const specs = sources.specs.map((/** @type {{path: string, part: string|null, approved: boolean, approvedOn: string|null}} */ { path: at, part, approved, approvedOn }) => `- ${specLine(path.join(root, at), part)}, ${approved ? approvedLine(approvedOn) : 'a draft'}`);
+  const later = sources.later.map((/** @type {{path: string, part: string|null, approvedOn: string|null}} */ { path: at, part, approvedOn }) => `- ${specLine(path.join(root, at), part)}${approvedOn === null ? '' : `, ${approvedLine(approvedOn)}`}`);
+  const specPaths = [...sources.specs, ...sources.later].map((/** @type {{path: string}} */ { path: at }) => at);
+  return [
+    unitLine(unit, manifest),
+    `- **Topic:** ${topic}, in ${phases.join('; ')} — its record carried in ${carried}${topicStanding(rules.neverStarted(manifest, topic, carried), sources.leaves)}`,
+    ...(sources.describes ? ['- **What it is about:** no map row says it, so its record does, in `description`'] : []),
+    stateLine(root),
+    '',
+    '## Its files',
+    '',
+    listed(files.map((file) => `- ${path.join(root, file)}`)),
+    '',
+    '## Its specs',
+    '',
+    listed(specs),
+    '',
+    '## The unit\'s approved specs it does not draw on: the later answer to its points',
+    '',
+    listed(later),
+    '',
+    '## The project\'s cancelled units: a corrigendum one wrote is no later answer',
+    '',
+    listed(sources.cancelled.map((/** @type {string} */ name) => `- ${name}`)),
+    '',
+    '## The unit\'s discovery sessions',
+    '',
+    listed(sessions),
+    '',
+    '## The unit\'s other topics: for judging whose a point is, never sources',
+    '',
+    listed(otherLines(sources.others, unit)),
+    '',
+    `## Its old map, as \`${OLD_STATE}/\` holds it`,
+    '',
+    sources.map.length === 0 ? 'None — no entry needs a map_item.' : sources.map.map(({ item, status }) => `- ${item}: ${status}`).join('\n'),
+    '',
+    '## Its research\'s threads still open',
+    '',
+    threadLines(sources.threads, topic),
+    '',
+    ...assetSections(root, sources.assets, topic, sources.held, sources.specs.map((/** @type {{path: string}} */ { path: at }) => at)),
+    '',
+    HELD_TWICE,
+    '',
+    heldTwice(filling, root, unit, [...new Set([...files, ...specPaths, ...sources.sessions, ...walkedBy(sources, topic)])]),
+    '',
+    '## Where the record goes',
+    '',
+    recordGoes(root, unit, topic),
+  ].join('\n');
+}
+
+/** A spec as a topic's brief names it: its path, and the part of the unit's spec.md it makes where it was joined there. @param {string} at @param {string|null} part */
+const specLine = (at, part) => `${at}${part === null ? '' : `, its part "${part}"`}`;
+
+/** An approved spec, on the date its old manifest gives it where it gives one. @param {string|null} on */
+const approvedLine = (on) => (on === null ? 'approved' : `approved on ${on}`);
+
+/**
+ * What the topic line says of a topic beside where its record is carried:
+ * that it never started, or that it leaves its building unit.
+ * @param {boolean} neverStarted @param {boolean} leaves
+ */
+function topicStanding(neverStarted, leaves) {
+  if (neverStarted) return ', the topic never started';
+  return leaves ? ', the topic leaving its building unit, no spec joined into the unit\'s spec.md drawing on it' : '';
+}
+
+/**
+ * The threads still open a record carries, each with the research it is
+ * of where that is no research of the topic's own name; none so said.
+ * @param {{thread: string, status: string, question: string, research: string}[]} threads @param {string|null} topic
+ */
+function threadLines(threads, topic) {
+  if (threads.length === 0) return 'None — no entry needs a thread.';
+  return threads.map(({ thread, status, question, research }) => `- ${thread}, ${status}${research === topic ? '' : `, of the research ${research}`}: ${question}`).join('\n');
+}
+
+/** The call that checks the topic's record as the carry would, writing nothing. @param {Filling} filling */
+function drawRecordCheck(filling) {
+  return `\`${ENGINE_RUN} ledger ${CARRY_VERB} ${placePath(migratedTopic(filling))} ${DRY_RUN}\``;
+}
+
+/** @param {Filling} filling */
+function drawComposedRecord(filling) {
+  const { root, unit, topic } = migratedTopic(filling);
+  const file = path.join(root, composedPath(unit, topic));
+  const text = fs.existsSync(file) && fs.statSync(file).isFile() ? fs.readFileSync(file, 'utf8') : null;
+  const named = recordName({ unit, topic });
+  const handed = handedBack(root, unit, topic) ?? uncheckedRound(root, unit, topic);
+  if (handed !== null) throw new Error(`brief: ${named} ${handed}`);
+  if (text === null) throw new Error(`${named} has no record composed — ${file} is no file`);
+  if (text.trim() === '') throw new Error(`${named} has no record composed — ${file} is empty`);
+  return fenced('json', text.trimEnd());
+}
+
+// The phase of a building unit's cut `--phase` names (cut-merges.cjs).
+const PHASE = Object.freeze({ name: 'phase', value: 'N' });
+
+/**
+ * @typedef {{unit: string, sources: import('./cut-merges.cjs').UnitSources, phases: import('./cut-merges.cjs').CutPhase[], refused: string|null, phase: import('./cut-merges.cjs').CutPhase}} MigratedPhase
+ */
+
+/** @type {WeakMap<Filling, MigratedPhase>} */
+const phasesRead = new WeakMap();
+
+/**
+ * The building unit's sources, its cut laid out, and the phase `--phase`
+ * names, read once a brief — refused for a unit that is no building unit,
+ * for a phase its cut lacks, and for one the join writes itself.
+ * @param {Filling} filling @returns {MigratedPhase}
+ */
+function migratedPhase(filling) {
+  const read = phasesRead.get(filling);
+  if (read !== undefined) return read;
+  const unit = unitOf(filling);
+  const sources = unitSources(filling.cwd, unit, filling.given.directive, 'brief');
+  const { phases, refused } = unitPhases(filling.cwd, unit, sources);
+  const phase = phases.find(({ number }) => String(number) === filling.given.phase);
+  if (phase === undefined) throw new Error(`brief: ${unit}'s cut has no phase ${filling.given.phase} — its phases are numbered 1 to ${phases.length}`);
+  if (!phase.composed) throw new Error(`brief: phase ${phase.number} of ${unit}'s cut is built, and the manifest and the tracker agree — the join writes it`);
+  const migrated = { unit, sources, phases, refused, phase };
+  phasesRead.set(filling, migrated);
+  return migrated;
+}
+
+/** A phase of the cut, as the record lists it. @param {import('./cut-merges.cjs').CutPhase} phase */
+function cutPhaseLine({ number, topic, area, old, composed }) {
+  if (old === null) return `- Phase ${number}: §${area} ${topic}, which no plan put in the tracker`;
+  return `- Phase ${number}: phase ${old.number} of ${topic}'s plan, ${composed ? (old.built ? 'the manifest counting it built' : 'still to build') : 'built — the join writes it'}`;
+}
+
+/**
+ * A task of the phase, as the record draws it: its name in the cut, the old
+ * plan's id, its title and where it stands, and the text of one still to
+ * build, as the tracker holds it.
+ * @param {number} number @param {TaskDetail} task @param {{id: string, credited: boolean}|undefined} old
+ */
+function phaseTask(number, task, old) {
+  const head = `- ${number}.${task.ref.n}, ${old === undefined ? 'no task of the old plan\'s map' : old.id} — "${task.title}", ${STATUS_WORDS[task.status]}${old?.credited ? '; the manifest credits it done' : ''}`;
+  return ENDED.includes(task.status) ? head : `${head}\n\n${fenced('markdown', task.text.trimEnd())}`;
+}
+
+/**
+ * The old plan's sources for one phase, by their whole paths: its tasks'
+ * file and its own section of the plan, named by its heading.
+ * @param {string} root @param {import('./cut-merges.cjs').CutPhase} phase @param {number} number the phase's number in its plan
+ * @returns {string[]}
+ */
+function phasePlanLines(root, phase, number) {
+  const files = phase.plan?.files ?? [];
+  const named = (/** @type {string} */ name) => files.find((file) => path.posix.basename(file) === name);
+  const tasks = named(`phase-${number}-tasks.md`);
+  const plan = named(OLD_PLAN_FILE);
+  const heading = plan === undefined ? undefined
+    : fs.readFileSync(path.join(root, plan), 'utf8').split('\n').find((line) => new RegExp(`^#{1,6} Phase ${number}(?![0-9])`).test(line));
+  const section = plan === undefined ? 'none kept'
+    : heading === undefined ? `${path.join(root, plan)}, which heads no section for phase ${number}` : `${path.join(root, plan)}, under "${heading}"`;
+  return [`- Its tasks' file: ${tasks === undefined ? 'none kept' : path.join(root, tasks)}`, `- Its section of the plan: ${section}`];
+}
+
+/** @param {Filling} filling */
+function drawMigratedPhase(filling) {
+  const { unit, sources, phases, refused, phase } = migratedPhase(filling);
+  const root = stateRoot(filling.cwd);
+  const manifest = readWorkUnitManifest(root, unit);
+  const whole = (/** @type {string} */ at) => path.join(at.startsWith(`${OLD_STATE}/`) ? sources.project : root, at);
+  const spec = path.join(root, unit, SPEC_FILE);
+  const reliances = oldReliances(phases).filter(({ phase: of }) => of.topic === phase.topic);
+  const area = String(phase.area);
+  const numbered = [...specAddresses(filling.cwd, unit)].filter((address) => address === area || address.startsWith(`${area}.`));
+  const sections = `- The sections ${spec} numbers in its area, the only ones a piece names: ${numbered.join(', ')}`;
+  const own = phase.old === null
+    ? [`- Phase ${phase.number}: §${phase.area} ${phase.topic} of ${spec}, which no plan put in the tracker — compose it from the area`, sections]
+    : [
+      `- Phase ${phase.number}: phase ${phase.old.number} of ${phase.topic}'s plan, its tracker parent ${phase.old.parent}${phase.old.built ? ', the manifest counting it built' : ''}`,
+      `- Its area: §${phase.area} ${phase.topic} of ${spec}`,
+      sections,
+      ...phasePlanLines(root, phase, phase.old.number),
+    ];
+  const tasks = phase.old === null ? NONE
+    : refused !== null ? `The tracker could not be read as the cut adopts it: ${refused}`
+      : blocks(phase.tasks.map((task) => phaseTask(phase.number, task, phase.old?.tasks[task.ref.n - 1])));
+  const { piece, findings } = piecePaths(sources, phase.number);
+  return [
+    `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
+    `- **The project:** ${sources.project}, its code a source`,
+    '',
+    '## Its joined spec',
+    '',
+    `${spec}, an area for each spec joined, in build order:`,
+    '',
+    listed(sources.areas.map(({ topic, spec: from }, at) => `- §${at + 1} ${topic}, joined from ${whole(from)}`)),
+    '',
+    '## Its cut',
+    '',
+    `Each phase of the unit's cut, numbered as the cut numbers it; an agent composes each but those the join writes. Yours is phase ${phase.number}.`,
+    '',
+    listed(phases.map(cutPhaseLine)),
+    '',
+    '## What its plan depends on',
+    '',
+    listed([...new Set(reliances.map(({ on, by }) => `- ${by}, which phase ${on.number}, phase ${on.old?.number} of ${on.topic}'s plan, builds`))]),
+    '',
+    '## Your phase',
+    '',
+    own.join('\n'),
+    '',
+    '### Its tasks',
+    '',
+    tasks,
+    '',
+    '### Where the manifest and the tracker disagree',
+    '',
+    listed(phase.disagreements.map((line) => `- ${line}`)),
+    '',
+    '## Kept as legacy',
+    '',
+    sources.legacy === null ? NONE : `- ${whole(sources.legacy)}`,
+    '',
+    '## Where your piece goes',
+    '',
+    `- The piece composed: ${path.join(root, piece)}`,
+    `- The verifier's findings on it: ${path.join(root, findings)}`,
+  ].join('\n');
+}
+
+/** A file of the phase's in the unit's staging, absolute. @param {Filling} filling @param {keyof ReturnType<typeof piecePaths>} which */
+function phaseFile(filling, which) {
+  const { sources, phase } = migratedPhase(filling);
+  return path.join(stateRoot(filling.cwd), piecePaths(sources, phase.number)[which]);
+}
+
+/** The call that checks the phase's piece as the join would, writing nothing. @param {Filling} filling */
+function drawPieceCheck(filling) {
+  const { unit, phase } = migratedPhase(filling);
+  return `\`${ENGINE_RUN} migrate join ${unit} --directive ${filling.given.directive} --phase ${phase.number} ${DRY_RUN}\``;
+}
+
+/** @param {Filling} filling */
+function drawComposedPiece(filling) {
+  const file = phaseFile(filling, 'piece');
+  const text = fs.existsSync(file) && fs.statSync(file).isFile() ? fs.readFileSync(file, 'utf8') : null;
+  const which = `phase ${migratedPhase(filling).phase.number} of ${unitOf(filling)}'s cut`;
+  if (text === null) throw new Error(`${which} has no piece composed — ${file} is no file`);
+  if (text.trim() === '') throw new Error(`${which} has no piece composed — ${file} is empty`);
+  return fenced('json', text.trimEnd());
+}
+
+/** The phase's files a later round reads, absolute. @param {Filling} filling */
+const pieceFiles = (filling) => ({ piece: phaseFile(filling, 'piece'), findings: phaseFile(filling, 'findings'), verifying: phaseFile(filling, 'verifying'), verified: phaseFile(filling, 'verified') });
+
+/**
+ * What changed in the phase's piece since its last verifier to write read
+ * it (later-rounds.cjs): none in a first round, which walks the whole of it.
+ * @param {Filling} filling
+ */
+function drawPieceChanges(filling) {
+  const before = pieceVerified(pieceFiles(filling));
+  if (before === null) return 'None: this is the first round, which walks the whole piece.';
+  const changes = pieceChanges(before, JSON.parse(fs.readFileSync(phaseFile(filling, 'piece'), 'utf8')));
+  return changes.length === 0 ? 'None: the piece is as the last round read it.' : changes.join('\n');
+}
+
+/** The piece the verifier the brief is for reads kept beside it, and the last verifier's round kept and cleared. @param {Filling} filling */
+function briefPieceVerifier(filling) {
+  notePiece(pieceFiles(filling));
+  keepRound(phaseFile(filling, 'rounds'), phaseFile(filling, 'findings'));
+}
+
+/** A file's text, trimmed, or none recorded where it is missing or holds nothing. @param {string} file */
+function verbatim(file) {
+  const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : '';
+  return text === '' ? NONE : text;
+}
+
+/** The heading a verifier's rulings are kept under in its round. */
+const RULINGS = '### Rulings';
+
+/**
+ * The rounds kept at `rounds`, and the last verifier's after them where it
+ * has written since: each its number, its findings, and what it wrote
+ * beside them under each heading.
+ * @param {string} rounds @param {string} findings @param {{heading: string, file: string}[]} beside
+ * @returns {{number: string, findings: string, beside: Map<string, string>}[]}
+ */
+function roundsOf(rounds, findings, beside) {
+  const kept = fs.existsSync(rounds) ? fs.readFileSync(rounds, 'utf8').trim() : '';
+  const parts = [kept, lastRound(rounds, findings, beside) ?? ''].join('\n\n').split(/^## Round (\d+)$/m);
+  const headings = beside.map(({ heading }) => heading);
+  /** @type {{number: string, findings: string, beside: Map<string, string>}[]} */
+  const read = [];
+  for (let at = 1; at < parts.length; at += 2) {
+    const pieces = headings.length === 0 ? [parts[at + 1]] : parts[at + 1].split(new RegExp(`^(${headings.join('|')})$`, 'm'));
+    const written = new Map();
+    for (let next = 1; next < pieces.length; next += 2) written.set(pieces[next], pieces[next + 1].trim());
+    read.push({ number: parts[at], findings: pieces[0].trim(), beside: written });
+  }
+  return read;
+}
+
+/** Every verifier's findings, round by round, the last among them, each round's rulings with it — never its verdicts, the engine's to check; none recorded before the first. @param {string} rounds @param {string} findings @param {{heading: string, file: string}[]} [beside] */
+function drawRounds(rounds, findings, beside = []) {
+  const drawn = roundsOf(rounds, findings, beside).map((round) => {
+    const ruled = round.beside.get(RULINGS);
+    return [`## Round ${round.number}`, round.findings, ...(ruled === undefined ? [] : [`${RULINGS}\n\n${ruled}`])].join('\n\n');
+  });
+  return drawn.length === 0 ? NONE : drawn.join('\n\n');
+}
+
+/** Every verifier's rulings, each round's under it, the last's among them; none recorded where no round ruled. @param {string} rounds @param {string} findings @param {{heading: string, file: string}[]} beside */
+function drawRulings(rounds, findings, beside) {
+  const ruled = roundsOf(rounds, findings, beside).filter((round) => round.beside.has(RULINGS)).map((round) => `## Round ${round.number}\n\n${round.beside.get(RULINGS)}`);
+  return ruled.length === 0 ? NONE : ruled.join('\n\n');
+}
+
+/** The rounds file and the last verifier's findings of the record the brief is for, and what it wrote beside them. @param {Filling} filling */
+function recordRounds(filling) {
+  const { root, unit, topic } = migratedTopic(filling);
+  return { rounds: path.join(root, roundsPath(unit, topic)), findings: path.join(root, findingsPath(unit, topic)), beside: besideFindings(root, unit, topic) };
+}
+
+/** Refused where the record's last verifier gave no verdict on every entry it read (`uncheckedRound`). @param {Filling} filling */
+function refuseUnchecked(filling) {
+  const { root, unit, topic } = migratedTopic(filling);
+  const missing = uncheckedRound(root, unit, topic);
+  if (missing !== null) throw new Error(`brief: ${recordName({ unit, topic })} ${missing}`);
+}
+
+/** The round each fill's verifier reads, read once. @type {WeakMap<Filling, ReturnType<typeof markedSheet> & {hashes: Record<string, string>, held: ReturnType<typeof entriesHeld>, before: import('./later-rounds.cjs').Past}>} */
+const ROUNDS_READ = new WeakMap();
+
+/**
+ * The round the verifier the brief is for reads, read before the last
+ * round is kept: the record laid against its sources and marked against
+ * the rounds before (later-rounds.cjs), and each entry hashed and as held.
+ * @param {Filling} filling
+ */
+function verifierRound(filling) {
+  const read = ROUNDS_READ.get(filling);
+  if (read !== undefined) return read;
+  const { root, unit, topic } = migratedTopic(filling);
+  const { entries: held } = JSON.parse(fs.readFileSync(path.join(root, composedPath(unit, topic)), 'utf8'));
+  const entries = Array.isArray(held) ? held : [];
+  const sheet = topicRules(filling).sheetOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic, entries });
+  const hashes = entryHashes(entries);
+  const before = pastOf(briefedOn(root, unit, topic), lastVerdicts(root, unit, topic));
+  const round = { ...markedSheet(sheet, hashes, before), hashes, held: entriesHeld(entries), before };
+  ROUNDS_READ.set(filling, round);
+  return round;
+}
+
+/**
+ * The last verifier's round kept and cleared, and the record the verifier
+ * the brief is for reads noted beside it — its hash, the refs it gives a
+ * verdict on, each entry hashed, the sections it walks and what the
+ * rounds before it left — for the carry, its verdicts and the next round
+ * to be held to.
+ * @param {Filling} filling
+ */
+function briefVerifier(filling) {
+  const { root, unit, topic } = migratedTopic(filling);
+  const { asked, hashes, held, sections, before } = verifierRound(filling);
+  keepRecordRound(root, unit, topic);
+  noteVerifying(root, unit, topic, { refs: asked, entries: hashes, held, sections, before });
+}
+
+/** What the walk sheet says of an entry it marks. @type {Record<string, string>} */
+const ENTRY_MARKS = { passed: 'passed unchanged', changed: 'changed', new: 'new', unpassed: 'not passed' };
+
+/** The heading of the walk sheet's list of the entries the record held when a round last read it, and no longer holds. */
+const REMOVED = 'Removed since the last round';
+
+/**
+ * The record laid against its sources, as its verifier walks it: each
+ * file, each section with its lines and every entry citing it — from the
+ * second round, each entry marked, a section closed, passed unchanged,
+ * shown with none, and after them each entry removed since the last round,
+ * with what it cited.
+ * @param {Filling} filling
+ */
+function drawWalkSheet(filling) {
+  const { sheet, removed } = verifierRound(filling);
+  const { root } = migratedTopic(filling);
+  const files = sheet.map(({ path: at, sections }) => [`## ${path.join(root, at)}`, '', listed(sections.flatMap(({ section, line, end, closed, entries: citing }) => {
+    const lines = line === end ? `line ${line}` : `lines ${line}–${end}`;
+    if (closed) return [`- ${section}, ${lines}: closed — walked in an earlier round, every entry citing it passed unchanged, and none that cited it then gone from it`];
+    return [
+      `- ${section}, ${lines}${citing.length === 0 ? ': no entry cites it' : ''}`,
+      ...citing.map(({ ref, event, text, mark }) => `  - ${ref}, ${event}${mark === null ? '' : `, ${ENTRY_MARKS[mark]}`}: ${claimOf(text)}`),
+    ];
+  }))].join('\n'));
+  const gone = removed.map(({ ref, event, text, cites }) => [`- ${ref}, ${event}: ${claimOf(text)}`, ...cites.map((cite) => `  - cited ${cite.section} in ${cite.path}`)].join('\n'));
+  return [...files, ...(gone.length === 0 ? [] : [`## ${REMOVED}\n\n${gone.join('\n')}`])].join('\n\n');
+}
+
+/** The most of an entry's text a walk sheet shows. */
+const CLAIM = 100;
+
+/** An entry's text as its walk sheet shows it, cut at a word. @param {string} text */
+function claimOf(text) {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  if (flat.length <= CLAIM) return flat;
+  return `${flat.slice(0, CLAIM).replace(/\s+\S*$/, '')}…`;
+}
+
+/** A file beside the topic's record, absolute. @param {Filling} filling @param {(unit: string, topic: string|null) => string} rel */
+function besideFile(filling, rel) {
+  const { root, unit, topic } = migratedTopic(filling);
+  return path.join(root, rel(unit, topic));
+}
+
+/** What the topic's record has beside it at `rel`, verbatim, or none recorded. @param {Filling} filling @param {(unit: string, topic: string|null) => string} rel */
+const besideRecord = (filling, rel) => verbatim(besideFile(filling, rel));
+
+/** What the topic's record has beside it at `rel` cleared, the brief having taken it. @param {Filling} filling @param {(unit: string, topic: string|null) => string} rel */
+function clearBeside(filling, rel) {
+  fs.rmSync(besideFile(filling, rel), { force: true });
+}
+
+/** The unit a unit's record is drawn for. @param {Filling} filling @returns {string} */
+function unitOf({ unit }) {
+  if (unit === null) throw new Error('brief-records: a unit\'s record is drawn for a unit');
+  return unit;
+}
+
+/** @typedef {import('./spec-sections.cjs').Line} Line */
+/** @typedef {import('./spec-sections.cjs').Section} Section */
+
+/** A unit's spec as read: its path, its sections by address, and its lines. @typedef {{file: string, sections: Map<string, Section>, lines: Line[]}} ReadSpec */
+
+/** The spec each fill read. @type {WeakMap<Filling, ReadSpec>} */
+const READ_SPECS = new WeakMap();
+
+/**
+ * The unit's spec, read once a fill — as joined, where the migration joined
+ * it; refused where the unit has none or its grammar refuses it.
+ * @param {Filling} filling @returns {ReadSpec}
+ */
+function unitSpec(filling) {
+  const known = READ_SPECS.get(filling);
+  if (known !== undefined) return known;
+  const unit = unitOf(filling);
+  const text = readSpec(filling.cwd, unit);
+  /** @type {Line[]} */
+  let lines;
+  try {
+    lines = specStatements(text, specJoined(unitManifest(filling)));
+  } catch (err) {
+    throw new Error(`brief: ${unit}'s ${SPEC_FILE} does not read —\n${messageOf(err)}`);
+  }
+  const spec = { file: specPath(filling.cwd, unit), sections: specSections(text), lines };
+  READ_SPECS.set(filling, spec);
+  return spec;
+}
+
+/** A section's title, its heading's marks and number aside. @param {Section} section */
+const titleOf = ({ text }) => text.split('\n')[0].replace(/^#+ +[0-9.]+ +/, '');
+
+/** @param {Filling} filling */
+function drawSpecOutline(filling) {
+  const { file, sections } = unitSpec(filling);
+  const outline = [...sections.values()].map((section) => `${section.level === 2 ? '' : '  '}- §${section.address} ${titleOf(section)}`);
+  return [`\`${file}\``, '', ...outline].join('\n');
+}
+
+/** Whether the brief is a quick-fix's, whose review is held against its own record and its fixes' acceptance, it having no spec (19.5.14, 19.5.24). @param {Filling} filling */
+const ofQuickFix = (filling) => quickFixBuild(unitManifest(filling));
+
+/** What stands for a quick-fix's spec in its review's briefs, a line. @param {Filling} filling */
+const noSpecLine = (filling) => `${unitOf(filling)} is a quick-fix, which has no spec: its fixes' acceptance, in their own words, stands for one.`;
+
+/** Each criterion of the quick-fix's fixes' acceptance, a line each: its scenario where it opens with one, the fix it is of and its words. @param {Filling} filling */
+function fixCriteria(filling) {
+  return fixAcceptance(filling.cwd, unitOf(filling)).flatMap(({ fix, criteria }) => criteria.map(({ scenario, words }) => `- ${scenario === null ? '' : `${scenario}, `}of ${fixNamed(fix)}: ${indented(words)}`));
+}
+
+/** @param {Filling} filling */
+function drawSpecScenarios(filling) {
+  if (ofQuickFix(filling)) return [noSpecLine(filling), listed(fixCriteria(filling))].join('\n\n');
+  const { sections, lines } = unitSpec(filling);
+  const scenarios = listed(lines.filter(({ kind }) => kind === 'scenario').map(({ number, wording }) => {
+    const area = /** @type {Section} */ (sections.get(number.split('.')[0]));
+    return `- ${number}, of §${area.address} ${titleOf(area)}: ${indented(wording)}`;
+  }));
+  return landedAnyBefore(unitManifest(filling)) ? [scenarios, TESTS_BEFORE].join('\n\n') : scenarios;
+}
+
+/** What the test surface's reader is told of a unit with work landed before the migration cut it. */
+const TESTS_BEFORE = 'Work of the unit landed before the migration cut it, and its tests with it: they stand in the product at the change\'s tips, and no commit of the change carries them. Read the tests there, those that landed before beside those the change adds or changes.';
+
+/** The part a statement or its screen is in, `N.M`. @param {string} number */
+const partOf = (number) => number.split('.').slice(0, 2).join('.');
+
+/** @typedef {import('./unit-entries.cjs').UnitView} UnitView */
+
+/**
+ * Each chain of reliance from the entry `id`, in current forms, through the
+ * unit's entries no line cites, to the next ones a line does: its entries in
+ * order, the cited one last. An entry met twice adds nothing.
+ * @param {UnitView} view @param {Map<string, string[]>} citedBy each cited entry's lines @param {string} id
+ * @returns {string[][]}
+ */
+function chainsFrom({ folded, entries }, citedBy, id) {
+  /** @type {string[][]} */
+  const chains = [];
+  const seen = new Set([id]);
+  const walk = (/** @type {string} */ from, /** @type {string[]} */ chain) => {
+    for (const next of factsOf(folded, from).relies_on.flatMap((on) => currentsOf(folded, on))) {
+      if (seen.has(next) || !entries.has(next)) continue;
+      seen.add(next);
+      if (citedBy.has(next)) chains.push([...chain, next]);
+      else walk(next, [...chain, next]);
+    }
+  };
+  walk(id, []);
+  return chains;
+}
+
+/**
+ * The spec's parts each relying on another, in the spec's order, each with
+ * the links between them.
+ * @param {UnitView} view @param {ReadSpec} spec
+ * @returns {Array<{from: string, to: string, links: string[]}>}
+ */
+function reliesOnEdges(view, { sections, lines }) {
+  const { folded, entries, short } = view;
+  const cited = lines.filter(({ kind }) => kind === 'statement' || kind === 'screen').flatMap(({ number, cites }) => cites.flatMap((cite) => {
+    try {
+      const id = resolveId(cite, folded.facts.keys());
+      return entries.has(id) ? [{ number, id }] : [];
+    } catch {
+      return [];
+    }
+  }));
+  /** @type {Map<string, string[]>} */
+  const citedBy = new Map();
+  for (const { number, id } of cited) citedBy.set(id, [...(citedBy.get(id) ?? []), number]);
+  /** @type {Map<string, Map<string, Set<string>>>} */
+  const edges = new Map();
+  for (const { number, id } of cited) {
+    for (const chain of chainsFrom(view, citedBy, id)) {
+      const reached = chain[chain.length - 1];
+      for (const other of /** @type {string[]} */ (citedBy.get(reached)).filter((line) => partOf(line) !== partOf(number))) {
+        const from = edges.get(partOf(number)) ?? new Map();
+        edges.set(partOf(number), from);
+        const links = from.get(partOf(other)) ?? new Set();
+        from.set(partOf(other), links);
+        links.add(`${number} cites ${short(id)}, which relies on ${chain.map(short).join(', which relies on ')}, cited by ${other}`);
+      }
+    }
+  }
+  const order = [...sections.keys()];
+  const inOrder = (/** @type {Iterable<string>} */ parts) => [...parts].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  return inOrder(edges.keys()).flatMap((from) => {
+    const to = /** @type {Map<string, Set<string>>} */ (edges.get(from));
+    return inOrder(to.keys()).map((part) => ({ from, to: part, links: [.../** @type {Set<string>} */ (to.get(part))] }));
+  });
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawReliesOnGraph(filling, warnings) {
+  const spec = unitSpec(filling);
+  const edges = withUnitEntries(filling.cwd, unitOf(filling), warnings, (view) => reliesOnEdges(view, spec));
+  return listed(edges.map(({ from, to, links }) => `- §${from} relies on §${to}: ${links.join('; ')}`));
+}
+
+/** @param {Filling} filling */
+function drawCutRefusal(filling) {
+  return stagedCutRefusal(filling.cwd, unitOf(filling)) ?? NONE;
+}
+
+/** @param {Filling} filling */
+function drawCutTo(filling) {
+  return `\`${stagedCutPath(filling.cwd, unitOf(filling))}\``;
+}
+
+/** The heading the unit's entries at its own level are drawn under. */
+const UNIT_OWN = 'The unit\'s own';
+
+/**
+ * Where an entry of the unit's is drawn: under its topic, the unit's own
+ * level, or the other unit's place it stands on, made here.
+ * @param {string} unit @param {import('./ledger-fold.cjs').Standing} stands
+ */
+function placeKey(unit, { unit: on, topic }) {
+  if (on !== unit) return `Made here, standing on ${on}${topic === null ? '' : `/${topic}`}`;
+  return topic === null ? UNIT_OWN : topic;
+}
+
+/** A topic's heading among the unit's records: its title, its key in brackets. @param {Record<string, any>} manifest @param {string} topic */
+const headed = (manifest, topic) => `${topicTitle(manifest, topic)} (${topic})`;
+
+/**
+ * The heading an entry of the unit's is drawn under: its topic's, the unit's
+ * own level, or the other unit's place it stands on, made here.
+ * @param {Record<string, any>} manifest @param {import('./ledger-fold.cjs').Standing} stands
+ */
+function placeHeading(manifest, stands) {
+  const key = placeKey(manifest.name, stands);
+  return key === UNIT_OWN || stands.unit !== manifest.name ? key : headed(manifest, key);
+}
+
+/**
+ * Where an entry of the unit's stands, said within a line: its topic's
+ * heading as it reads, any other place's begun in lower case.
+ * @param {Record<string, any>} manifest @param {import('./ledger-fold.cjs').Standing} stands
+ */
+function placeInLine(manifest, stands) {
+  const heading = placeHeading(manifest, stands);
+  return stands.unit === manifest.name && stands.topic !== null ? heading : `${heading[0].toLowerCase()}${heading.slice(1)}`;
+}
+
+/**
+ * An entry as a unit's records draw it, `- {short id} {kind}: {text}`, a
+ * "don't care" decision's kind marked so, the builder's to make (P2), and
+ * what `about` says of it after its kind.
+ * @param {import('./unit-entries.cjs').UnitEntry} entry @param {string} [about]
+ */
+function entryLine({ short, kind, line }, about = '') {
+  const marked = kind === 'decision' && line.given === 'dont-care' ? 'decision, don\'t care' : kind;
+  return `- ${short} ${marked}${about}: ${indented(String(line.text))}`;
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawUnitRecords(filling, warnings) {
+  const unit = unitOf(filling);
+  const manifest = readWorkUnitManifest(stateRoot(filling.cwd), unit);
+  /** @type {Map<string, {heading: string, lines: string[]}>} */
+  const places = new Map([...specTopics(manifest), UNIT_OWN].map((key) => [key, { heading: key === UNIT_OWN ? key : headed(manifest, key), lines: [] }]));
+  for (const entry of unitEntries(filling.cwd, unit, warnings).values()) {
+    const key = placeKey(unit, entry.stands);
+    if (!places.has(key)) places.set(key, { heading: placeHeading(manifest, entry.stands), lines: [] });
+    /** @type {{heading: string, lines: string[]}} */ (places.get(key)).lines.push(entryLine(entry));
+  }
+  return [...places.values()].map(({ heading, lines }) => `## ${heading}\n\n${listed(lines)}`).join('\n\n');
+}
+
+/** @param {Filling} filling */
+function drawSweepTo(filling) {
+  const unit = unitOf(filling);
+  if (sweepTaken(filling.cwd, unit)) {
+    const wait = sweepWait(filling.cwd, unitManifest(filling));
+    throw new Error(`brief: ${unit}'s sweep is taken already — one sweep for the spec (8.10.3)${wait === null ? '' : `; ${wait}`}`);
+  }
+  return `\`${sweepPath(filling.cwd, unit)}\``;
+}
+
+/** @param {Filling} filling */
+function drawSweepRefusal(filling) {
+  return sweepRefusal(filling.cwd, unitOf(filling)) ?? NONE;
+}
+
+/** @typedef {import('./unit-entries.cjs').UnitEntry} UnitEntry */
+
+/**
+ * `read`, read once a fill, every record drawing on it after the first
+ * taking what it read.
+ * @template T @param {(filling: Filling, warnings: string[]) => T} read @returns {(filling: Filling, warnings: string[]) => T}
+ */
+function oncePerFill(read) {
+  /** @type {WeakMap<Filling, T>} */
+  const known = new WeakMap();
+  return (filling, warnings) => {
+    if (!known.has(filling)) known.set(filling, read(filling, warnings));
+    return /** @type {T} */ (known.get(filling));
+  };
+}
+
+/** The unit's entries and the folded ledger. */
+const unitView = oncePerFill((filling, warnings) => withUnitEntries(filling.cwd, unitOf(filling), warnings, (read) => read));
+
+/** The unit's manifest, for a unit's record. @param {Filling} filling @returns {Record<string, any>} */
+const unitManifest = (filling) => /** @type {Record<string, any>} */ (manifestOf(stateRoot(filling.cwd), unitOf(filling)));
+
+/** What carries the spec on, as its entry reads it (spec-entry.cjs). */
+const sourcesOf = oncePerFill((filling, warnings) => specSources(filling.cwd, unitManifest(filling), warnings));
+
+/** @param {Filling} filling @param {string[]} warnings */
+const drawTopicLogs = (filling, warnings) => listed(sourcesOf(filling, warnings).logs.map((log) => `- \`${log}\``));
+
+/** @param {Filling} filling @param {string[]} warnings */
+const drawCanonicalAssets = (filling, warnings) => listed(sourcesOf(filling, warnings).assets.map((asset) => `- \`${asset}\``));
+
+/** @typedef {import('./investigation-log.cjs').Rested} Rested */
+
+/** A bugfix's hunt, as its log holds it: read once a fill. */
+const huntLogged = oncePerFill((filling, warnings) => huntOf(filling.cwd, unitOf(filling), warnings));
+
+/** What a bugfix's hunt rests on, as its log holds it against its entries: read once a fill. */
+const huntRead = oncePerFill((filling, warnings) => huntEntries(unitOf(filling), unitView(filling, warnings), huntLogged(filling, warnings)));
+
+/**
+ * What the hunt rests on for a validation's brief, its investigation open,
+ * refused where it rests on none.
+ * @template {Rested} T @param {Filling} filling @param {string[]} warnings @param {(read: ReturnType<typeof huntEntries>) => T|{fault: string}} pick
+ * @returns {T}
+ */
+function restedOn(filling, warnings, pick) {
+  openInvestigation(filling.cwd, unitOf(filling), 'brief');
+  const entry = pick(huntRead(filling, warnings));
+  if ('fault' in entry) throw new Error(`brief: ${entry.fault}`);
+  return entry;
+}
+
+/** An entry the hunt rests on, as a brief draws it. @param {Rested} entry */
+const restedLine = ({ short, text }) => `${short}: ${indented(text)}`;
+
+/** @param {Filling} filling */
+const drawHuntLog = (filling) => `\`${statePath(filling.cwd, huntLog(unitOf(filling)))}\``;
+
+/** @param {Filling} filling @param {string[]} warnings */
+const drawHuntRecord = (filling, warnings) => recordJson(ledgerRead(filling.cwd, 'record', [unitOf(filling), unitOf(filling)], warnings));
+
+/** @param {Filling} filling @param {string[]} warnings */
+const drawRootCause = (filling, warnings) => restedLine(restedOn(filling, warnings, ({ rootCause }) => rootCause));
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawFix(filling, warnings) {
+  const fix = restedOn(filling, warnings, (read) => read.fix);
+  return `${restedLine(fix)}\n\nIt answers ${restedLine(fix.question)}`;
+}
+
+/** @param {Filling} filling */
+const drawCode = (filling) => listed(projectRepos(codeRoot(filling.cwd)).map((repo) => `- \`${repo.path}\``));
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawInvestigation(filling, warnings) {
+  const unit = unitOf(filling);
+  if (unitManifest(filling).work_type !== 'bugfix') return NONE;
+  const { fix } = huntRead(filling, warnings);
+  const rootCause = rootCauseNow(unitView(filling, warnings), huntLogged(filling, warnings));
+  const rests = [rootCause?.id, 'fault' in fix ? undefined : fix.id];
+  const kept = [...unitView(filling, warnings).entries].filter(([id, { kind, stands }]) => kind === 'decision' && stands.unit === unit && stands.topic === unit && !rests.includes(id));
+  return listed([
+    ...(rootCause === null ? [] : [`- The root cause, ${restedLine(rootCause)}`]),
+    ...('fault' in fix ? [] : [`- The fix, ${restedLine(fix)}`]),
+    ...kept.map(([, { short, line }]) => `- A rule it keeps, ${short}: ${indented(String(line.text))}`),
+  ]);
+}
+
+/** @param {Filling} filling */
+const drawBuilderCalls = (filling) => listed(builderCalls(filling.cwd, unitOf(filling)).map(({ id, call, why }) => `- ${id}: ${indented(call)}\n  Why: ${indented(why)}`));
+
+/**
+ * The unit's entries `ids` names, in the ledger's order, each with where it
+ * stands and what it replaced.
+ * @param {Filling} filling @param {string[]} warnings @param {string[]} ids
+ */
+function entriesStanding(filling, warnings, ids) {
+  const named = new Set(ids);
+  const manifest = unitManifest(filling);
+  const { entries, short } = unitView(filling, warnings);
+  return listed([...entries].filter(([id]) => named.has(id)).map(([, entry]) => {
+    const replaced = typeof entry.line.replaces === 'string' ? `, replacing ${short(entry.line.replaces)}` : '';
+    return entryLine(entry, `, ${placeInLine(manifest, entry.stands)}${replaced}`);
+  }));
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+const drawChangedEntries = (filling, warnings) => entriesStanding(filling, warnings, outstanding(filling.cwd, unitOf(filling), warnings).entries);
+
+/** @param {Filling} filling @param {string[]} warnings */
+const drawCutRequests = (filling, warnings) => entriesStanding(filling, warnings, cutRequests(filling.cwd, unitOf(filling), warnings));
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawReviewFindings(filling, warnings) {
+  const { passes } = outstanding(filling.cwd, unitOf(filling), warnings);
+  return passes.length === 0 ? NONE : passes.map(({ file }) => fs.readFileSync(file, 'utf8').trim()).join('\n\n');
+}
+
+/** @param {Filling} filling */
+function drawWordingChanges({ cwd, given }) {
+  if (given.wording === undefined) return NONE;
+  const file = path.resolve(cwd, given.wording);
+  if (!fs.statSync(file, { throwIfNoEntry: false })?.isFile()) throw new Error(`brief: --wording names no file — ${file}`);
+  const text = fs.readFileSync(file, 'utf8').trim();
+  if (text === '') throw new Error(`brief: --wording names an empty file — ${file}`);
+  return text;
+}
+
+/** What the writer's brief carried, pending until the spec's land takes it. @param {Filling} filling @param {string[]} warnings */
+const takeFindings = (filling, warnings) => recordTaking(filling.cwd, unitOf(filling), warnings, filling.given.wording === undefined ? undefined : path.resolve(filling.cwd, filling.given.wording));
+
+/** @param {Filling} filling */
+const drawLandRefusal = (filling) => landRefusal(filling.cwd, unitOf(filling)) ?? NONE;
+
+/** The rule the numbers the open review page holds keep, which `spec land` holds a land to (11.11.3). */
+const HELD_RULE = 'The person\'s review page is open, so these numbers are held: every line keeps its number; a line added takes the next free number at the end of its part — and a scenario or a screen added, at the end of its area\'s scenarios or its line\'s screens — and a number removed is never given to another line.';
+
+/** @param {Filling} filling */
+function drawHeldNumbers(filling) {
+  const places = heldPlaces(filling.cwd, unitOf(filling));
+  return places === null ? NONE : [HELD_RULE, '', ...places.map(({ held, next }) => `- ${held.join(', ')} · next free ${next}`)].join('\n');
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawSpecTo(filling, warnings) {
+  const unit = unitOf(filling);
+  const refused = unitRefusal(filling.cwd, unit);
+  if (refused !== null) throw new Error(`brief: ${refused}`);
+  const waiting = waitingGaps(filling.cwd, unit, warnings);
+  if (waiting.length > 0) throw new Error(`brief: ${unit}'s rewrite waits for the answer — ${gapsWaiting(waiting)}`);
+  return `\`${specPath(filling.cwd, unit)}\``;
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawChangedSections(filling, warnings) {
+  const unit = unitOf(filling);
+  const { land, text } = reviewedSpec(filling.cwd, unit);
+  const running = passesRunningOn(filling.cwd, unit, land, filling.given.agent);
+  if (running !== null) throw new Error(`brief: ${unit}'s spec as it stands is under review already — ${running}`);
+  const { changed, removed, since } = sectionsToReview(filling.cwd, unit, text);
+  if (since !== null && changed.length === 0 && removed.length === 0) {
+    throw new Error(`brief: ${unit}'s spec has not changed since pass ${since}, whose report is in, so a pass has nothing to read — ${waitingOn(filling.cwd, unit, warnings) ?? 'its review has settled'}`);
+  }
+  const own = ownTexts(text);
+  return [
+    `The spec: \`${specPath(filling.cwd, unit)}\``,
+    since === null ? 'Every section — the review\'s first pass:' : `The sections changed since ${since}, the last pass reported:`,
+    ...changed.map((address) => own.get(address)),
+    ...removed.map((address) => `§${address} is no longer in the spec.`),
+  ].join('\n\n');
+}
+
+/** The dispatch `--agent` names bound to the spec its pass reviews. @param {Filling} filling */
+function bindPass(filling) {
+  const unit = unitOf(filling);
+  bindSpec(filling.cwd, unit, filling.given.agent, reviewedSpec(filling.cwd, unit).land);
+}
+
+/** The dispatch `--agent` names closed where its brief is refused before it is bound: no agent is sent on it. @param {Filling} filling */
+const closePass = (filling) => closeUnbriefed(filling.cwd, unitOf(filling), filling.given.agent);
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawInventedLines(filling, warnings) {
+  const unit = unitOf(filling);
+  /** @type {Line[]} */
+  let lines;
+  try {
+    lines = specStatements(readSpec(filling.cwd, unit));
+  } catch {
+    return NONE;
+  }
+  const invented = inventedLines(filling.cwd, unit, lines, warnings);
+  return listed(invented.map(({ number, why }) => `- ${number}: ${indented(why)}`));
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawMeasuredFindings(filling, warnings) {
+  const measured = [...unitView(filling, warnings).entries.values()].filter(({ kind, line }) => kind === 'finding' && typeof line.command === 'string');
+  return listed(measured.map(({ short, line }) => [
+    `- ${short}: ${indented(String(line.text))}`,
+    `  Its result: ${indented(String(line.result))}`,
+    '  Its command:',
+    '',
+    `  ${indented(fenced('', String(line.command)))}`,
+  ].join('\n')));
+}
+
+/** @param {Filling} filling */
+const drawReportRefusal = (filling) => listed(refusedReports(filling.cwd, unitOf(filling)).map((refusal) => `- ${refusal}`));
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawProductCites(filling, warnings) {
+  const { folded, entries } = unitView(filling, warnings);
+  /** @type {Map<string, string[]>} */
+  const cited = new Map();
+  for (const { kind, number, cites } of unitSpec(filling).lines) {
+    if (kind !== 'statement' && kind !== 'screen') continue;
+    for (const cite of cites) {
+      let id;
+      try {
+        id = resolveId(cite, folded.facts.keys());
+      } catch {
+        continue;
+      }
+      if (entries.get(id)?.line.product_wide === true) cited.set(id, [...(cited.get(id) ?? []), number]);
+    }
+  }
+  return listed([...cited].map(([id, numbers]) => `${entryLine(/** @type {UnitEntry} */ (entries.get(id)))}\n  Cited by ${numbers.join(', ')}`));
+}
+
+/** A phase of a unit's cut, as it is read. @typedef {import('./derivations.cjs').CutPhase} CutPhase */
+
+/**
+ * The phase a phase's record is drawn for: its unit, its number, and every
+ * task of each phase to it as the tracker holds them.
+ * @param {Filling} filling
+ */
+function phaseOf({ unit, phase, phases }) {
+  if (unit === null || phase === null || phases === null) throw new Error('brief-records: a phase\'s record is drawn for a phase');
+  return { unit, phase, phases };
+}
+
+/** The unit's cut, its phases in build order. @param {Filling} filling @returns {CutPhase[]} */
+const cutOf = (filling) => /** @type {CutPhase[]} */ (cutPhases(unitManifest(filling)));
+
+/** A task as a list draws it: its number, its title and where it stands. @param {TaskDetail} task */
+const taskLine = ({ ref, title, status }) => `- ${shownTask(ref)} ${title}, ${STATUS_WORDS[status]}`;
+
+/** What a phase relies on, as a sentence names it. @param {number|string} on */
+const reliedName = (on) => (typeof on === 'number' ? `phase ${on}` : `the work unit ${on}`);
+
+/** The area a section is in: an area its own. @param {string} address */
+const areaOf = (address) => address.split('.')[0];
+
+/** Whether a phase naming `named` builds some of the section at `address`: it, a part of it, or the area holding it. @param {string} address */
+const builds = (address) => (/** @type {string} */ named) => named === address || named === areaOf(address) || named.startsWith(`${address}.`);
+
+/** @param {Filling} filling */
+function drawCutPhase(filling) {
+  const { unit, phase } = phaseOf(filling);
+  const { name, goal, relies_on: reliesOn } = cutOf(filling)[phase - 1];
+  const relies = reliesOn.length === 0 ? 'It relies on nothing.' : `It relies on ${reliesOn.map(reliedName).join(', ')}.`;
+  return [`Phase ${phase} of ${unit}: ${name}`, goal, relies].join('\n\n');
+}
+
+/**
+ * Each section a phase of the cut names, verbatim, in the cut's order — a
+ * part whose own area it names left to the area.
+ * @param {Filling} filling @param {number} phase
+ */
+function sectionTexts(filling, phase) {
+  const named = cutOf(filling)[phase - 1].sections;
+  const { sections } = unitSpec(filling);
+  return named.filter((address) => areaOf(address) === address || !named.includes(areaOf(address))).map((address) => {
+    const section = sections.get(address);
+    if (section === undefined) throw new Error(`phase ${phase} of the cut names §${address}, which the spec lacks`);
+    return section.text;
+  });
+}
+
+/** Each scenario a phase of the cut holds, by id with its wording. @param {Filling} filling @param {number} phase */
+function scenarioLines(filling, phase) {
+  const wordings = new Map(unitSpec(filling).lines.filter(({ kind }) => kind === 'scenario').map(({ number, wording }) => [number, wording]));
+  return listed(cutOf(filling)[phase - 1].scenarios.map((id) => {
+    const wording = wordings.get(id);
+    if (wording === undefined) throw new Error(`phase ${phase} of the cut holds ${id}, which the spec lacks`);
+    return `- ${id}: ${indented(wording)}`;
+  }));
+}
+
+/** @param {Filling} filling */
+function drawPhaseSections(filling) {
+  const { phase } = phaseOf(filling);
+  const cut = cutOf(filling);
+  const built = cut[phase - 1].sections.map((address) => {
+    const first = cut.findIndex((each) => each.sections.some(builds(address))) + 1;
+    return `- §${address}, first built in ${first === phase ? 'this phase' : `phase ${first}`}${cut[first - 1].built === true ? ', before the migration cut the unit' : ''}`;
+  });
+  return [`\`${unitSpec(filling).file}\``, built.join('\n'), ...sectionTexts(filling, phase)].join('\n\n');
+}
+
+/** @param {Filling} filling */
+function drawPhaseScenarios(filling) {
+  return scenarioLines(filling, phaseOf(filling).phase);
+}
+
+/** Notes for later, each verbatim under its heading. @param {import('./notes.cjs').Note[]} notes */
+const notesDrawn = (notes) => (notes.length === 0 ? NONE : notes.map(({ note, text }) => `## Note ${note}\n\n${text}`).join('\n\n'));
+
+/** @param {Filling} filling */
+function drawHeldNotes(filling) {
+  const { unit, phase } = phaseOf(filling);
+  return notesDrawn(notesHeldFor(filling.cwd, unit, phase));
+}
+
+/** @param {Filling} filling */
+function drawPhaseNotes(filling) {
+  const { unit, phase } = phaseOf(filling);
+  return notesDrawn(notesToTake(filling.cwd, unit, phase));
+}
+
+/** @param {Filling} filling */
+function drawWrittenTasks(filling) {
+  const { phase, phases } = phaseOf(filling);
+  const tasks = phases[phase - 1];
+  return tasks === null ? 'The phase is not written in the tracker yet.' : listed(tasks.map(taskLine));
+}
+
+/** @param {Filling} filling */
+function drawEarlierTasks(filling) {
+  const { phase, phases } = phaseOf(filling);
+  return listed(phases.slice(0, phase - 1).flatMap((tasks) => tasks ?? []).filter(({ status }) => !ENDED.includes(status)).map(taskLine));
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawBuildCalls(filling, warnings) {
+  const { entries, short } = unitView(filling, warnings);
+  const made = [...entries.values()].filter(({ kind, line }) => kind === 'decision' && BUILD_PHASES.includes(String(line.phase)));
+  return listed(made.map(({ short: id, line }) => {
+    const task = typeof line.task === 'string' ? `, for task ${line.task}` : '';
+    const replaced = typeof line.replaces === 'string' ? `, replacing ${short(line.replaces)}` : '';
+    return `- ${id}, ${WHOSE[String(line.by)]}${task}${replaced}: ${indented(String(line.text))}\n  Why: ${indented(String(line.why))}`;
+  }));
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawAffectedEntries(filling, warnings) {
+  const { affected } = ledgerRead(filling.cwd, 'affected', [unitOf(filling)], warnings);
+  return affected.length === 0 ? NONE : fenced('json', JSON.stringify(affected, null, 2));
+}
+
+/** @param {Filling} filling */
+function drawTaskFilesTo(filling) {
+  const { unit, phase } = phaseOf(filling);
+  return `\`${statePath(filling.cwd, '.cache', unit, 'build', `phase-${phase}`, filling.role)}\``;
+}
+
+/** The reproducing task, as a bugfix's phase 1's task writer is told of it. */
+const REPRODUCING_TEST = [
+  'This phase opens on the test that reproduces the bug. Record that task first, so it is task 1.1. It writes the test and nothing else, its type `test` and its acceptance scenario the scenario of this phase the bug breaks; '
+    + 'its solution names the command that runs that test alone, as `npx vitest run test/checkout.test.ts`. The test is run by that command on the unfixed code, and no other task\'s code lands until it fails there five times out of five.',
+  'The task that fixes the bug is linked after 1.1, and every other task of this phase after the fix, so none is built beside it. The fix\'s acceptance scenarios say in its own words what it makes true, since the scenario is 1.1\'s.',
+].join('\n\n');
+
+/** @param {Filling} filling */
+function drawReproducingTest(filling) {
+  const { phase } = phaseOf(filling);
+  return phase === REPRODUCING.phase && isBugfix(unitManifest(filling)) ? REPRODUCING_TEST : 'None: only a bugfix\'s first phase opens on a test that reproduces its bug.';
+}
+
+/** The phase's tasks, refused where it is not written. @param {Filling} filling @returns {TaskDetail[]} */
+function writtenPhase(filling) {
+  const { unit, phase } = phaseOf(filling);
+  const tasks = filling.written;
+  if (tasks === null) throw new Error(`${phaseName(unit, phase)} is not written — its tasks are written as it starts`);
+  return tasks;
+}
+
+/** Each addition to a task, under a heading a level below the task's own. @param {TaskDetail} task */
+const additionsOf = ({ additions }) => additions.flatMap(({ by, text }) => ['', `### Added by the ${by}`, '', text]);
+
+/** Where a task of the phase stands, as its review reads it: closed with its reason, landed before the migration cut the unit, outside the phase's range, or its status. @param {Filling} filling @param {TaskDetail} task */
+function phaseTaskStands(filling, task) {
+  if (task.status === 'closed') return `It was closed: ${task.reason}`;
+  if (landedBefore(unitManifest(filling))(task.ref)) return 'It landed before the migration cut the unit: its work stands in the product already, and the phase\'s range holds none of it.';
+  return `It is ${STATUS_WORDS[task.status]}.`;
+}
+
+/** @param {Filling} filling */
+function drawPhaseTasks(filling) {
+  return blocks(writtenPhase(filling).map((task) => {
+    const [title, ...body] = headingsDown(titledText(task)).split('\n');
+    const stands = phaseTaskStands(filling, task);
+    return [title.replace(/^## /, `## ${shownTask(task.ref)} `), '', stands, '', body.join('\n').replace(/^\n+/, ''), ...additionsOf(task)].join('\n');
+  }));
+}
+
+/** A task's acceptance criteria, as its phase review reads them: its text, headings a level down, where it holds none. @param {string} text */
+function criteriaOrText(text) {
+  const criteria = scenariosOf(text);
+  return criteria === '' ? headingsDown(text.trim()) : criteria;
+}
+
+/** @param {Filling} filling */
+function drawPhaseCriteria(filling) {
+  return blocks(builtSince(unitManifest(filling), writtenPhase(filling)).filter(({ status }) => status !== 'closed').map((task) => (
+    [`## ${shownTask(task.ref)} ${task.title}`, '', criteriaOrText(task.text), ...additionsOf(task)].join('\n')
+  )));
+}
+
+/** @param {Filling} filling */
+function drawReliedOn(filling) {
+  const { phase, phases } = phaseOf(filling);
+  const cut = cutOf(filling);
+  return blocks(cut[phase - 1].relies_on.map((on) => {
+    if (typeof on === 'string') return `## The work unit ${on}\n\nThis phase relies on its delivery.`;
+    const { name, goal, sections, built } = cut[on - 1];
+    const placed = `Its sections: ${sections.map((address) => `§${address}`).join(', ')}${built === true ? ' — built before the migration cut the unit, its work in the product already' : ''}`;
+    return [`## Phase ${on}: ${name}`, '', goal, '', placed, '', 'Its tasks:', '', listed((phases[on - 1] ?? []).map(taskLine))].join('\n');
+  }));
+}
+
+/**
+ * The project's repositories and the stack's tip in each holding work on the
+ * branch of a task of the phase not closed (phase-stack.cjs), read once a
+ * fill.
+ */
+const phaseHolding = oncePerFill(/** @param {Filling} filling @returns {import('./phase-stack.cjs').PhaseStack} */ (filling) => {
+  const { unit, phase } = phaseOf(filling);
+  const manifest = unitManifest(filling);
+  if (nothingBuiltSince(manifest, writtenPhase(filling))) throw new Error(`${phaseName(unit, phase)} has nothing built since the migration cut the unit — each task of it landed before or was closed — so its review passes with nothing to read`);
+  return phaseStack(filling.cwd, unit, phase, builtSince(manifest, writtenPhase(filling)));
+});
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawPhaseDiffRange(filling, warnings) {
+  const { tips, what } = phaseHolding(filling, warnings);
+  const holding = [...tips.keys()];
+  const tipped = holding.map((repo) => /** @type {string} */ (tips.get(repo)));
+  const { base } = filling.given;
+  const { unit } = phaseOf(filling);
+  const bases = base === undefined ? holding.map((repo) => landingBranch(filling.cwd, repo, unit)) : basesOf(filling.cwd, unit, holding, base, `${what}'s tasks`);
+  return holding.map((repo, at) => rangeIn(repo, bases[at], tipped[at])).join('\n\n');
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawPhaseScratchLayout(filling, warnings) {
+  const { repos, tips } = phaseHolding(filling, warnings);
+  const { unit, phase } = phaseOf(filling);
+  return layoutOf(filling.cwd, repos, rangeTips(tips), (repo) => onBranch(repo, landingBranch(filling.cwd, repo, unit), 'the branch it lands on'), scratchName.phase(unit, phase, letterOf(filling)));
+}
+
+/**
+ * The phase's tip in each repository holding its work, each by the commit
+ * its stack's tip is at, as a run names its commits.
+ * @param {Filling} filling @param {string[]} warnings @returns {RepoCommit[]}
+ */
+function phaseTips(filling, warnings) {
+  return tipCommits(phaseHolding(filling, warnings));
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawRecordedRuns(filling, warnings) {
+  const { unit, phase } = phaseOf(filling);
+  const tips = phaseTips(filling, warnings);
+  return cutOf(filling)[phase - 1].scenarios.map((scenario) => {
+    const { standing, runs } = runsOf(filling.cwd, unit, scenario, tips);
+    return [`- ${scenario}: ${standing}`, ...runs.map((run) => `  - ${run.verdict}, recorded ${run.at}: \`${statePath(filling.cwd, run.file)}\``)].join('\n');
+  }).join('\n');
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawMutants(filling, warnings) {
+  const { unit, phase } = phaseOf(filling);
+  const survivors = cachedSurvivors(filling.cwd, unit, phase, phaseTips(filling, warnings));
+  if (survivors === null) return 'The verify setup names no mutation tool.';
+  return survivors.length === 0 ? 'None survived.' : survivors.map(({ path: at, line, mutant }) => `- ${at}:${line} — ${mutant}`).join('\n');
+}
+
+/** The reviewer's letter `--letter` names; refused where it names none of the count's. @param {Filling} filling */
+function letterOf(filling) {
+  const { letter } = filling.given;
+  if (!REVIEWER_LETTERS.includes(letter)) throw new Error(`${letter} is no reviewer's letter — the reviewers are ${REVIEWER_LETTERS.join(' and ')}`);
+  return letter;
+}
+
+/**
+ * Where a reviewer writes its report, drawn; a report there that does not
+ * read, by `faultsOf` — the reviewers' grammar, or a review round's — is
+ * named as the one this replaces, with why it does not, and one that reads
+ * refuses it.
+ * @param {Filling} filling @param {string} rel state-relative @param {(file: string) => string|null} [faultsOf]
+ */
+function reportPlace(filling, rel, faultsOf = reportFaults) {
+  const file = statePath(filling.cwd, rel);
+  if (!fs.existsSync(file)) return `\`${file}\``;
+  const faults = faultsOf(file);
+  if (faults === null) throw new Error(`${rel} is written already — that reviewer's report of the round is in`);
+  return `\`${file}\` — the report there does not read as a reviewer's report — ${faults}; yours replaces it`;
+}
+
+/**
+ * The file the builder writes the verify setup in, and the setup recorded
+ * now, which it starts from: the cache's copy is never refreshed, so a
+ * builder reading it would undo a change recorded since.
+ * @param {Filling} filling
+ */
+function drawSetupTo(filling) {
+  const file = `\`${statePath(filling.cwd, '.cache', taskOf(filling).ref.unit, 'build', 'verify-setup.json')}\``;
+  const setup = verifySetup(filling.cwd);
+  if (setup === null) return `${file}\n\nNo verify setup is recorded yet.`;
+  const { ran, ...parts } = setup;
+  return `${file}\n\nThe verify setup recorded now, which the file starts from:\n\n${fenced('json', JSON.stringify(parts, null, 2))}`;
+}
+
+/** @param {Filling} filling */
+function drawAccountTo(filling) {
+  const { ref, task } = taskOf(filling);
+  if (isOneLine(task.text)) throw new Error(`${taskName(ref)} is a one-line task, the orchestrator's own work with no builder — make it in the conversation and commit it through the door`);
+  const standing = roundStanding(filling.cwd, ref, filling.session);
+  if (standing !== null) throw new Error(readRefusal(ref, standing));
+  const {
+    owed, faults, changed, waiting,
+  } = accountOwed(filling.cwd, ref);
+  const lines = [`\`${statePath(filling.cwd, accountPath(ref))}\``];
+  if (waiting !== null && !waiting.settled) lines.push(`Your reviewers passed the task, and it waits on ${waiting.on.join(', ')}, a question for the person: write no account while it waits — the answer decides whether the task lands as they passed it, or changes.`);
+  if (waiting !== null && waiting.settled) lines.push(`The orchestrator settled the task's review in round ${waiting.round}, and it waits on ${waiting.on.join(', ')}, a question for the person: write no account while it waits — the answer decides whether the task lands as it was settled, or changes.`);
+  if (changed !== null) lines.push(`The task changed after your reviewers passed it in round ${changed} — something was added to it, or one of its calls decided against its lean: build what changed, and your reviewers read the task again before its account is written.`);
+  if (owed !== null && owed.settlement === null) lines.push(`Your reviewers passed the task in round ${owed.round}: it has landed, so write its account now.`);
+  if (owed !== null && owed.settlement !== null) {
+    lines.push(
+      `The orchestrator settled the task's review in round ${owed.round}: it has landed, so write its account now, \`### Settled\` after that round saying what was done about it. Its settlement:`,
+      owed.settlement.split('\n').map((line) => `> ${line}`.trimEnd()).join('\n'),
+    );
+  }
+  if (faults !== null) lines.push(`The account there does not read — ${faults}; yours replaces it.`);
+  if (owed === null && waiting === null && landingStage(filling.cwd, ref).stage === 'owed') lines.push('Your account of the task is written there and not yet taken: leave it as it stands, and report **accounted**.');
+  return lines.join('\n\n');
+}
+
+/** A brief to the task's builder issued: the freeing and the changes it went past recorded (round-report.cjs). @param {Filling} filling @param {string|null} session the conversation issuing the builder's own brief */
+function briefedPast(filling, session) {
+  const { ref } = taskOf(filling);
+  recordBuilder(filling.cwd, ref, freedAt(filling.cwd, ref.unit).get(shownTask(ref)) ?? 0, session);
+}
+
+/** The builder's own brief issued, in the calling conversation. @param {Filling} filling */
+const bindBuilder = (filling) => briefedPast(filling, filling.session);
+
+/** A fix round's brief to the builder issued. @param {Filling} filling */
+const bindFix = (filling) => briefedPast(filling, null);
+
+/** A reviewer's brief issued: the round its pair is briefed for, and the conversation briefing this reviewer, recorded (round-report.cjs). @param {Filling} filling */
+function bindReviewer(filling) {
+  const { ref } = taskOf(filling);
+  recordReviewer(filling.cwd, ref, roundUnderReview(filling.cwd, ref), taskLetterOf(filling), filling.session);
+}
+
+/** The reviewer's letter `--letter` names, refused where it names none of those the task's review records (round-report.cjs, `lettersOf`). @param {Filling} filling */
+function taskLetterOf(filling) {
+  const letter = letterOf(filling);
+  const { ref } = taskOf(filling);
+  const letters = lettersOf(filling.cwd, ref);
+  if (letters.length > 0 && !letters.includes(letter)) throw new Error(`${taskName(ref)} is read by reviewer ${letters.join(' and ')} alone, as recorded — brief that one, never reviewer ${letter}`);
+  return letter;
+}
+
+/**
+ * Where the builder builds the task, runs it and commits it: a worktree of
+ * its own, laid out on the task's branch by `task worktree`; a quick-fix's
+ * task, the quick-fix's worktree, which the task's start laid out on its
+ * one branch (fix-branch.cjs, 19.5.15).
+ * @param {Filling} filling
+ */
+function drawWorkplace(filling) {
+  const { ref } = taskOf(filling);
+  if (ofQuickFixTask(filling)) {
+    return `Build in ${ref.unit}'s worktree, \`${fixWorktree(filling.cwd, ref.unit).root}\`, which the task's start laid out on its one branch, \`${quickFixBranch(ref.unit)}\` — never in a worktree of your own, and run every command from there. Build, run and commit only there.`;
+  }
+  return `Before anything else, lay the task out in the worktree you were started in: from its root, run the engine's \`task worktree ${ref.unit} ${shownTask(ref)}\`. It puts the worktree, and every repository nested in it, on the task's branch.${stepsRunning(filling.cwd, 'the person\'s: stop and report it, status `stopped`')} Build, run and commit only there.`;
+}
+
+/** Whether the task's brief is a quick-fix's, its task built on the quick-fix's one branch in its worktree. @param {Filling} filling */
+const ofQuickFixTask = (filling) => quickFixBuild(/** @type {Record<string, any>} */ (manifestOf(stateRoot(filling.cwd), taskOf(filling).ref.unit)));
+
+/** @returns {string} */
+function drawEngine() {
+  return `\`${ENGINE_RUN}\` — the engine of the checkout the orchestrator runs in. Run every engine command this brief and your instructions name as that, from wherever you run it.`;
+}
+
+/**
+ * Where the task's branch stands against its chain, in each repository
+ * holding it, children first: the tip of the work below it that has moved
+ * past the branch there — one stack's, so its tip holds the rest — or none.
+ * @param {Filling} filling @param {Repo[]} repos the project's @returns {{repo: Repo, tip: string}[]}
+ */
+function chainPast(filling, repos) {
+  const { ref, task } = taskOf(filling);
+  if (task.type === null) throw new Error(`${taskName(ref)} has no type in the tracker, and its branch is named from it`);
+  const own = taskBranch(ref, task.type, task.title);
+  const below = workBelow(filling.cwd, ref.unit, ref.phase, repos).flatMap((other) => (other.type === null ? [] : [taskBranch(other.ref, other.type, other.title)]));
+  return childrenFirst(repos).flatMap((repo) => {
+    const held = branches(repo.path);
+    if (!held.has(own)) return [];
+    const merged = branchesHeldBy(repo.path, `refs/heads/${own}`);
+    const past = below.filter((other) => other !== own && held.has(other) && !merged.has(other));
+    const tip = past[latestOf(repo.path, past.map((other) => /** @type {string} */ (held.get(other))))];
+    return tip === undefined ? [] : [{ repo, tip }];
+  });
+}
+
+/** What the builder does once its merge is committed, by how far the task stands towards landing (`landingStage`). */
+const CHAIN_THEN = Object.freeze({
+  building: 'Then go on with the task as the rest of this brief says.',
+  owed: 'Then write the task\'s account, as **Where your account goes** says, and report **accounted**.',
+  taken: 'Then report **merged**.',
+});
+
+/**
+ * Whether the task's branch holds its chain as it stands, and where it does
+ * not, the merge of the chain's tip back onto it in each repository, a
+ * child before its holder, each committed through the door; then the task,
+ * while its review is not over, the account where one is owed, or else the
+ * report that it merged (`CHAIN_THEN`).
+ * @param {Filling} filling
+ */
+function drawChain(filling) {
+  const { ref } = taskOf(filling);
+  if (ofQuickFixTask(filling)) return `Your branch is ${ref.unit}'s one branch, \`${quickFixBranch(ref.unit)}\`, every task of the quick-fix before yours on it: it has no chain to merge back.`;
+  const repos = projectRepos(codeRoot(filling.cwd));
+  const past = chainPast(filling, repos);
+  if (past.length === 0) return 'Your branch holds its phase\'s chain as it stands.';
+  const { stage } = landingStage(filling.cwd, ref);
+  return [
+    'Your phase\'s chain has moved on past your branch. Merge its tip back before anything else, from your task\'s worktree, one repository at a time in this order, each merge committed before the next starts:',
+    past.map(({ repo, tip }) => `- \`git${repo.dir === '' ? '' : ` -C ${quoted(repo.dir)}`} merge --no-ff --no-commit ${tip}\``).join('\n'),
+    [
+      'Resolve what conflicts as your task and the chained work both need',
+      `, then commit the merge through the door, naming each file you resolved — or, where nothing conflicted, any file the merge changed: the engine's \`commit --paths {file}… --task ${ref.unit} ${shownTask(ref)} -m "{message}"\`, which finishes it.`,
+    ].join(''),
+    CHAIN_THEN[stage],
+  ].join('\n\n');
+}
+
+/**
+ * Where the reviewer's report of the round under review goes; refused
+ * where the last round passed or was settled, naming the way on by how far
+ * the task stands towards landing (task-account.cjs, `reviewOverWay`), and
+ * for a round none of whose reviewers is briefed yet while a change waits
+ * on its builder's brief (round-report.cjs, `unbuiltRefusal`).
+ * @param {Filling} filling
+ */
+function drawRoundReportTo(filling) {
+  const { ref } = taskOf(filling);
+  const over = reviewOverWay(filling.cwd, ref);
+  if (over !== null) throw new Error(`round ${over.round} of ${taskName(ref)} ${over.ended} — its review is over: ${over.way}`);
+  const round = roundUnderReview(filling.cwd, ref);
+  const unbuilt = unbuiltRefusal(filling.cwd, ref, round);
+  if (unbuilt !== null) throw new Error(unbuilt);
+  return reportPlace(filling, roundReportPath(ref, round, taskLetterOf(filling)));
+}
+
+/** @param {Filling} filling */
+function drawPhaseReportTo(filling) {
+  const { unit, phase } = phaseOf(filling);
+  return reportPlace(filling, phaseReviewPath(unit, phase, letterOf(filling)));
+}
+
+/** @param {Filling} filling */
+function drawConsolidationTo(filling) {
+  const { unit, phase } = phaseOf(filling);
+  return `\`${statePath(filling.cwd, consolidationPath(unit, phase))}\``;
+}
+
+/** The unit as its review phase reads it, once a fill. */
+const reviewReading = oncePerFill(/** @param {Filling} filling */ (filling) => reading(filling.cwd, unitOf(filling), unitManifest(filling)));
+
+/**
+ * The unit's review phase as its round's reports are written for, read
+ * once a fill, the round's reads known; refused where it cannot be entered
+ * (review-entry.cjs) or the round cannot be read (review-phase.cjs).
+ */
+const reviewOf = oncePerFill(/** @param {Filling} filling @param {string[]} warnings */ (filling, warnings) => {
+  const standing = reviewHeld(reviewReading(filling, warnings), roundRefusal);
+  return { ...standing, reads: /** @type {string[]} */ (standing.reads) };
+});
+
+/** The area `--area` names, refused where the spec has none so numbered. @param {Filling} filling @param {string[]} warnings */
+function areaNamed(filling, warnings) {
+  const { areas } = reviewOf(filling, warnings);
+  const area = areas.find(({ number }) => number === filling.given.area);
+  if (area === undefined) throw new Error(`${ofQuickFix(filling) ? `${unitOf(filling)}'s review` : 'the spec'} has no area ${filling.given.area} — its areas are ${areas.map(({ number }) => `§${number}`).join(', ')}`);
+  return area;
+}
+
+/** The whole change, read once a fill (review-change.cjs). */
+const changeHeld = oncePerFill(/** @param {Filling} filling @param {string[]} warnings */ (filling, warnings) => {
+  const { rounds } = reviewOf(filling, warnings);
+  return changeOf(filling.cwd, unitOf(filling), fixPhase(unitManifest(filling), rounds.length), filling.given.base ?? null, reposOf(reviewReading(filling, warnings)), warnings);
+});
+
+/**
+ * A quick-fix's one area, the change (19.5.14): what was asked, its record,
+ * `summary.md`, and its fixes' acceptance in their own words.
+ * @param {Filling} filling
+ */
+function drawChangeArea(filling) {
+  const unit = unitOf(filling);
+  const file = statePath(filling.cwd, summaryFile(unit));
+  return [
+    noSpecLine(filling),
+    `The change asked for: ${unitManifest(filling).description}`,
+    `Its record, \`${file}\`:`,
+    fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trimEnd() : NONE,
+    'Its fixes\' acceptance:',
+    listed(fixCriteria(filling)),
+  ].join('\n\n');
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawAreaSections(filling, warnings) {
+  const area = areaNamed(filling, warnings);
+  if (ofQuickFix(filling)) return drawChangeArea(filling);
+  const { file, sections } = unitSpec(filling);
+  const built = areaBuilt(unitManifest(filling), area.number);
+  return [`\`${file}\``, /** @type {Section} */ (sections.get(area.number)).text, ...(built === null ? [] : [BUILT_BEFORE[built](area.number)])].join('\n\n');
+}
+
+/** What the area's reader is told of work of it built before the migration cut the unit, whole or in part (`areaBuilt`). */
+const BUILT_BEFORE = Object.freeze({
+  built: (/** @type {string} */ area) => `§${area} was built before the migration cut the unit: its work landed before Ledger, so no commit of the change carries it. Hold the product at the change's tips against the area — the work landed before stands there, the area's as much as the change's.`,
+  partly: (/** @type {string} */ area) => `Some of §${area} was built before the migration cut the unit: that work landed before Ledger, so no commit of the change carries it, and the rest is the change's. Hold the product at the change's tips against the area — the work landed before stands there beside the change's.`,
+});
+
+/**
+ * What the area's reader holds the change against, as its review opens: the
+ * spec's intent for the area, never a task's criteria — a quick-fix's, which
+ * has no spec, its fixes' acceptance in their own words, read as one.
+ * @param {Filling} filling
+ */
+function drawAreaAuthority(filling) {
+  if (ofQuickFix(filling)) {
+    return 'Every fix of the change has passed its own review. Hold the whole change against what was asked of it, as one piece. Its fixes\' acceptance, in their own words and read as one, and the product they describe, are your authority:';
+  }
+  const before = landedAnyBefore(unitManifest(filling)) ? ' Work of the unit that landed before the migration cut it stands in the product there with no commit of the change carrying it, and is met as the change\'s is.' : '';
+  return `Every task and every phase of the build has passed its own review. Hold the product at the change's tips against this area of the spec, as one piece.${before} The spec's intent for the area, and the product it describes, are your authority, never a task's criteria:`;
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawAreaMeets(filling, warnings) {
+  const { number } = areaNamed(filling, warnings);
+  if (ofQuickFix(filling)) return `The change is ${unitOf(filling)}'s one area: there is no other for it to meet.`;
+  const others = reviewOf(filling, warnings).areas.filter((area) => area.number !== number);
+  const spec = unitSpec(filling);
+  const edges = withUnitEntries(filling.cwd, unitOf(filling), warnings, (view) => reliesOnEdges(view, spec))
+    .filter(({ from, to }) => (areaOf(from) === number) !== (areaOf(to) === number));
+  return [
+    'The other areas:', listed(others.map(({ number: at, title }) => `- §${at} ${title}`)),
+    'Where they meet it:', listed(edges.map(({ from, to, links }) => `- §${from} relies on §${to}: ${links.join('; ')}`)),
+  ].join('\n\n');
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawUnitCalls(filling, warnings) {
+  const unit = unitOf(filling);
+  return listed(readShown(stateRoot(filling.cwd), warnings, (shower) => unitCalls(shower, unit)).map(({
+    short, by, handed, phase, topic, question, answer, why,
+  }) => [
+    `- ${short}, ${WHOSE[by]}${handed === null ? '' : `, handed over as ${handed}`}, at ${unit}.${phase}${topic === null ? '' : `.${topic}`}: ${indented(answer)}`,
+    ...(question === null ? [] : [`  It answers: ${indented(question)}`]),
+    `  Why: ${indented(why)}`,
+  ].join('\n')));
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawChangeCommits(filling, warnings) {
+  return changeHeld(filling, warnings).holding.map(({ repo, base, parts }) => [
+    `## In ${repoNamed(repo)}`, ...(parts.length === 0 ? [nothingSince(base)] : parts.map((part) => partDrawn(repo, part))),
+  ].join('\n\n')).join('\n\n');
+}
+
+/** A repository whose change is empty, the unit's every task there landed before the migration cut it (review-change.cjs). @param {string} base */
+const nothingSince = (base) => `Nothing has landed here since the migration cut the unit, and nothing waits to land: the change is empty, its tip \`${base}\` itself.`;
+
+/** A part of the change in a repository's heading: a landing by its commit and subject, the unit's own branch against the base it is read against, or the work not landed, each by where it is read from. @param {import('./review-change.cjs').ChangePart} part */
+function partHeading({ from, landed, branch, against }) {
+  if (landed !== null) return `### Landed: \`${landed.commit.slice(0, 12)}\` ${landed.subject}`;
+  return against === undefined ? `### Not landed yet: \`${from.slice(0, 12)}..${branch}\`` : `### The unit's branch against ${against}: \`${from.slice(0, 12)}..${branch}\``;
+}
+
+/** A part of the change in a repository under its heading (`partHeading`), with its stat. @param {Repo} repo @param {import('./review-change.cjs').ChangePart} part */
+function partDrawn(repo, part) {
+  const stat = git(repo.path, ['diff', '--no-color', ...STAT, part.from, part.to, '--']);
+  return `${partHeading(part)}\n\n${stat === '' ? 'Nothing changed in it.' : `\`\`\`\n${stat}\`\`\``}`;
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawChangeScratchLayout(filling, warnings) {
+  const { repos, holding } = changeHeld(filling, warnings);
+  const unit = unitOf(filling);
+  const named = filling.given.area === undefined ? scratchName.tests(unit) : scratchName.area(unit, filling.given.area, letterOf(filling));
+  return layoutOf(filling.cwd, repos, new Map(holding.map((held) => [held.repo, changeLaid(held)])), (repo) => onBranch(repo, landingBranch(filling.cwd, repo, unit), 'the branch it lands on'), named);
+}
+
+/**
+ * A repository holding the change laid out at its tip's commit: by its
+ * branch where that is there, else by the commit, its branch as the host
+ * has it and not yet pulled here.
+ * @param {import('./review-change.cjs').ChangeIn} held @returns {Laid}
+ */
+function changeLaid({ repo, tip, commit }) {
+  const why = 'the change\'s tip there';
+  if (branches(repo.path).get(tip) === commit) return { named: tip, commit, why };
+  return { named: commit.slice(0, 12), commit, why: `${why}, ${tip} as its host has it, not yet pulled here` };
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawAreaRuns(filling, warnings) {
+  const { number } = areaNamed(filling, warnings);
+  const tips = changeTips(changeHeld(filling, warnings));
+  const scenarios = ofQuickFix(filling)
+    ? fixScenarios(fixAcceptance(filling.cwd, unitOf(filling))).map(({ scenario, wording }) => ({ number: scenario, wording }))
+    : unitSpec(filling).lines.filter(({ kind, number: id }) => kind === 'scenario' && id.startsWith(`${number}.S`));
+  return listed(scenarios.map(({ number: scenario, wording }) => {
+    const { standing, runs } = runsOf(filling.cwd, unitOf(filling), scenario, tips);
+    return [`- ${scenario}: ${standing}`, `  ${indented(wording)}`, ...runs.map((run) => `  - ${run.verdict}, recorded ${run.at}: \`${statePath(filling.cwd, run.file)}\``)].join('\n');
+  }));
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawAreaReportTo(filling, warnings) {
+  const { name, number } = areaNamed(filling, warnings);
+  const { round, reads } = reviewOf(filling, warnings);
+  if (!reads.includes(name)) throw new Error(`area ${number} is not read in round ${round}, which reads ${readsWords(reads)}`);
+  return reportPlace(filling, areaReportPath(unitOf(filling), round, name, letterOf(filling)), reviewReportFaults);
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawTestsReportTo(filling, warnings) {
+  const { round, reads } = reviewOf(filling, warnings);
+  if (!reads.includes(TESTS)) throw new Error(`the test surface is not read in round ${round}, which reads ${readsWords(reads)}`);
+  return reportPlace(filling, areaReportPath(unitOf(filling), round, TESTS, TESTS_LETTER), reviewReportFaults);
+}
+
+/** The flag naming the branch a range is read from. @type {BriefFlag} */
+const BASE = Object.freeze({ name: 'base', value: 'branch' });
+
+/** The flag naming the reviewer a report is written by. @type {BriefFlag} */
+const LETTER = Object.freeze({ name: 'letter', value: REVIEWER_LETTERS.join('|') });
+
+/** The flag naming the spec's area a review phase's pair reads, by its number. @type {BriefFlag} */
+const AREA = Object.freeze({ name: 'area', value: 'N' });
+
+/** Every record, by the slot that draws it. @type {Readonly<Record<string, BriefRecord>>} */
+const RECORDS = Object.freeze({
+  task: { of: 'task', draw: drawTask },
+  'spec-sections': { of: 'task', draw: drawSpecSections },
+  'decided-calls': { of: 'unit', draw: drawDecidedCalls },
+  linters: { of: null, draw: drawLinters },
+  'diff-range': { of: 'task', flags: [{ ...BASE, optional: true }], draw: drawDiffRange },
+  'scratch-layout': { of: 'task', draw: drawScratchLayout },
+  reports: { of: 'task', draw: drawReports, bind: bindFix },
+  'round-report-to': { of: 'task', flags: [LETTER], draw: drawRoundReportTo, bind: bindReviewer },
+  'account-to': { of: 'task', draw: drawAccountTo, bind: bindBuilder },
+  engine: { of: null, draw: drawEngine },
+  chain: { of: 'task', draw: drawChain },
+  workplace: { of: 'task', draw: drawWorkplace },
+  'setup-to': { of: 'task', draw: drawSetupTo },
+  'topic-record': { of: 'topic', draw: drawTopicRecord },
+  'topic-log': { of: 'topic', draw: drawTopicLog },
+  'other-records': { of: 'topic', draw: drawOtherRecords },
+  'product-record': { of: 'unit', draw: drawProductRecord },
+  question: { of: 'topic', flags: [QUESTION, AGENT], draw: drawQuestion, bind: bindAsked },
+  'pair-question': { of: 'topic', flags: [AGENT], draw: drawPairQuestion },
+  'dive-kind': { of: null, flags: [{ name: 'kind', value: DIVE_KINDS.join('|') }, { name: 'path', value: 'file', optional: true }], draw: drawDiveKind },
+  'gap-review': { of: 'topic', draw: drawGapReview },
+  dismissed: { of: 'unit', draw: drawDismissed },
+  'report-to': { of: 'topic', flags: [AGENT], draw: drawReportTo },
+  lens: { of: 'topic', flags: [AGENT], draw: drawLens },
+  perspectives: { of: 'topic', flags: [AGENT], draw: drawPerspectives },
+  'knowledge-query': { of: null, draw: drawKnowledgeQuery },
+  directive: { of: null, flags: [DIRECTIVE], draw: drawDirective },
+  'migrated-topic': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawMigratedTopic },
+  'composed-record': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawComposedRecord, bind: briefVerifier },
+  'walk-sheet': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawWalkSheet },
+  'verifier-findings': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => { refuseUnchecked(filling); return besideRecord(filling, findingsPath); } },
+  'verifier-rulings': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => { const { rounds, findings, beside } = recordRounds(filling); return drawRulings(rounds, findings, beside); } },
+  'earlier-findings': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => { const { rounds, findings, beside } = recordRounds(filling); return drawRounds(rounds, findings, beside); } },
+  'settled-points': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => besideRecord(filling, settledPath) },
+  'carry-refusal': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => besideRecord(filling, refusedPath), bind: (filling) => clearBeside(filling, refusedPath) },
+  'record-check': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawRecordCheck },
+  'migrated-phase': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawMigratedPhase },
+  'composed-piece': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawComposedPiece, bind: briefPieceVerifier },
+  'piece-changes': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawPieceChanges },
+  'piece-findings': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: (filling) => verbatim(phaseFile(filling, 'findings')) },
+  'earlier-piece-findings': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: (filling) => drawRounds(phaseFile(filling, 'rounds'), phaseFile(filling, 'findings')) },
+  'settled-piece-points': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: (filling) => verbatim(phaseFile(filling, 'settled')) },
+  'piece-check': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawPieceCheck },
+  'spec-outline': { of: 'unit', draw: drawSpecOutline },
+  'spec-scenarios': { of: 'unit', draw: drawSpecScenarios },
+  'relies-on-graph': { of: 'unit', draw: drawReliesOnGraph },
+  'cut-refusal': { of: 'unit', draw: drawCutRefusal },
+  'cut-to': { of: 'unit', draw: drawCutTo },
+  'cut-requests': { of: 'unit', draw: drawCutRequests, bind: (filling, warnings) => recordCutTaking(filling.cwd, unitOf(filling), warnings) },
+  'unit-records': { of: 'unit', draw: drawUnitRecords },
+  'sweep-refusal': { of: 'unit', draw: drawSweepRefusal },
+  'sweep-to': { of: 'unit', draw: drawSweepTo },
+  'topic-logs': { of: 'unit', draw: drawTopicLogs },
+  'canonical-assets': { of: 'unit', draw: drawCanonicalAssets },
+  'builder-calls': { of: 'unit', draw: drawBuilderCalls },
+  'changed-entries': { of: 'unit', draw: drawChangedEntries },
+  'wording-changes': { of: 'unit', flags: [{ name: 'wording', value: 'file', optional: true }], draw: drawWordingChanges },
+  'review-findings': { of: 'unit', draw: drawReviewFindings, bind: takeFindings },
+  'land-refusal': { of: 'unit', draw: drawLandRefusal },
+  'held-numbers': { of: 'unit', draw: drawHeldNumbers },
+  'spec-to': { of: 'unit', draw: drawSpecTo },
+  'changed-sections': { of: 'unit', flags: [AGENT], draw: drawChangedSections, bind: bindPass, refused: closePass },
+  'invented-lines': { of: 'unit', draw: drawInventedLines },
+  'measured-findings': { of: 'unit', draw: drawMeasuredFindings },
+  'product-cites': { of: 'unit', draw: drawProductCites },
+  'report-refusal': { of: 'unit', draw: drawReportRefusal },
+  'unit-report-to': { of: 'unit', flags: [AGENT], draw: drawReportTo },
+  'cut-phase': { of: 'phase', draw: drawCutPhase },
+  'phase-sections': { of: 'phase', draw: drawPhaseSections },
+  'phase-scenarios': { of: 'phase', draw: drawPhaseScenarios },
+  'held-notes': { of: 'phase', draw: drawHeldNotes },
+  'written-tasks': { of: 'phase', draw: drawWrittenTasks },
+  'earlier-tasks': { of: 'phase', draw: drawEarlierTasks },
+  'build-calls': { of: 'unit', draw: drawBuildCalls },
+  'affected-entries': { of: 'unit', draw: drawAffectedEntries },
+  'task-files-to': { of: 'phase', draw: drawTaskFilesTo },
+  'reproducing-test': { of: 'phase', draw: drawReproducingTest },
+  'phase-notes': { of: 'phase', draw: drawPhaseNotes },
+  'phase-tasks': { of: 'phase', draw: drawPhaseTasks },
+  'phase-criteria': { of: 'phase', draw: drawPhaseCriteria },
+  'relied-on': { of: 'phase', draw: drawReliedOn },
+  'phase-diff-range': { of: 'phase', flags: [{ ...BASE, optional: true }], draw: drawPhaseDiffRange },
+  'phase-scratch-layout': { of: 'phase', draw: drawPhaseScratchLayout },
+  'recorded-runs': { of: 'phase', draw: drawRecordedRuns },
+  mutants: { of: 'phase', draw: drawMutants },
+  'phase-report-to': { of: 'phase', flags: [LETTER], draw: drawPhaseReportTo },
+  'consolidation-to': { of: 'phase', draw: drawConsolidationTo },
+  'area-sections': { of: 'unit', flags: [AREA], draw: drawAreaSections },
+  'area-meets': { of: 'unit', flags: [AREA], draw: drawAreaMeets },
+  'unit-calls': { of: 'unit', draw: drawUnitCalls },
+  'change-commits': { of: 'unit', flags: [BASE], draw: drawChangeCommits },
+  'change-scratch-layout': { of: 'unit', flags: [BASE], draw: drawChangeScratchLayout },
+  'area-runs': { of: 'unit', flags: [AREA, BASE], draw: drawAreaRuns },
+  'area-report-to': { of: 'unit', flags: [AREA, LETTER], draw: drawAreaReportTo },
+  'area-authority': { of: 'unit', draw: drawAreaAuthority },
+  'tests-report-to': { of: 'unit', draw: drawTestsReportTo },
+  investigation: { of: 'unit', draw: drawInvestigation },
+  'hunt-log': { of: 'unit', draw: drawHuntLog },
+  'hunt-record': { of: 'unit', draw: drawHuntRecord },
+  'hunt-root-cause': { of: 'unit', draw: drawRootCause },
+  'hunt-fix': { of: 'unit', draw: drawFix },
+  code: { of: null, draw: drawCode },
+});
+
+/** The records that place a read of the review phase's round. */
+const ROUND_REPORTS = Object.freeze(['area-report-to', 'tests-report-to']);
+
+/**
+ * What the record of whose a brief is keeps beside its role for a read of
+ * the review phase's round: the area `--area` names, where it names one,
+ * and the round it reads (the board's clock reads both); nothing for any
+ * other brief.
+ * @param {Filling} filling @param {readonly string[]} records @param {string[]} warnings @returns {{area?: string, round?: number}}
+ */
+function readFacts(filling, records, warnings) {
+  if (!records.some((record) => ROUND_REPORTS.includes(record))) return {};
+  return { ...(filling.given.area === undefined ? {} : { area: filling.given.area }), round: reviewOf(filling, warnings).round };
+}
+
+module.exports = { RECORDS, DIVE_KINDS, readFacts };

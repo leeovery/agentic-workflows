@@ -1,0 +1,155 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: specification's row of the entry (enter.cjs) — `enter
+// specification <unit>`, at the work unit, whose one spec it is (11.3.1).
+// Whether the unit can enter it is spec-standing.cjs's: once its topics are
+// settled. The entry asks nothing first, starts nothing and keeps no log, so
+// it writes nothing but where the conversation is working.
+//
+// What carries the spec on, read alike by its entry and its recovery note
+// (position.cjs): each live topic's record, by its engine call, and its log
+// — a bugfix's its investigation (19.4.3, 19.4.15) — then the unit's own
+// record, the gaps asked at the spec and their answers; the files the unit's
+// current entries link as canonical, which the spec links (11.6.3); once the
+// spec is written, the
+// spec; the cut, by its call, once the manifest holds one; and while the
+// person's review page is open, its address and the file its marks are read
+// back to (spec-review.cjs). The entry adds approve the map, by its call,
+// while the sweep's candidates wait on the person (sweep.cjs, 8.10.9) — the
+// map as staged where one is, read back, else staged from the sweep — and
+// the reports of the agents the spec was left with, landed since, and those
+// lost with a process that no longer runs (9.7.8); and each review pass
+// still running, whose report lands in the unit's store
+// (spec-passes.cjs), so a resume takes it in rather than sending another —
+// one this conversation dispatched. A pass an earlier conversation left
+// running, its report not on disk, is abandoned as the spec is entered
+// (agent-state.cjs), and the review dispatches afresh.
+//
+// The spec's standing and its refusal are answered here too, for every verb
+// that holds the spec to them; the refusal holds the unit first to the rule
+// every entry does (topic-standing.cjs) — one this project has, in progress,
+// its pipeline holding the spec. A refusal on a topic still open names the
+// sweep's candidates waiting on the person too: a message the sweep sent
+// reopened the topic, and its candidates wait for approve the map after it.
+// ---------------------------------------------------------------------------
+
+const fs = require('fs');
+const { ENGINE_COMMAND } = require('../kernel/call.cjs');
+const { isObject } = require('../kernel/manifest-io.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { specStanding, specTopics, entryRefusal } = require('./spec-standing.cjs');
+const { specPath } = require('./spec-sections.cjs');
+const { knownUnit, noUnit, unitClosure, phaseHeldRefusal } = require('./topic-standing.cjs');
+const { topicLog, recordCall } = require('./topic-log.cjs');
+const { canonicalAssets } = require('./ledger-read.cjs');
+const { agentsLeft, passesInFlight, abandonEarlierPasses } = require('./agent-state.cjs');
+const { openPage } = require('./spec-review.cjs');
+const { candidatesWaiting } = require('./sweep.cjs');
+const { sweptStaged } = require('./approve-map.cjs');
+
+/** @typedef {import('./enter.cjs').Entry} Entry */
+/** @typedef {import('./enter.cjs').Entering} Entering */
+/** @typedef {import('./enter.cjs').Line} Line */
+
+/**
+ * What carries the spec on, each source absolute or an engine call, and the
+ * review page while it is open.
+ * @typedef {{records: string[], logs: string[], assets: string[], spec: string[], cut: string[], page: {url: string, readBack: string}|null}} SpecSources
+ */
+
+const PHASE = 'specification';
+
+/**
+ * What carries the unit's spec on: an epic's each live topic's record call,
+ * each topic's log on disk, then the unit's own record call, which holds
+ * a single-topic unit's one topic's record; the files its current entries link as canonical; the spec, once
+ * written; the cut's call, once the manifest holds a cut; and the review
+ * page, while it is open. What a read of the ledger said on the way is
+ * pushed to `warnings`.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string[]} warnings
+ * @returns {SpecSources}
+ */
+function specSources(cwd, manifest, warnings) {
+  const unit = manifest.name;
+  const topics = specTopics(manifest);
+  return {
+    records: [...(manifest.work_type === 'epic' ? topics.map((topic) => recordCall(unit, topic)) : []), `${ENGINE_COMMAND} ledger record ${unit}`],
+    logs: topics.map((topic) => statePath(cwd, topicLog(unit, topic))).filter((log) => fs.existsSync(log)),
+    assets: canonicalAssets(stateRoot(cwd), unit, warnings).map((asset) => statePath(cwd, asset)),
+    spec: [specPath(cwd, unit)].filter((spec) => fs.existsSync(spec)),
+    cut: isObject(manifest.cut) ? [`${ENGINE_COMMAND} manifest get ${unit} cut`] : [],
+    page: openPage(cwd, unit),
+  };
+}
+
+/** @param {string} key @returns {(value: string) => Line} */
+const as = (key) => (value) => [key, value];
+
+/** @param {string} key @returns {(call: string) => Line} */
+const asCall = (key) => (call) => [key, `\`${call}\``];
+
+/** What the spec reads at its entry. @param {Entering} at @returns {Line[]} */
+function specReads({ cwd, unit, manifest, notes }) {
+  const { records, logs, assets, spec, cut, page } = specSources(cwd, manifest, notes);
+  const agents = agentsLeft(cwd, unit, PHASE, unit);
+  return [
+    ...records.map(asCall('record')),
+    ...logs.map(as('topic log')),
+    ...assets.map(as('asset')),
+    ...spec.map(as('spec')),
+    ...cut.map(asCall('cut')),
+    ...(page === null ? [] : [as('review page')(page.url), as('read back')(page.readBack)]),
+    ...(candidatesWaiting(cwd, manifest).length === 0 ? [] : [asCall('approve the map')(approveMapCall(cwd, unit))]),
+    ...agents.landed.map(({ file }) => as('landed')(file)),
+    ...agents.lost.map(as('lost')),
+    ...passesInFlight(cwd, unit).filter(({ stands }) => stands === 'running').map(({ id }) => as('running')(id)),
+  ];
+}
+
+/**
+ * The call that draws approve the map while the sweep's candidates wait:
+ * the map as staged, read back — Keep shaping's among it — or, where none
+ * is staged, staged again from the sweep taken.
+ * @param {string} cwd @param {string} unit
+ */
+const approveMapCall = (cwd, unit) => `${ENGINE_COMMAND} render approve-map ${unit}${sweptStaged(cwd, unit) ? '' : ' --sweep'}`;
+
+/**
+ * Why the unit, in progress and its pipeline holding the spec, cannot enter
+ * it, or null: the spec's own refusal, naming after it the sweep's
+ * candidates waiting on the person.
+ * @param {string} cwd @param {Record<string, any>} manifest @returns {string|null}
+ */
+function specRefusal(cwd, manifest) {
+  const refused = entryRefusal(manifest);
+  if (refused === null) return null;
+  const waiting = candidatesWaiting(cwd, manifest);
+  return waiting.length === 0 ? refused : `${refused}; after them, the sweep's candidates waiting on the person — ${waiting.join(', ')} — are taken or struck at approve the map`;
+}
+
+/** @type {Entry} */
+const SPECIFICATION = Object.freeze({
+  level: /** @type {const} */ ('unit'),
+  standing: ({ cwd, manifest }) => specRefusal(cwd, manifest),
+  unstarted: () => false,
+  start: () => {},
+  questions: () => [],
+  reads: specReads,
+  closes: ({ cwd, unit }) => { abandonEarlierPasses(cwd, unit); },
+});
+
+/**
+ * Why the unit cannot enter its spec, with its way on, or null where it
+ * may — refused as its entry refuses it: a unit this project lacks, one not
+ * in progress, one whose pipeline holds no spec, then the spec's own
+ * refusal.
+ * @param {string} cwd @param {string} unit @returns {string|null}
+ */
+function specEntryRefusal(cwd, unit) {
+  const manifest = knownUnit(cwd, unit);
+  if (manifest === null) return noUnit(unit);
+  return unitClosure(manifest) ?? phaseHeldRefusal(manifest, PHASE) ?? specRefusal(cwd, manifest);
+}
+
+module.exports = { SPECIFICATION, specStanding, specEntryRefusal, specSources };

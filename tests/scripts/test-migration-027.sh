@@ -9,7 +9,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-MIGRATION="$REPO_DIR/skills/workflow-migrate/scripts/migrations/027-rename-external-deps-task-id.sh"
+MIGRATION="$REPO_DIR/skills/ledger-migrate/scripts/migrations/027-rename-external-deps-task-id.sh"
 
 PASS=0
 FAIL=0
@@ -77,11 +77,11 @@ EOF
   local content
   content=$(cat "$TEST_DIR/.workflows/my-epic/manifest.json")
 
-  assert_eq "task_id renamed to internal_id" "true" "$(echo "$content" | grep -qF '"internal_id": "auth-1-3"' && echo true || echo false)"
-  assert_eq "task_id field removed" "false" "$(echo "$content" | grep -qF '"task_id"' && echo true || echo false)"
-  assert_eq "state preserved" "true" "$(echo "$content" | grep -qF '"state": "resolved"' && echo true || echo false)"
-  assert_eq "description preserved" "true" "$(echo "$content" | grep -qF '"description": "User authentication"' && echo true || echo false)"
-  assert_eq "unresolved dep unchanged" "true" "$(echo "$content" | grep -qF '"state": "unresolved"' && echo true || echo false)"
+  assert_eq "task_id renamed to internal_id" "true" "$(grep -qF '"internal_id": "auth-1-3"' <<<"$content" && echo true || echo false)"
+  assert_eq "task_id field removed" "false" "$(grep -qF '"task_id"' <<<"$content" && echo true || echo false)"
+  assert_eq "state preserved" "true" "$(grep -qF '"state": "resolved"' <<<"$content" && echo true || echo false)"
+  assert_eq "description preserved" "true" "$(grep -qF '"description": "User authentication"' <<<"$content" && echo true || echo false)"
+  assert_eq "unresolved dep unchanged" "true" "$(grep -qF '"state": "unresolved"' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -279,10 +279,10 @@ EOF
   local content
   content=$(cat "$TEST_DIR/.workflows/mixed/manifest.json")
 
-  assert_eq "task_id renamed to internal_id" "true" "$(echo "$content" | grep -qF '"internal_id": "auth-1-3"' && echo true || echo false)"
-  assert_eq "existing internal_id preserved" "true" "$(echo "$content" | grep -qF '"internal_id": "billing-2-1"' && echo true || echo false)"
-  assert_eq "no task_id fields remain" "false" "$(echo "$content" | grep -qF '"task_id"' && echo true || echo false)"
-  assert_eq "unresolved dep unchanged" "true" "$(echo "$content" | grep -qF '"state": "unresolved"' && echo true || echo false)"
+  assert_eq "task_id renamed to internal_id" "true" "$(grep -qF '"internal_id": "auth-1-3"' <<<"$content" && echo true || echo false)"
+  assert_eq "existing internal_id preserved" "true" "$(grep -qF '"internal_id": "billing-2-1"' <<<"$content" && echo true || echo false)"
+  assert_eq "no task_id fields remain" "false" "$(grep -qF '"task_id"' <<<"$content" && echo true || echo false)"
+  assert_eq "unresolved dep unchanged" "true" "$(grep -qF '"state": "unresolved"' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -331,10 +331,10 @@ EOF
   local content
   content=$(cat "$TEST_DIR/.workflows/multi-phase/manifest.json")
 
-  assert_eq "planning.core dep renamed" "true" "$(echo "$content" | grep -qF '"internal_id": "auth-1"' && echo true || echo false)"
-  assert_eq "planning.advanced dep renamed" "true" "$(echo "$content" | grep -qF '"internal_id": "core-2-3"' && echo true || echo false)"
-  assert_eq "implementation.core dep renamed" "true" "$(echo "$content" | grep -qF '"internal_id": "billing-1-2"' && echo true || echo false)"
-  assert_eq "no task_id fields remain across phases" "false" "$(echo "$content" | grep -qF '"task_id"' && echo true || echo false)"
+  assert_eq "planning.core dep renamed" "true" "$(grep -qF '"internal_id": "auth-1"' <<<"$content" && echo true || echo false)"
+  assert_eq "planning.advanced dep renamed" "true" "$(grep -qF '"internal_id": "core-2-3"' <<<"$content" && echo true || echo false)"
+  assert_eq "implementation.core dep renamed" "true" "$(grep -qF '"internal_id": "billing-1-2"' <<<"$content" && echo true || echo false)"
+  assert_eq "no task_id fields remain across phases" "false" "$(grep -qF '"task_id"' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -370,8 +370,8 @@ EOF
 
   local content
   content=$(cat "$TEST_DIR/.workflows/user's-epic/manifest.json")
-  assert_eq "quoted-name: task_id renamed to internal_id" "true" "$(echo "$content" | grep -qF '"internal_id": "auth-1-3"' && echo true || echo false)"
-  assert_eq "quoted-name: task_id field removed" "false" "$(echo "$content" | grep -qF '"task_id"' && echo true || echo false)"
+  assert_eq "quoted-name: task_id renamed to internal_id" "true" "$(grep -qF '"internal_id": "auth-1-3"' <<<"$content" && echo true || echo false)"
+  assert_eq "quoted-name: task_id field removed" "false" "$(grep -qF '"task_id"' <<<"$content" && echo true || echo false)"
 
   teardown
 }

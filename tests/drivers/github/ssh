@@ -1,0 +1,10 @@
+#!/bin/sh
+# The stand-in ssh the fake GitHub's world names as its ssh command: it runs
+# the git service a call asks for against the repository it names, served
+# from the fake GitHub inside the calling repository's git directory
+# (gh-stub.cjs), so nothing leaves the machine.
+for last; do :; done
+service=${last%% *}
+repo=${last#* }; repo=${repo#\'}; repo=${repo%\'}
+served=$(git rev-parse --path-format=absolute --git-common-dir) || exit 128
+exec git "${service#git-}" "$served/github/${repo#/}"

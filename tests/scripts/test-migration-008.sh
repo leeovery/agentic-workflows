@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-MIGRATION="$REPO_DIR/skills/workflow-migrate/scripts/migrations/008-review-directory-structure.sh"
+MIGRATION="$REPO_DIR/skills/ledger-migrate/scripts/migrations/008-review-directory-structure.sh"
 
 PASS=0
 FAIL=0
@@ -66,7 +66,7 @@ EOF
   assert_eq "Original summary removed" "false" "$([ -f "$REVIEW_DIR/tick-core.md" ] && echo true || echo false)"
 
   content=$(cat "$REVIEW_DIR/tick-core/r1/review.md")
-  assert_eq "Summary content preserved" "true" "$(echo "$content" | grep -qF 'Summary of the review' && echo true || echo false)"
+  assert_eq "Summary content preserved" "true" "$(grep -qF 'Summary of the review' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -248,7 +248,7 @@ EOF
   done
 
   content=$(cat "$REVIEW_DIR/big-review/r1/qa-task-15.md")
-  assert_eq "QA task 15 content preserved" "true" "$(echo "$content" | grep -qF 'Finding 15' && echo true || echo false)"
+  assert_eq "QA task 15 content preserved" "true" "$(grep -qF 'Finding 15' <<<"$content" && echo true || echo false)"
 
   teardown
 }

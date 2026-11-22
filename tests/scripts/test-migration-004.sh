@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-MIGRATION="$REPO_DIR/skills/workflow-migrate/scripts/migrations/004-sources-object-format.sh"
+MIGRATION="$REPO_DIR/skills/ledger-migrate/scripts/migrations/004-sources-object-format.sh"
 
 PASS=0
 FAIL=0
@@ -72,8 +72,8 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/single-source.md")
 
-  assert_eq "Source name converted to object" "true" "$(echo "$content" | grep -qF -- '- name: auth-flow' && echo true || echo false)"
-  assert_eq "Status set to incorporated" "true" "$(echo "$content" | grep -qF 'status: incorporated' && echo true || echo false)"
+  assert_eq "Source name converted to object" "true" "$(grep -qF -- '- name: auth-flow' <<<"$content" && echo true || echo false)"
+  assert_eq "Status set to incorporated" "true" "$(grep -qF 'status: incorporated' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -104,10 +104,10 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/multi-source.md")
 
-  assert_eq "First source converted" "true" "$(echo "$content" | grep -qF -- '- name: topic-a' && echo true || echo false)"
-  assert_eq "Second source converted" "true" "$(echo "$content" | grep -qF -- '- name: topic-b' && echo true || echo false)"
-  assert_eq "Third source converted" "true" "$(echo "$content" | grep -qF -- '- name: topic-c' && echo true || echo false)"
-  assert_eq "Status set to incorporated" "true" "$(echo "$content" | grep -qF 'status: incorporated' && echo true || echo false)"
+  assert_eq "First source converted" "true" "$(grep -qF -- '- name: topic-a' <<<"$content" && echo true || echo false)"
+  assert_eq "Second source converted" "true" "$(grep -qF -- '- name: topic-b' <<<"$content" && echo true || echo false)"
+  assert_eq "Third source converted" "true" "$(grep -qF -- '- name: topic-c' <<<"$content" && echo true || echo false)"
+  assert_eq "Status set to incorporated" "true" "$(grep -qF 'status: incorporated' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -137,8 +137,8 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/quoted-sources.md")
 
-  assert_eq "Quoted source name extracted" "true" "$(echo "$content" | grep -qF -- '- name: quoted-topic' && echo true || echo false)"
-  assert_eq "Second quoted source extracted" "true" "$(echo "$content" | grep -qF -- '- name: another-topic' && echo true || echo false)"
+  assert_eq "Quoted source name extracted" "true" "$(grep -qF -- '- name: quoted-topic' <<<"$content" && echo true || echo false)"
+  assert_eq "Second quoted source extracted" "true" "$(grep -qF -- '- name: another-topic' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -210,9 +210,9 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/has-discussion.md")
 
-  assert_eq "Sources field added" "true" "$(echo "$content" | grep -qF 'sources:' && echo true || echo false)"
-  assert_eq "Matching discussion added as source" "true" "$(echo "$content" | grep -qF -- '- name: has-discussion' && echo true || echo false)"
-  assert_eq "Status set to incorporated" "true" "$(echo "$content" | grep -qF 'status: incorporated' && echo true || echo false)"
+  assert_eq "Sources field added" "true" "$(grep -qF 'sources:' <<<"$content" && echo true || echo false)"
+  assert_eq "Matching discussion added as source" "true" "$(grep -qF -- '- name: has-discussion' <<<"$content" && echo true || echo false)"
+  assert_eq "Status set to incorporated" "true" "$(grep -qF 'status: incorporated' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -239,7 +239,7 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/no-discussion.md")
 
-  assert_eq "Empty sources array added" "true" "$(echo "$content" | grep -qF 'sources: []' && echo true || echo false)"
+  assert_eq "Empty sources array added" "true" "$(grep -qF 'sources: []' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -343,13 +343,13 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/preserve-content.md")
 
-  assert_eq "H1 heading preserved" "true" "$(echo "$content" | grep -qF '# Specification: Preserve Content' && echo true || echo false)"
-  assert_eq "Overview section preserved" "true" "$(echo "$content" | grep -qF '## Overview' && echo true || echo false)"
-  assert_eq "Architecture section preserved" "true" "$(echo "$content" | grep -qF '## Architecture' && echo true || echo false)"
-  assert_eq "Nested heading preserved" "true" "$(echo "$content" | grep -qF '### Component A' && echo true || echo false)"
-  assert_eq "Edge Cases section preserved" "true" "$(echo "$content" | grep -qF '## Edge Cases' && echo true || echo false)"
-  assert_eq "List content preserved" "true" "$(echo "$content" | grep -qF -- '- Edge case 1' && echo true || echo false)"
-  assert_eq "Dependencies section preserved" "true" "$(echo "$content" | grep -qF '## Dependencies' && echo true || echo false)"
+  assert_eq "H1 heading preserved" "true" "$(grep -qF '# Specification: Preserve Content' <<<"$content" && echo true || echo false)"
+  assert_eq "Overview section preserved" "true" "$(grep -qF '## Overview' <<<"$content" && echo true || echo false)"
+  assert_eq "Architecture section preserved" "true" "$(grep -qF '## Architecture' <<<"$content" && echo true || echo false)"
+  assert_eq "Nested heading preserved" "true" "$(grep -qF '### Component A' <<<"$content" && echo true || echo false)"
+  assert_eq "Edge Cases section preserved" "true" "$(grep -qF '## Edge Cases' <<<"$content" && echo true || echo false)"
+  assert_eq "List content preserved" "true" "$(grep -qF -- '- Edge case 1' <<<"$content" && echo true || echo false)"
+  assert_eq "Dependencies section preserved" "true" "$(grep -qF '## Dependencies' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -379,12 +379,12 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/other-fields.md")
 
-  assert_eq "Topic field preserved" "true" "$(echo "$content" | grep -qF 'topic: other-fields' && echo true || echo false)"
-  assert_eq "Status field preserved" "true" "$(echo "$content" | grep -qF 'status: concluded' && echo true || echo false)"
-  assert_eq "Type field preserved" "true" "$(echo "$content" | grep -qF 'type: feature' && echo true || echo false)"
-  assert_eq "Date field preserved" "true" "$(echo "$content" | grep -qF 'date: 2024-08-01' && echo true || echo false)"
-  assert_eq "Superseded_by field preserved" "true" "$(echo "$content" | grep -qF 'superseded_by: newer-spec' && echo true || echo false)"
-  assert_eq "Source converted to object" "true" "$(echo "$content" | grep -qF -- '- name: topic-x' && echo true || echo false)"
+  assert_eq "Topic field preserved" "true" "$(grep -qF 'topic: other-fields' <<<"$content" && echo true || echo false)"
+  assert_eq "Status field preserved" "true" "$(grep -qF 'status: concluded' <<<"$content" && echo true || echo false)"
+  assert_eq "Type field preserved" "true" "$(grep -qF 'type: feature' <<<"$content" && echo true || echo false)"
+  assert_eq "Date field preserved" "true" "$(grep -qF 'date: 2024-08-01' <<<"$content" && echo true || echo false)"
+  assert_eq "Superseded_by field preserved" "true" "$(grep -qF 'superseded_by: newer-spec' <<<"$content" && echo true || echo false)"
+  assert_eq "Source converted to object" "true" "$(grep -qF -- '- name: topic-x' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -412,8 +412,8 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/empty-sources.md")
 
-  assert_eq "Frontmatter delimiters present" "true" "$(echo "$content" | grep -q '^---$' && echo true || echo false)"
-  assert_eq "Topic preserved" "true" "$(echo "$content" | grep -qF 'topic: empty-sources' && echo true || echo false)"
+  assert_eq "Frontmatter delimiters present" "true" "$(grep -q '^---$' <<<"$content" && echo true || echo false)"
+  assert_eq "Topic preserved" "true" "$(grep -qF 'topic: empty-sources' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -442,8 +442,8 @@ EOF
   run_migration
   content=$(cat "$SPEC_DIR/sources-last.md")
 
-  assert_eq "Source converted when last in frontmatter" "true" "$(echo "$content" | grep -qF -- '- name: final-topic' && echo true || echo false)"
-  assert_eq "Status added" "true" "$(echo "$content" | grep -qF 'status: incorporated' && echo true || echo false)"
+  assert_eq "Source converted when last in frontmatter" "true" "$(grep -qF -- '- name: final-topic' <<<"$content" && echo true || echo false)"
+  assert_eq "Status added" "true" "$(grep -qF 'status: incorporated' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -491,13 +491,13 @@ TESTEOF
   run_migration
   content=$(cat "$SPEC_DIR/body-with-hr.md")
 
-  assert_eq "Source converted with HR in body" "true" "$(echo "$content" | grep -qF -- '- name: my-discussion' && echo true || echo false)"
-  assert_eq "Status added with HR in body" "true" "$(echo "$content" | grep -qF 'status: incorporated' && echo true || echo false)"
-  assert_eq "Overview section preserved" "true" "$(echo "$content" | grep -qF '## Overview' && echo true || echo false)"
-  assert_eq "Dependencies section preserved" "true" "$(echo "$content" | grep -qF '## Dependencies' && echo true || echo false)"
-  assert_eq "Content after second HR preserved" "true" "$(echo "$content" | grep -qF '## More content after second HR' && echo true || echo false)"
-  assert_eq "Final paragraph preserved" "true" "$(echo "$content" | grep -qF 'Final paragraph.' && echo true || echo false)"
-  assert_eq "List item in body preserved" "true" "$(echo "$content" | grep -qF 'The plugin architecture' && echo true || echo false)"
+  assert_eq "Source converted with HR in body" "true" "$(grep -qF -- '- name: my-discussion' <<<"$content" && echo true || echo false)"
+  assert_eq "Status added with HR in body" "true" "$(grep -qF 'status: incorporated' <<<"$content" && echo true || echo false)"
+  assert_eq "Overview section preserved" "true" "$(grep -qF '## Overview' <<<"$content" && echo true || echo false)"
+  assert_eq "Dependencies section preserved" "true" "$(grep -qF '## Dependencies' <<<"$content" && echo true || echo false)"
+  assert_eq "Content after second HR preserved" "true" "$(grep -qF '## More content after second HR' <<<"$content" && echo true || echo false)"
+  assert_eq "Final paragraph preserved" "true" "$(grep -qF 'Final paragraph.' <<<"$content" && echo true || echo false)"
+  assert_eq "List item in body preserved" "true" "$(grep -qF 'The plugin architecture' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -548,13 +548,13 @@ TESTEOF
   run_migration
   content=$(cat "$SPEC_DIR/rich-body.md")
 
-  assert_eq "First source converted" "true" "$(echo "$content" | grep -qF -- '- name: topic-one' && echo true || echo false)"
-  assert_eq "Second source converted" "true" "$(echo "$content" | grep -qF -- '- name: topic-two' && echo true || echo false)"
-  assert_eq "Third source converted" "true" "$(echo "$content" | grep -qF -- '- name: topic-three' && echo true || echo false)"
-  assert_eq "Overview preserved" "true" "$(echo "$content" | grep -qF '## Overview' && echo true || echo false)"
-  assert_eq "Code block with quotes preserved" "true" "$(echo "$content" | grep -qF 'tick create "Task with quotes"' && echo true || echo false)"
-  assert_eq "Section after HR preserved" "true" "$(echo "$content" | grep -qF '## Another Section' && echo true || echo false)"
-  assert_eq "Table preserved" "true" "$(echo "$content" | grep -qF 'Column A' && echo true || echo false)"
+  assert_eq "First source converted" "true" "$(grep -qF -- '- name: topic-one' <<<"$content" && echo true || echo false)"
+  assert_eq "Second source converted" "true" "$(grep -qF -- '- name: topic-two' <<<"$content" && echo true || echo false)"
+  assert_eq "Third source converted" "true" "$(grep -qF -- '- name: topic-three' <<<"$content" && echo true || echo false)"
+  assert_eq "Overview preserved" "true" "$(grep -qF '## Overview' <<<"$content" && echo true || echo false)"
+  assert_eq "Code block with quotes preserved" "true" "$(grep -qF 'tick create "Task with quotes"' <<<"$content" && echo true || echo false)"
+  assert_eq "Section after HR preserved" "true" "$(grep -qF '## Another Section' <<<"$content" && echo true || echo false)"
+  assert_eq "Table preserved" "true" "$(grep -qF 'Column A' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -599,11 +599,11 @@ TESTEOF
   run_migration
   content=$(cat "$SPEC_DIR/has-hr-body.md")
 
-  assert_eq "Matching discussion added" "true" "$(echo "$content" | grep -qF -- '- name: has-hr-body' && echo true || echo false)"
-  assert_eq "Status set" "true" "$(echo "$content" | grep -qF 'status: incorporated' && echo true || echo false)"
-  assert_eq "Overview preserved" "true" "$(echo "$content" | grep -qF '## Overview' && echo true || echo false)"
-  assert_eq "Dependencies preserved" "true" "$(echo "$content" | grep -qF '## Dependencies' && echo true || echo false)"
-  assert_eq "Content after HR preserved" "true" "$(echo "$content" | grep -qF 'More content here.' && echo true || echo false)"
+  assert_eq "Matching discussion added" "true" "$(grep -qF -- '- name: has-hr-body' <<<"$content" && echo true || echo false)"
+  assert_eq "Status set" "true" "$(grep -qF 'status: incorporated' <<<"$content" && echo true || echo false)"
+  assert_eq "Overview preserved" "true" "$(grep -qF '## Overview' <<<"$content" && echo true || echo false)"
+  assert_eq "Dependencies preserved" "true" "$(grep -qF '## Dependencies' <<<"$content" && echo true || echo false)"
+  assert_eq "Content after HR preserved" "true" "$(grep -qF 'More content here.' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -690,15 +690,15 @@ TESTEOF
   run_migration
   content=$(cat "$SPEC_DIR/tick-core-pattern.md")
 
-  assert_eq "First of 8 sources converted" "true" "$(echo "$content" | grep -qF -- '- name: project-fundamentals' && echo true || echo false)"
-  assert_eq "Last of 8 sources converted" "true" "$(echo "$content" | grep -qF -- '- name: tui' && echo true || echo false)"
-  assert_eq "Overview preserved" "true" "$(echo "$content" | grep -qF '## Overview' && echo true || echo false)"
-  assert_eq "Inline code preserved" "true" "$(echo "$content" | grep -qF '`tasks.jsonl`' && echo true || echo false)"
-  assert_eq "Table preserved" "true" "$(echo "$content" | grep -qF '| Field | Type | Required |' && echo true || echo false)"
-  assert_eq "Code block with quotes preserved" "true" "$(echo "$content" | grep -qF 'tick create "Setup authentication"' && echo true || echo false)"
-  assert_eq "Dependencies after HR preserved" "true" "$(echo "$content" | grep -qF '## Dependencies' && echo true || echo false)"
-  assert_eq "Content after second HR preserved" "true" "$(echo "$content" | grep -qF '## More Content' && echo true || echo false)"
-  assert_eq "Final paragraph preserved" "true" "$(echo "$content" | grep -qF 'Final section with content.' && echo true || echo false)"
+  assert_eq "First of 8 sources converted" "true" "$(grep -qF -- '- name: project-fundamentals' <<<"$content" && echo true || echo false)"
+  assert_eq "Last of 8 sources converted" "true" "$(grep -qF -- '- name: tui' <<<"$content" && echo true || echo false)"
+  assert_eq "Overview preserved" "true" "$(grep -qF '## Overview' <<<"$content" && echo true || echo false)"
+  assert_eq "Inline code preserved" "true" "$(grep -qF '`tasks.jsonl`' <<<"$content" && echo true || echo false)"
+  assert_eq "Table preserved" "true" "$(grep -qF '| Field | Type | Required |' <<<"$content" && echo true || echo false)"
+  assert_eq "Code block with quotes preserved" "true" "$(grep -qF 'tick create "Setup authentication"' <<<"$content" && echo true || echo false)"
+  assert_eq "Dependencies after HR preserved" "true" "$(grep -qF '## Dependencies' <<<"$content" && echo true || echo false)"
+  assert_eq "Content after second HR preserved" "true" "$(grep -qF '## More Content' <<<"$content" && echo true || echo false)"
+  assert_eq "Final paragraph preserved" "true" "$(grep -qF 'Final section with content.' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -729,10 +729,10 @@ TESTEOF
   run_migration
   content=$(cat "$SPEC_DIR/evvi-pattern.md")
 
-  assert_eq "Legacy H1 unchanged" "true" "$(echo "$content" | grep -qF '# Specification: API Design' && echo true || echo false)"
-  assert_eq "Legacy status line present" "true" "$(echo "$content" | grep -qF 'Status' && echo true || echo false)"
-  assert_eq "Body unchanged" "true" "$(echo "$content" | grep -qF '## API Philosophy' && echo true || echo false)"
-  assert_eq "More content unchanged" "true" "$(echo "$content" | grep -qF '## More Content' && echo true || echo false)"
+  assert_eq "Legacy H1 unchanged" "true" "$(grep -qF '# Specification: API Design' <<<"$content" && echo true || echo false)"
+  assert_eq "Legacy status line present" "true" "$(grep -qF 'Status' <<<"$content" && echo true || echo false)"
+  assert_eq "Body unchanged" "true" "$(grep -qF '## API Philosophy' <<<"$content" && echo true || echo false)"
+  assert_eq "More content unchanged" "true" "$(grep -qF '## More Content' <<<"$content" && echo true || echo false)"
 
   teardown
 }

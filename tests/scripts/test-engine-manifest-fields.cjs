@@ -1,15 +1,18 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine manifest` — the manifest field surface.
+// `engine manifest` — the manifest field surface (domain/fields.cjs).
 //
-// Pins the ruled output split: reads (get/exists/list/key-of/resolve) print
+// Pins the ruled output split: reads (get/exists/list/key-of) print
 // bare stdout with the `Error: …` stderr exit-code convention (2 = expected
-// miss); mutations (set/push/pull/delete) answer
-// with the engine's one-line JSON response and fail as {ok:false} stderr
-// exit 1. The full behavioural matrix lives in the contract suite
-// (tests/scripts/test-engine-manifest.sh); this file pins the namespace
-// dispatch, the JSON shapes, and set batching.
+// miss); mutations (set/push/pull/delete) answer with the engine's one-line
+// JSON response and fail as {ok:false} stderr exit 1. Then the batched set
+// under the writer lock, `apply`, the two set grammars, and the guards on
+// the vocabulary and the phases tree.
+// The shell suite (test-engine-manifest.sh) drives much of the same surface
+// through the CLI; where the two overlap, this file is the home.
+//
+// Layer: verb. World: a plain temp project per test (setupFixture).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -19,8 +22,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn, spawnSync } = require('child_process');
+const { spawnSync } = require('child_process');
 
+const { setupFixture, cleanupFixture } = require('./discovery-test-utils.cjs');
 const harness = require('./engine-harness.cjs');
 
 const { ENGINE } = harness;
@@ -39,7 +43,7 @@ const runFails = (dir, args) => harness.refuses(dir, ['manifest', ...args]);
 
 /** @param {string} dir @param {string} name @param {string} workType */
 function writeWorkUnit(dir, name, workType, extra = {}) {
-  const wuDir = path.join(dir, '.workflows', name);
+  const wuDir = path.join(dir, '.ledger', name);
   fs.mkdirSync(wuDir, { recursive: true });
   fs.writeFileSync(path.join(wuDir, 'manifest.json'), JSON.stringify({
     name,
@@ -50,7 +54,7 @@ function writeWorkUnit(dir, name, workType, extra = {}) {
     phases: {},
     ...extra,
   }, null, 2) + '\n');
-  const projPath = path.join(dir, '.workflows', 'manifest.json');
+  const projPath = path.join(dir, '.ledger', 'manifest.json');
   const proj = fs.existsSync(projPath) ? JSON.parse(fs.readFileSync(projPath, 'utf8')) : {};
   proj.work_units = proj.work_units || {};
   proj.work_units[name] = { work_type: workType };
@@ -58,13 +62,13 @@ function writeWorkUnit(dir, name, workType, extra = {}) {
 }
 
 function readWorkUnit(dir, name) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', name, 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.ledger', name, 'manifest.json'), 'utf8'));
 }
 
 describe('engine manifest — reads keep the CLI stdout contract', () => {
   let dir;
-  beforeEach(() => { dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-fields-'))); });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  beforeEach(() => { dir = setupFixture('engine-fields-'); });
+  afterEach(() => { cleanupFixture(dir); });
 
   it('get: scalar raw, subtree pretty JSON, missing path empty exit 0', () => {
     writeWorkUnit(dir, 'auth', 'feature');
@@ -95,7 +99,7 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
     }
   });
 
-  it('list: [] without .workflows, full manifests with filters', () => {
+  it('list: [] without .ledger, full manifests with filters', () => {
     assert.strictEqual(runOk(dir, ['list']), '[]\n');
     writeWorkUnit(dir, 'auth', 'feature');
     writeWorkUnit(dir, 'payments', 'epic');
@@ -107,25 +111,12 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
 
   it('key-of: bare key on stdout; a missing value is an expected miss (exit 2)', () => {
     writeWorkUnit(dir, 'auth', 'feature', {
-      phases: { planning: { items: { auth: { task_map: { 'auth-1-1': 'tick-abc' } } } } },
+      phases: { implementation: { items: { auth: { task_map: { 'auth-1-1': 'tick-abc' } } } } },
     });
-    assert.strictEqual(runOk(dir, ['key-of', 'auth.planning.auth', 'task_map', 'tick-abc']), 'auth-1-1\n');
-    const miss = run(dir, ['key-of', 'auth.planning.auth', 'task_map', 'tick-zzz']);
+    assert.strictEqual(runOk(dir, ['key-of', 'auth.implementation.auth', 'task_map', 'tick-abc']), 'auth-1-1\n');
+    const miss = run(dir, ['key-of', 'auth.implementation.auth', 'task_map', 'tick-zzz']);
     assert.strictEqual(miss.code, 2);
     assert.match(miss.stderr, /^Error: Value "tick-zzz" not found/);
-  });
-
-  it('resolve: artifact paths for indexed phases; missing work unit is exit 2', () => {
-    writeWorkUnit(dir, 'auth', 'feature');
-    assert.strictEqual(
-      runOk(dir, ['resolve', 'auth.discussion.auth']),
-      path.join(dir, '.workflows/auth/discussion/auth.md') + '\n'
-    );
-    const miss = run(dir, ['resolve', 'ghost.discussion.foo']);
-    assert.strictEqual(miss.code, 2);
-    const planning = run(dir, ['resolve', 'auth.planning.auth']);
-    assert.strictEqual(planning.code, 1);
-    assert.match(planning.stderr, /not indexed/);
   });
 
   it('read errors keep the CLI convention: Error: line on stderr, never JSON', () => {
@@ -139,7 +130,7 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
     // A large multi-line read so `head -1` closes stdout mid-write.
     const big = { name: 'auth', work_type: 'feature', status: 'in-progress', phases: {} };
     for (let i = 0; i < 5000; i++) big['field' + i] = 'value ' + i;
-    const wuDir = path.join(dir, '.workflows', 'auth');
+    const wuDir = path.join(dir, '.ledger', 'auth');
     fs.mkdirSync(wuDir, { recursive: true });
     fs.writeFileSync(path.join(wuDir, 'manifest.json'), JSON.stringify(big, null, 2) + '\n');
 
@@ -151,8 +142,8 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
 
 describe('engine manifest — mutations answer with the engine JSON contract', () => {
   let dir;
-  beforeEach(() => { dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-fields-'))); });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  beforeEach(() => { dir = setupFixture('engine-fields-'); });
+  afterEach(() => { cleanupFixture(dir); });
 
   it('set: one-line JSON listing what was written', () => {
     writeWorkUnit(dir, 'auth', 'feature');
@@ -184,49 +175,13 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     assert.strictEqual(readWorkUnit(dir, 'auth').description, 'Fixture', 'batch must be all-or-nothing');
   });
 
-  it('schema validation is unchanged: statuses, work types, gate modes', () => {
+  it('schema validation is unchanged: statuses, work types', () => {
     writeWorkUnit(dir, 'auth', 'feature');
     assert.match(runFails(dir, ['set', 'auth.discussion.auth', 'status', 'concluded']).error, /Invalid status/);
     assert.match(runFails(dir, ['set', 'auth', 'work_type', 'saga']).error, /Invalid work_type/);
-    assert.match(runFails(dir, ['set', 'auth.planning.auth', 'task_gate_mode', 'manual']).error, /Invalid gate mode/);
-    for (const mode of ['gated', 'auto', 'bounded']) {
-      runJson(dir, ['set', 'auth.implementation.auth', 'task_gate_mode', mode]);
-      assert.strictEqual(readWorkUnit(dir, 'auth').phases.implementation.items.auth.task_gate_mode, mode);
-    }
-    assert.match(runFails(dir, ['set', 'auth.discovery.topic', 'status', 'in-progress']).error, /carry no status field/);
+    assert.strictEqual(runFails(dir, ['set', 'auth.discovery.topic', 'status', 'in-progress']).error,
+      'Phase "discovery" items carry no status field — lifecycle is computed at render time; create map items with `engine topic add`');
     assert.match(runFails(dir, ['set', 'ghost', 'status', 'completed']).error, /Work unit "ghost" not found/);
-  });
-
-  it('a gate lands only on the phase the schema places it, and bounded only where the gate has a bound', () => {
-    writeWorkUnit(dir, 'auth', 'feature');
-    // The door refuses a gate on the wrong phase — before the value can land
-    // where no flow reads it.
-    assert.match(runFails(dir, ['set', 'auth.planning.auth', 'task_gate_mode', 'auto']).error,
-      /"task_gate_mode" is a gate of the implementation phase — write it on that phase's item/);
-    assert.match(runFails(dir, ['set', 'auth.implementation.auth', 'construction_gate_mode', 'auto']).error,
-      /is a gate of the specification phase/);
-    assert.match(runFails(dir, ['set', 'auth.implementation.auth', 'ghost_gate_mode', 'gated']).error,
-      /"ghost_gate_mode" is not a gate the schema knows — gates by phase: planning: /);
-    // finding_gate_mode is a gate of two phases — both accept it.
-    runJson(dir, ['set', 'auth.planning.auth', 'finding_gate_mode', 'auto']);
-    runJson(dir, ['set', 'auth.specification.auth', 'finding_gate_mode', 'auto']);
-    // bounded reaches only a gate with a declared bound; the refusal names them.
-    runJson(dir, ['set', 'auth.implementation.auth', 'fix_gate_mode', 'bounded']);
-    assert.match(runFails(dir, ['set', 'auth.implementation.auth', 'consolidation_gate_mode', 'bounded']).error,
-      /"bounded" is not defined for "consolidation_gate_mode" — the gate has no bound; gates with a bound: implementation\.task_gate_mode \(plan-phase\), implementation\.fix_gate_mode \(plan-phase\)/);
-    assert.match(runFails(dir, ['set', 'auth.planning.auth', 'task_list_gate_mode', 'bounded']).error, /has no bound/);
-    // A walk's own gate takes gated/auto and never a bound.
-    runJson(dir, ['set', 'auth.review.auth', 'staging.c1.gate_mode', 'auto']);
-    assert.match(runFails(dir, ['set', 'auth.review.auth', 'staging.c1.gate_mode', 'bounded']).error, /a walk's gate has no bound/);
-    assert.match(runFails(dir, ['set', 'auth.discovery', 'analysis_staging.discovery-gap-analysis.gate_mode', 'bounded']).error, /a walk's gate has no bound/);
-    // Vocabulary still fails first, and a batch with one bad gate writes nothing.
-    assert.match(runFails(dir, ['set', 'auth.implementation.auth', 'task_gate_mode', 'manual']).error, /Invalid gate mode/);
-    assert.match(runFails(dir, ['set', 'auth.implementation.auth', 'task_gate_mode=gated', 'consolidation_gate_mode=bounded']).error, /has no bound/);
-    const m = readWorkUnit(dir, 'auth');
-    assert.strictEqual(m.phases.implementation.items.auth.fix_gate_mode, 'bounded', 'the earlier accepted write stands');
-    assert.strictEqual(m.phases.implementation.items.auth.task_gate_mode, undefined, 'the refused batch wrote nothing — not even its valid pair');
-    assert.strictEqual(m.phases.implementation.items.auth.consolidation_gate_mode, undefined);
-    assert.strictEqual(m.phases.planning.items.auth.task_gate_mode, undefined, 'the wrong-phase write landed nothing');
   });
 
   it('a typed field refuses NON-string values — number, boolean, ~→null, object bypass nothing', () => {
@@ -237,8 +192,6 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     assert.match(runFails(dir, ['set', 'auth', 'status', 'true']).error, /Invalid status true\b/);
     assert.match(runFails(dir, ['set', 'auth', 'status', '~']).error, /Invalid status null\b/);
     assert.match(runFails(dir, ['set', 'auth', 'work_type', '42']).error, /Invalid work_type 42\b/);
-    assert.match(runFails(dir, ['set', 'auth.planning.auth', 'task_gate_mode', '5']).error, /Invalid gate mode 5\b/);
-    assert.match(runFails(dir, ['set', 'auth.planning.auth', 'fix_gate_mode', '{}']).error, /Invalid gate mode \{\}/);
     assert.match(runFails(dir, ['set', 'auth.discussion.auth', 'status', '3']).error, /Invalid status 3 for phase "discussion"/);
     // None of the refused writes touched the manifest.
     const m = readWorkUnit(dir, 'auth');
@@ -257,7 +210,7 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     writeWorkUnit(dir, 'auth', 'feature');
     assert.strictEqual(runJson(dir, ['set', 'auth.implementation.auth', 'fix_attempts', '3']).set.fix_attempts, 3);
     assert.strictEqual(runJson(dir, ['set', 'auth.implementation.auth', 'current_task', '~']).set.current_task, null);
-    assert.deepStrictEqual(runJson(dir, ['set', 'auth.planning.auth', 'task_map', '{"a":"b"}']).set.task_map, { a: 'b' });
+    assert.deepStrictEqual(runJson(dir, ['set', 'auth.implementation.auth', 'task_map', '{"a":"b"}']).set.task_map, { a: 'b' });
     const item = readWorkUnit(dir, 'auth').phases.implementation.items.auth;
     assert.strictEqual(item.fix_attempts, 3);
     assert.strictEqual(item.current_task, null);
@@ -276,7 +229,7 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
   it('push failure releases the lock (the old CLI leaked it)', () => {
     writeWorkUnit(dir, 'auth', 'feature');
     runFails(dir, ['push', 'auth', 'status', 'x']);
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/auth/.lock')), 'no lock left behind on a failed mutation');
+    assert.ok(!fs.existsSync(path.join(dir, '.ledger/auth/.lock')), 'no lock left behind on a failed mutation');
   });
 
   it('pull: removed true with new length, removed false on any no-op', () => {
@@ -336,43 +289,47 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     assert.strictEqual(run(dir, ['exists', 'project.defaults.plan_format']).stdout, 'false\n');
   });
 
+  it('refuses set, push, pull and delete on the project\'s project_id, or under it, leaving the manifest as it was: the engine mints it with the state, and it never changes (16.13.5)', () => {
+    const file = path.join(dir, '.ledger', 'manifest.json');
+    const before = fs.readFileSync(file, 'utf8');
+    for (const args of [['set', 'project.project_id', 'another'], ['set', 'project.project_id.part', 'x'], ['push', 'project.project_id', 'x'], ['pull', 'project.project_id', 'x'], ['delete', 'project.project_id']]) {
+      assert.strictEqual(runFails(dir, args).error, 'project_id is the engine\'s own: it mints it as it creates the state, and it never changes', args.join(' '));
+    }
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
+    assert.strictEqual(runOk(dir, ['get', 'project.project_id']), `${JSON.parse(before).project_id}\n`);
+  });
+
   it('retired CLI commands and unknown sub-verbs refuse with the generic usage', () => {
     for (const verb of ['init', 'init-phase', 'project', 'create-discovery-topic', 'frobnicate']) {
       const err = runFails(dir, [verb]);
-      assert.match(err.error, /Usage: engine manifest <get\|set\|push\|pull\|delete\|apply\|exists\|list\|key-of\|resolve>/);
+      assert.match(err.error, /Usage: engine manifest <get\|set\|push\|pull\|delete\|apply\|exists\|list\|key-of>/);
     }
   });
 });
 
 describe('engine manifest — the batched set holds the work-unit lock', () => {
   let dir;
-  beforeEach(() => { dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-fields-'))); });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  beforeEach(() => { dir = setupFixture('engine-fields-'); });
+  afterEach(() => { cleanupFixture(dir); });
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-  it('a fresh .lock blocks a batched set until released — nothing lands early, everything lands together', async () => {
+  it('a held writer lock blocks a batched set until released — nothing lands early, everything lands together', (t) => {
     writeWorkUnit(dir, 'auth', 'feature', { phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
-    const lock = path.join(dir, '.workflows/auth/.lock');
-    fs.writeFileSync(lock, '12345');
+    const lock = harness.holdLock(path.join(dir, '.ledger/.lock'));
+    const item = () => JSON.parse(fs.readFileSync(path.join(dir, '.ledger/auth/manifest.json'), 'utf8')).phases.discussion.items.auth;
+    /** @type {unknown[]} */
+    const whileHeld = [];
+    // The peer lets go at the set's second attempt: it found the lock held, and waited.
+    const attempts = harness.lockAttempts(t, lock, (taken) => {
+      whileHeld.push(item().review_cycle);
+      if (taken === 2) fs.unlinkSync(lock);
+    });
 
-    const child = spawn('node', [ENGINE, 'manifest', 'set', 'auth.discussion.auth', 'review_cycle=2', 'date=2026-07-18'], { cwd: dir });
-    let stdout = '';
-    child.stdout.on('data', (c) => { stdout += c; });
-    // 'close', not 'exit': stdout must be fully flushed before it is parsed.
-    const exit = new Promise((resolve) => child.on('close', resolve));
+    const res = runJson(dir, ['set', 'auth.discussion.auth', 'review_cycle=2', 'date=2026-07-18']);
 
-    const raced = await Promise.race([exit.then(() => 'exited'), sleep(1500).then(() => 'waiting')]);
-    assert.strictEqual(raced, 'waiting', 'batched set must wait on a live lock');
-    const before = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/auth/manifest.json'), 'utf8'));
-    assert.strictEqual(before.phases.discussion.items.auth.review_cycle, undefined, 'no field lands while the lock is held');
-
-    fs.unlinkSync(lock);
-    assert.strictEqual(await exit, 0);
-    assert.strictEqual(JSON.parse(stdout.trim()).ok, true);
-    const after = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/auth/manifest.json'), 'utf8'));
-    assert.strictEqual(after.phases.discussion.items.auth.review_cycle, 2);
-    assert.strictEqual(after.phases.discussion.items.auth.date, '2026-07-18');
+    assert.deepStrictEqual(attempts, ['taken', 'taken', 'made']);
+    assert.deepStrictEqual(whileHeld, [undefined, undefined], 'no field lands while the lock is held');
+    assert.strictEqual(res.ok, true);
+    assert.deepStrictEqual([item().review_cycle, item().date], [2, '2026-07-18']);
     assert.ok(!fs.existsSync(lock), 'lock released after the batch');
   });
 });
@@ -380,24 +337,75 @@ describe('engine manifest — the batched set holds the work-unit lock', () => {
 describe('engine manifest apply — the batch form of set/delete (D7)', () => {
   let dir;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'manifest-apply-'));
+    dir = setupFixture('manifest-apply-');
     writeWorkUnit(dir, 'payments', 'epic', {
       phases: {
         specification: { items: {
-          'stale-group': { status: 'proposed', sources: { alpha: { status: 'pending' } } },
+          'stale-group': { status: 'in-progress', sources: { alpha: { status: 'pending' } } },
           anchor: { status: 'in-progress', sources: { alpha: { status: 'incorporated' } } },
         } },
-        planning: { items: { portal: { status: 'in-progress', external_dependencies: { billing: { state: 'unresolved', description: 'invoice ids' } } } } },
+        implementation: { items: { portal: { status: 'in-progress', external_dependencies: { billing: { state: 'unresolved', description: 'invoice ids' } } } } },
       },
     });
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  afterEach(() => cleanupFixture(dir));
 
   function payload(ops) {
     const p = path.join(dir, 'ops.json');
     fs.writeFileSync(p, JSON.stringify(ops));
     return p;
   }
+
+  it('refuses set, push, pull, delete and apply on the unit\'s landing record, or under it, the manifest byte-unchanged: the land verbs write it (landing-record.cjs)', () => {
+    const file = path.join(dir, '.ledger', 'payments', 'manifest.json');
+    const before = fs.readFileSync(file, 'utf8');
+    const refusal = '"landings" is the engine\'s own landing record: a land verb writes it as it lands a task, and a verb acting on a landing as it reads one made by hand';
+    for (const args of [
+      ['set', 'payments', 'landings.payments-1-1', '{}'],
+      ['push', 'payments', 'landings', 'x'],
+      ['pull', 'payments', 'landings', 'x'],
+      ['delete', 'payments', 'landings'],
+      ['apply', 'payments', '--file', payload([{ op: 'set', path: 'payments', fields: { 'landings.payments-1-1.x.by': 'read' } }])],
+      ['apply', 'payments', '--file', payload([{ op: 'delete', path: 'payments', field: 'landings.payments-1-1' }])],
+    ]) {
+      assert.strictEqual(runFails(dir, args).error, refusal, args.join(' '));
+    }
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
+  });
+
+  it('refuses set, push, pull, delete and apply on the pull requests the unit\'s cancel closed, or under them, the manifest byte-unchanged: the cancel writes them (18.3.9)', () => {
+    const file = path.join(dir, '.ledger', 'payments', 'manifest.json');
+    const before = fs.readFileSync(file, 'utf8');
+    const refusal = '"closed_by_cancel" is the engine\'s own: the unit\'s cancel writes it as it closes the unit\'s pull requests, and every landing after reads them as none while they stay closed';
+    for (const args of [
+      ['set', 'payments', 'closed_by_cancel.0.lib', '[]'],
+      ['push', 'payments', 'closed_by_cancel', 'x'],
+      ['delete', 'payments', 'closed_by_cancel'],
+      ['apply', 'payments', '--file', payload([{ op: 'set', path: 'payments', fields: { 'closed_by_cancel.0.ext': '["1"]' } }])],
+    ]) {
+      assert.strictEqual(runFails(dir, args).error, refusal, args.join(' '));
+    }
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
+  });
+
+  it('refuses set, push, pull, delete and apply on the unit\'s own branch, build.branch, or on build whole, the manifest byte-unchanged: the first phase start\'s close writes it (7.2.35)', () => {
+    const file = path.join(dir, '.ledger', 'payments', 'manifest.json');
+    const before = fs.readFileSync(file, 'utf8');
+    const refusal = '"build.branch" is the engine\'s own: the first phase start\'s close of the build writes it as it makes the unit\'s branch, and it never changes';
+    for (const args of [
+      ['set', 'payments', 'build.branch', 'feat/payments'],
+      ['set', 'payments', 'build', '{"position":"auto"}'],
+      ['push', 'payments', 'build.branch', 'x'],
+      ['pull', 'payments', 'build.branch', 'x'],
+      ['delete', 'payments', 'build.branch'],
+      ['delete', 'payments', 'build'],
+      ['apply', 'payments', '--file', payload([{ op: 'set', path: 'payments', fields: { 'build.branch': 'feat/payments' } }])],
+      ['apply', 'payments', '--file', payload([{ op: 'delete', path: 'payments', field: 'build' }])],
+    ]) {
+      assert.strictEqual(runFails(dir, args).error, refusal, args.join(' '));
+    }
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
+  });
 
   it('order refuses the push route — a scalar never becomes an array', () => {
     const err = runFails(dir, ['push', 'payments.specification.anchor', 'order', '3']);
@@ -422,7 +430,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
 
   it('applies mixed set and delete ops across dotpaths in one call', () => {
     const file = payload([
-      { op: 'set', path: 'payments.planning.portal', fields: { 'external_dependencies.billing.state': 'resolved', 'external_dependencies.billing.internal_id': 'billing-1-2' } },
+      { op: 'set', path: 'payments.implementation.portal', fields: { 'external_dependencies.billing.state': 'resolved', 'external_dependencies.billing.internal_id': 'billing-1-2' } },
       { op: 'set', path: 'payments.specification.anchor', fields: { 'sources.beta.status': 'pending' } },
       { op: 'delete', path: 'payments.specification', field: 'items.stale-group' },
     ]);
@@ -430,8 +438,8 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     assert.strictEqual(res.applied, 3);
     assert.deepStrictEqual(res.ops[2], { path: 'payments.specification', deleted: 'items.stale-group' });
     const m = readWorkUnit(dir, 'payments');
-    assert.strictEqual(m.phases.planning.items.portal.external_dependencies.billing.state, 'resolved');
-    assert.strictEqual(m.phases.planning.items.portal.external_dependencies.billing.internal_id, 'billing-1-2');
+    assert.strictEqual(m.phases.implementation.items.portal.external_dependencies.billing.state, 'resolved');
+    assert.strictEqual(m.phases.implementation.items.portal.external_dependencies.billing.internal_id, 'billing-1-2');
     assert.strictEqual(m.phases.specification.items.anchor.sources.beta.status, 'pending');
     assert.strictEqual(m.phases.specification.items['stale-group'], undefined);
   });
@@ -439,18 +447,18 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
   it('a cancelled item takes no status write — set, batch, and apply refuse it, nothing written', () => {
     const m = readWorkUnit(dir, 'payments');
     m.phases.specification.items.dropped = { status: 'cancelled', previous_status: 'completed', previous_order: 1, sources: { beta: { status: 'incorporated' } } };
-    fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
-    const refusal = /specification item "dropped" is cancelled — reactivate it instead \(engine topic reactivate payments specification dropped\)/;
-    assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status', 'proposed']).error, refusal);
-    assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status=proposed', 'sources.gamma.status=pending']).error, refusal);
+    fs.writeFileSync(path.join(dir, '.ledger', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    const refusal = /specification item "dropped" is cancelled — reactivate it instead \(engine topic reactivate\)/;
+    assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status', 'in-progress']).error, refusal);
+    assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status=in-progress', 'sources.gamma.status=pending']).error, refusal);
     assert.match(runFails(dir, ['apply', 'payments', '--file', payload([
-      { op: 'set', path: 'payments.planning.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },
-      { op: 'set', path: 'payments.specification.dropped', fields: { status: 'proposed', 'sources.gamma.status': 'pending' } },
+      { op: 'set', path: 'payments.implementation.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },
+      { op: 'set', path: 'payments.specification.dropped', fields: { status: 'in-progress', 'sources.gamma.status': 'pending' } },
     ])]).error, refusal);
     const after = readWorkUnit(dir, 'payments');
     assert.deepStrictEqual(after.phases.specification.items.dropped,
       { status: 'cancelled', previous_status: 'completed', previous_order: 1, sources: { beta: { status: 'incorporated' } } }, 'the stash survives');
-    assert.strictEqual(after.phases.planning.items.portal.external_dependencies.billing.state, 'unresolved', 'the refused batch wrote nothing');
+    assert.strictEqual(after.phases.implementation.items.portal.external_dependencies.billing.state, 'unresolved', 'the refused batch wrote nothing');
     // Fields other than status stay writable — the item is inert, not sealed.
     runJson(dir, ['set', 'payments.specification.dropped', 'sources.beta.status', 'pending']);
     assert.strictEqual(readWorkUnit(dir, 'payments').phases.specification.items.dropped.sources.beta.status, 'pending');
@@ -459,20 +467,20 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
   it('a cancelled item takes no delete either — the whole item, a field of it, and an apply delete op refuse, the manifest byte-unchanged', () => {
     const m = readWorkUnit(dir, 'payments');
     m.phases.specification.items.dropped = { status: 'cancelled', previous_status: 'completed', previous_order: 1, sources: { beta: { status: 'incorporated' } } };
-    m.phases.research = { items: { shelved: { status: 'cancelled', previous_status: 'completed' } } };
-    const manifestPath = path.join(dir, '.workflows', 'payments', 'manifest.json');
+    m.phases.discussion = { items: { shelved: { status: 'cancelled', previous_status: 'completed' } } };
+    const manifestPath = path.join(dir, '.ledger', 'payments', 'manifest.json');
     fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2) + '\n');
     const before = fs.readFileSync(manifestPath, 'utf8');
-    const refusal = /specification item "dropped" is cancelled — reactivate it instead \(engine topic reactivate payments specification dropped\)/;
+    const refusal = /specification item "dropped" is cancelled — reactivate it instead \(engine topic reactivate\)/;
     assert.match(runFails(dir, ['delete', 'payments.specification', 'items.dropped']).error, refusal);
     assert.match(runFails(dir, ['delete', 'payments.specification.dropped', 'previous_order']).error, refusal);
     assert.match(runFails(dir, ['delete', 'payments.specification.dropped', 'sources.beta']).error, refusal);
     // The address names the unit that frees the item — discovery for a
-    // research or discussion item.
-    assert.match(runFails(dir, ['delete', 'payments.research', 'items.shelved']).error,
-      /research item "shelved" is cancelled — reactivate it instead \(engine topic reactivate payments discovery shelved\)/);
+    // discussion item.
+    assert.match(runFails(dir, ['delete', 'payments.discussion', 'items.shelved']).error,
+      /discussion item "shelved" is cancelled — reactivate it instead \(engine topic reactivate payments discovery shelved\)/);
     assert.match(runFails(dir, ['apply', 'payments', '--file', payload([
-      { op: 'set', path: 'payments.planning.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },
+      { op: 'set', path: 'payments.implementation.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },
       { op: 'delete', path: 'payments.specification', field: 'items.dropped' },
     ])]).error, refusal);
     assert.strictEqual(fs.readFileSync(manifestPath, 'utf8'), before, 'nothing written');
@@ -484,7 +492,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
   it('a postponed item takes no status write and no delete either — the refusal names the roadmap', () => {
     const m = readWorkUnit(dir, 'payments');
     m.phases.discussion = { items: { shelved: { status: 'postponed', previous_status: 'in-progress' } } };
-    const manifestPath = path.join(dir, '.workflows', 'payments', 'manifest.json');
+    const manifestPath = path.join(dir, '.ledger', 'payments', 'manifest.json');
     fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2) + '\n');
     const before = fs.readFileSync(manifestPath, 'utf8');
     const refusal = /discussion item "shelved" is postponed — pull it forward from the roadmap instead/;
@@ -494,57 +502,40 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     assert.strictEqual(fs.readFileSync(manifestPath, 'utf8'), before, 'nothing written');
   });
 
-  it('a promoted item takes no status write and no delete either — the refusal names the unit it moved to', () => {
-    const m = readWorkUnit(dir, 'payments');
-    m.phases.discussion = { items: { fees: { status: 'promoted', promoted_to: 'billing-cc' } } };
-    m.phases.specification.items.billing = { status: 'promoted', promoted_to: 'billing-cc', sources: { fees: { status: 'incorporated' } } };
-    const manifestPath = path.join(dir, '.workflows', 'payments', 'manifest.json');
-    fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2) + '\n');
-    const before = fs.readFileSync(manifestPath, 'utf8');
-    const discussion = /discussion item "fees" is promoted \(to "billing-cc"\) — promotion is terminal; continue it from the cross-cutting work unit/;
-    assert.match(runFails(dir, ['set', 'payments.discussion.fees', 'status', 'completed']).error, discussion);
-    assert.match(runFails(dir, ['delete', 'payments.discussion', 'items.fees']).error, discussion);
-    assert.match(runFails(dir, ['delete', 'payments.discussion.fees', 'promoted_to']).error, discussion);
-    // A grouping landing on a promoted specification's key never overwrites it.
-    assert.match(runFails(dir, ['set', 'payments.specification.billing', 'status', 'proposed']).error,
-      /specification item "billing" is promoted \(to "billing-cc"\)/);
-    assert.strictEqual(fs.readFileSync(manifestPath, 'utf8'), before, 'nothing written');
-  });
-
   it('a failing delete aborts the whole batch — earlier sets do not persist', () => {
     const file = payload([
-      { op: 'set', path: 'payments.planning.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },
+      { op: 'set', path: 'payments.implementation.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },
       { op: 'delete', path: 'payments.specification', field: 'items.no-such-item' },
     ]);
     const err = runFails(dir, ['apply', 'payments', '--file', file]);
     assert.match(err.error, /nothing was applied/);
     const m = readWorkUnit(dir, 'payments');
-    assert.strictEqual(m.phases.planning.items.portal.external_dependencies.billing.state, 'unresolved', 'set from op 1 must not persist');
+    assert.strictEqual(m.phases.implementation.items.portal.external_dependencies.billing.state, 'unresolved', 'set from op 1 must not persist');
   });
 
   it('validates every op loudly before writing, naming the entry', () => {
     const cases = [
       [[{ op: 'merge', path: 'payments' }], /op 1 — "op" must be "set" or "delete"/],
       [[{ op: 'set', path: 'project.defaults', fields: { x: 1 } }], /op 1 — "path" must be/],
-      [[{ op: 'set', path: 'other-unit.planning.x', fields: { a: 1 } }], /op 1 — path "other-unit\.planning\.x" is outside work unit "payments"/],
-      [[{ op: 'set', path: 'payments.planning.portal', fields: {} }], /op 1 — "fields" must be a non-empty object/],
-      [[{ op: 'set', path: 'payments.planning.portal', fields: { status: 'nonsense' } }], /Invalid status/],
-      [[{ op: 'delete', path: 'payments.planning.portal', field: '' }], /op 1 — "field" must be a non-empty field path/],
+      [[{ op: 'set', path: 'other-unit.implementation.x', fields: { a: 1 } }], /op 1 — path "other-unit\.implementation\.x" is outside work unit "payments"/],
+      [[{ op: 'set', path: 'payments.implementation.portal', fields: {} }], /op 1 — "fields" must be a non-empty object/],
+      [[{ op: 'set', path: 'payments.implementation.portal', fields: { status: 'nonsense' } }], /Invalid status/],
+      [[{ op: 'delete', path: 'payments.implementation.portal', field: '' }], /op 1 — "field" must be a non-empty field path/],
     ];
     for (const [ops, re] of cases) {
       const err = runFails(dir, ['apply', 'payments', '--file', payload(ops)]);
       assert.match(err.error, re);
     }
     const m = readWorkUnit(dir, 'payments');
-    assert.strictEqual(m.phases.planning.items.portal.status, 'in-progress', 'nothing persisted across refused batches');
+    assert.strictEqual(m.phases.implementation.items.portal.status, 'in-progress', 'nothing persisted across refused batches');
   });
 
   it('values are native JSON — null is null, objects and numbers land typed', () => {
     const file = payload([
-      { op: 'set', path: 'payments.planning.portal', fields: { task: null, phase: 3, task_map: {} } },
+      { op: 'set', path: 'payments.implementation.portal', fields: { task: null, phase: 3, task_map: {} } },
     ]);
     runJson(dir, ['apply', 'payments', '--file', file]);
-    const item = readWorkUnit(dir, 'payments').phases.planning.items.portal;
+    const item = readWorkUnit(dir, 'payments').phases.implementation.items.portal;
     assert.strictEqual(item.task, null);
     assert.strictEqual(item.phase, 3);
     assert.deepStrictEqual(item.task_map, {});
@@ -560,10 +551,10 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
 describe('engine manifest set — two grammars, never mixed', () => {
   let dir;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'manifest-grammar-'));
+    dir = setupFixture('manifest-grammar-');
     writeWorkUnit(dir, 'auth', 'feature');
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  afterEach(() => cleanupFixture(dir));
 
   it('uniform batch: every pair assigned, first pair included', () => {
     const res = runJson(dir, ['set', 'auth', 'status=completed', 'note=hello']);
@@ -590,70 +581,63 @@ describe('engine manifest set — two grammars, never mixed', () => {
   });
 });
 
-describe('staging, candidate, and tracking state is vocabulary-guarded', () => {
+describe('experiment state and the instants are vocabulary-guarded', () => {
   let dir;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'staging-guard-'));
+    dir = setupFixture('state-guard-');
     writeWorkUnit(dir, 'pay', 'epic', { phases: {
-      review: { items: { pay: { status: 'in-progress' } } },
-      implementation: { items: { pay: { status: 'in-progress' } } },
-      planning: { items: { pay: { status: 'in-progress' } } },
+      experiment: { items: { pay: { status: 'in-progress' } } },
       discovery: { items: {} },
     } });
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  afterEach(() => cleanupFixture(dir));
 
-  it('staging task decisions take only the gate vocabulary', () => {
-    runJson(dir, ['set', 'pay.review.pay', 'staging.c1.gate_mode=gated', 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);
-    runJson(dir, ['set', 'pay.review.pay', 'staging.c1.tasks.1', 'approved']);
-    assert.match(runFails(dir, ['set', 'pay.review.pay', 'staging.c1.tasks.2', 'done']).error, /Invalid staging task status/);
-    assert.match(runFails(dir, ['set', 'pay.implementation.pay', 'staging.c2.tasks.1', 'yes']).error, /Invalid staging task status/);
+  it('the map\'s approval takes only an instant: anything else would read as no approval, the epic back in its discovery', () => {
+    for (const bad of ['true', '"2026-07-15"', '"soon"', '"2026-13-45T00:00:00Z"']) {
+      assert.match(runFails(dir, ['set', 'pay.discovery', 'approved_at', bad]).error, /Invalid approved_at .* must be an ISO-8601 UTC instant/, bad);
+    }
+    assert.strictEqual(readWorkUnit(dir, 'pay').phases.discovery.approved_at, undefined, 'nothing persisted');
+    runJson(dir, ['set', 'pay.discovery', 'approved_at', '2026-07-15T09:30:00.000Z']);
+    assert.strictEqual(readWorkUnit(dir, 'pay').phases.discovery.approved_at, '2026-07-15T09:30:00.000Z');
   });
 
-  it('candidate gate state takes only its vocabulary', () => {
-    runJson(dir, ['set', 'pay.discovery', 'analysis_staging.discovery-gap-analysis.gate_mode=gated',
-      'analysis_staging.discovery-gap-analysis.candidates.auth.status=pending']);
-    runJson(dir, ['set', 'pay.discovery', 'analysis_staging.discovery-gap-analysis.candidates.auth.status', 'resolved']);
-    assert.match(runFails(dir, ['set', 'pay.discovery', 'analysis_staging.discovery-gap-analysis.candidates.auth.status', 'maybe']).error,
-      /Invalid candidate status/);
-  });
-
-  it('tracking flips take only in-progress|complete', () => {
-    runJson(dir, ['set', 'pay.planning.pay', 'tracking.review-traceability-tracking-c1', 'in-progress']);
-    runJson(dir, ['set', 'pay.planning.pay', 'tracking.review-traceability-tracking-c1', 'complete']);
-    assert.match(runFails(dir, ['set', 'pay.planning.pay', 'tracking.review-integrity-tracking-c1', 'done']).error,
-      /Invalid tracking status/);
+  it('an investigation\'s close takes only an instant: anything else would leave the board no date to draw it by (P2)', () => {
+    writeWorkUnit(dir, 'crash', 'bugfix', { phases: { investigation: { items: { crash: { status: 'completed' } } } } });
+    for (const bad of ['true', '"2026-07-15"', '"soon"', '"2026-13-45T00:00:00Z"']) {
+      assert.match(runFails(dir, ['set', 'crash.investigation.crash', 'concluded_at', bad]).error, /Invalid concluded_at .* must be an ISO-8601 UTC instant/, bad);
+    }
+    assert.strictEqual(readWorkUnit(dir, 'crash').phases.investigation.items.crash.concluded_at, undefined, 'nothing persisted');
+    runJson(dir, ['set', 'crash.investigation.crash', 'concluded_at', '2026-07-15T09:30:00.000Z']);
+    assert.strictEqual(readWorkUnit(dir, 'crash').phases.investigation.items.crash.concluded_at, '2026-07-15T09:30:00.000Z');
   });
 
   it('the non-canonical spellings of guarded locations are refused, not silently unvalidated', () => {
     // work-unit level via a phases.-prefixed field
-    assert.match(runFails(dir, ['set', 'pay', 'phases.discovery.analysis_staging.discovery-gap-analysis.candidates.auth.status', 'bogus']).error,
+    assert.match(runFails(dir, ['set', 'pay', 'phases.experiment.items.pay.experiments.E1.status', 'bogus']).error,
       /"phases" is the phase tree itself/);
     // phase level via an items.-prefixed field — leaf and wholesale container alike
-    assert.match(runFails(dir, ['set', 'pay.review', 'items.pay.staging.c1.tasks.1', 'bogus']).error,
+    assert.match(runFails(dir, ['set', 'pay.experiment', 'items.pay.experiments.E1.status', 'bogus']).error,
       /"items" is the topic tree/);
-    assert.match(runFails(dir, ['set', 'pay.review', 'items.pay.staging', '{"c1":{"tasks":{"1":"bogus"}}}']).error,
+    assert.match(runFails(dir, ['set', 'pay.experiment', 'items.pay.experiments', '{"E1":{"status":"bogus"}}']).error,
       /"items" is the topic tree/);
-    const m = readWorkUnit(dir, 'pay');
-    assert.strictEqual(m.phases.discovery.analysis_staging, undefined, 'nothing persisted');
-    assert.strictEqual(m.phases.review.items.pay.staging, undefined, 'nothing persisted');
+    assert.strictEqual(readWorkUnit(dir, 'pay').phases.experiment.items.pay.experiments, undefined, 'nothing persisted');
   });
 
   it('push cannot seed a guarded container as an array', () => {
-    for (const field of ['staging', 'staging.c1.tasks', 'tracking.some-stem', 'analysis_staging.discovery-gap-analysis']) {
-      assert.match(runFails(dir, ['push', 'pay.review.pay', field, 'x']).error, /guarded state container/);
+    for (const field of ['experiments', 'experiments.E1']) {
+      assert.match(runFails(dir, ['push', 'pay.experiment.pay', field, 'x']).error, /guarded state container/);
     }
-    assert.strictEqual(readWorkUnit(dir, 'pay').phases.review.items.pay.staging, undefined, 'nothing persisted');
+    assert.strictEqual(readWorkUnit(dir, 'pay').phases.experiment.items.pay.experiments, undefined, 'nothing persisted');
   });
 });
 
 describe('work-unit-level fields never shadow the phases tree', () => {
   let dir;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shadow-guard-'));
+    dir = setupFixture('shadow-guard-');
     writeWorkUnit(dir, 'pay', 'feature');
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  afterEach(() => cleanupFixture(dir));
 
   it('set refuses a phase-name-headed field in both grammars', () => {
     const err = runFails(dir, ['set', 'pay', 'specification.foo', 'bar']);
@@ -662,23 +646,22 @@ describe('work-unit-level fields never shadow the phases tree', () => {
     assert.match(batch.error, /"discussion" is a phase/);
     const m = readWorkUnit(dir, 'pay');
     assert.strictEqual(m.specification, undefined);
-    assert.strictEqual(m.discussion, undefined);
     assert.strictEqual(m.description, 'Fixture', 'refused batch persisted nothing');
   });
 
   it('push and pull refuse a phase-name-headed field; apply routes set ops through the same guard', () => {
     assert.match(runFails(dir, ['push', 'pay', 'review.list', 'x']).error, /"review" is a phase/);
-    assert.match(runFails(dir, ['pull', 'pay', 'research.foo', 'x']).error, /"research" is a phase/);
+    assert.match(runFails(dir, ['pull', 'pay', 'discussion.foo', 'x']).error, /"discussion" is a phase/);
     const f = path.join(dir, 'ops.json');
-    fs.writeFileSync(f, JSON.stringify([{ op: 'set', path: 'pay', fields: { 'research.foo': 1 } }]));
-    assert.match(runFails(dir, ['apply', 'pay', '--file', f]).error, /"research" is a phase/);
-    assert.strictEqual(readWorkUnit(dir, 'pay').research, undefined, 'nothing persisted');
+    fs.writeFileSync(f, JSON.stringify([{ op: 'set', path: 'pay', fields: { 'discussion.foo': 1 } }]));
+    assert.match(runFails(dir, ['apply', 'pay', '--file', f]).error, /"discussion" is a phase/);
+    assert.strictEqual(readWorkUnit(dir, 'pay').discussion, undefined, 'nothing persisted');
   });
 
   it('reads and delete stay free so a stray tree can be inspected and repaired', () => {
     const m = readWorkUnit(dir, 'pay');
     m.specification = { foo: 'bar' };
-    fs.writeFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.ledger', 'pay', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
     assert.strictEqual(runOk(dir, ['get', 'pay', 'specification.foo']).trim(), 'bar');
     runJson(dir, ['delete', 'pay', 'specification']);
     assert.strictEqual(readWorkUnit(dir, 'pay').specification, undefined);
@@ -690,94 +673,5 @@ describe('work-unit-level fields never shadow the phases tree', () => {
     const m = readWorkUnit(dir, 'pay');
     assert.strictEqual(m.phases.specification.items.pay.status, 'in-progress');
     assert.strictEqual(m.description, 'updated');
-  });
-});
-
-describe('storage_paths is guarded at write time — set and apply', () => {
-  let dir;
-  beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'storage-paths-'));
-    writeWorkUnit(dir, 'pay', 'feature', { phases: { planning: { items: { pay: { status: 'in-progress' } } } } });
-  });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
-
-  it('set refuses traversal, absolute, dot, and non-array values; a legal array lands', () => {
-    for (const bad of ['\'["../evil"]\'', '\'["/abs"]\'', '\'["."]\'', '\'[""]\'', '"nope"']) {
-      const err = runFails(dir, ['set', 'pay.planning.pay', 'storage_paths', bad.replace(/^'|'$/g, '')]);
-      assert.match(err.error, /Invalid storage_paths/);
-    }
-    runJson(dir, ['set', 'pay.planning.pay', 'storage_paths', '[".tick/"]']);
-    assert.deepStrictEqual(readWorkUnit(dir, 'pay').phases.planning.items.pay.storage_paths, ['.tick/']);
-  });
-
-  it('apply routes storage_paths writes through the same guard', () => {
-    const p = path.join(dir, 'ops.json');
-    fs.writeFileSync(p, JSON.stringify([{ op: 'set', path: 'pay.planning.pay', fields: { storage_paths: ['../evil'] } }]));
-    const err = runFails(dir, ['apply', 'pay', '--file', p]);
-    assert.match(err.error, /Invalid storage_paths entry/);
-    assert.strictEqual(readWorkUnit(dir, 'pay').phases.planning.items.pay.storage_paths, undefined, 'nothing persisted');
-  });
-
-  it('push validates the one entry it appends — the write-time guard covers every route', () => {
-    for (const bad of ['../evil', '/abs', '.', '']) {
-      const err = runFails(dir, ['push', 'pay.planning.pay', 'storage_paths', bad]);
-      assert.match(err.error, /Invalid storage_paths/);
-    }
-    runJson(dir, ['push', 'pay.planning.pay', 'storage_paths', '.tick/']);
-    assert.deepStrictEqual(readWorkUnit(dir, 'pay').phases.planning.items.pay.storage_paths, ['.tick/']);
-  });
-
-  it('apply handles set-then-delete on the same item in array order (reconcile shape)', () => {
-    const p = path.join(dir, 'ops.json');
-    fs.writeFileSync(p, JSON.stringify([
-      { op: 'set', path: 'pay.planning.pay', fields: { 'sources.alpha.status': 'pending', 'sources.beta.status': 'pending' } },
-      { op: 'delete', path: 'pay.planning.pay', field: 'sources.alpha' },
-    ]));
-    runJson(dir, ['apply', 'pay', '--file', p]);
-    const item = readWorkUnit(dir, 'pay').phases.planning.items.pay;
-    assert.strictEqual(item.sources.alpha, undefined, 'later delete wins over earlier set');
-    assert.strictEqual(item.sources.beta.status, 'pending');
-  });
-});
-
-// The findings walk's dismissal exit: a free-text ground pushed onto the
-// phase item, read back by every later review dispatch, pulled off on
-// request. Untyped, so no guard stands between the walk and the write —
-// this pins that the plain push/pull/get route carries it at topic level.
-describe('dismissed_grounds — the per-topic do-not-report list', () => {
-  let dir;
-  beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dismissed-grounds-'));
-    writeWorkUnit(dir, 'overhaul', 'epic', {
-      phases: { research: { items: { alpha: { status: 'in-progress' } } } },
-    });
-  });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
-
-  const cost = 'Cost modelling for the vendor tier';
-  const region = 'Multi-region failover';
-
-  it('pushes at topic level, reads back, and pulls off on request', () => {
-    assert.strictEqual(runOk(dir, ['get', 'overhaul.research.alpha', 'dismissed_grounds']), '',
-      'absent until the first dismissal — the dispatch treats empty output as none');
-
-    assert.deepStrictEqual(runJson(dir, ['push', 'overhaul.research.alpha', 'dismissed_grounds', cost]),
-      { ok: true, path: 'overhaul.research.alpha', field: 'dismissed_grounds', pushed: cost, length: 1 });
-    runJson(dir, ['push', 'overhaul.research.alpha', 'dismissed_grounds', region]);
-    assert.deepStrictEqual(readWorkUnit(dir, 'overhaul').phases.research.items.alpha.dismissed_grounds,
-      [cost, region]);
-
-    assert.deepStrictEqual(runJson(dir, ['pull', 'overhaul.research.alpha', 'dismissed_grounds', region]),
-      { ok: true, path: 'overhaul.research.alpha', field: 'dismissed_grounds', removed: true, length: 1 });
-    assert.strictEqual(runOk(dir, ['get', 'overhaul.research.alpha', 'dismissed_grounds']),
-      JSON.stringify([cost], null, 2) + '\n');
-  });
-
-  it('is per-topic — a sibling topic keeps its own list', () => {
-    runJson(dir, ['set', 'overhaul.research.beta', 'status', 'in-progress']);
-    runJson(dir, ['push', 'overhaul.research.alpha', 'dismissed_grounds', cost]);
-    const items = readWorkUnit(dir, 'overhaul').phases.research.items;
-    assert.deepStrictEqual(items.alpha.dismissed_grounds, [cost]);
-    assert.strictEqual(items.beta.dismissed_grounds, undefined);
   });
 });

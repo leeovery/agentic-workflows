@@ -1,0 +1,458 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: `engine board <session-id> [--tab this|unit|all] [--unit
+// <work-unit>] [--page <ref> [--page-unit <work-unit>]]` — the
+// board's one read (§20),
+// answering its view model (board-model.cjs) for the gate mod, which calls
+// it after every engine call and every press. It takes no writer lock and
+// writes nothing, the conversation's mark among it, reading the tracker from
+// a copy of its store, with one exception every read of the ledger shares
+// (ledger.cjs): a landing rewrites the ledger before it moves the state
+// branch, so a read that finds the ledger departing from the branch takes
+// the writer lock — waiting while a catch-up landing runs, and finishing a
+// landing a kill cut short, which writes.
+//
+// - This session follows the conversation's position (20.3.3, 20.3.4): a
+//   phase's view while it is in one — the build, the review phase, a
+//   discussion, the specification, an epic's discovery, an experiment, a
+//   bug's investigation, a quick-fix's one session — the unit's page at its
+//   menu and in a phase whose view comes later (29.14.2), and All work at
+//   no place or a project-level place — the board never claims the start
+//   menu, which is drawn only when asked and which it cannot see — and once
+//   a unit's finish completes it from its review phase (20.10.4), or a
+//   quick-fix's close from its one session (20.14.2), All work too, the
+//   banner the unit's close (D38) — while its position still names that
+//   place, or the place it left does (a finish or a close leaves it,
+//   position.cjs), until the session records a position again — a
+//   quick-fix's close that puts the conversation back at a project-level
+//   place records it at once, so the board shows that place, and the done
+//   line is the close's receipt rather than the banner (receipts.cjs,
+//   `finishedOf`). While a
+//   session carries the migration on, its row at the migration's place
+//   there (presence.cjs), a session at no position is migrating. The
+//   session's tasks in flight are read into their unit's build wherever it
+//   is drawn, the place they were started at left or not.
+// - The unit's tab shows the unit `--unit` names, else the session's: an
+//   epic's page for an epic (20.15.2), the unit's page for any other.
+//   All work shows the project (20.16), and `--page unit:{unit}` another
+//   unit's page from it (20.3.6), wherever All work shows.
+// - A page (`--page`) is read against the unit it was opened in,
+//   `--page-unit`, whatever tab shows it and wherever the session has gone
+//   since — the start menu or another unit — so it stays while the session
+//   moves beneath it (20.3.5). With none named it is the tab's unit's: on
+//   the unit's tab the unit `--unit` names, else the session's; on This
+//   session the session's. `unit:{unit}` names its own, read on any tab,
+//   and refused with a `--page-unit` naming another; All work's tab opens
+//   any other page only with its unit named. `--unit` names the unit's
+//   tab's unit alone, never a page's, so the tabs stand as they would with
+//   no page open. The answer carries beside the page the view the tab shows
+//   beneath it (`beneath`), which its way back returns to.
+// - The banner is the session's place's (20.2.4), whichever tab is shown,
+//   with what waits on the person in the session's unit, counted from its
+//   one list (board-standing.cjs): flagged in a phase, the banner waiting on
+//   the person where it is asked in the conversation, and unflagged at the
+//   unit's menu (D40); none where This session cannot be drawn.
+// - Never a look (5.8.14): Claude's calls since the person last looked are
+//   read without moving the mark. The ledger is checked once a call, at its
+//   first read (ledger.cjs).
+// - Each unit is read once a call, whichever tabs and pages draw it, and its
+//   tracker in one read, once its build or a quick-fix's fixes have begun,
+//   of a copy of its store (task-verbs.cjs) — its phases, the fix phases past the cut, the tasks
+//   ready, and the task a page names — which its build's checks read too,
+//   the stop's asked of a phase's start among them; the review's change
+//   reads the tasks of its phases all ended from another copy, only where
+//   it is drawn (board-review.cjs); All work reads a unit's tracker once
+//   its build has begun, for how far it has come (board-all.cjs).
+// - Each tab is answered on its own: a view or page that cannot be drawn
+//   answers `unavailable`, saying why, the banner and the questions standing
+//   apart from it; This session's view that cannot be drawn leaves the
+//   banner at the session's place, no question queued, and says why among
+//   the warnings.
+//
+// It refuses: a call with no session id or more than one, a tab that is
+// none of the three, the unit's tab or a page with no unit to show, a unit
+// the project lacks — `--unit`'s or `--page-unit`'s — a page its ref does
+// not name, a page's task that is no task's number, `--page-unit` with no
+// page, and a unit's own page with `--page-unit` naming another.
+// ---------------------------------------------------------------------------
+
+const fs = require('fs');
+const path = require('path');
+const { stateRoot } = require('../kernel/state-root.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
+const { projectRepos } = require('../kernel/repos.cjs');
+const { PROJECT_IDENTITIES } = require('../kernel/manifest-schema.cjs');
+const { messageOf } = require('../kernel/call.cjs');
+const { readPosition, readLeft, tasksInFlight, conversationDir } = require('./conversation.cjs');
+const { migrationCarried } = require('./presence.cjs');
+const { BRIEFS } = require('./brief-names.cjs');
+const { manifestOf } = require('./ledger-units.cjs');
+const { withOneCheck } = require('./ledger.cjs');
+const { readOnce } = require('./ledger-fold.cjs');
+const { trackedUnit } = require('./task-verbs.cjs');
+const { parseShownTask } = require('./task-id.cjs');
+const { tasksBegun, quickFixBuild } = require('./derivations.cjs');
+const { titlecase } = require('./conventions.cjs');
+const { BOARD_VERSION, TABS } = require('./board-model.cjs');
+const { buildView, buildBanner, taskPage, writtenPage, roundPage, scenarioPage, evidencePage } = require('./projections/board-build.cjs');
+const { reviewView, reviewBanner, roundWords, findingPage, checkPage } = require('./projections/board-review.cjs');
+const { discussionView, discussionBanner, entryPage, messagePage, reviewReportPage } = require('./projections/board-discussion.cjs');
+const { specView, specBanner, sectionPage, passPage, specFindingPage } = require('./projections/board-spec.cjs');
+const { waitingOn, phaseWaiting, holds, waitsFacts, tasksStopped } = require('./projections/board-standing.cjs');
+const { discoveryView, discoveryBanner, briefPage, topicStarted, spikePage } = require('./projections/board-discovery.cjs');
+const { experimentView, experimentBanner, reportPage } = require('./projections/board-experiment.cjs');
+const { investigationView, investigationBanner, huntPage, optionPage } = require('./projections/board-investigation.cjs');
+const { quickFixView, quickFixBanner } = require('./projections/board-quick-fix.cjs');
+const { unitPage, phasePage, unitBanner, placeBanner } = require('./projections/board-unit.cjs');
+const { allView, allBanner } = require('./projections/board-all.cjs');
+
+/** @typedef {import('./board-model.cjs').Board} Board */
+/** @typedef {import('./board-model.cjs').Place} Place */
+/** @typedef {import('./board-model.cjs').View} View */
+/** @typedef {import('./board-model.cjs').Banner} Banner */
+/** @typedef {import('./board-model.cjs').Question} Question */
+/** @typedef {import('./conversation.cjs').InFlight} InFlight */
+/** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
+/** @typedef {import('./task-verbs.cjs').TrackedUnit} TrackedUnit */
+
+const BOARD_USAGE = 'board <session-id> [--tab this|unit|all] [--unit <work-unit>] [--page <ref> [--page-unit <work-unit>]]';
+
+/**
+ * A brief this conversation issued for a unit: its role, its task, and the
+ * review phase's area and round, where it names them; and when it was
+ * issued.
+ * @typedef {{role: string, task: string|null, area: string|null, round: number|null, at: string}} Issued
+ */
+/**
+ * What the board reads at a call for one unit: the project; the unit with
+ * its manifest and title; the conversation, its place, its tasks in flight
+ * in the unit and the briefs it issued for it, oldest first; the unit's
+ * tracker, read once — refused where its build has not begun; the
+ * project's repositories, read once a call for every unit; one read of
+ * anything a call reads twice, for the unit or, `shared`, for every unit;
+ * and the warnings gathered.
+ * @typedef {{
+ *   cwd: string, root: string, session: string, place: Place, unit: string, manifest: Record<string, any>, title: string,
+ *   inFlight: InFlight[], issued: Issued[], tracker: () => TrackedUnit, repos: () => import('../kernel/repos.cjs').Repo[],
+ *   once: <T>(key: string, read: () => T) => T, shared: <T>(key: string, read: () => T) => T, warnings: string[],
+ * }} BoardAt
+ */
+/** What a view's read answers: the view, and the questions a press can queue where it reads them. @typedef {{view: View, questions?: Question[]}} Read */
+/** The banner's state and facts a view gives, the name the board's. @typedef {Omit<Banner, 'name'>} Banned */
+
+/** The briefs the conversation issued for the unit, oldest first (the header's). @param {string} session @param {string} unit @returns {Issued[]} */
+function issuedFor(session, unit) {
+  const dir = path.join(conversationDir(session), BRIEFS);
+  /** @type {string[]} */
+  let names;
+  try {
+    names = fs.readdirSync(dir).filter((name) => name.endsWith('.json'));
+  } catch {
+    return [];
+  }
+  return names.flatMap((name) => {
+    try {
+      const file = path.join(dir, name);
+      const held = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (held?.unit !== unit) return [];
+      return [{ role: String(held.role), task: held.task ?? null, area: held.area ?? null, round: held.round ?? null, at: fs.statSync(file).mtime.toISOString() }];
+    } catch {
+      return [];
+    }
+  }).sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/**
+ * Where the session is, as its position records it (the header's): a unit
+ * the project lacks, or a project-level place, is no unit's.
+ * @param {string} root @param {import('./conversation.cjs').Position|null} position @returns {Place}
+ */
+function placeOf(root, position) {
+  const none = { unit: null, type: null, phase: null, topic: null };
+  if (position === null || PROJECT_IDENTITIES.includes(position.name)) return none;
+  const manifest = manifestOf(root, position.name);
+  if (manifest === null) return none;
+  return { unit: position.name, type: manifest.work_type, phase: position.phase ?? null, topic: position.topic ?? null, ...(position.record === undefined ? {} : { record: position.record }) };
+}
+
+/**
+ * What the board reads for a unit at this call, refused where the project
+ * lacks it; its tracker read once, with the task a page names, and the
+ * call's one read of the project's repositories.
+ * @param {string} cwd @param {string} session @param {Place} place @param {string} unit @param {InFlight[]} inFlight @param {string[]} warnings @param {TaskRef|null} task
+ * @param {BoardAt['repos']} repos @param {BoardAt['shared']} shared
+ * @returns {BoardAt}
+ */
+function unitAt(cwd, session, place, unit, inFlight, warnings, task, repos, shared) {
+  const root = stateRoot(cwd);
+  const manifest = manifestOf(root, unit);
+  if (manifest === null) throw new Error(`there is no work unit "${unit}"`);
+  /** @type {Map<string, unknown>} */
+  const reads = new Map();
+  /** @type {BoardAt['once']} */
+  const once = (key, read) => {
+    if (!reads.has(key)) reads.set(key, read());
+    return /** @type {any} */ (reads.get(key));
+  };
+  return {
+    cwd,
+    root,
+    session,
+    place,
+    unit,
+    manifest,
+    title: titlecase(unit),
+    inFlight,
+    issued: place.unit === unit || inFlight.length > 0 ? issuedFor(session, unit) : [],
+    tracker: () => once('tracker', () => {
+      if (!tasksBegun(manifest)) throw new Error(`${unit}'s build has not begun`);
+      return trackedUnit(cwd, unit, manifest, task);
+    }),
+    repos,
+    once,
+    shared,
+    warnings,
+  };
+}
+
+/** A phase's view: its read and its banner, and the types it stands for where not every type's. @typedef {{read: (at: BoardAt) => Read, banner: (at: BoardAt, view: any) => Banned, of?: (type: string) => boolean}} PhaseView */
+
+/**
+ * The phases with a view of their own, each by its views, the first
+ * standing for the unit's type its own: an epic's discovery alone has a
+ * view, and a quick-fix's one session has its own, which is no build's.
+ * @type {Readonly<Record<string, readonly PhaseView[]>>}
+ */
+const PHASE_VIEWS = Object.freeze({
+  implementation: [
+    { read: (at) => buildView(at, phaseWaiting(at)), banner: (_, view) => buildBanner(view), of: (type) => type !== 'quick-fix' },
+    { read: (at) => quickFixView(at, phaseWaiting(at)), banner: (at, view) => quickFixBanner(view, tasksStopped(at)) },
+  ],
+  review: [{ read: (at) => reviewView(at, phaseWaiting(at)), banner: (at, view) => reviewBanner(view, roundWords(at), phaseWaiting(at)) }],
+  discussion: [{ read: discussionView, banner: (_, view) => discussionBanner(view) }],
+  specification: [{ read: (at) => specView(at, phaseWaiting(at)), banner: (at) => specBanner(at, phaseWaiting(at)) }],
+  discovery: [{ read: (at) => discoveryView(at, phaseWaiting(at)), banner: (_, view) => discoveryBanner(view), of: (type) => type === 'epic' }],
+  experiment: [{ read: experimentView, banner: (_, view) => experimentBanner(view) }],
+  investigation: [{ read: (at) => investigationView(at, phaseWaiting(at)), banner: (_, view) => investigationBanner(view) }],
+});
+
+/** The view a phase draws for a type, null where the unit's page stands for it. @param {string} type @param {string|null} phase @returns {PhaseView|null} */
+function phaseViewOf(type, phase) {
+  if (phase === null || !Object.hasOwn(PHASE_VIEWS, phase)) return null;
+  return PHASE_VIEWS[phase].find(({ of }) => of === undefined || of(type)) ?? null;
+}
+
+/** A phase's view for the unit, null where the unit's page stands for it. @param {BoardAt} at @param {string|null} phase */
+const phaseView = (at, phase) => phaseViewOf(at.manifest.work_type, phase);
+
+/**
+ * This session's view, with the banner it gives: a phase's view, else the
+ * unit's page, at its menu where the session is at none.
+ * @param {BoardAt} at @returns {Read & {banned: Banned}}
+ */
+function sessionRead(at) {
+  const phase = phaseView(at, at.place.phase);
+  if (phase !== null) {
+    const read = phase.read(at);
+    return { ...read, banned: phase.banner(at, read.view) };
+  }
+  const read = unitPage(at, at.place.phase === null);
+  return { ...read, banned: unitBanner(at, read.view) };
+}
+
+/**
+ * The banner's state and facts with what waits on the person in the unit,
+ * from its one list (board-standing.cjs): counted after the place's facts —
+ * in a phase the phase's own (`phaseWaiting`), flagged, the banner then
+ * waiting on the person where it is asked in the conversation; at a menu
+ * the whole list, unflagged (D40).
+ * @param {BoardAt} at @param {Banned} banned @returns {Banned}
+ */
+function withWaits(at, banned) {
+  const atMenu = at.place.phase === null;
+  const waiting = atMenu ? waitingOn(at) : phaseWaiting(at);
+  const state = !atMenu && waiting.some(holds) ? 'needs' : banned.state;
+  return { state, facts: [...banned.facts, ...waitsFacts(waiting, atMenu)] };
+}
+
+/** A topic's page: its discussion once started, else its brief. @param {BoardAt} at @param {string} topic */
+const topicPage = (at, topic) => (topicStarted(at, topic) ? discussionView(at, topic).view : briefPage(at, topic));
+
+/**
+ * The pages of a unit, each by its ref's shape and what draws it from the
+ * ref's parts; a task's ref names the task its tracker read takes.
+ * @type {readonly {ref: string, shape: RegExp, draw: (at: BoardAt, ...parts: string[]) => View, task?: true}[]}
+ */
+const PAGES = Object.freeze([
+  { ref: 'task:{N.n}', shape: /^task:([^:]+)$/, draw: taskPage, task: true },
+  { ref: 'task:{N.n}:written', shape: /^task:([^:]+):written$/, draw: writtenPage, task: true },
+  { ref: 'task:{N.n}:round:{k}', shape: /^task:([^:]+):round:([^:]+)$/, draw: roundPage, task: true },
+  { ref: 'task:{N.n}:scenario:{id}', shape: /^task:([^:]+):scenario:([^:]+)$/, draw: scenarioPage, task: true },
+  { ref: 'task:{N.n}:scenario:{id}:evidence:{k}', shape: /^task:([^:]+):scenario:([^:]+):evidence:([^:]+)$/, draw: evidencePage, task: true },
+  { ref: 'entry:{id}', shape: /^entry:([^:]+)$/, draw: entryPage },
+  { ref: 'finding:{round}:{k}', shape: /^finding:([^:]+):([^:]+)$/, draw: findingPage },
+  { ref: 'check:{round}:{scenario}', shape: /^check:([^:]+):([^:]+)$/, draw: checkPage },
+  { ref: 'section:{n}', shape: /^section:([^:]+)$/, draw: sectionPage },
+  { ref: 'pass:{k}', shape: /^pass:([^:]+)$/, draw: passPage },
+  { ref: 'pass:{k}:{finding}', shape: /^pass:([^:]+):([^:]+)$/, draw: specFindingPage },
+  { ref: 'topic:{topic}', shape: /^topic:([^:]+)$/, draw: topicPage },
+  { ref: 'message:{topic}:{file}', shape: /^message:([^:]+):([^:]+)$/, draw: messagePage },
+  { ref: 'review:{topic}:{id}', shape: /^review:([^:]+):([^:]+)$/, draw: reviewReportPage },
+  { ref: 'spike:{folder}', shape: /^spike:([^:]+)$/, draw: spikePage },
+  { ref: 'report:{topic}:{id}', shape: /^report:([^:]+):([^:]+)$/, draw: reportPage },
+  { ref: 'phase:{phase}', shape: /^phase:([^:]+)$/, draw: phasePage },
+  { ref: 'hunt:{item}', shape: /^hunt:([^:]+)$/, draw: huntPage },
+  { ref: 'option:{key}', shape: /^option:([^:]+)$/, draw: optionPage },
+]);
+
+/** A unit's own page, opened from All work, which names its unit. */
+const UNIT_PAGE = /^unit:([^:]+)$/;
+
+/**
+ * A page a ref names: a unit's own page by the unit it names, on any tab,
+ * refused where `--page-unit` names another; any other by what draws it,
+ * its parts and the task it names, All work's tab opening one only with the
+ * unit it was opened in named; refused where the ref names none.
+ * @param {Board['tab']} tab @param {string} ref @param {string|undefined} pageUnit
+ * @returns {{unit: string, draw: null, parts: string[], task: null}|{unit: null, draw: (at: BoardAt, ...parts: string[]) => View, parts: string[], task: string|null}}
+ */
+function pageOf(tab, ref, pageUnit) {
+  const opens = UNIT_PAGE.exec(ref);
+  if (opens !== null && pageUnit !== undefined && pageUnit !== opens[1]) throw new Error(`${ref} is ${opens[1]}'s own page, not a page of ${pageUnit}`);
+  if (opens !== null) return { unit: opens[1], draw: null, parts: [], task: null };
+  if (tab === 'all' && pageUnit === undefined) throw new Error(`no page of All work is named "${ref}" — All work opens unit:{unit}, and another unit's page with --page-unit`);
+  for (const { shape, draw, task } of PAGES) {
+    const parts = shape.exec(ref)?.slice(1);
+    if (parts !== undefined) return { unit: null, draw, parts, task: task ? parts[0] : null };
+  }
+  throw new Error(`no page is named "${ref}" — a page is ${PAGES.map((page) => page.ref).join(', ')}`);
+}
+
+/**
+ * Whether a unit was finished from its review phase, or a quick-fix closed
+ * from its one session (the header's), at the phase the session's place
+ * names.
+ * @param {BoardAt|null} at @param {string|null|undefined} phase
+ */
+function finishedFrom(at, phase) {
+  if (at === null || at.manifest.status !== 'completed') return false;
+  return phase === 'review' || (phase === 'implementation' && quickFixBuild(at.manifest));
+}
+
+/** A view drawn, or why it cannot be. @param {() => View} draw @returns {View} */
+function drawn(draw) {
+  try {
+    return draw();
+  } catch (err) {
+    return { kind: 'unavailable', reason: messageOf(err) };
+  }
+}
+
+/**
+ * This session's read, null where it cannot be drawn, said among the
+ * warnings.
+ * @param {BoardAt} here @param {string[]} warnings @returns {(Read & {banned: Banned}) | {failed: string}}
+ */
+function ownRead(here, warnings) {
+  try {
+    return sessionRead(here);
+  } catch (err) {
+    warnings.push(`This session cannot be drawn — ${messageOf(err)}`);
+    return { failed: messageOf(err) };
+  }
+}
+
+/**
+ * `engine board` (the header's), its reads one read of the ledger
+ * (ledger.cjs), folded once however many units it draws (ledger-fold.cjs,
+ * `readOnce`).
+ * @param {string} cwd @param {string[]} positional @param {Record<string, string>} opts @returns {Board}
+ */
+function boardOf(cwd, positional, opts) {
+  const asked = askedOf(positional, opts);
+  return withOneCheck(() => {
+    /** @type {string[]} */
+    const warnings = [];
+    return readOnce(stateRoot(cwd), warnings, () => boardRead(cwd, asked, opts, warnings));
+  });
+}
+
+/** What a board call asks for: its conversation, its tab, and the page it opens, null where none. @typedef {{session: string, tab: Board['tab'], page: ReturnType<typeof pageOf>|null}} Asked */
+
+/**
+ * What a board call asks for, its arguments refused before anything is
+ * read.
+ * @param {string[]} positional @param {Record<string, string>} opts @returns {Asked}
+ */
+function askedOf(positional, opts) {
+  if (positional.length !== 1) throw new Error(`Usage: engine ${BOARD_USAGE}`);
+  const tab = /** @type {Board['tab']} */ (opts.tab ?? 'this');
+  if (!TABS.includes(tab)) throw new Error(`--tab is this, unit or all, not "${tab}"`);
+  if (opts['page-unit'] !== undefined && opts.page === undefined) throw new Error('--page-unit names the unit a page was opened in, and goes with --page');
+  return { session: positional[0], tab, page: opts.page === undefined ? null : pageOf(tab, opts.page, opts['page-unit']) };
+}
+
+/** @param {string} cwd @param {Asked} asked @param {Record<string, string>} opts @param {string[]} warnings @returns {Board} */
+function boardRead(cwd, { session, tab, page }, opts, warnings) {
+  const position = readPosition(session);
+  const place = placeOf(stateRoot(cwd), position);
+  const held = tasksInFlight(session);
+  const tabUnit = opts.unit ?? place.unit;
+  if (tab === 'unit' && tabUnit === null) throw new Error('the unit\'s tab is at no unit, whose page it would show — --unit names one');
+  const pageUnit = page === null ? null : page.unit ?? opts['page-unit'] ?? (tab === 'unit' ? tabUnit : place.unit);
+  if (page !== null && pageUnit === null) throw new Error('the session is at no unit, whose page it would show — --page-unit names one');
+  const pageTask = page === null || page.task === null ? null : parseShownTask(/** @type {string} */ (pageUnit), page.task);
+  /** @type {Map<string, BoardAt>} */
+  const units = new Map();
+  /** @type {import('../kernel/repos.cjs').Repo[]|undefined} */
+  let repos;
+  const reposRead = () => (repos ??= projectRepos(codeRoot(cwd)));
+  /** @type {Map<string, unknown>} */
+  const callReads = new Map();
+  /** @type {BoardAt['shared']} */
+  const shared = (key, read) => {
+    if (!callReads.has(key)) callReads.set(key, read());
+    return /** @type {any} */ (callReads.get(key));
+  };
+  /** The conversation's tasks in flight in the unit's build, its place left or not. @param {string} unit @returns {InFlight[]} */
+  const inFlightIn = (unit) => held.filter((task) => task.unit === unit).map(({ unit: _unit, ...task }) => task);
+  const at = (/** @type {string} */ unit) => {
+    if (!units.has(unit)) units.set(unit, unitAt(cwd, session, place, unit, inFlightIn(unit), warnings, unit === pageUnit ? pageTask : null, reposRead, shared));
+    return /** @type {BoardAt} */ (units.get(unit));
+  };
+  const tabAt = tabUnit === null ? null : at(tabUnit);
+  const pageAt = pageUnit === null ? null : at(pageUnit);
+  const here = place.unit === null ? null : at(place.unit);
+  const left = position === null ? readLeft(session) : null;
+  const leftAt = left === null || manifestOf(stateRoot(cwd), left.name) === null ? null : at(left.name);
+  /** @type {BoardAt|null} */
+  let finished = null;
+  if (finishedFrom(here, place.phase)) finished = here;
+  else if (finishedFrom(leftAt, left?.phase)) finished = leftAt;
+  const own = here === null || finished !== null ? null : ownRead(here, warnings);
+  const read = own === null || 'failed' in own ? null : own;
+  const migrating = position === null && migrationCarried(cwd);
+  const tabView = () => {
+    if (tab === 'all' || (here === null || finished !== null) && tab === 'this') return allView(cwd, at, here).view;
+    if (tab === 'unit') return unitPage(/** @type {BoardAt} */ (tabAt), tabAt === here && place.phase === null).view;
+    if (own !== null && 'failed' in own) throw new Error(own.failed);
+    return /** @type {Read} */ (read).view;
+  };
+  return {
+    version: BOARD_VERSION,
+    place,
+    banner: here === null || finished !== null ? allBanner(cwd, migrating ? 'migrating' : position?.name ?? null, finished) : { name: here.title, ...(read === null ? placeBanner(here) : withWaits(here, read.banned)) },
+    unit: tabAt === null ? null : { unit: tabAt.unit, title: tabAt.title },
+    tab,
+    view: page === null ? drawn(tabView) : drawn(() => {
+      const of = /** @type {BoardAt} */ (pageAt);
+      return page.draw === null ? unitPage(of, false).view : page.draw(of, ...page.parts);
+    }),
+    beneath: page === null ? null : drawn(tabView),
+    questions: read?.questions ?? [],
+    warnings,
+  };
+}
+
+module.exports = { BOARD_USAGE, boardOf, phaseViewOf };

@@ -1,0 +1,250 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: whether a unit's topic can still take work — the one rule the
+// entry (enter.cjs), the handoff into a topic (handoff.cjs) and a message
+// sent to one (mail.cjs) all hold it to, each refusal naming the way on; the
+// spec's refusal (spec-entry.cjs) holds the unit to its first two parts.
+// - The unit: one this project has, in progress — a cancelled unit
+//   reactivated first, a completed one closed to new work.
+// - Its phase: one its work type's pipeline holds.
+// - The topic: a name that is one, a topic the unit holds — an epic's map
+//   names them, a single-topic unit's is the unit — and none once the unit
+//   is past its spec (spec-standing.cjs), from which a change is settled in
+//   the spec (4.11.2, 10.2.2).
+// - What the topic is now: postponed or cancelled on the map, decided, or
+//   for a bugfix its investigation concluded at ready to build — closed into
+//   its spec, it is entered again before the spec is written. A decided topic is entered all the same
+//   while an entry of it relies on an answer replaced since and the unit is
+//   in its discussion, where such an entry is answered (unit-handoff.cjs),
+//   to confirm each still holds or replace it, staying decided (10.2.6,
+//   ledger-affected.cjs). A message waits in a postponed topic's mailbox,
+//   reopens a decided or concluded one and goes to the inbox for a
+//   cancelled one (10.1.6, 10.1.8, 10.2.7).
+// And whether a unit's discovery can still be talked in: an epic's, until
+// its spec closes the map (8.6.5, 8.2.11); every other type's ended at
+// start this work. The product's conversation never closes.
+// ---------------------------------------------------------------------------
+
+const { PRODUCT, WORK_TYPE_PIPELINES, illegalNameReason, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
+const { hasTopic, manifestOf } = require('./ledger-units.cjs');
+const { computeNextPhase, computeTopicLifecycle, itemOf, postponedStillWaits } = require('./derivations.cjs');
+const { pastSpecRefusal } = require('./spec-standing.cjs');
+
+/**
+ * Where a topic stands as it is checked: the unit's manifest as it stood on
+ * arrival — at the product's conversation, the project manifest, the product
+ * having none of its own — and the topic: none at a unit-level place, nor at
+ * an epic named at none.
+ * @typedef {{cwd: string, phase: string, unit: string, topic?: string, manifest: Record<string, any>}} Standing
+ */
+
+/** The unit's manifest, or null where this project has no unit by that name. @param {string} cwd @param {string} unit */
+function knownUnit(cwd, unit) {
+  return workUnitNameRefusal(unit) === null ? manifestOf(stateRoot(cwd), unit) : null;
+}
+
+/** The refusal of a unit this project lacks. @param {string} unit */
+const noUnit = (unit) => `there is no work unit "${unit}" — the start menu lists the work in progress`;
+
+/**
+ * Why a unit is not in progress, with its way on — a cancelled one
+ * reactivated first, a completed one closed to new work — or null where it
+ * is.
+ * @param {Record<string, any>} manifest @returns {string|null}
+ */
+function unitClosure(manifest) {
+  if (manifest.status === 'cancelled') return `${manifest.name} is cancelled — reactivating it comes first`;
+  return manifest.status === 'in-progress' ? null : `${manifest.name} is ${manifest.status} — new work starts from the start menu`;
+}
+
+/** Refuses a unit not in progress. @param {Record<string, any>} manifest */
+function assertInProgress(manifest) {
+  const closure = unitClosure(manifest);
+  if (closure !== null) throw new Error(closure);
+}
+
+/**
+ * The unit's manifest, refused where this project has no such unit or it
+ * is not in progress.
+ * @param {string} cwd @param {string} unit @returns {Record<string, any>}
+ */
+function unitInProgress(cwd, unit) {
+  const manifest = knownUnit(cwd, unit);
+  if (manifest === null) throw new Error(noUnit(unit));
+  assertInProgress(manifest);
+  return manifest;
+}
+
+/**
+ * Why the unit's work type has no place for the phase, naming its phases,
+ * or null where it has; never discovery, which every work type opens on.
+ * @param {Record<string, any>} manifest @param {string} phase @returns {string|null}
+ */
+function phaseHeldRefusal(manifest, phase) {
+  if (phase === 'discovery') return null;
+  const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (manifest.work_type)] ?? [];
+  return pipeline.includes(phase) ? null : `a ${manifest.work_type} has no ${phase} — its phases are ${pipeline.join(', ')}`;
+}
+
+/** Refuses a phase the unit's work type has no place for. @param {Record<string, any>} manifest @param {string} phase */
+function assertPhaseHeld(manifest, phase) {
+  const refusal = phaseHeldRefusal(manifest, phase);
+  if (refusal !== null) throw new Error(refusal);
+}
+
+/**
+ * Where a decided or set-aside topic of the unit is reopened (8.6.5).
+ * @param {Record<string, any>} manifest
+ */
+function reopenedThrough(manifest) {
+  return manifest.work_type === 'epic' ? 'the epic menu\'s discovery row' : 'manage on the start menu';
+}
+
+/** Where a unit's topics are named. @param {Record<string, any>} manifest */
+function topicsNamed(manifest) {
+  return manifest.work_type === 'epic'
+    ? 'the epic\'s map holds its topics, and a new one comes through its discovery'
+    : `a ${manifest.work_type}'s topic is the unit itself`;
+}
+
+/**
+ * Whether the unit holds the topic: one its map or phases name, or a
+ * single-topic unit's own.
+ * @param {Record<string, any>} manifest @param {string} topic
+ */
+function holdsTopic(manifest, topic) {
+  return (topic === manifest.name && manifest.work_type !== 'epic') || hasTopic(manifest, topic);
+}
+
+/**
+ * Why the topic named cannot take work, whatever the phase: an epic named at
+ * none, a name that is not one, the unit past its spec (4.11.2), or a topic
+ * the unit lacks; null where it takes a message, and an entry where its
+ * phase has no rule of its own.
+ * @param {Standing} at @returns {string|null}
+ */
+function topicStanding({ cwd, phase, unit, topic, manifest }) {
+  if (topic === undefined) return `an epic enters ${phase} at one of its topics — name the topic: engine enter ${phase} ${unit} <topic>`;
+  const illegal = illegalNameReason('topic', topic);
+  if (illegal !== null) return `${illegal}; ${topicsNamed(manifest)}`;
+  const past = pastSpecRefusal(cwd, manifest, 'change');
+  if (past !== null) return past;
+  return holdsTopic(manifest, topic) ? null : `${unit} has no topic "${topic}" — ${topicsNamed(manifest)}`;
+}
+
+/** @type {Readonly<Record<string, (topic: string, through: string) => string>>} */
+const SET_ASIDE = Object.freeze({
+  cancelled: (topic, through) => `the topic "${topic}" is cancelled — reactivating it goes through ${through}`,
+});
+
+/**
+ * Why a postponed topic cannot be entered: the way back while its roadmap
+ * item still waits, and none once another epic has taken it.
+ * @param {string} cwd @param {string} unit @param {string} topic @param {string} through
+ */
+function postponedRefusal(cwd, unit, topic, through) {
+  return postponedStillWaits(cwd, unit, topic)
+    ? `the topic "${topic}" is postponed to the roadmap — pulling it forward goes through ${through}`
+    : `the topic "${topic}" is postponed, and its roadmap item has gone to another epic — it stays postponed here, with no way back`;
+}
+
+/**
+ * Whether the decided topic is entered to answer an entry of it relying on
+ * an answer replaced since: one waits, and is answered in the topic itself
+ * (the header's); what the ledger's read said is left to the entry's own
+ * reads.
+ * @param {Standing} at @returns {boolean}
+ */
+function affectedHere({ cwd, unit, topic = '', manifest }) {
+  // Required here: Continue requires this module, and the ledger's read reaches it through the position.
+  const { affectedAnsweredIn } = require('./unit-handoff.cjs');
+  const { readShownOnce } = require('./ledger-read.cjs');
+  const { waitsOnTopic } = require('./ledger-affected.cjs');
+  if (affectedAnsweredIn(cwd, manifest) !== null) return false;
+  const root = stateRoot(cwd);
+  return readShownOnce(root, [], ({ folded }) => waitsOnTopic(folded, root, unit, topic));
+}
+
+/**
+ * Whether the topic is a decided one entered for its affected entries alone,
+ * staying decided (the header's).
+ * @param {Standing} at @returns {boolean}
+ */
+function staysDecided(at) {
+  return itemOf(at.manifest, 'discussion', at.topic ?? '')?.status === 'completed' && affectedHere(at);
+}
+
+/**
+ * Why a discussion's topic cannot be entered: set aside on the map, closed,
+ * or decided but for an entry relying on a changed answer answered in it;
+ * null where it can.
+ * @param {Standing} at @returns {string|null}
+ */
+function discussionStanding(at) {
+  const { cwd, unit, topic = '', manifest } = at;
+  const through = reopenedThrough(manifest);
+  const { lifecycle } = computeTopicLifecycle(manifest, topic);
+  if (lifecycle === 'postponed') return postponedRefusal(cwd, unit, topic, through);
+  if (lifecycle === 'cancelled') return SET_ASIDE.cancelled(topic, through);
+  return itemOf(manifest, 'discussion', topic)?.status === 'completed' && !affectedHere(at)
+    ? `the topic "${topic}" is decided — it reopens through a message sent to it, or through ${through}`
+    : null;
+}
+
+/**
+ * Why a bugfix's investigation cannot be entered: concluded, the unit's
+ * work going on where its menu goes (`computeNextPhase`); null until then —
+ * closed into its spec, it is entered again before the spec is written, as
+ * a feature's discussion is, and a unit whose work is done is past its
+ * spec, refused before.
+ * @param {Standing} at @returns {string|null}
+ */
+function investigationStanding({ topic = '', manifest }) {
+  if (itemOf(manifest, 'investigation', topic)?.status !== 'completed') return null;
+  return `the topic "${topic}" is concluded — its work goes on in ${computeNextPhase(manifest).next_phase}, from the start menu, and a message sent to it reopens it`;
+}
+
+/**
+ * Why a discovery cannot be entered, or null where it can: a unit that is no
+ * epic, whose discovery ended at start this work, and an epic past its spec,
+ * whose map is closed and whose talk belongs in the product's conversation
+ * (8.6.5, 8.2.11). The product's conversation is always open.
+ * @param {Standing} at @returns {string|null}
+ */
+function discoveryStanding({ cwd, unit, manifest }) {
+  if (unit === PRODUCT) return null;
+  if (manifest.work_type !== 'epic') {
+    return `${unit} is a ${manifest.work_type} — its discovery ended at start this work: carry on its work where it stands, from the start menu`;
+  }
+  return pastSpecRefusal(cwd, manifest, 'newWork');
+}
+
+/**
+ * Why each phase that enters at a topic cannot be entered there; a phase
+ * with none of its own is held to the topic and its closure alone.
+ * @type {Readonly<Record<string, (at: Standing) => string|null>>}
+ */
+const STANDINGS = Object.freeze({
+  discussion: (at) => topicStanding(at) ?? discussionStanding(at),
+  investigation: (at) => topicStanding(at) ?? investigationStanding(at),
+});
+
+/** @param {string} phase @returns {(at: Standing) => string|null} */
+function phaseStanding(phase) {
+  return STANDINGS[phase] ?? topicStanding;
+}
+
+/**
+ * Refuses the topic of a unit in progress that `phase` would be entered at,
+ * as the entry refuses it.
+ * @param {string} cwd @param {string} phase @param {Record<string, any>} manifest @param {string} topic
+ */
+function assertEnterable(cwd, phase, manifest, topic) {
+  assertPhaseHeld(manifest, phase);
+  const refusal = phaseStanding(phase)({ cwd, phase, unit: manifest.name, topic, manifest });
+  if (refusal !== null) throw new Error(refusal);
+}
+
+module.exports = { knownUnit, noUnit, unitClosure, assertInProgress, unitInProgress, phaseHeldRefusal, assertPhaseHeld, holdsTopic, topicStanding, phaseStanding, discoveryStanding, assertEnterable, staysDecided };

@@ -5,7 +5,7 @@
 A settings row on the start menu that shows the project's recorded choices
 and lets the person change them, instead of the one-time Step 0 prompts
 being the only door. Today the answers live on the project manifest
-(`defaults.tmux_labels`, and whatever opt-in comes next), and changing one
+(`defaults.session_labels`, and whatever opt-in comes next), and changing one
 means knowing an engine command (`engine session label-config`) or editing
 `.workflows/manifest.json` by hand.
 

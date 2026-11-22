@@ -12,16 +12,35 @@
 //
 // Every shape takes the project directory first, then argv, then the call's
 // own environment and stdin. The environment is an overlay whose `undefined`
-// takes a key away. A command that waits on the embedding provider answers
-// through `callAsync`.
+// takes a key away. A command that answers later — a knowledge verb that
+// waits on the embedding provider, a raise's draw — answers through
+// `callAsync`, and its success and refusal through `okSectionsAsync` and
+// `refusesAsync`.
 //
 // A suite whose transactions index sets its fixture's knowledge up
 // keyword-only: the store they build is real, what it holds is the
-// assertion, and no vector fill is ever launched.
+// assertion, and no vector fill is ever launched. A read of what a store
+// holds is refused where there is none; its absence is asserted apart.
+//
+// A fixture is a git repository with its state worktree at `.ledger/`
+// (`discovery-test-utils.cjs` makes it). A world many tests start from is
+// built once per run and copied for each (`fixtureFrom`). A suite reads
+// a state commit off the state branch (`stateGit`), and an owned code-tree
+// file's off the code tree's.
 //
 // A suite spawns a process only where the process is the subject: the real
 // CLI's pipe and exit behaviour, a child that must run concurrently (a lock
-// race), a script that is not the engine.
+// race), a writer killed at a file call on its way (`killedAt`), a script
+// that is not the engine. A race runs its contenders as
+// children that wait at a barrier until every one is ready and report
+// evidence that they met (`contend`). A call that must wait on a lock
+// another holds runs in process, its attempts at the lock watched
+// (`lockAttempts`): the test lets the lock go at the call's own attempt,
+// never when a timer guesses the call has reached its wait.
+//
+// The tools the drivers' check reads at ready to build are stood in for
+// first on the PATH (`tests/drivers/{name}/bin`), so no suite reads the
+// machine's; a call given a PATH of its own goes without them.
 
 require('./hermetic-env.cjs');
 
@@ -29,18 +48,44 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const readline = require('readline');
+const { spawn, spawnSync } = require('child_process');
 
-const { cleanupFixture } = require('./discovery-test-utils.cjs');
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
+const {
+  STATE_DIR_NAME, TEMPLATE_DATE, withEnv, datedAt, GIT_TIMEOUT_MS, git, testIdentity, bareRepo, templateFolder, copyWorld, copyFolder, setupFixture, setupFixtureAt, cleanupFixture,
+  statePath, stateRelative, layout, writeState, readState, readManifest, createFile,
+} = require('./discovery-test-utils.cjs');
+const { FROZEN_MS, FROZEN_AT, withFrozenClock } = require('./frozen-clock.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
+const { findStateRoot } = require('../../skills/ledger-engine/scripts/kernel/state-root.cjs');
+const { processStartTime } = require('../../skills/ledger-engine/scripts/kernel/process.cjs');
+const { knowledgeFiles } = require('../../skills/ledger-engine/scripts/kernel/knowledge/files.cjs');
+const { trustLogPath } = require('../../skills/ledger-engine/scripts/domain/trust-log.cjs');
+const { versionOf } = require('../../skills/ledger-engine/scripts/domain/git-floor.cjs');
+const { atLeast } = require('../../skills/ledger-engine/scripts/kernel/version.cjs');
+const { completeWorkUnit } = require('../../skills/ledger-engine/scripts/domain/workunit-lifecycle.cjs');
+const { followingLiveness } = require('../../skills/ledger-engine/scripts/domain/ledger-copies.cjs');
+const { startTopic } = require('../../skills/ledger-engine/scripts/domain/transitions.cjs');
+const { NBSP } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+const {
+  STATE_BRANCH, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState,
+} = require('../../skills/ledger-engine/scripts/domain/state-worktree.cjs');
+const { stampBoot } = require('../../skills/ledger-engine/scripts/domain/boot-stamp.cjs');
+const { worldOfTheRun } = require('./run-worlds.cjs');
 
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+/** Each driver's stand-ins, as they come first on the PATH. */
+const STAND_INS = Object.freeze(fs.readdirSync(path.join(__dirname, '..', 'drivers'))
+  .map((name) => path.join(__dirname, '..', 'drivers', name, 'bin'))
+  .filter((bin) => fs.existsSync(bin)));
+process.env.PATH = [...STAND_INS, process.env.PATH].join(path.delimiter);
+
+const ENGINE = path.join(__dirname, '../../skills/ledger-engine/scripts/engine.cjs');
 
 /**
  * @typedef {object} CallOptions
  * @property {Record<string, string|undefined>} [env] overlay for this call; `undefined` unsets a key
  * @property {string} [stdin] what the call reads on stdin
+ * @property {boolean} [unbooted] the call is made in a conversation boot has not run in: nothing stamps it first
  */
 
 /**
@@ -48,47 +93,69 @@ const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine
  * suite that runs the engine from a copied skills tree (its own stub
  * `migrate.cjs` beside it, which the engine resolves from its own
  * `__dirname`) binds that copy's `engine.cjs`.
+ *
+ * A call that carries a session id is made in a conversation that has
+ * booted, as every conversation boots before it works: where the engine
+ * would refuse it until boot has run, the conversation is first stamped as
+ * booted for the project the call is in, by the bound engine's own stamp
+ * (domain/boot-stamp.cjs), unless `unbooted` says boot has not run there. A
+ * call the stamp lets through, or made outside any project, stamps nothing.
+ * The stamp is the world the call is made in, so no trace of the call's git
+ * (`traced`) counts what making it reads.
  * @param {string} [enginePath]
  */
 function harness(enginePath = ENGINE) {
-  /** @type {typeof import('../../skills/workflow-engine/scripts/engine.cjs')} */
+  /** @type {typeof import('../../skills/ledger-engine/scripts/engine.cjs')} */
   const engine = require(enginePath);
+  /** @type {typeof import('../../skills/ledger-engine/scripts/domain/boot-stamp.cjs')} */
+  const stamp = require(path.join(path.dirname(enginePath), 'domain/boot-stamp.cjs'));
+
+  /**
+   * The conversation a call with `env` is made in stamped as booted for the
+   * project at `dir`, where the engine would refuse `args` until boot has run.
+   * @param {string} dir @param {string[]} args @param {CallOptions['env']} env
+   */
+  const booted = (dir, args, env) => withEnv({ ...env, GIT_TRACE: undefined }, () => {
+    const session = process.env.CLAUDE_CODE_SESSION_ID;
+    if (session && !engine.bootExempt(args) && stamp.unbootedRefusal(dir, session) !== null) stamp.stampBoot(dir, session);
+  });
 
   /**
    * The raw answer, nothing asserted.
    * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
    */
-  const call = (dir, args, { env, stdin } = {}) => engine.run(args, { cwd: dir, env, stdin });
+  const call = (dir, args, { env, stdin, unbooted = false } = {}) => {
+    if (!unbooted) booted(dir, args, env);
+    return engine.run(args, { cwd: dir, env, stdin });
+  };
 
   /**
-   * The raw answer of a command that waits on the embedding provider.
+   * The raw answer of a command that answers later.
    * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
    */
-  const callAsync = (dir, args, { env, stdin } = {}) => engine.runAsync(args, { cwd: dir, env, stdin });
+  const callAsync = (dir, args, { env, stdin, unbooted = false } = {}) => {
+    if (!unbooted) booted(dir, args, env);
+    return engine.runAsync(args, { cwd: dir, env, stdin });
+  };
 
   /**
    * The raw answer of a call that must succeed.
    * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
    */
-  function succeeded(dir, args, opts) {
-    const res = call(dir, args, opts);
-    assert.strictEqual(res.code, 0,
-      `engine ${args.join(' ')} failed\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-    return res;
-  }
+  const succeeded = (dir, args, opts) => success(call(dir, args, opts), args);
 
   /**
    * A call that must succeed: the response line parsed, and everything after
    * it (the rendered sections a transaction appends, '' when none).
    * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
    */
-  function okSections(dir, args, opts) {
-    const res = succeeded(dir, args, opts);
-    const nl = res.stdout.indexOf('\n');
-    const parsed = JSON.parse((nl === -1 ? res.stdout : res.stdout.slice(0, nl)).trim());
-    assert.strictEqual(parsed.ok, true, `engine ${args.join(' ')} answered ok:false: ${res.stdout}`);
-    return { res: parsed, sections: nl === -1 ? '' : res.stdout.slice(nl + 1) };
-  }
+  const okSections = (dir, args, opts) => sectionsOf(succeeded(dir, args, opts), args);
+
+  /**
+   * `okSections` for a command that answers later.
+   * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
+   */
+  const okSectionsAsync = async (dir, args, opts) => sectionsOf(success(await callAsync(dir, args, opts), args), args);
 
   /**
    * A call that must succeed: the parsed response line.
@@ -100,15 +167,13 @@ function harness(enginePath = ENGINE) {
    * A call that must refuse: exit 1, nothing on stdout, `{ok:false}` on stderr.
    * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
    */
-  function refuses(dir, args, opts) {
-    const res = call(dir, args, opts);
-    assert.strictEqual(res.code, 1,
-      `engine ${args.join(' ')} was expected to refuse\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-    assert.strictEqual(res.stdout, '', `a refusal says nothing on stdout: ${res.stdout}`);
-    const parsed = JSON.parse(res.stderr.trim());
-    assert.strictEqual(parsed.ok, false, `refusal is not clean {ok:false} JSON: ${res.stderr}`);
-    return parsed;
-  }
+  const refuses = (dir, args, opts) => refusal(call(dir, args, opts), args);
+
+  /**
+   * `refuses` for a command that answers later.
+   * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
+   */
+  const refusesAsync = async (dir, args, opts) => refusal(await callAsync(dir, args, opts), args);
 
   /**
    * The whole stdout of a call that must succeed — a render surface's
@@ -117,7 +182,52 @@ function harness(enginePath = ENGINE) {
    */
   const output = (dir, args, opts) => succeeded(dir, args, opts).stdout;
 
-  return { call, callAsync, ok, okSections, refuses, output };
+  return { booted, call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, output };
+}
+
+/** @typedef {{stdout: string, stderr: string, code: number}} Answer */
+
+/** An answer that must be a success. @param {Answer} res @param {string[]} args */
+function success(res, args) {
+  assert.strictEqual(res.code, 0,
+    `engine ${args.join(' ')} failed\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
+  return res;
+}
+
+/** A success's response line parsed, and the sections after it. @param {Answer} res @param {string[]} args */
+function sectionsOf(res, args) {
+  const nl = res.stdout.indexOf('\n');
+  const parsed = JSON.parse((nl === -1 ? res.stdout : res.stdout.slice(0, nl)).trim());
+  assert.strictEqual(parsed.ok, true, `engine ${args.join(' ')} answered ok:false: ${res.stdout}`);
+  return { res: parsed, sections: nl === -1 ? '' : res.stdout.slice(nl + 1) };
+}
+
+/** A section of a render by its marker's name, refused where the render has none. @param {string} out @param {string} name */
+function sectionOf(out, name) {
+  const at = out.indexOf(`=== ${name} (`);
+  assert.ok(at !== -1, `no ${name} section in:\n${out}`);
+  const body = out.slice(out.indexOf('\n', at) + 1);
+  const end = body.search(/^=== /m);
+  return end === -1 ? body : body.slice(0, end);
+}
+
+/**
+ * A section's lines as the screen reads them — its emphasis dropped and its
+ * hanging indents plain spaces — refused where the render has none.
+ * @param {string} out @param {string} name @returns {string[]}
+ */
+function screenOf(out, name) {
+  return sectionOf(out, name).replace(/\*\*|\*|`/g, '').replaceAll(NBSP, ' ').split('\n').slice(0, -1);
+}
+
+/** An answer that must be a refusal: its `{ok:false}` parsed. @param {Answer} res @param {string[]} args */
+function refusal(res, args) {
+  assert.strictEqual(res.code, 1,
+    `engine ${args.join(' ')} was expected to refuse\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
+  assert.strictEqual(res.stdout, '', `a refusal says nothing on stdout: ${res.stdout}`);
+  const parsed = JSON.parse(res.stderr.trim());
+  assert.strictEqual(parsed.ok, false, `refusal is not clean {ok:false} JSON: ${res.stderr}`);
+  return parsed;
 }
 
 /**
@@ -127,7 +237,7 @@ function harness(enginePath = ENGINE) {
  * @param {string} dir
  */
 function keywordOnlyKnowledge(dir) {
-  const config = knowledgeFiles(dir).config;
+  const config = knowledgeFiles(statePath(dir)).config;
   fs.mkdirSync(path.dirname(config), { recursive: true });
   fs.writeFileSync(config, '{ "knowledge": { "provider": null } }\n');
 }
@@ -139,34 +249,234 @@ function keywordOnlyKnowledge(dir) {
  */
 function unreadableKnowledge(dir) {
   keywordOnlyKnowledge(dir);
-  const files = knowledgeFiles(dir);
+  const files = knowledgeFiles(statePath(dir));
   store.writeMetadata(files.metadata, {});
   fs.writeFileSync(files.store, 'not a store');
 }
 
+/** Whether the checkout holds a knowledge store. @param {string} dir */
+function hasStore(dir) {
+  return fs.existsSync(knowledgeFiles(statePath(dir)).store);
+}
+
 /**
- * The files the store holds chunks of, sorted — none without a store.
+ * The files the store holds chunks of, state-relative and sorted; refused
+ * where there is no store, which `hasStore` says.
  * @param {string} dir @returns {string[]}
  */
 function indexedFiles(dir) {
-  const file = knowledgeFiles(dir).store;
-  if (!fs.existsSync(file)) return [];
-  return [...new Set(store.allChunks(store.loadStore(file)).map((chunk) => chunk.source_file))].sort();
-}
-
-/** @param {string} dir @param {string[]} args */
-function git(dir, args) {
-  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
+  assert.ok(hasStore(dir), `no knowledge store in ${dir}`);
+  return [...new Set(store.allChunks(store.loadStore(knowledgeFiles(statePath(dir)).store)).map((chunk) => chunk.source_file))].sort();
 }
 
 /**
- * The test identity and no signing, on the repo at `dir`.
- * @param {string} dir
+ * Git in the world's state worktree.
+ * @param {string} dir @param {string[]} args
  */
-function testIdentity(dir) {
-  git(dir, ['config', 'user.email', 'test@example.com']);
-  git(dir, ['config', 'user.name', 'Test']);
-  git(dir, ['config', 'commit.gpgsign', 'false']);
+function stateGit(dir, args) {
+  return git(statePath(dir), args);
+}
+
+/**
+ * The ledger's entries in order, as the engine reads them: checked first,
+ * each line read as an event of its version's shape.
+ * @param {string} root the state root @param {string[]} [notes] what a landing the check finished said, pushed to
+ * @returns {Record<string, unknown>[]}
+ */
+function ledgerEntries(root, notes = []) {
+  const { withLedger } = require('../../skills/ledger-engine/scripts/domain/ledger.cjs');
+  return withLedger(root, notes, (ledger) => [...ledger.entries()].map(({ event }) => event));
+}
+
+/** A ref's commit. @param {string} dir @param {string} ref @returns {string} */
+function tip(dir, ref) {
+  return git(dir, ['rev-parse', ref]).trim();
+}
+
+/** The remote's state branch tip, or '' where it holds none. @param {string} bare */
+function remoteTip(bare) {
+  return git(bare, ['for-each-ref', '--format=%(objectname)', `refs/heads/${STATE_BRANCH}`]).trim();
+}
+
+/**
+ * `files` written in the state worktree at `root`, each at its
+ * state-relative path, and committed there through the machinery, under the
+ * writer lock — pushed where there is a remote: the commit's outcome.
+ * @param {string} root @param {Record<string, string>} files @param {string} [message]
+ */
+function commitOnState(root, files, message = 'state: a change') {
+  for (const [rel, content] of Object.entries(files)) createFile(root, rel, content);
+  return withStateLock(root, () => commitState(root, Object.keys(files), message));
+}
+
+/** The state branch's commit, as the state worktree has it checked out. @param {string} dir */
+function head(dir) {
+  return stateGit(dir, ['rev-parse', 'HEAD']).trim();
+}
+
+/** The last state commit's subject, exactly as written: only git's closing newline taken off. @param {string} dir */
+function lastMessage(dir) {
+  return stateGit(dir, ['log', '-1', '--format=%s']).replace(/\n$/, '');
+}
+
+/**
+ * The files a commit touched, sorted, each `{status}\t{path}` with the path
+ * as it stands, unquoted.
+ * @param {string} dir @param {string} rev @returns {string[]}
+ */
+function touched(dir, rev) {
+  const fields = git(dir, ['show', '--name-status', '--no-renames', '-z', '--format=', rev]).replace(/^\n+/, '').split('\0');
+  const entries = [];
+  for (let i = 0; i + 1 < fields.length; i += 2) entries.push(`${fields[i]}\t${fields[i + 1]}`);
+  return entries.sort();
+}
+
+/**
+ * Every file in the state as it stands, state-relative, with its text.
+ * @param {string} dir @returns {Record<string, string>}
+ */
+function treeSnapshot(dir) {
+  /** @type {Record<string, string>} */
+  const files = {};
+  /** @param {string} rel */
+  const walk = (rel) => {
+    for (const entry of fs.readdirSync(statePath(dir, rel), { withFileTypes: true })) {
+      const at = rel === '' ? entry.name : `${rel}/${entry.name}`;
+      if (entry.isDirectory()) walk(at);
+      else files[at] = fs.readFileSync(statePath(dir, at), 'utf8');
+    }
+  };
+  walk('');
+  return files;
+}
+
+/**
+ * A call that must refuse, leaving every file of the state as it was and
+ * the state branch where it stood: its refusal.
+ * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
+ */
+function refusedPristine(dir, args, opts) {
+  const before = { tree: treeSnapshot(dir), head: head(dir) };
+  const refused = refuses(dir, args, opts);
+  assert.deepStrictEqual({ tree: treeSnapshot(dir), head: head(dir) }, before, `engine ${args.join(' ')} wrote or committed on refusing`);
+  return refused;
+}
+
+/**
+ * Run `fn` with git tracing every command it runs, in this process and in
+ * every one it starts: its result, and each command traced, its arguments
+ * after `git `.
+ * @template T @param {() => T} fn @returns {{result: T, commands: string[]}}
+ */
+function traced(fn) {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'git-trace-'));
+  const file = path.join(folder, 'trace.log');
+  try {
+    const result = withEnv({ GIT_TRACE: file }, fn);
+    const log = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+    return { result, commands: [...log.matchAll(/trace: built-in: git (.*)$/gm)].map((m) => m[1]) };
+  } finally {
+    fs.rmSync(folder, { recursive: true, force: true });
+  }
+}
+
+/** The release that brought hooks the config defines by name (`hook.<name>.command`). */
+const CONFIG_HOOKS_FROM = [2, 54, 0];
+
+/**
+ * The control a check that the config's hooks stay off needs: a plain
+ * commit at `dir`, outside the engine, fires the hooks its config defines —
+ * each writing to `fired`, which is cleared after — whether or not one of
+ * them stops it. Answers false where the git running the suite is older
+ * than such hooks, saying in the test's output that a check of them proves
+ * nothing there.
+ * @param {import('node:test').TestContext} t @param {string} dir @param {string} fired
+ * @returns {boolean}
+ */
+function configHooksFire(t, dir, fired) {
+  const answer = git(dir, ['--version']).trim();
+  const version = versionOf(answer);
+  assert.ok(version, `git's version does not read: ${answer}`);
+  if (!atLeast(version, CONFIG_HOOKS_FROM)) {
+    t.diagnostic(`${answer} runs no hook the config defines (${CONFIG_HOOKS_FROM.join('.')} on): that none fires proves nothing of them`);
+    return false;
+  }
+  spawnSync('git', ['commit', '-q', '--allow-empty', '-m', 'the control'], { cwd: dir, timeout: GIT_TIMEOUT_MS });
+  assert.ok(fs.existsSync(fired), 'a plain commit fired none of the hooks the config defines');
+  fs.rmSync(fired);
+  return true;
+}
+
+/**
+ * The time limit of each child `fn` starts through a fresh copy of the
+ * module at `file`, in the order started — the `timeout` its `spawnSync` or
+ * `execFileSync` was given, undefined where none. The copy takes
+ * `child_process` as the test watches it, and the module's own entry in
+ * the require cache is put back after.
+ * @param {import('node:test').TestContext} t @param {string} file @param {(module: any) => void} fn
+ * @returns {(number|undefined)[]}
+ */
+function childLimits(t, file, fn) {
+  const childProcess = require('child_process');
+  /** @type {(number|undefined)[]} */
+  const limits = [];
+  for (const name of /** @type {const} */ (['spawnSync', 'execFileSync'])) {
+    const real = childProcess[name];
+    t.mock.method(childProcess, name, (/** @type {any[]} */ ...args) => {
+      limits.push(args[2]?.timeout);
+      return /** @type {Function} */ (real)(...args);
+    });
+  }
+  const id = require.resolve(file);
+  const loaded = require.cache[id];
+  delete require.cache[id];
+  try {
+    fn(require(id));
+  } finally {
+    if (loaded === undefined) delete require.cache[id];
+    else require.cache[id] = loaded;
+  }
+  return limits;
+}
+
+/**
+ * The code tree in `dir` committed whole, its state left as it stands.
+ * @param {string} dir @param {string} message
+ */
+function commitCode(dir, message) {
+  git(dir, ['add', '-A']);
+  git(dir, ['commit', '-q', '-m', message]);
+}
+
+/**
+ * The ways a person merges a task's branch by hand onto the branch the
+ * repository at `dir` has out that leave no commit naming the task by its
+ * `Task:` line: with a merge commit; rebased, its commits copied there under
+ * the host's identity, as GitHub's rebase merge copies them; or squashed
+ * under a message of the person's own.
+ * @type {Readonly<Record<string, (dir: string, branch: string) => void>>}
+ */
+const MERGED_BY_HAND = Object.freeze({
+  'a merge commit': (dir, branch) => git(dir, ['merge', '-q', '--no-ff', '-m', `Merge pull request #1 from ${branch}`, branch]),
+  'a rebase': (dir, branch) => git(dir, ['-c', 'user.name=GitHub', '-c', 'user.email=noreply@github.com', 'cherry-pick', `HEAD..${branch}`]),
+  'a squash under the person\'s own message': (dir, branch) => {
+    git(dir, ['merge', '-q', '--squash', branch]);
+    git(dir, ['commit', '-q', '-m', 'In their own words (#1)']);
+  },
+});
+
+/**
+ * Everything in the world committed, each side where it holds a change: the
+ * code tree on its branch, the state on the state branch where the
+ * repository has one.
+ * @param {string} dir @param {string} message
+ */
+function commitAll(dir, message) {
+  const state = findStateRoot(dir);
+  for (const side of state === null ? [dir] : [dir, state]) {
+    git(side, ['add', '-A']);
+    if (git(side, ['status', '--porcelain']) !== '') git(side, ['commit', '-q', '-m', message]);
+  }
 }
 
 /**
@@ -183,38 +493,687 @@ function initRepo(dir) {
 }
 
 /**
- * A temp git repo with a `.workflows/` tree, a test identity and no signing —
- * the world an engine commit lands in. Content and a first commit are the
- * suite's own; `cleanupFixture` removes it.
+ * The environment that keeps a remote on GitHub off the network: a git
+ * config file, written in `dir` and read in place of the empty global one,
+ * that rewrites `git@github.com:` to GitHub on port 0. To whatever reads the
+ * remote's URL it is still GitHub's, but ssh refuses port 0 before it looks
+ * the host up — so a suite standing in for GitHub serves it through a
+ * stand-in ssh, and a call the stand-in misses fails, never reaching
+ * github.com.
+ * @param {string} dir
+ * @returns {{GIT_CONFIG_GLOBAL: string}}
+ */
+function githubOffline(dir) {
+  const file = path.join(dir, 'github-offline.gitconfig');
+  fs.writeFileSync(file, '[url "ssh://git@github.com:0/"]\n\tinsteadOf = git@github.com:\n');
+  return { GIT_CONFIG_GLOBAL: file };
+}
+
+/**
+ * A PATH, made in `dir`, holding git and ps alone: no tool a driver needs
+ * is found on it.
+ * @param {string} dir @returns {string}
+ */
+function toolless(dir) {
+  const bin = fs.mkdtempSync(path.join(dir, 'bin-'));
+  for (const tool of ['git', 'ps']) {
+    const found = (process.env.PATH ?? '').split(path.delimiter).map((folder) => path.join(folder, tool)).find((file) => fs.existsSync(file));
+    if (found !== undefined) fs.symlinkSync(found, path.join(bin, tool));
+  }
+  return bin;
+}
+
+/**
+ * A `ps` that fails, made in `dir`: `path` puts it first on the PATH, where
+ * every start-time read comes back empty, as when `ps` cannot be spawned;
+ * `runs()` answers the arguments of each run it was asked for.
+ * @param {string} dir
+ * @returns {{path: string, runs: () => string[]}}
+ */
+function failingPs(dir) {
+  const bin = fs.mkdtempSync(path.join(dir, 'ps-'));
+  const log = path.join(bin, 'runs');
+  fs.writeFileSync(path.join(bin, 'ps'), `#!/bin/sh\necho "$*" >> "${log}"\nexit 1\n`, { mode: 0o755 });
+  return {
+    path: `${bin}:${process.env.PATH}`,
+    runs: () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').slice(0, -1) : []),
+  };
+}
+
+/** What a full disk answers an append with. */
+const NO_SPACE = 'ENOSPC: no space left on device, write';
+
+/**
+ * Fail every append to the trust log the configuration names at the time,
+ * as a full disk does — after writing it, where it `lands` — until the
+ * answered mock is restored.
+ * @param {import('node:test').TestContext} t @param {boolean} [lands]
+ */
+function failingTrustAppends(t, lands = false) {
+  const append = fs.appendFileSync;
+  return t.mock.method(fs, 'appendFileSync', (/** @type {any} */ file, /** @type {any} */ data) => {
+    if (file !== trustLogPath()) return append(file, data);
+    if (lands) append(file, data);
+    throw Object.assign(new Error(NO_SPACE), { code: 'ENOSPC' });
+  });
+}
+
+/**
+ * `fn` run with every state commit failing, as git refuses one while a peer
+ * holds the state branch's ref mid-update: what `fn` answered.
+ * @template T @param {string} dir @param {() => T} fn @returns {T}
+ */
+function failingStateCommits(dir, fn) {
+  const held = path.join(dir, '.git', 'refs', 'heads', 'ledger-state.lock');
+  fs.writeFileSync(held, '');
+  try {
+    return fn();
+  } finally {
+    fs.rmSync(held, { force: true });
+  }
+}
+
+/**
+ * The retry a failed tail commit's note names, run as written: the files its
+ * commit took, and what the state's tree holds uncommitted after it.
+ * @param {string} dir @param {Record<string, unknown>} answer
+ * @returns {{took: string[], left: string}}
+ */
+function retried(dir, answer) {
+  const [, scope] = /^commit pending — state saved; retry with: engine commit (.+) -m "<message>"$/.exec(String(answer.note)) ?? [];
+  assert.ok(scope, `a retry is named: ${answer.note}`);
+  ok(dir, ['commit', ...scope.split(' '), '-m', 'the retry']);
+  return { took: touched(statePath(dir), 'HEAD'), left: stateGit(dir, ['status', '--porcelain', '--untracked-files=all']) };
+}
+
+/**
+ * A temp world — the git repo, its state worktree, a test identity and no
+ * signing — that an engine commit lands in. Content is the suite's own;
+ * `cleanupFixture` removes it.
  * @param {string} [prefix] temp-directory prefix, so a leftover names its suite
  */
 function setupGitFixture(prefix = 'engine-') {
-  const dir = initRepo(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
-  fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
+  return setupFixture(prefix);
+}
+
+/**
+ * `build` run, and what it changed in `kept` — each key whose value it set
+ * anew — or nothing where there is no `kept`.
+ * @param {Record<string, unknown>|undefined} kept @param {() => void} build
+ * @returns {Record<string, unknown>|undefined}
+ */
+function keptBy(kept, build) {
+  const before = kept && JSON.stringify(kept);
+  build();
+  if (!kept) return undefined;
+  const was = JSON.parse(/** @type {string} */ (before));
+  return Object.fromEntries(Object.entries(kept).filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(was[key])));
+}
+
+/**
+ * What a build set in `kept`, set there: a record it holds filled in place,
+ * any other value put.
+ * @param {Record<string, unknown>} kept @param {Record<string, unknown>} set
+ */
+function keep(kept, set) {
+  const record = (/** @type {unknown} */ value) => typeof value === 'object' && value !== null && !Array.isArray(value);
+  for (const [key, value] of Object.entries(set)) {
+    if (record(kept[key]) && record(value)) Object.assign(/** @type {object} */ (kept[key]), value);
+    else kept[key] = value;
+  }
+}
+
+/**
+ * The world `name` from the run (run-worlds.cjs), `build` filling the empty
+ * folder it is given; at the first ask, what the build set in `kept` set
+ * here too, wherever the world was built.
+ * @param {string} name @param {(dir: string) => void} build @param {unknown[]} by @param {Record<string, unknown>|undefined} kept
+ * @returns {() => string} the world's folder
+ */
+function runWorld(name, build, by, kept) {
+  let took = false;
+  return () => {
+    const world = worldOfTheRun(name, (dir) => keptBy(kept, () => build(dir)), { by });
+    if (!took && kept) keep(kept, /** @type {Record<string, unknown>} */ (world.kept));
+    took = true;
+    return world.dir;
+  };
+}
+
+/**
+ * A world many tests start from, the project world as `build` fills it,
+ * built once per run under its name (run-worlds.cjs) — one name to one
+ * build, so a builder whose world depends on more than its source, a
+ * driver or a shape, names it — and every call answers a copy of it, at the
+ * folder given, or in a temp folder named for the world. What the build sets
+ * in `kept`, a module's record of the ids it minted, is set in every process
+ * that takes the world. A helper that wraps what it was given in `build`
+ * names it in `by`, so the world is known by it too. A world whose git
+ * config names a path outside it, a remote beside it, is no template: the
+ * copy would share it.
+ * @param {string} name the world's own, and its copies' temp-directory prefix
+ * @param {(dir: string) => void} build
+ * @param {{kept?: Record<string, unknown>, by?: unknown[]}} [options]
+ * @returns {(dir?: string) => string} symbolic links resolved — the path the engine names it by
+ */
+function fixtureFrom(name, build, { kept, by = [] } = {}) {
+  const world = runWorld(name, (template) => {
+    setupFixtureAt(template);
+    build(template);
+  }, [build, ...by], kept);
+  return (dir) => {
+    const from = world();
+    return copyWorld(from, dir ?? fs.mkdtempSync(path.join(os.tmpdir(), name)));
+  };
+}
+
+/**
+ * A world of several repositories many tests start from, `build` filling
+ * an empty folder, built once per run under its name as `fixtureFrom`'s
+ * is, and every call copies it into `dir`, each repository moved onto the
+ * copy's paths (`copyFolder`) — a remote beside a project among them.
+ * @param {string} name the world's own
+ * @param {(folder: string) => void} build
+ * @param {{kept?: Record<string, unknown>, by?: unknown[]}} [options]
+ * @returns {(dir: string) => string} dir, symbolic links resolved
+ */
+function folderFrom(name, build, { kept, by = [] } = {}) {
+  const world = runWorld(name, build, [build, ...by], kept);
+  return (dir) => copyFolder(world(), dir);
+}
+
+/** A clone of the remote `bare` at `dir`, under the test identity. @param {string} bare @param {string} dir @param {string[]} [args] further `git clone` flags */
+function cloneOf(bare, dir, args = []) {
+  git(path.dirname(dir), ['clone', '-q', ...args, bare, dir]);
+  testIdentity(dir);
   return dir;
 }
 
 /**
- * `rel` added to the repo at `dir` as a submodule cloned from the repo at
- * `source`, the addition committed; the clone commits under the test identity.
- * `force` adds it where the repo ignores its folder.
- * @param {string} dir @param {string} rel @param {string} source
- * @param {{force?: boolean}} [opts]
- * @returns {string} the clone's path
+ * @typedef {object} ProjectShape
+ * @property {string} [name] the project's folder, and its remote's `{name}.git`
+ * @property {boolean} [remote] a bare remote beside it as `origin`, `main` pushed there
+ * @property {boolean} [state] its state worktree made, pushed where there is a remote
+ * @property {'sha1'|'sha256'} [objectFormat]
  */
-function addSubmodule(dir, rel, source, { force = false } = {}) {
-  git(dir, ['-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', ...(force ? ['-f'] : []), source, rel]);
-  git(dir, ['commit', '-q', '-m', `add ${rel}`]);
-  const clone = path.join(dir, rel);
-  testIdentity(clone);
-  return clone;
+
+/**
+ * A project of `shape` built in `folder`, every commit dated as the
+ * project world's are.
+ * @param {string} folder @param {Required<ProjectShape>} shape
+ */
+function buildProject(folder, shape) {
+  datedAt(TEMPLATE_DATE, () => buildDated(folder, shape));
 }
 
-const { call, callAsync, ok, okSections, refuses, output } = harness();
+/** @param {string} folder @param {Required<ProjectShape>} shape */
+function buildDated(folder, { name, remote, state, objectFormat }) {
+  const main = path.join(folder, name);
+  fs.mkdirSync(main);
+  git(main, ['init', '-q', '-b', 'main', `--object-format=${objectFormat}`]);
+  testIdentity(main);
+  createFile(main, 'README.md', `# ${name}\n`);
+  git(main, ['add', 'README.md']);
+  git(main, ['commit', '-q', '-m', 'code']);
+  if (remote) {
+    const bare = bareRepo(path.join(folder, `${name}.git`), [`--object-format=${objectFormat}`]);
+    git(main, ['remote', 'add', 'origin', bare]);
+    git(main, ['push', '-q', 'origin', 'main']);
+  }
+  if (state) createState(path.join(main, STATE_DIR_NAME));
+}
+
+/** The project's environment setup set to `environment`, on the project manifest. @param {string} dir @param {unknown} environment */
+function setEnvironment(dir, environment) {
+  const project = JSON.parse(readState(dir, layout.projectManifest));
+  writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment }, null, 2));
+}
+
+/**
+ * The project's environment setup set to `environment` as the person's yes
+ * confirmed it — what the engine runs its tests, linters and steps from.
+ * @param {string} dir @param {Record<string, unknown>} environment
+ */
+function confirmEnvironment(dir, environment) {
+  setEnvironment(dir, { ...environment, confirmed: FROZEN_AT });
+}
+
+/** @type {Map<string, (dir: string) => string>} */
+const projects = new Map();
+
+/**
+ * A project at `{dir}/{name}` with one code commit on `main` — and, as its
+ * shape asks, a bare remote beside it and its state — each shape made once
+ * per run and copied; its commits dated as the project world's are.
+ * @param {string} dir @param {ProjectShape} [shape]
+ * @returns {{main: string, root: string, bare: string|null}} the main checkout, its state root, and its remote
+ */
+function codeProject(dir, { name = 'project', remote = false, state = false, objectFormat = 'sha1' } = {}) {
+  const shape = { name, remote, state, objectFormat };
+  const key = JSON.stringify(shape);
+  if (!projects.has(key)) projects.set(key, folderFrom(`project-${name}-${remote ? 'remote' : 'alone'}-${state ? 'state' : 'code'}-${objectFormat}-`, (folder) => buildProject(folder, shape), { by: [key] }));
+  const at = /** @type {(dir: string) => string} */ (projects.get(key))(dir);
+  const main = path.join(at, name);
+  return { main, root: path.join(main, STATE_DIR_NAME), bare: remote ? path.join(at, `${name}.git`) : null };
+}
+
+/** @typedef {{main: string, root: string}} Machine */
+
+/** @type {Map<string, (dir: string) => string>} */
+const machines = new Map();
+
+/**
+ * Two machines on one remote: here, a project, `name`, at `{dir}/{name}`,
+ * its state pushed to the bare remote beside it, `{name}.git`; and there, a
+ * clone of the remote at `{dir}/other-machine`, its state worktree made from
+ * the remote's state branch. Made once per run for each name, copied;
+ * the project's commits dated as the project world's are.
+ * @param {string} dir @param {{name?: string}} [opts]
+ * @returns {{here: Machine, there: Machine, bare: string}}
+ */
+function twoMachines(dir, { name = 'project' } = {}) {
+  if (!machines.has(name)) {
+    machines.set(name, folderFrom(`two-machines-${name}-`, (folder) => {
+      buildProject(folder, { name, remote: true, state: true, objectFormat: 'sha1' });
+      const there = cloneOf(path.join(folder, `${name}.git`), path.join(folder, 'other-machine'));
+      createStateBranchFromRemote(path.join(there, STATE_DIR_NAME));
+      addStateWorktree(path.join(there, STATE_DIR_NAME));
+    }, { by: [name] }));
+  }
+  const at = /** @type {(dir: string) => string} */ (machines.get(name))(dir);
+  /** @param {string} folder @returns {Machine} */
+  const machine = (folder) => ({ main: path.join(at, folder), root: path.join(at, folder, STATE_DIR_NAME) });
+  return { here: machine(name), there: machine('other-machine'), bare: path.join(at, `${name}.git`) };
+}
+
+/**
+ * The state files that make a task ready to land, as `land open`, `land
+ * chain` and `task done` ask (12.14), by their state-relative paths: its
+ * account taken over every round of its review the test wrote — the figures
+ * `task account` writes, counting them, where none taken covers them — and,
+ * where it wrote none, a passing report from each reviewer of the count in
+ * round 1. None where the account taken covers them already.
+ * @param {string} dir @param {string} unit @param {string} task shown, `{phase}.{n}`
+ * @returns {Record<string, string>}
+ */
+function accountFiles(dir, unit, task) {
+  const { roundReportPath, taskFolder } = require('../../skills/ledger-engine/scripts/domain/round-report.cjs');
+  const { figuresPath, takenFigures } = require('../../skills/ledger-engine/scripts/domain/task-account.cjs');
+  const { REVIEWER_LETTERS } = require('../../skills/ledger-engine/scripts/kernel/reviewers.cjs');
+  const [phase, n] = task.split('.').map(Number);
+  const ref = { unit, phase, n };
+  const folder = statePath(dir, taskFolder(ref));
+  const written = fs.existsSync(folder) ? fs.readdirSync(folder).flatMap((name) => /^round-(\d+)-[a-z]\.md$/.exec(name)?.[1] ?? []).map(Number) : [];
+  const reports = written.length > 0 ? [] : REVIEWER_LETTERS.map((letter) => [roundReportPath(ref, 1, letter), '# Review\n\n## Findings\n\nNone.\n\nVerdict: pass\n']);
+  const figures = { files: 1, added: 1, removed: 0, criteria: 1, additions: 0, started: null, finished: null, rounds: Math.max(1, ...written) };
+  return takenFigures(dir, ref)?.rounds === figures.rounds ? {} : Object.fromEntries([...reports, [figuresPath(ref), JSON.stringify(figures)]]);
+}
+
+/**
+ * A task ready to land (`accountFiles`), its files committed on the state
+ * branch as `task account` commits them.
+ * @param {string} dir @param {string} unit @param {string} task shown, `{phase}.{n}`
+ */
+function accountTaken(dir, unit, task) {
+  const files = accountFiles(dir, unit, task);
+  if (Object.keys(files).length > 0) commitOnState(statePath(dir), files, `task(${unit}): account ${task}`);
+}
+
+/**
+ * The lock `file` written as held by this live process — a peer holding it,
+ * to any caller.
+ * @param {string} file @returns {string} the lock
+ */
+function holdLock(file) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
+  return file;
+}
+
+/**
+ * Each attempt this process makes at the lock `file` for the rest of the
+ * test — a claim linked into place, or a lock file opened exclusively —
+ * `made`, or `taken` where another holds it. `onTaken` runs at each attempt
+ * that finds it taken, given how many have, before the attempt answers.
+ * @param {import('node:test').TestContext} t @param {string} file
+ * @param {(taken: number) => void} [onTaken]
+ * @returns {Array<'made'|'taken'>}
+ */
+function lockAttempts(t, file, onTaken = () => {}) {
+  /** @type {Array<'made'|'taken'>} */
+  const attempts = [];
+  /** @param {'linkSync'|'openSync'} name @param {(args: any[]) => unknown} target */
+  const watch = (name, target) => {
+    const real = /** @type {(...args: any[]) => any} */ (fs[name]);
+    t.mock.method(fs, name, (/** @type {any[]} */ ...args) => {
+      if (target(args) !== file) return real(...args);
+      try {
+        const made = real(...args);
+        attempts.push('made');
+        return made;
+      } catch (err) {
+        if (/** @type {NodeJS.ErrnoException} */ (err).code !== 'EEXIST') throw err;
+        attempts.push('taken');
+        onTaken(attempts.filter((attempt) => attempt === 'taken').length);
+        throw err;
+      }
+    });
+  };
+  watch('linkSync', ([, to]) => to);
+  watch('openSync', ([at, flags]) => (flags === 'wx' ? at : null));
+  return attempts;
+}
+
+/**
+ * What every contender's script opens with: `fs`, and its calls —
+ * `atBarrier()`, where it says it is ready and waits until every contender
+ * is; `report(r)`, its one line back, last; and `untilAllReported()`, where
+ * it waits, holding what it holds, until every contender has reported.
+ */
+const CONTENDER = [
+  "const fs = require('fs');",
+  "const atBarrier = () => { fs.writeSync(1, 'ready\\n'); fs.readSync(0, Buffer.alloc(1)); };",
+  "const report = (r) => fs.writeSync(1, JSON.stringify(r) + '\\n');",
+  'const untilAllReported = () => fs.readSync(0, Buffer.alloc(1));',
+].join('\n');
+
+/**
+ * Well inside the writer lock's 60s wait: a contender still running then
+ * has hung on a lock that never comes free, and is killed.
+ */
+const CONTENDER_TIMEOUT_MS = 30000;
+
+/**
+ * One contender, a node child running `script`, killed should it run past
+ * CONTENDER_TIMEOUT_MS: the `lines` it prints; `printed(n)`, resolved once
+ * it has printed `n` of them or exited; and `done`, with its exit code, the
+ * signal that killed it, its stderr and its lines.
+ * @param {string} script @param {string[]} args @param {NodeJS.ProcessEnv} env
+ */
+function contender(script, args, env) {
+  const child = spawn(process.execPath, ['-e', script, ...args], { env, timeout: CONTENDER_TIMEOUT_MS, killSignal: 'SIGKILL' });
+  child.stdin.on('error', () => {}); // one that has exited has no stdin left to write to
+  /** @type {string[]} */
+  const lines = [];
+  let stderr = '';
+  let exited = false;
+  /** @type {Set<() => void>} */
+  const waiters = new Set();
+  const changed = () => { for (const wake of waiters) wake(); };
+  child.stderr.on('data', (chunk) => { stderr += chunk; });
+  readline.createInterface({ input: child.stdout }).on('line', (line) => { lines.push(line); changed(); });
+  /** @type {Promise<{code: number|null, signal: NodeJS.Signals|null, stderr: string, lines: string[]}>} */
+  const done = new Promise((resolve) => child.on('close', (code, signal) => { exited = true; changed(); resolve({ code, signal, stderr, lines }); }));
+  /** @param {number} count @returns {Promise<void>} */
+  const printed = (count) => new Promise((resolve) => {
+    const check = () => {
+      if (lines.length < count && !exited) return;
+      waiters.delete(check);
+      resolve();
+    };
+    waiters.add(check);
+    check();
+  });
+  return { child, lines, printed, done };
+}
+
+/**
+ * Race `n` contenders, each running CONTENDER and then `body` with argv
+ * `args` — or, where contenders play parts, `args(i)` for the i-th. Each
+ * barrier lifts once every one has reached it, so they go on together
+ * however slowly each got there; their stdin closes once every one has
+ * reported. Answers each one's report.
+ * @param {number} n @param {string} body @param {string[]|((i: number) => string[])} args
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {Promise<any[]>}
+ */
+async function contend(n, body, args, env = process.env) {
+  const runs = Array.from({ length: n }, (_, i) => contender(`${CONTENDER}\n${body}`, typeof args === 'function' ? args(i) : args, env));
+  for (let line = 1; ; line++) {
+    await Promise.all(runs.map((run) => run.printed(line)));
+    if (!runs.every((run) => run.lines[line - 1] === 'ready')) break;
+    for (const run of runs) run.child.stdin.write('g');
+  }
+  for (const run of runs) run.child.stdin.end();
+  const results = await Promise.all(runs.map((run) => run.done));
+  for (const { code, signal, stderr } of results) {
+    assert.strictEqual(code, 0, signal ? `a contender still running after ${CONTENDER_TIMEOUT_MS}ms was killed\n${stderr}` : stderr);
+  }
+  return results.map(({ lines }) => JSON.parse(/** @type {string} */ (lines.at(-1))));
+}
+
+// The engine in a child that exits, status 9, at one file call: `method` on
+// a path ending `file` — a rename by its destination — `before` or `after`
+// the call runs.
+const KILLED = [
+  'const [method, file, when, cwd, stdin, env, ...args] = process.argv.slice(1);',
+  "const fs = require('fs');",
+  'const real = fs[method];',
+  "const hits = (a) => String(a[method === 'renameSync' ? 1 : 0]).endsWith(file);",
+  "fs[method] = (...a) => { if (when === 'before' && hits(a)) process.exit(9); const done = real.apply(fs, a); if (when === 'after' && hits(a)) process.exit(9); return done; };",
+  `process.stdout.write(JSON.stringify(require(${JSON.stringify(ENGINE)}).run(args, { cwd, stdin, env: JSON.parse(env) })));`,
+].join('\n');
+
+/**
+ * A point a writer is killed at: its file call — `method` on a path ending
+ * `file`, a rename by its destination — and whether before or after it runs.
+ * @typedef {{method: string, file: string, when: 'before'|'after'}} KillPoint
+ */
+
+/**
+ * An engine call run in a child killed at `at`: asserted killed there.
+ * @param {KillPoint} at @param {string} dir @param {string[]} args @param {CallOptions} [opts]
+ */
+function killedAt({ method, file, when }, dir, args, { env = {}, stdin = '', unbooted = false } = {}) {
+  if (!unbooted) booted(dir, args, env);
+  const { status, stdout, stderr } = spawnSync(process.execPath, ['-e', KILLED, method, file, when, dir, stdin, JSON.stringify(env), ...args], { env: process.env, encoding: 'utf8' });
+  assert.strictEqual(status, 9, `engine ${args.join(' ')} was not killed ${when} ${method} ${file}\nstdout: ${stdout}\nstderr: ${stderr}`);
+}
+
+// A migration runner standing in for the real one, its report in the real
+// one's format byte for byte, for boot parses it. STUB_MIGRATE_MODE picks
+// what it does: nothing (unset); `update`, a migration recorded and a state
+// document changed, stopping for review; `update-config`, the project's
+// settings (STUB_MIGRATE_SETTINGS) and .gitignore changed; `record-only`, a
+// migration recorded and nothing changed; `fail`, a crash; `reshape`, the
+// state worktree put in place as the reshape's guard puts it, where the
+// reshape is owed, and the guard recorded; `refuse`, the guard's refusal,
+// its facts STUB_MIGRATE_REFUSAL, or another migration's where
+// STUB_MIGRATE_REFUSED names its id. Where STUB_MIGRATE_MARK names a file, it
+// records there the state branch's tip as it found it: that it ran, and
+// over what state. Where STUB_MIGRATE_RUNS names one, it records there, as
+// a line at its start and another at its end, the folder it ran in and
+// whether its caller held boot's lock and the writer lock; where
+// STUB_MIGRATE_HOLD names a file, it waits between the two until that file
+// is there, five seconds at most. STUB_MIGRATE_NOTICES is a notices
+// payload; STUB_MIGRATE_REPORT stands in for the run report's payload, and
+// STUB_MIGRATE_NO_REPORT plays a runner from before the report.
+const STUB_MIGRATE = `#!/usr/bin/env node
+'use strict';
+const fs = require('fs');
+const path = require('path');
+const mode = process.env.STUB_MIGRATE_MODE || '';
+const record = process.argv[process.argv.indexOf('--record') + 1];
+if (process.env.STUB_MIGRATE_MARK) {
+  fs.appendFileSync(process.env.STUB_MIGRATE_MARK, require('child_process').execFileSync('git', ['rev-parse', '${STATE_BRANCH}'], { encoding: 'utf8' }));
+}
+const main = path.dirname(path.dirname(path.dirname(record)));
+const heldByCaller = (lock) => { try { return JSON.parse(fs.readFileSync(lock, 'utf8')).pid === process.ppid; } catch { return false; } };
+const noteRun = (at) => {
+  if (!process.env.STUB_MIGRATE_RUNS) return;
+  const locks = { boot: heldByCaller(path.join(main, '.git', 'ledger-boot.lock')), writer: heldByCaller(path.join(main, '${STATE_DIR_NAME}', '.lock')) };
+  fs.appendFileSync(process.env.STUB_MIGRATE_RUNS, JSON.stringify({ at, cwd: process.cwd(), ...locks }) + '\\n');
+};
+if (mode === 'refuse') {
+  process.stdout.write('---REFUSED: ' + (process.env.STUB_MIGRATE_REFUSED || '074') + '---\\n' + process.env.STUB_MIGRATE_REFUSAL + '\\n');
+  process.exit(0);
+}
+if (mode === 'reshape' && require('./old-layout.cjs').owed('.')) require('./migrations/reshape/shared.cjs').placeStateWorktree(main);
+noteRun('start');
+for (const until = Date.now() + 5000; process.env.STUB_MIGRATE_HOLD && !fs.existsSync(process.env.STUB_MIGRATE_HOLD) && Date.now() < until;) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
+}
+noteRun('end');
+let ran = 1;
+if (mode === 'reshape') {
+  fs.mkdirSync(path.dirname(record), { recursive: true });
+  if (!(fs.existsSync(record) && fs.readFileSync(record, 'utf8').split('\\n').includes('074'))) fs.appendFileSync(record, '074\\n');
+  process.stdout.write('[SKIP] No changes needed\\n');
+} else if (mode === 'update') {
+  fs.mkdirSync(path.dirname(record), { recursive: true });
+  fs.mkdirSync(${JSON.stringify(path.join(STATE_DIR_NAME, layout.unit('payments')))}, { recursive: true });
+  fs.appendFileSync(record, '045\\n');
+  fs.writeFileSync(${JSON.stringify(path.join(STATE_DIR_NAME, layout.unit('payments', 'marker.md')))}, 'migrated\\n');
+  process.stdout.write(
+    '\\n' +
+    '1 migration(s) applied, 2 file(s) updated.\\n' +
+    '\\n' +
+    '---STOP_GATE: FILES_UPDATED---\\n' +
+    'You MUST now follow the migration skill instructions to STOP and let the user review.\\n' +
+    'Follow the explicit instructions in the migration skill before proceeding.\\n'
+  );
+} else if (mode === 'update-config') {
+  fs.mkdirSync(path.dirname(record), { recursive: true });
+  fs.mkdirSync('.claude', { recursive: true });
+  fs.appendFileSync(record, '046\\n');
+  fs.writeFileSync('.claude/settings.json', process.env.STUB_MIGRATE_SETTINGS || '{"permissions":{}}\\n');
+  fs.appendFileSync('.gitignore', '.DS_Store\\n');
+  process.stdout.write(
+    '\\n' +
+    '1 migration(s) applied, 3 file(s) updated.\\n' +
+    '\\n' +
+    '---STOP_GATE: FILES_UPDATED---\\n' +
+    'You MUST now follow the migration skill instructions to STOP and let the user review.\\n'
+  );
+} else if (mode === 'record-only') {
+  fs.mkdirSync(path.dirname(record), { recursive: true });
+  fs.appendFileSync(record, '047\\n');
+  process.stdout.write('[SKIP] No changes needed\\n');
+} else if (mode === 'fail') {
+  process.stdout.write('partial output before the failure\\n');
+  process.stderr.write('boom: migration 099 exploded\\n');
+  process.exit(1);
+} else {
+  ran = 0;
+  process.stdout.write('[SKIP] No changes needed\\n');
+}
+if (process.env.STUB_MIGRATE_NOTICES) {
+  process.stdout.write('---MIGRATION_NOTICES---\\n' + process.env.STUB_MIGRATE_NOTICES + '\\n');
+}
+if (!process.env.STUB_MIGRATE_NO_REPORT) {
+  process.stdout.write('---MIGRATIONS_RUN---\\n');
+  process.stdout.write((process.env.STUB_MIGRATE_REPORT || JSON.stringify({ ran })) + '\\n');
+}
+`;
+
+// Ledger's own hooks, as boot installs them in a project's
+// `.claude/settings.json`.
+const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/ledger-engine/scripts/engine.cjs"';
+/** A hook running an engine verb. @param {string} verb */
+const engineHook = (verb) => ({ type: 'command', command: `${HOOK_ENGINE} ${verb}` });
+/** Ledger's own SessionEnd hooks, in every project whatever the label choice. */
+const LEDGER_HOOKS = [engineHook('presence cleanup'), engineHook('conversation end')];
+/** The layout hook's group, before every write, in every project whatever the label choice. */
+const LAYOUT_GROUP = { matcher: 'Write|Edit|NotebookEdit', hooks: [engineHook('layout guard')] };
+/** The brief hook's group, before every dispatch, in every project whatever the label choice. */
+const BRIEF_GROUP = { matcher: 'Agent|SendMessage', hooks: [engineHook('brief guard')] };
+/** The shell hook's group, before every shell command, in every project whatever the label choice. */
+const SHELL_GROUP = { matcher: 'Bash', hooks: [engineHook('shell guard')] };
+/** The PreToolUse groups, in the order boot installs them. */
+const GUARD_GROUPS = [LAYOUT_GROUP, BRIEF_GROUP, SHELL_GROUP];
+/** Ledger's own hooks by event, as boot installs them. */
+const OWN_HOOKS = { SessionEnd: [{ hooks: LEDGER_HOOKS }], PreToolUse: GUARD_GROUPS };
+
+/**
+ * Settings as boot leaves a project the mod cannot run in: `rest`, then
+ * `hooks` in boot's one SessionEnd group, and the guard groups.
+ * @param {object[]} hooks @param {Record<string, unknown>} [rest]
+ */
+function hooked(hooks, rest = {}) {
+  return JSON.stringify({ ...rest, hooks: { SessionEnd: [{ hooks }], PreToolUse: GUARD_GROUPS } }, null, 2) + '\n';
+}
+
+/** @type {(ReturnType<typeof harness> & {path: string})|null} */
+let stub = null;
+
+/** The migrate skill's scripts: the modules the engine asks — the migrations' naming, the old layout and the records' files — and the reshape's shared steps. */
+const MIGRATE_SCRIPTS = path.join(path.dirname(path.dirname(path.dirname(ENGINE))), 'ledger-migrate/scripts');
+
+/**
+ * The engine copied, once per process, into a skills folder beside the
+ * stand-in migration runner (`STUB_MIGRATE`), the modules the engine asks of
+ * the migrate skill and the reshape's shared steps, with no migration
+ * installed — boot finds the runner beside its own file,
+ * so the copy runs that resolution as installed: its path, and the shapes
+ * bound to it. The copy is never written to; each test brings its own
+ * project.
+ */
+function stubEngine() {
+  if (stub !== null) return stub;
+  const skills = templateFolder('engine-skills-');
+  fs.cpSync(path.dirname(path.dirname(ENGINE)), path.join(skills, 'ledger-engine'), { recursive: true });
+  createFile(skills, 'ledger-migrate/scripts/migrate.cjs', STUB_MIGRATE);
+  for (const script of ['migration-ids.cjs', 'old-layout.cjs', 'record-files.cjs']) fs.copyFileSync(path.join(MIGRATE_SCRIPTS, script), path.join(skills, 'ledger-migrate/scripts', script));
+  fs.cpSync(path.join(MIGRATE_SCRIPTS, 'migrations/reshape'), path.join(skills, 'ledger-migrate/scripts/migrations/reshape'), { recursive: true });
+  const at = path.join(skills, 'ledger-engine/scripts/engine.cjs');
+  stub = { ...harness(at), path: at };
+  return stub;
+}
+
+const { booted, call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, output } = harness();
+
+/**
+ * The conversation `session` stamped as booted for the project at `dir`, as
+ * boot stamps it (domain/boot-stamp.cjs): for a suite whose calls carry the
+ * session id and touch work, in a world boot never ran in — under the system
+ * config `configDir`, where the suite's calls name one of their own.
+ * @param {string} dir @param {string} session @param {string} [configDir]
+ */
+function stampBooted(dir, session, configDir) {
+  withEnv(configDir === undefined ? {} : { LEDGER_CONFIG_DIR: configDir }, () => stampBoot(dir, session));
+}
+
+/**
+ * A unit completed as finish's yes completes it, in process: completion has
+ * no verb of its own, so a suite that needs a completed unit runs the
+ * transaction finish runs, under the state lock every writing verb takes and
+ * with the ledger's copies following it as they follow any verb.
+ * @param {string} dir @param {string} workUnit @param {string} [message]
+ */
+function completeUnit(dir, workUnit, message = `finish(${workUnit}): completed`) {
+  /** @type {ReturnType<typeof completeWorkUnit>|undefined} */
+  let completed;
+  followingLiveness({ cwd: dir, out: () => {}, err: () => {} }, findStateRoot(dir), () => {
+    completed = completeWorkUnit(dir, workUnit, { message });
+  });
+  return /** @type {ReturnType<typeof completeWorkUnit>} */ (completed);
+}
+
+/**
+ * A topic's phase item started as `enter` starts it, in process: a start has
+ * no verb of its own, so a suite that needs a started item runs the function
+ * `enter` runs, under the state lock every writing verb takes and with the
+ * ledger's copies following it, and nothing else `enter` does — no position,
+ * no heartbeat.
+ * @param {string} dir @param {string} workUnit @param {string} phase @param {string} topic
+ */
+function startItem(dir, workUnit, phase, topic) {
+  /** @type {ReturnType<typeof startTopic>|undefined} */
+  let started;
+  followingLiveness({ cwd: dir, out: () => {}, err: () => {} }, findStateRoot(dir), () => {
+    started = startTopic(dir, workUnit, phase, topic);
+  });
+  return /** @type {ReturnType<typeof startTopic>} */ (started);
+}
 
 module.exports = {
-  ENGINE, harness,
-  call, callAsync, ok, okSections, refuses, output,
-  keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
-  git, initRepo, setupGitFixture, addSubmodule, cleanupFixture,
+  ENGINE, STAND_INS, harness, stubEngine, engineHook, LEDGER_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, OWN_HOOKS, hooked,
+  call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, sectionOf, screenOf, holdLock, lockAttempts, contend, killedAt,
+  FROZEN_MS, FROZEN_AT, withFrozenClock, withEnv, datedAt,
+  keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
+  STATE_DIR_NAME, statePath, stateRelative, layout, createFile, writeState, readState, readManifest,
+  git, stateGit, commitOnState, head, lastMessage, touched, treeSnapshot, traced, configHooksFire, childLimits, ledgerEntries, tip, remoteTip,
+  commitCode, MERGED_BY_HAND, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, toolless, failingPs, accountFiles, accountTaken,
+  NO_SPACE, failingTrustAppends, failingStateCommits, retried, completeUnit, startItem, stampBooted,
+  setupGitFixture, setupFixtureAt, fixtureFrom, folderFrom, codeProject, twoMachines, cleanupFixture, setEnvironment, confirmEnvironment,
 };

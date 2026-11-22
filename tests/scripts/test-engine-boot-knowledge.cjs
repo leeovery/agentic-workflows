@@ -1,0 +1,404 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Boot's knowledge base (ledger-engine/scripts/domain/boot.cjs with
+// kernel/knowledge/): a ready store brought in line and compacted, never
+// committed; a set-up checkout with no store built by the keyword side; a
+// store not ready left to the person's choice; a mistake in the knowledge
+// config or a file the index cannot take a warning, never a block; and the
+// system config deciding the provider, the vector fill launched, never
+// waited on.
+//
+// Layer: verb. World: the project fixture (boot-world.cjs), a git repository
+// with its state worktree and Ledger's hooks, made once per run and
+// copied; boot runs from a copy of the engine beside a stand-in migration
+// runner whose behaviour the test picks through the environment.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+const harness = require('./engine-harness.cjs');
+const { git, stateGit, commitAll, statePath, layout, writeState } = harness;
+const REAL_SCRIPTS = path.dirname(harness.ENGINE);
+const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
+const { ENGINE_COMMAND } = require(path.join(REAL_SCRIPTS, 'kernel/call.cjs'));
+
+const { createFile } = require('./discovery-test-utils.cjs');
+const { STORE_FILES, stubbed, recordStubbedLaunches, readyKnowledge, recordedQuickFix, bootProject, runEngine } = require('./boot-world.cjs');
+
+describe('engine boot', () => {
+  let fix;
+  beforeEach(() => { fix = bootProject(); });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+
+  it('happy path: no pending migrations, knowledge ready — the store brought in line, then compacted', () => {
+    readyKnowledge(fix.project);
+    // TMUX pinned so the label-state leg is deterministic whatever terminal
+    // runs the suite; no project manifest makes it `prompt`.
+    const res = runEngine(stubbed, fix.project, ['boot'], { TMUX: '/fake/sock,123,7' });
+
+    assert.deepStrictEqual(res, {
+      ok: true,
+      state: 'ready',
+      migrations: { changed: false, ran: 0, output: '[SKIP] No changes needed', verify: [], notices: [] },
+      knowledge: 'ready',
+      indexed: true,
+      compacted: true,
+      migrations_committed: null,
+      warnings: [],
+      session_labels: 'prompt',
+      label_repaired: false,
+      session_hooks_installed: false,
+      mod: 'cannot',
+      effort: null,
+      // The bare command: the start menu, after the one-time offers nothing has answered.
+      go: 'menu',
+      gates: ['walkthrough', 'session-labels', 'brownfield'],
+      brownfield_offer: 'none',
+      walkthrough: 'none',
+      github_rule_offer: false,
+      // The fixture's first code commit, its `.gitignore` naming the state,
+      // is the setup's own, in the second the state arrived: no history
+      // came before Ledger.
+      brownfield_signal: {
+        root_date: '2026-01-01', ledger_date: '2026-01-01', commits_total: 2, commits_before: 0,
+        history_before: [], files_at_arrival: 0, tree_at_arrival: [],
+      },
+    });
+  });
+
+  it('knowledge not-ready is terminal: no init, no commit, setup stays a human choice', () => {
+    const res = runEngine(stubbed, fix.project, ['boot']);
+
+    assert.strictEqual(res.knowledge, 'not-ready');
+    assert.strictEqual(res.indexed, false);
+    assert.strictEqual(res.compacted, false);
+    assert.deepStrictEqual(res.warnings, []);
+    assert.ok(!fs.existsSync(statePath(fix.project, layout.knowledge())), 'nothing set up');
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
+  });
+
+  it('a ready store is never committed — the index is the checkout\'s own', () => {
+    readyKnowledge(fix.project);
+    recordedQuickFix(fix.project, '# Payments\n\nCards ship first.\n');
+
+    const res = runEngine(stubbed, fix.project, ['boot']);
+
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.strictEqual(res.indexed, true);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.summary('payments')]);
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
+    assert.strictEqual(stateGit(fix.project, ['ls-files', '--', '.knowledge']).trim(), '');
+  });
+
+  it('buildable: a set-up checkout with no store has it built by the keyword side, then compacted', () => {
+    writeState(fix.project, layout.knowledge('config.json'), '{ "knowledge": { "provider": null } }\n');
+    recordedQuickFix(fix.project, '# Payments\n\nCards ship first.\n');
+
+    const res = runEngine(stubbed, fix.project, ['boot']);
+
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.strictEqual(res.indexed, true);
+    assert.strictEqual(res.compacted, true);
+    assert.deepStrictEqual(res.warnings, []);
+    assert.ok(!('system_config' in res), 'a store that stood needs no setup');
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.summary('payments')]);
+  });
+
+  it('buildable: a build that did not stand is not-ready — no compact, the gate\'s report attached', () => {
+    writeState(fix.project, layout.knowledge('config.json'), '{ "knowledge": { "provider": null } }\n');
+    writeState(fix.project, layout.projectManifest, '{ not json');
+
+    const res = runEngine(stubbed, fix.project, ['boot']);
+
+    assert.strictEqual(res.knowledge, 'not-ready');
+    assert.strictEqual(res.indexed, false);
+    assert.strictEqual(res.compacted, false);
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /^knowledge index failed: manifest read failed: project manifest at .* is not valid JSON/);
+    assert.ok('system_config' in res);
+    assert.ok(!fs.existsSync(statePath(fix.project, layout.knowledge('store.bin'))));
+  });
+
+  it('buildable: a store that stood with a file failing is ready, the failure a warning the next start retries', () => {
+    writeState(fix.project, layout.knowledge('config.json'), '{ "knowledge": { "provider": null } }\n');
+    recordedQuickFix(fix.project, '');
+
+    const res = runEngine(stubbed, fix.project, ['boot']);
+
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.strictEqual(res.indexed, false);
+    assert.strictEqual(res.compacted, true);
+    assert.strictEqual(res.warnings.length, 1);
+    const file = statePath(fix.project, layout.summary('payments'));
+    assert.ok(res.warnings[0].startsWith(`knowledge index failed: Failed to index ${file}: No chunks produced from ${file}.`), res.warnings[0]);
+  });
+
+  it('a check that cannot read the knowledge config is not-ready — never a crash', () => {
+    fs.mkdirSync(statePath(fix.project, layout.knowledge('config.json')), { recursive: true });
+
+    const res = runEngine(stubbed, fix.project, ['boot']);
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.knowledge, 'not-ready');
+    assert.strictEqual(res.indexed, false);
+    assert.strictEqual(res.compacted, false);
+  });
+
+  it('a mistake in the knowledge config is named, never a block — compact prunes at the default floor in its place', () => {
+    // S0 0.04: 'buried', a quick-fix and a feature behind, sits at R ≈ 0.037
+    // — below the default floor 0.05 — and 'recent', a feature behind, at
+    // R ≈ 0.072, above it. Each quick-fix holds its short record.
+    const completions = [['buried', '2024-01-01', 'quick-fix'], ['recent', '2024-06-01', 'quick-fix'], ['frontier', '2024-12-01', 'feature']];
+    writeState(fix.project, layout.projectManifest, JSON.stringify({
+      work_units: Object.fromEntries(completions.map(([name, , type]) => [name, { work_type: type }])),
+    }, null, 2) + '\n');
+    for (const [name, completedAt, type] of completions) {
+      writeState(fix.project, layout.manifest(name), JSON.stringify({
+        name, work_type: type, status: 'completed', created: '2024-01-01', completed_at: completedAt, phases: {},
+      }, null, 2) + '\n');
+      if (type === 'quick-fix') writeState(fix.project, layout.summary(name), `## ${name}\n\nCards ship first.\n`);
+    }
+    readyKnowledge(fix.project, { decay_prune_below: false, decay_base_stability: 0.04 });
+    runEngine(stubbed, fix.project, ['boot']);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.summary('buried'), layout.summary('recent')]);
+
+    const configFile = statePath(fix.project, layout.knowledge('config.json'));
+    writeState(fix.project, layout.knowledge('config.json'), JSON.stringify({
+      knowledge: { provider: null, decay_prune_below: 7, decay_base_stability: 0.04, strategy: 'hybrid' },
+    }) + '\n');
+    const res = runEngine(stubbed, fix.project, ['boot']);
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.strictEqual(res.indexed, true);
+    assert.strictEqual(res.compacted, true);
+    assert.deepStrictEqual(res.warnings, [
+      `knowledge config: decay_prune_below in ${configFile} is ignored: 7 is not false or a number from 0 to 1`,
+      `knowledge config: strategy in ${configFile} is ignored: not a knowledge setting`,
+    ]);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.summary('recent')]);
+  });
+
+  it('a file the index cannot take is its own warning — compact still runs', () => {
+    readyKnowledge(fix.project);
+    recordedQuickFix(fix.project, '');
+
+    const res = runEngine(stubbed, fix.project, ['boot']);
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.indexed, false);
+    assert.strictEqual(res.compacted, true);
+    assert.strictEqual(res.warnings.length, 1);
+    const file = statePath(fix.project, layout.summary('payments'));
+    assert.ok(res.warnings[0].startsWith(`knowledge index failed: Failed to index ${file}: No chunks produced from ${file}.`), res.warnings[0]);
+  });
+
+  it('a failing index and a failing compact are two warnings, never a block', () => {
+    readyKnowledge(fix.project);
+    writeState(fix.project, layout.projectManifest, '{ not json');
+
+    const res = runEngine(stubbed, fix.project, ['boot']);
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.strictEqual(res.indexed, false);
+    assert.strictEqual(res.compacted, false);
+    assert.strictEqual(res.warnings.length, 2);
+    assert.match(res.warnings[0], /^knowledge index failed: manifest read failed: /);
+    assert.match(res.warnings[1], /^knowledge compact failed: /);
+  });
+});
+
+describe('engine boot: a set-up checkout with no store', () => {
+  let fix;
+  let sysDir;
+  beforeEach(() => {
+    fix = bootProject();
+    sysDir = path.join(fix.root, 'system-config');
+    fs.mkdirSync(sysDir, { recursive: true });
+    // A quick-fix with its short record — something for a build to index.
+    recordedQuickFix(fix.project, '## Card first\n\nCards ship first; wallets follow.\n');
+    commitAll(fix.project, 'the project');
+    // This checkout is set up — its local knowledge config — with no store.
+    writeState(fix.project, CONFIG, '{ "knowledge": {} }\n');
+  });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+
+  const bootWith = (systemConfig, extra = {}) => {
+    if (systemConfig !== null) createFile(sysDir, 'config.json', JSON.stringify(systemConfig));
+    return runEngine(stubbed, fix.project, ['boot'], { LEDGER_CONFIG_DIR: sysDir, ...extra });
+  };
+  const CONFIG = STORE_FILES[2];
+  const storePath = () => statePath(fix.project, STORE_FILES[0]);
+  const metadata = () => JSON.parse(fs.readFileSync(statePath(fix.project, STORE_FILES[1]), 'utf8'));
+
+  it('a provider whose key resolves builds the store by keyword, out of git, and hands its vectors to the fill', (t) => {
+    const launched = recordStubbedLaunches(t);
+    const head = git(fix.project, ['rev-parse', 'HEAD']).trim();
+
+    const res = bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
+
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.strictEqual(res.indexed, true);
+    assert.strictEqual(res.compacted, true);
+    assert.deepStrictEqual(res.warnings, []);
+    assert.ok(!('system_config' in res));
+    const meta = metadata();
+    assert.strictEqual(meta.provider, 'stub');
+    assert.strictEqual(meta.dimensions, 8);
+    assert.ok(meta.last_indexed, 'the short record was indexed into it');
+    assert.strictEqual(store.chunksWithoutVector(store.loadStore(storePath())).length, 1, 'its vector awaits the fill');
+    assert.deepStrictEqual(launched, [statePath(fix.project)]);
+    assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']).trim(), head, 'the build commits nothing');
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'the project', 'on either side');
+    assert.strictEqual(stateGit(fix.project, ['ls-files', '--', '.knowledge']).trim(), '');
+  });
+
+  it('boot never waits on embedding: an endpoint that never answers is never asked', async (t) => {
+    const launched = recordStubbedLaunches(t);
+    let requests = 0;
+    const silent = require('http').createServer(() => { requests += 1; });
+    await new Promise((resolve) => silent.listen(0, '127.0.0.1', () => resolve(undefined)));
+    const { port } = /** @type {import('net').AddressInfo} */ (silent.address());
+    try {
+      const res = bootWith({ knowledge: { provider: 'openai-compatible', base_url: `http://127.0.0.1:${port}/v1`, model: 'm', dimensions: 8 } });
+
+      assert.strictEqual(res.knowledge, 'ready');
+      assert.strictEqual(res.indexed, true);
+      assert.deepStrictEqual(res.warnings, []);
+      assert.strictEqual(requests, 0);
+      assert.strictEqual(metadata().provider, 'openai-compatible', 'the store is built, its vectors awaited');
+      assert.deepStrictEqual(launched, [statePath(fix.project)]);
+    } finally {
+      silent.closeAllConnections();
+      await new Promise((resolve) => silent.close(() => resolve(undefined)));
+    }
+  });
+
+  it('a store whose provider key does not resolve warns naming the key, and launches no fill', (t) => {
+    const launched = recordStubbedLaunches(t);
+    const openai = { provider: 'openai', model: 'text-embedding-3-small', dimensions: 8 };
+    store.saveStore(store.createStore(), storePath());
+    store.writeMetadata(statePath(fix.project, STORE_FILES[1]), { ...openai, last_indexed: null });
+    writeState(fix.project, CONFIG, JSON.stringify({ knowledge: openai }));
+
+    const res = bootWith(null);
+
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.strictEqual(res.indexed, true);
+    assert.deepStrictEqual(res.warnings, [
+      `knowledge vectors wait: the openai API key could not be resolved; export OPENAI_API_KEY, or run ${ENGINE_COMMAND} knowledge setup --key-only`,
+    ]);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.summary('payments')], 'the keyword side still lands');
+    assert.deepStrictEqual(launched, []);
+  });
+
+  it('a vector fill that fell short is the next start\'s warning — and the fill goes again', (t) => {
+    const launched = recordStubbedLaunches(t);
+    bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
+    store.writeMetadata(statePath(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: `${layout.summary('payments')}: out of quota` });
+
+    const res = bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
+
+    assert.deepStrictEqual(res.warnings, [`knowledge vector fill fell short: ${layout.summary('payments')}: out of quota`]);
+    assert.deepStrictEqual(launched, [statePath(fix.project), statePath(fix.project)]);
+  });
+
+  it('a fill\'s shortfall stays quiet once nothing awaits a vector — its chunks since retired', (t) => {
+    recordStubbedLaunches(t);
+    writeState(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
+    bootWith(null);
+    store.writeMetadata(statePath(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: `${layout.summary('payments')}: out of quota` });
+    const unit = statePath(fix.project, layout.manifest('payments'));
+    fs.writeFileSync(unit, JSON.stringify({ ...JSON.parse(fs.readFileSync(unit, 'utf8')), status: 'cancelled' }));
+
+    const res = bootWith(null);
+
+    assert.deepStrictEqual(res.warnings, []);
+    assert.doesNotMatch(harness.output(fix.project, ['knowledge', 'status']), /fell short/);
+  });
+
+  it('a metadata file that does not parse is a warning, never a block', () => {
+    writeState(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
+    bootWith(null);
+    writeState(fix.project, STORE_FILES[1], '{ not json');
+
+    const res = bootWith(null);
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.ok(res.warnings.length > 0);
+    for (const warning of res.warnings) assert.match(warning, /^knowledge .* failed: readMetadata: invalid JSON at /);
+  });
+
+  it('a keyword-only store launches no fill', (t) => {
+    const launched = recordStubbedLaunches(t);
+    writeState(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
+
+    const res = bootWith(null);
+
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.deepStrictEqual(launched, []);
+  });
+
+  it('keyword-only chosen outright in the system config builds a keyword-only store', () => {
+    const res = bootWith({ knowledge: {} });
+
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.deepStrictEqual(res.warnings, []);
+    assert.strictEqual(metadata().provider, null);
+    assert.ok(metadata().last_indexed);
+  });
+
+  it('keyword-only pinned by the project config builds keyword-only, whatever the machine lacks', () => {
+    writeState(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
+
+    const res = bootWith(null);
+
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.strictEqual(metadata().provider, null);
+  });
+
+  it('no system config is not-ready — nothing built, the gate runs as for any unready store', () => {
+    const res = bootWith(null);
+
+    assert.strictEqual(res.knowledge, 'not-ready');
+    assert.strictEqual(res.indexed, false);
+    assert.deepStrictEqual(res.warnings, []);
+    assert.deepStrictEqual(res.system_config, { status: 'absent', provider: null, model: null });
+    assert.ok(!fs.existsSync(storePath()));
+  });
+
+  it('an invalid system config is not-ready — nothing built', () => {
+    createFile(sysDir, 'config.json', 'not json');
+    const res = bootWith(null);
+
+    assert.strictEqual(res.knowledge, 'not-ready');
+    assert.strictEqual(res.system_config.status, 'invalid');
+    assert.ok(!fs.existsSync(storePath()));
+  });
+
+  it('a provider whose key cannot be resolved is not-ready — never a keyword-only store in its place', () => {
+    const res = bootWith({ knowledge: { provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 } });
+
+    assert.strictEqual(res.knowledge, 'not-ready');
+    assert.deepStrictEqual(res.warnings, []);
+    assert.deepStrictEqual(res.system_config, { status: 'valid', provider: 'openai', model: 'text-embedding-3-small' });
+    assert.ok(!fs.existsSync(storePath()));
+  });
+
+  it('a checkout never set up is not-ready whatever the machine says — boot sets nothing up', () => {
+    fs.rmSync(statePath(fix.project, layout.knowledge()), { recursive: true, force: true });
+
+    const res = bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
+
+    assert.strictEqual(res.knowledge, 'not-ready');
+    assert.strictEqual(res.system_config.status, 'valid');
+    assert.ok(!fs.existsSync(statePath(fix.project, layout.knowledge())));
+  });
+});

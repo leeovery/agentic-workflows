@@ -1,0 +1,286 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// The pipeline simulation's sessions: background agents from dispatch to
+// incorporation; the setup screens, each row's next run; the migration
+// gate's yes;
+// and boot's stops — an old git, a folder in no repository, a project
+// whose reshape the guard refuses, lost state and its yes through the gate
+// — and the GitHub offer. Concurrent sessions are
+// test-pipeline-simulation-concurrency.cjs.
+//
+// Layer: simulation. World: the project every scenario starts from
+// (pipeline-world.cjs), a copy per scenario; each replays the engine calls
+// the skill prose makes, in prose order, and the oracle
+// (pipeline-oracle.cjs) audits the whole state after every mutation.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+const ROOT = path.join(__dirname, '../..');
+const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/knowledge/files.cjs'));
+const { githubOffline, git, stateGit, initRepo, createFile, commitCode } = require('./engine-harness.cjs');
+const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/state-root.cjs'));
+const { Sim, sessionLog, mappedEpic, enterEntry, decideTopic, askedOn, answerGate, follow } = require('./pipeline-world.cjs');
+
+describe('pipeline simulation: sessions', () => {
+  let sim;
+  beforeEach(() => { sim = new Sim(); });
+  afterEach(() => { sim.destroy(); });
+
+  it('background agents: dispatch → completion scan → ack → surface, each finding a question the review asked', () => {
+    const wu = 'agents';
+    mappedEpic(sim, wu, ['alpha', 'beta']);
+    /** @param {string} topic @param {string} text */
+    const reviewAsks = (topic, text) => sim.run(['ledger', 'ask', `${wu}.discussion.${topic}`], null,
+      JSON.stringify({ by: 'review', who_moved_whom: 'none', text })).id;
+    /** @param {string} topic @param {string} question */
+    const claudeDecides = (topic, question) => sim.run(['ledger', 'decide', `${wu}.discussion.${topic}`, '--answers', question], null,
+      JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Settled from the record.', why: 'The record answers it.' }));
+
+    // A deep dive learns what the room cannot answer, its question on the
+    // map: nothing readable while it runs, the report's existence its
+    // completion signal, a clean ack its close. A traversal topic refuses at
+    // every verb — the colocation promise depends on it.
+    enterEntry(sim, wu, 'discussion', 'alpha');
+    const auth = askedOn(sim, wu, 'alpha', 'How does auth land?');
+    sim.refuses(['agent', 'dispatch', wu, 'discussion', '../../../escape', '--kind', 'deep-dive', '--label', 'auth'], /Invalid topic/);
+    const dive = sim.run(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
+    assert.strictEqual(dive.id, 'deep-dive-001-auth');
+    let scan = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    assert.deepStrictEqual(scan.pending, [], 'nothing readable while the dive runs');
+    sim.refuses(['agent', 'ack', wu, 'discussion', 'alpha', dive.id, '--clean'], /in-flight/);
+    sim.write(dive.file, '# Nothing novel\n');
+    scan = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    assert.deepStrictEqual(scan.pending.map((/** @type {any} */ r) => r.id), [dive.id]);
+    assert.strictEqual(sim.run(['agent', 'ack', wu, 'discussion', 'alpha', dive.id, '--clean']).status, 'incorporated');
+
+    // The review's lifecycle: no file exists until the sub-agent writes one;
+    // the report lands, the row promotes, and each finding is taken as a
+    // question the review asked, recorded as it is taken — the last closes
+    // the report, and a finding taken twice refuses.
+    enterEntry(sim, wu, 'discussion', 'beta');
+    const review = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review']);
+    scan = sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
+    assert.deepStrictEqual(scan.pending, [], 'nothing readable while the review runs');
+    sim.write(review.file, '# Review findings\n\n## F1\n\n## F2\n');
+    scan = sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
+    assert.deepStrictEqual(scan.pending.map((/** @type {any} */ r) => r.id), ['review-001']);
+    sim.run(['agent', 'ack', wu, 'discussion', 'beta', 'review-001', '--findings', 'F1,F2']);
+    const findings = ['F1', 'F2'].map((finding) => {
+      const asked = reviewAsks('beta', `What does ${finding} ask?`);
+      return { asked, row: sim.run(['agent', 'surface', wu, 'discussion', 'beta', 'review-001', finding]) };
+    });
+    assert.deepStrictEqual(findings.map((f) => f.row.status), ['acknowledged', 'incorporated'], 'the last finding closes the report');
+    sim.refuses(['agent', 'surface', wu, 'discussion', 'beta', 'review-001', 'F1'], /incorporated/);
+    for (const { asked } of findings) claudeDecides('beta', asked);
+    decideTopic(sim, wu, 'beta');
+
+    // A perspective council: the pair is one set, synthesis joins it by
+    // number, and a half-landed council is never synthesisable.
+    enterEntry(sim, wu, 'discussion', 'alpha');
+    const pair = sim.run(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'perspective',
+      '--label', 'user-centric', '--label', 'capability-first']);
+    assert.strictEqual(pair.agents.length, 2);
+    assert.ok(pair.agents.every((/** @type {any} */ a) => a.id.includes(`-${pair.set}-`)), 'one shared set number');
+    sim.write(pair.agents[0].file, '# The user-centric case\n');
+    scan = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    assert.strictEqual(scan.pending.length + scan.in_flight.length, 2,
+      'a half-landed council: one report in, one still out');
+    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set], /not complete/);
+    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', '009'], /No perspective set/);
+
+    sim.write(pair.agents[1].file, '# The capability-first case\n');
+    sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    const syn = sim.run(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set]);
+    assert.strictEqual(syn.id, `synthesis-${pair.set}`);
+    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set], /already has a live synthesis/);
+    for (const a of pair.agents) sim.run(['agent', 'incorporate', wu, 'discussion', 'alpha', a.id]);
+    sim.write(syn.file, '# Landscape\n\n### T1: the tradeoff\n');
+    scan = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    assert.deepStrictEqual(scan.pending.map((/** @type {any} */ r) => r.id), [syn.id],
+      'consumed perspectives never mask the synthesis');
+
+    // The synthesis's tension is told and closes the report; the review the
+    // person asks for rides --final, and its finding is a question like any
+    // other — then nothing is owed and the topic is decided.
+    sim.run(['agent', 'ack', wu, 'discussion', 'alpha', syn.id, '--findings', 'T1']);
+    assert.strictEqual(sim.run(['agent', 'surface', wu, 'discussion', 'alpha', syn.id, 'T1']).status, 'incorporated');
+
+    const reviewRows = (/** @type {any} */ s) => [...s.in_flight, ...s.pending, ...s.acknowledged, ...s.incorporated]
+      .filter((r) => r.kind === 'review');
+    let probe = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    assert.strictEqual(reviewRows(probe).length, 0, 'no review row on alpha yet');
+    assert.deepStrictEqual(probe.pending, [], 'nothing else awaits surfacing');
+
+    const fin = sim.run(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'review', '--final']);
+    sim.write(fin.file, '# Final review\n\n## G1\n');
+    sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    sim.run(['agent', 'ack', wu, 'discussion', 'alpha', fin.id, '--findings', 'G1']);
+    const g1 = reviewAsks('alpha', 'What does G1 ask?');
+    assert.strictEqual(sim.run(['agent', 'surface', wu, 'discussion', 'alpha', fin.id, 'G1']).status, 'incorporated');
+
+    probe = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    assert.strictEqual(probe.in_flight.length + probe.pending.length + probe.acknowledged.length, 0, 'nothing owed');
+    assert.strictEqual(reviewRows(probe)[0].status, 'incorporated');
+    for (const question of [auth, g1]) claudeDecides('alpha', question);
+    decideTopic(sim, wu, 'alpha');
+  });
+
+  it('the migration gate\'s yes: one commit lands every path Ledger owns, and a code session\'s staging stays out', () => {
+    const wu = 'upgraded';
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Carried through an upgrade', '--session-log-file', sessionLog(sim, wu)]);
+    enterEntry(sim, wu, 'discussion', wu);
+    sim.write(`.ledger/${wu}/topics/${wu}/log.md`, '# Discussion — Upgraded\n');
+    sim.write('.claude/settings.json', '{}\n');
+    sim.write('.gitignore', '.ledger/\nnode_modules\n');
+    sim.write('src/app.js', 'const x = 1;\n');
+    git(sim.dir, ['add', '-A']);
+    git(sim.dir, ['commit', '-q', '-m', 'a project mid-flight']);
+
+    // What a boot's migrations leave for the review gate, beside a code
+    // session's staged work.
+    sim.write('.claude/settings.json', '{"permissions":{}}\n');
+    sim.write('.worktreeinclude', `${STATE_DIR_NAME}/${KNOWLEDGE_DIR}/store.bin\n`);
+    sim.write('.gitignore', '.ledger/\nnode_modules\n.DS_Store\n');
+    sim.write('.ledger/.state/migrations', '062\n');
+    sim.write('src/app.js', 'const x = 2;\n');
+    git(sim.dir, ['add', '--', 'src/app.js']);
+
+    // The review reads where the state and the code side are, then writes
+    // the summary in a payload in the cache, which the commit below never
+    // carries, with every notice boot's migrations handed back for the person.
+    sim.run(['migrate', 'review']);
+    const applied = sim.write('.ledger/.cache/migrations-applied.json', {
+      summary: 'Restored the settings and the worktree include.',
+      notices: ['A setting you may want back was removed.'],
+      migrations: 1,
+      files: 3,
+    });
+    assert.match(sim.render(['migrations-applied', '--file', applied], { expect: 'content' }),
+      /\*\*Migrations Applied\*\*\n\nRestored the settings and the worktree include\.\n\nA setting you may want back was removed\.\n\n1 migration\(s\), 3 file\(s\) updated\./);
+    assert.match(sim.render(['migration-gate'], { expect: 'content' }), /Ready to continue\?/);
+    const landed = sim.run(answerGate(sim, 'migration gate', '--pick', 'y').next.argv);
+    assert.strictEqual(landed.committed, stateGit(sim.dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(landed.code_committed, git(sim.dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.deepStrictEqual(stateGit(sim.dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).split('\n').filter(Boolean).sort(), [
+      'A\t.state/migrations',
+      `A\t${wu}/topics/${wu}/log.md`,
+    ], 'the whole state rides the reviewed commit — the log the session had not yet committed among it');
+    assert.deepStrictEqual(git(sim.dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).split('\n').filter(Boolean).sort(), [
+      'A\t.worktreeinclude',
+      'M\t.claude/settings.json',
+      'M\t.gitignore',
+    ]);
+    assert.strictEqual(git(sim.dir, ['diff', '--cached', '--name-only']).trim(), 'src/app.js', 'the code session\'s staging stays staged');
+
+    // The unit carries on from the upgraded tree.
+    sim.write(`.ledger/${wu}/topics/${wu}/log.md`, '# Discussion — Upgraded\n\nCarried on.\n');
+    sim.run(['ledger', 'ask', `${wu}.discussion.${wu}`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What survives the upgrade?' }));
+    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', wu]).trim(), '', 'the question\'s commit carries the log along');
+  });
+
+  it('the setup screens: each answered at its gate, the next it returns run as the start runs it, and each next that call answers after it', async () => {
+    const wu = 'payments';
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Take payments', '--session-log-file', sessionLog(sim, wu)]);
+    fs.rmSync(statePath(sim.dir, KNOWLEDGE_DIR), { recursive: true, force: true });
+    const bare = sim.run(['boot']);
+    assert.deepStrictEqual(['knowledge', 'walkthrough', 'brownfield'].map((gate) => bare.gates.includes(gate)), [true, true, true], bare.gates.join(', '));
+
+    // The knowledge gate opens on the search-mode pick, no system
+    // configuration to reuse. The wizard said done while it is not draws
+    // that it did not complete over the pick again; keyword-only runs its
+    // setup, which draws the gate's closing line, the next none; and the
+    // wizard's yes once the knowledge base is ready draws that same line.
+    const READY = '=== DISPLAY: knowledge ready (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===\nKnowledge base ready — keyword-only.\n';
+    assert.match(sim.render(['knowledge-gate'], { expect: 'content' }), /=== MENU: knowledge mode gate/);
+    /** The screen a gate's row draws next. @param {string} gate @param {string} key */
+    const drawnBy = (gate, key) => sim.render(answerGate(sim, gate, '--pick', key).next.argv.slice(1), { expect: 'content' });
+    drawnBy('knowledge mode gate', 't');
+    const notDone = drawnBy('knowledge wizard gate', 'y');
+    assert.match(notDone, /^=== DISPLAY: knowledge not done [^\n]*===\nThe wizard did not complete — the knowledge base is not set up in this checkout yet\.\n\n=== MENU: knowledge mode gate /);
+    const setup = await sim.engineAsync(answerGate(sim, 'knowledge mode gate', '--pick', 'k').next.argv);
+    assert.strictEqual(setup.code, 0, setup.stderr);
+    assert.ok(setup.stdout.endsWith(READY), setup.stdout);
+    sim.render(['knowledge-gate', '--variant', 'wizard'], { expect: 'content' });
+    assert.strictEqual(drawnBy('knowledge wizard gate', 'y'), READY);
+
+    // The walkthrough's yes records the walk and carries on into it.
+    sim.render(['walkthrough-offer'], { expect: 'content' });
+    const walked = sim.run(answerGate(sim, 'walkthrough offer', '--pick', 'y').next.argv);
+    assert.deepStrictEqual([walked.status, walked.next], ['walked', { kind: 'continue' }]);
+
+    // The brownfield offer's yes records the acceptance and hands off into
+    // the product's conversation, which opens on the research owed.
+    sim.render(['brownfield-offer-gate'], { expect: 'content' });
+    const accepted = sim.run(answerGate(sim, 'brownfield offer', '--pick', 'y').next.argv);
+    assert.strictEqual(accepted.answer, 'accepted');
+    follow(sim, accepted.next);
+
+    // The label opt-in, shown inside a multiplexer: its no records the
+    // choice, and leads nowhere further.
+    sim.render(['label-gate'], { expect: 'content', identity: { TMUX: '/fake/sock,123,7' } });
+    const labels = sim.run(answerGate(sim, 'label gate', '--pick', 'n').next.argv);
+    assert.deepStrictEqual([labels.session_labels, 'next' in labels], [false, false]);
+
+    const answered = sim.run(['boot']);
+    assert.deepStrictEqual(['knowledge', 'walkthrough', 'brownfield'].filter((gate) => answered.gates.includes(gate)), [], 'every screen answered is due no more');
+    assert.strictEqual(JSON.parse(fs.readFileSync(statePath(sim.dir, 'manifest.json'), 'utf8')).defaults.session_labels, false);
+  });
+
+  it('boot: a git below the floor stops at its screen, as a folder in no repository does at its own, and a project whose reshape the guard refuses at its own; lost state stops at its screen and the gate\'s yes starts it again; a GitHub remote gets the rule\'s offer once, its no recorded, the squash default\'s left for the first ready to build', () => {
+    // A machine whose git is older than the engine's floor stops before
+    // anything runs.
+    const bin = fs.mkdtempSync(path.join(sim.configDir, 'old-git-'));
+    fs.writeFileSync(path.join(bin, 'git'), "#!/bin/sh\necho 'git version 2.39.5 (Apple Git-154)'\n", { mode: 0o755 });
+    const oldGit = { PATH: bin };
+    assert.strictEqual(sim.run(['boot'], oldGit).state, 'git');
+    sim.render(['git-floor-stop'], { expect: 'content', identity: oldGit });
+
+    // Opened in a folder in no repository, boot stops at its screen.
+    const plain = fs.mkdtempSync(path.join(sim.configDir, 'plain-'));
+    assert.strictEqual(sim.runIn(plain, ['boot']).state, 'repo');
+    sim.render(['repo-stop'], { expect: 'content', cwd: plain });
+
+    // A project on the layout before Ledger's, a change in its old state not
+    // committed: the reshape's guard refuses, and boot stops at its screen.
+    const legacy = initRepo(fs.mkdtempSync(path.join(sim.configDir, 'legacy-')));
+    createFile(legacy, '.workflows/shop/manifest.json', '{}\n');
+    commitCode(legacy, 'the old layout');
+    createFile(legacy, '.workflows/shop/draft.md', '# Draft\n');
+    const guarded = sim.runIn(legacy, ['boot']);
+    assert.deepStrictEqual([guarded.state, guarded.cause, guarded.paths], ['guard', 'dirty', ['.workflows/shop/draft.md']]);
+    assert.match(sim.render([guarded.stop.surface, ...guarded.stop.args], { expect: 'content', cwd: legacy }), /\.workflows\/ has uncommitted changes[^]*^> - \.workflows\/shop\/draft\.md$/m);
+
+    // The state branch and its worktree gone, the code tree still ignoring
+    // the state: lost, here and with no remote to restore it from.
+    git(sim.dir, ['worktree', 'remove', '--force', '--force', statePath(sim.dir)]);
+    git(sim.dir, ['branch', '-D', 'ledger-state']);
+
+    assert.deepStrictEqual(sim.run(['boot']), { ok: true, state: 'lost', stop: { surface: 'state-lost-gate', next: { kind: 'gate' } }, warnings: [] });
+    assert.ok(!fs.existsSync(statePath(sim.dir)), 'the stop wrote state');
+    assert.match(sim.render(['state-lost-gate'], { expect: 'content' }), /Start again with a fresh state\?/);
+    const restarted = sim.run(answerGate(sim, 'state lost gate', '--pick', 'y').next.argv);
+    assert.deepStrictEqual([restarted.state, restarted.github_rule_offer], ['restarted', false]);
+    assert.strictEqual(stateGit(sim.dir, ['rev-list', '--max-parents=0', 'ledger-state']).trim().split('\n').length, 1, 'the fresh state is one orphan line');
+
+    // A remote on GitHub, out of reach: boot works on the state it has, and
+    // offers the rule until it is answered; the squash default its landing on
+    // GitHub needs waits for the first ready to build.
+    git(sim.dir, ['remote', 'add', 'origin', 'git@github.com:acme/portal.git']);
+    sim.env = { ...sim.env, ...githubOffline(sim.configDir), GIT_SSH_COMMAND: 'false' };
+    const offered = sim.run(['boot']);
+    assert.deepStrictEqual([offered.state, offered.github_rule_offer], ['ready', true]);
+    assert.deepStrictEqual(offered.gates.at(-1), 'github-rule', 'the bare command\'s last setup gate, drawn by its own render');
+    assert.match(sim.render(['github-rule-gate'], { expect: 'content' }), /Add that rule on GitHub\?/);
+    assert.strictEqual(sim.run(['github-rule', 'no']).github_rule, 'declined');
+    const answered = sim.run(['boot']);
+    assert.deepStrictEqual([answered.github_rule_offer, answered.gates.filter((gate) => gate.startsWith('github-'))], [false, []]);
+    sim.refuses(['github-rule', 'yes'], /an answer is recorded once/);
+  });
+
+});

@@ -1,0 +1,39 @@
+{
+  "name": "launch-core",
+  "work_type": "epic",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Everything the product has to do before launch",
+  "phases": {
+    "discovery": {
+      "items": {
+        "sign-in": {
+          "source": "discovery",
+          "summary": "Accounts, sessions and the sign-in surface.",
+          "order": 1
+        },
+        "billing": {
+          "source": "discovery",
+          "summary": "Plans, invoices and the payment provider.",
+          "order": 2
+        },
+        "usage-limits": {
+          "source": "discovery",
+          "summary": "What a plan allows, and what happens at the edge.",
+          "order": 3
+        }
+      },
+      "approved_at": "2026-01-01T09:00:00.000Z"
+    },
+    "discussion": {
+      "items": {
+        "sign-in": {
+          "status": "completed"
+        },
+        "billing": {
+          "status": "in-progress"
+        }
+      }
+    }
+  }
+}

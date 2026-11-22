@@ -17,21 +17,20 @@ CONVENTIONS.md for skill authoring. CONVENTIONS.md is dense, exact, and
 frequently updated; pattern-matching from sibling files has repeatedly
 shipped silently non-compliant work.
 
-- Display and output conventions — visual hierarchy, phase titles, step and
-  sub-step markers, signpost blockquotes, list display, status terms,
-  callout flags, dividers, menus, bullet characters, spacing.
-- Structural conventions — stop-gate wording (`**STOP.**`, exactly),
-  heading hierarchy, step numbering, navigation arrows, command preludes,
-  reference file headers and structure, the zero output rule, auto-mode
-  gates.
+- Display conventions — who draws what, the engine's sections and their
+  markers, and the design system: glyphs, chrome, forms, menus, lists,
+  callouts and blockers.
+- Structural conventions — heading hierarchy, reference file headers and
+  structure, the zero output rule, gates entered and left through the
+  engine.
 - Skill file structure — the backbone, the `## Instructions` load directive
   pointing at `framework.md`, load directive format, reference file naming.
 - Prose economy — the exact words to describe the task perfectly. WHY cut
   where WHAT suffices, and no instruction, path, or distinction the agent
   needs removed in the name of brevity.
 - Presentation register, and the line between it and stored artifact prose.
-- Output format names appear **only** in the four sanctioned places named
-  by CLAUDE.md. Anywhere else is a violation.
+- A tool a driver wraps is named **only** in the places CLAUDE.md's Tool
+  Names allows. Anywhere else is a violation.
 - No convention invented for the occasion. This project is mature and
   usually already has one. Where a genuinely new pattern seems needed, that
   is a finding for the user to agree, not a decision to make in the diff.
@@ -100,11 +99,9 @@ A change lands in one place and is owed in several. Enumerate them.
   the one edited.
 - Engine code, its render surfaces, and the strings it emits.
 - Tests, fixtures, goldens, and the pipeline simulation.
-- Prose-test cases — `case.json` invariants, `act.md`, `assert.md`,
-  fixtures and state files.
 - Migrations, where the change moves stored state.
 - README, `docs/`, and CONVENTIONS.md, where the change alters what they
-  document; `commands.md` and the module headers where it alters an engine
+  document; `docs/engine/commands.md` and the module headers where it alters an engine
   contract. Documentation is owed where the user's primary action lives.
 - CLAUDE.md's map — The System and the gates under Tests — where the change
   adds, renames or removes a path, a skill, a phase or a gate it names.
@@ -124,8 +121,8 @@ A change lands in one place and is owed in several. Enumerate them.
   shape the prose then consumes.
 - Values that zsh would interpret are single-quoted in every documented
   call.
-- Gate modes are tracked in the manifest — every gate, no exceptions, so
-  they survive a context refresh.
+- No prose says whether a gate stops: the engine decides, a process gate
+  learned from the trust log.
 - Migrations read and write `manifest.json` directly and never call
   `engine manifest`. Shipped migrations are never edited; a correction is a
   new numbered migration.
@@ -137,27 +134,24 @@ A change lands in one place and is owed in several. Enumerate them.
   simulation is a decision to make, never something to paper over.
 - A test lands alongside any change to engine scripts (the knowledge
   base's among them), adapters, migrations, or the gate mods
-  (`skills/workflow-gates*/`, whose gate is `npm run test:mod`).
+  (`skills/ledger-gates*/`, whose gate is `npm run test:mod`).
 - New `.cjs` migrations have a matching node:test suite, registered in
   `package.json`, covering happy path, skip, idempotency, content
   preservation, and every defensive guard.
-- Snapshots regenerated through the runner, never hand-edited, with the
-  display width pinned.
 - Where a finding in any other dimension describes a failure the gates
   would not have caught, the missing case is itself a finding.
 
 ## H. Code structure
 
 The code surfaces carry established conventions of their own — the engine's
-three rings, the gateway contract, the knowledge subsystem, the migrations,
-the tests. Read `skills/workflow-engine/SKILL.md` and
-`references/library-and-gateway.md` before the diff; they are where the
+two rings, the knowledge subsystem, the migrations, the tests. Read
+`skills/ledger-engine/SKILL.md` before the diff; it is where the
 architecture is stated.
 
 **Layering.** Kernel is mechanism and the manifest's on-disk contract;
-domain is the workflow ontology; the gateway is the verb-dispatch harness.
-Code sits in the ring that owns it — workflow semantics leaking into
-`kernel/`, or render mechanism reimplemented in `domain/`, is a finding.
+domain is the workflow ontology. Code sits in the ring that owns it —
+workflow semantics leaking into `kernel/`, or render mechanism
+reimplemented in `domain/`, is a finding.
 Derivations may require reads; never the reverse.
 
 **Single home.** Each mechanism exists once. The wrap budget lives in the
@@ -168,11 +162,11 @@ work types, phases, and statuses. A second implementation of any of these
 is a finding even when it is correct today.
 
 **Reuse over reimplementation.** A derivation, read, or projection that
-already exists in `lib.cjs` is called, not rewritten locally. Two functions
+already exists in the domain is called, not rewritten locally. Two functions
 computing the same thing from the same state will diverge.
 
-**Doors and directions.** Writes go through the CLI, reads through the
-library. `DATA` is for reasoning and is never displayed; `DISPLAY` and
+**Doors and directions.** Skill prose reaches the engine through the CLI
+alone. `DATA` is for reasoning and is never displayed; `DISPLAY` and
 `MENU` are emitted verbatim and never parsed for a decision. Anything
 parameterised or state-branching renders in code, not in prose. The engine
 never parses markdown artifacts to populate a render — address-backed
@@ -190,10 +184,6 @@ blocks, and defaults substituted for a value that should have been an error.
 **Types.** JSDoc annotations are real contracts here — `checkJs` and
 `strictNullChecks` are on. A new export without them, or an `any` widening
 that hides a nullable, weakens the one mechanical check this code has.
-
-**Adapters.** Each per-skill `gateway.cjs` registers handlers and calls
-`runGateway`. The prose names the verb; the adapter never infers what a
-call is for and never branches on argv shape.
 
 **Migrations.** Read and write `manifest.json` directly, never through
 `engine manifest`. Outcome is signalled only through `reportUpdate` and

@@ -6,6 +6,8 @@
 // re-pinned by `node tests/scripts/knowledge-eval.cjs --pin`. The hybrid
 // mode runs by hand, and its embedding cache is held here: a text it has
 // cached never reaches the provider again.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 
@@ -16,38 +18,42 @@ const path = require('path');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
-const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
+const { StubProvider } = require('../../skills/ledger-engine/scripts/kernel/knowledge/embeddings.cjs');
+const { knowledgeFiles } = require('../../skills/ledger-engine/scripts/kernel/knowledge/files.cjs');
+const { setupFixtureAt, statePath, layout } = require('./engine-harness.cjs');
 const knowledgeEval = require('./knowledge-eval.cjs');
 const embeddings = require('./knowledge-eval-embeddings.cjs');
 
-const SOURCE = '.workflows/fumi/discussion/search-and-retrieval.md';
-const ANCHOR = 'A switch on the main search area';
+const SOURCE = layout.record('same-second-tasks-sort-by-id', '2026-09-21-same-second-tasks-sort-by-id');
+const ANCHOR = 'All five had been created inside the same wall-clock second';
+const OTHER = layout.record('ready-includes-in-progress', '2026-06-02-ready-includes-in-progress');
+const OTHER_ANCHOR = 'The in-progress task ends up dangling';
+const OTHER_TOPIC = '2026-06-02-ready-includes-in-progress';
 
-/** A sound fumi case, with `overrides` laid over it. */
-function fumiCase(overrides = {}) {
+/** A sound tick case, with `overrides` laid over it. */
+function tickCase(overrides = {}) {
   return {
     id: 'probe',
-    project: 'fumi',
+    project: 'tick',
     origin: 'written',
     asked: '2026-09-15',
-    need: 'whether history is searchable',
-    terms: ['version history search'],
+    need: 'why every cache query fails',
+    terms: ['stale cache schema'],
     options: {},
     relevant: [{ source: SOURCE, anchor: ANCHOR, grade: 'primary', framing: 0 }],
     ...overrides,
   };
 }
 
-/** A sound negative asked in tick, with `overrides` laid over it. */
+/** A sound negative asked in fumi, with `overrides` laid over it. */
 function negativeCase(overrides = {}) {
-  return fumiCase({ origin: 'negative', from: 'tick', relevant: [], ...overrides });
+  return tickCase({ origin: 'negative', from: 'fumi', relevant: [], ...overrides });
 }
 
 /** A sound near-miss negative, with `overrides` laid over it. */
 function nearMissCase(overrides = {}) {
-  return fumiCase({ origin: 'near-miss', relevant: [], ...overrides });
+  return tickCase({ origin: 'near-miss', relevant: [], ...overrides });
 }
 
 describe('knowledge eval — keyword mode', () => {
@@ -57,45 +63,45 @@ describe('knowledge eval — keyword mode', () => {
 
   it('validation names every broken case, option and judgment', () => {
     const problems = knowledgeEval.validateCases([
-      fumiCase(),
-      fumiCase(),
+      tickCase(),
+      tickCase(),
       negativeCase({ id: 'sound-negative', options: { limit: 3 } }),
       nearMissCase({ id: 'sound-near-miss', options: { limit: 3 } }),
-      fumiCase({ id: 'bad-shape', origin: 'found', asked: '2026-02-30', extra: true }),
-      negativeCase({ id: 'negative-from-itself', from: 'fumi' }),
-      fumiCase({ id: 'no-terms', terms: [] }),
-      fumiCase({
+      tickCase({ id: 'bad-shape', origin: 'found', asked: '2026-02-30', extra: true }),
+      negativeCase({ id: 'negative-from-itself', from: 'tick' }),
+      tickCase({ id: 'no-terms', terms: [] }),
+      tickCase({
         id: 'bad-options',
         options: { boosts: [{ field: 'bogus', value: 'x' }, { field: 'phase', value: null }], limit: 0, filter: 'x', phase: '' },
       }),
-      fumiCase({ id: 'boosts-not-a-list', options: { boosts: 'work-unit' } }),
+      tickCase({ id: 'boosts-not-a-list', options: { boosts: 'work-unit' } }),
       negativeCase({ id: 'negative-filtered', options: { 'work-type': 'epic' } }),
-      nearMissCase({ id: 'near-miss-filtered', options: { phase: 'discussion' } }),
-      fumiCase({
+      nearMissCase({ id: 'near-miss-filtered', options: { phase: 'record' } }),
+      tickCase({
         id: 'names-absent',
-        options: { 'work-unit': 'fumi, nowhere', boosts: [{ field: 'phase', value: 'specification' }, { field: 'topic', value: 'note-model' }] },
+        options: { 'work-unit': 'same-second-tasks-sort-by-id, nowhere', boosts: [{ field: 'phase', value: 'analysis' }, { field: 'topic', value: OTHER_TOPIC }] },
       }),
-      negativeCase({ id: 'negative-judged', relevant: fumiCase().relevant }),
-      nearMissCase({ id: 'near-miss-judged', relevant: fumiCase().relevant }),
-      fumiCase({ id: 'relevant-not-a-list', relevant: {} }),
-      fumiCase({
+      negativeCase({ id: 'negative-judged', relevant: tickCase().relevant }),
+      nearMissCase({ id: 'near-miss-judged', relevant: tickCase().relevant }),
+      tickCase({ id: 'relevant-not-a-list', relevant: {} }),
+      tickCase({
         id: 'bad-judgments',
         relevant: [
-          { source: '.workflows/fumi/nowhere.md', anchor: 'x', grade: 'primary', framing: 0 },
+          { source: 'cache-schema-versioning/nowhere.md', anchor: 'x', grade: 'primary', framing: 0 },
           { source: SOURCE, anchor: 'not a phrase in the file', grade: 'supporting', framing: 3 },
           { source: SOURCE, anchor: ANCHOR, grade: 'key', framing: 0 },
-          { source: SOURCE, anchor: 'FTS5', grade: 'supporting', framing: 0 },
+          { source: SOURCE, anchor: 'tick', grade: 'supporting', framing: 0 },
           { source: SOURCE, anchor: ANCHOR, grade: 'supporting', framing: 0 },
         ],
       }),
-      fumiCase({ id: 'no-primary', relevant: [{ ...fumiCase().relevant[0], grade: 'supporting' }] }),
-      fumiCase({
+      tickCase({ id: 'no-primary', relevant: [{ ...tickCase().relevant[0], grade: 'supporting' }] }),
+      tickCase({
         id: 'primary-filtered-out',
-        options: { topic: 'engine-architecture' },
+        options: { topic: OTHER_TOPIC },
         relevant: [
           { source: SOURCE, anchor: ANCHOR, grade: 'primary', framing: 0 },
-          { source: SOURCE, anchor: 'Spotlight', grade: 'supporting', framing: 0 },
-          { source: '.workflows/fumi/discussion/engine-architecture.md', anchor: '## Process Model', grade: 'primary', framing: 0 },
+          { source: SOURCE, anchor: 'second granularity', grade: 'supporting', framing: 0 },
+          { source: OTHER, anchor: OTHER_ANCHOR, grade: 'primary', framing: 0 },
         ],
       }),
     ]);
@@ -115,34 +121,35 @@ describe('knowledge eval — keyword mode', () => {
       'boosts-not-a-list: boosts must be a list',
       'negative-filtered: a negative case carries no hard filter',
       'near-miss-filtered: a negative case carries no hard filter',
-      'names-absent: no work-unit "nowhere" in the fumi fixture',
-      'names-absent: no phase "specification" in the fumi fixture',
+      'names-absent: no work-unit "nowhere" in the tick fixture',
+      'names-absent: no phase "analysis" in the tick fixture',
       'negative-judged: a negative case judges nothing relevant',
       'near-miss-judged: a negative case judges nothing relevant',
       'relevant-not-a-list: relevant must be a list',
-      'bad-judgments: relevant[0]: .workflows/fumi/nowhere.md is not in the fumi fixture',
+      'bad-judgments: relevant[0]: cache-schema-versioning/nowhere.md is not in the tick fixture',
       'bad-judgments: relevant[1]: framing must index a term',
       `bad-judgments: relevant[1]: the anchor is not in ${SOURCE}`,
       'bad-judgments: relevant[2]: grade must be one of primary, supporting',
-      `bad-judgments: relevant[3]: the anchor occurs 6 times in ${SOURCE}`,
+      `bad-judgments: relevant[3]: the anchor occurs 5 times in ${SOURCE}`,
       'bad-judgments: relevant[4]: judges a passage already judged',
       'no-primary: no primary judgment',
       'primary-filtered-out: relevant[0]: a primary passage outside the hard filters is unreachable',
     ]);
   });
 
-  it('a judgment no chunk of the built store carries is named', () => {
+  it('a judgment no chunk of the built store carries is named, and a store that indexes nothing is refused whatever its cases judge', () => {
     const chunks = [
-      { source_file: SOURCE, content: `Before. ${ANCHOR} — include history. After.` },
-      { source_file: '.workflows/fumi/discussion/note-model.md', content: 'A switch on the main search area, restated.' },
+      { source_file: SOURCE, content: `Before. ${ANCHOR} — on every query. After.` },
+      { source_file: OTHER, content: 'A deterministic failure, never intermittent, restated.' },
     ];
-    const split = { source: SOURCE, anchor: 'include history — widens the query', grade: 'primary', framing: 0 };
-    const elsewhere = { source: '.workflows/fumi/discussion/note-window.md', anchor: ANCHOR, grade: 'supporting', framing: 0 };
-    const cases = [fumiCase(), fumiCase({ id: 'unmatched', relevant: [...fumiCase().relevant, split, elsewhere] }), negativeCase()];
-    assert.deepStrictEqual(knowledgeEval.unmatchedJudgments(cases, chunks), [
+    const split = { source: SOURCE, anchor: 'on every query — and the next', grade: 'primary', framing: 0 };
+    const elsewhere = { source: OTHER, anchor: ANCHOR, grade: 'supporting', framing: 0 };
+    const cases = [tickCase(), tickCase({ id: 'unmatched', relevant: [...tickCase().relevant, split, elsewhere] }), negativeCase()];
+    assert.deepStrictEqual(knowledgeEval.storeProblems('tick', cases, chunks), [
       `unmatched: relevant[1]: no indexed chunk of ${SOURCE} carries the anchor`,
-      'unmatched: relevant[2]: no indexed chunk of .workflows/fumi/discussion/note-window.md carries the anchor',
+      `unmatched: relevant[2]: no indexed chunk of ${OTHER} carries the anchor`,
     ]);
+    assert.deepStrictEqual(knowledgeEval.storeProblems('fumi', [negativeCase()], []), ['fumi: its store indexes nothing — its fixture holds no file the index takes']);
   });
 
   it('a move names each metric and case that moved, and how to re-pin', () => {
@@ -254,22 +261,21 @@ async function fakeEndpoint(dimensions) {
 }
 
 /**
- * A feature with two completed discussions, in a fresh directory under
+ * A bugfix with two topics' records, in a fresh directory under
  * `parent`, configured to embed with the provider `identity` names.
  * @param {string} parent @param {Record<string, any>} identity
  */
-function discussedProject(parent, identity) {
-  const root = fs.mkdtempSync(path.join(parent, 'project-'));
+function recordedProject(parent, identity) {
+  const root = setupFixtureAt(fs.mkdtempSync(path.join(parent, 'project-')));
   const topics = ['refresh', 'revocation'];
-  writeJson(path.join(root, '.workflows', 'manifest.json'), { work_units: { auth: { work_type: 'feature' } } });
-  writeJson(path.join(root, '.workflows', 'auth', 'manifest.json'), {
-    name: 'auth', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
-    phases: { discussion: { items: Object.fromEntries(topics.map((topic) => [topic, { status: 'completed' }])) } },
+  writeJson(statePath(root, 'manifest.json'), { work_units: { auth: { work_type: 'bugfix' } } });
+  writeJson(statePath(root, 'auth', 'manifest.json'), {
+    name: 'auth', work_type: 'bugfix', status: 'in-progress', created: '2026-01-01', phases: {},
   });
   for (const topic of topics) {
-    writeFile(path.join(root, '.workflows', 'auth', 'discussion', `${topic}.md`), `# ${topic}\n\nThe ${topic} decision.\n`);
+    writeFile(statePath(root, layout.record('auth', topic)), `# ${topic}\n\nThe ${topic} decision.\n`);
   }
-  writeJson(knowledgeFiles(root).config, { knowledge: identity });
+  writeJson(knowledgeFiles(statePath(root)).config, { knowledge: identity });
   return root;
 }
 
@@ -326,14 +332,14 @@ describe('knowledge eval — the embedding cache', () => {
     const endpoint = await fakeEndpoint(8);
     const cache = embeddings.embeddingCache(cacheDir, endpoint.identity);
     try {
-      await knowledgeEval.runKnowledge(discussedProject(scratch, endpoint.identity), ['index'], cacheDir);
+      await knowledgeEval.runKnowledge(recordedProject(scratch, endpoint.identity), ['index'], cacheDir);
       assert.strictEqual(endpoint.texts.length, 2);
       assert.ok(endpoint.texts.every((text) => cache.read(text) !== null), 'every text embedded is cached');
 
-      const rebuilt = discussedProject(scratch, endpoint.identity);
+      const rebuilt = recordedProject(scratch, endpoint.identity);
       await knowledgeEval.runKnowledge(rebuilt, ['index'], cacheDir);
       assert.strictEqual(endpoint.texts.length, 2, 'the rebuild sent the endpoint nothing');
-      assert.strictEqual(store.readMetadata(knowledgeFiles(rebuilt).metadata).provider, 'openai-compatible');
+      assert.strictEqual(store.readMetadata(knowledgeFiles(statePath(rebuilt)).metadata).provider, 'openai-compatible');
       assert.strictEqual(cache.size(), 2);
     } finally {
       await endpoint.close();

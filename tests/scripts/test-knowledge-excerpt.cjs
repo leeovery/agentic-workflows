@@ -4,14 +4,16 @@
 // words, rarer words weighing more, widened while the budget holds — never a
 // heading line, the opening lines where nothing matches, and an over-long
 // line cut around its matching stretch.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { tokenize } = require('../../skills/workflow-engine/scripts/kernel/knowledge/keyword.cjs');
-const { excerpt } = require('../../skills/workflow-engine/scripts/kernel/knowledge/excerpt.cjs');
+const { tokenize } = require('../../skills/ledger-engine/scripts/kernel/knowledge/keyword.cjs');
+const { excerpt } = require('../../skills/ledger-engine/scripts/kernel/knowledge/excerpt.cjs');
 
 /** The query's words, as the search tokenizes them. @param {string} query */
 const wordsOf = (query) => new Set(tokenize(query));

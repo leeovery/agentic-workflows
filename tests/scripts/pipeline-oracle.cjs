@@ -1,0 +1,1375 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// The pipeline simulation's oracle (tests/README.md §11): the audit `Sim`
+// (pipeline-world.cjs) runs over the whole state after every mutation a
+// scenario makes —
+//   - every manifest parses and is schema-valid (statuses in vocabulary,
+//     discovery items status-less, no phase-named shadow roots, a
+//     quick-fix's record naming each nested repository it touched once, its
+//     worktree standing only while its fixes are built, on its one branch,
+//     the landing record naming the unit's own tasks landed in the
+//     project's repositories at commits each holds, a unit's own branch
+//     an epic's or a feature's, the default branch holding none of its
+//     work until the unit completes and its merge at most once), the
+//     project's keeping the project_id setup gave it,
+//   - every derivation (lifecycle, phaseStatus, next-phase) computes without
+//     throwing for every item,
+//   - every navigation menu (the start menu, an epic's) reads and renders
+//     the state without throwing,
+//   - each unit in progress named alone routes where its start-menu row's
+//     Continue goes, and the start's pick draws over every piece of work a
+//     route could name,
+//   - every menu a render draws states itself whole in its gate payload
+//     once the gate surface is announced, and the gate a render's menu
+//     states is the one its conversation was shown, which an answer through
+//     `gate` adds one line to the trust log for,
+//   - the ledger's projections and its copies hold to the events,
+//   - the trust log holds a line for each call, raise, reversal and verdict
+//     the ledger and the verdicts given call for, every verdict on a
+//     departure it holds, each step a learned gate's and each care entry
+//     dropped gone from the record, and nothing waits in a conversation,
+//     after a refusal too (auditTrust).
+// This is the detector for the silent class of bug: state that writes fine,
+// raises nothing, and only breaks a menu three phases later.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const assert = require('node:assert');
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const ROOT = path.join(__dirname, '../..');
+const engine = require(path.join(ROOT, 'skills/ledger-engine/scripts/engine.cjs'));
+const schema = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/manifest-schema.cjs'));
+const derivations = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/derivations.cjs'));
+const { roadmapState } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/roadmap.cjs'));
+const {
+  RECORDS_DIR, PRODUCT_FILE, knowledgeFiles,
+} = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/knowledge/files.cjs'));
+const knowledgeStore = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/knowledge/store.cjs'));
+const chunker = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/knowledge/chunker.cjs'));
+const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/ledger-engine/content/knowledge/chunking/record.json'), 'utf8'));
+const { LEDGER, ROADMAP, PRODUCT } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/ledger-events.cjs'));
+const { isId, idFrom } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/ledger-ids.cjs'));
+const { openGate, gateShown, menuSection, MENU_INSTRUCTION } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/surfaces.cjs'));
+const { MENUS, menuBody } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/menus.cjs'));
+const { startMenuRead } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/start-menu.cjs'));
+const { startMenuScreen } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/start-menu.cjs'));
+const { epicMenuSurface } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/epic-menu.cjs'));
+const { manageSurface, manageUnitSurface, closedSurface } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/manage.cjs'));
+const { triageSurface, archivedSurface } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/triage.cjs'));
+const { roadmapSurface } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/roadmap.cjs'));
+const { unitHandoff } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/unit-handoff.cjs'));
+const { entryOf, pickRows } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/boot-route.cjs'));
+const { workPick } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/boot.cjs'));
+const {
+  resolveHandoff, HANDOFF_TARGETS, topicHandoff,
+} = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/handoff.cjs'));
+const { announced, auditGate } = require('./gate-audit.cjs');
+const { ledgerEntries, stateGit, git } = require('./engine-harness.cjs');
+const { stepOfId } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/task-id.cjs'));
+const { statePath, BRANCH_REF } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/state-root.cjs'));
+const { SHOWN, RAISE_SHOWN } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/gate.cjs'));
+const { TRUST_LOG, PENDING } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/trust-log.cjs'));
+const { kindOf, hardToUndo } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/labeller.cjs'));
+const { LEARNED } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/learned-gates.cjs'));
+const { PERSON } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/user-files.cjs'));
+const { EXPERIMENT_TERMINAL_STATUSES } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/manifest-schema.cjs'));
+const { environmentFaults } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/environment.cjs'));
+const { layoutsFolder, layoutFolderName } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/project-layout.cjs'));
+const { quickFixBranch } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/landing-names.cjs'));
+
+// The words a shell makes of a route written into a command: split at spaces,
+// a double-quoted span one word without its quotes.
+/** @param {string} route @returns {string[]} */
+function shellWords(route) {
+  return [...route.matchAll(/"([^"]*)"|\S+/g)].map((m) => m[1] ?? m[0]);
+}
+
+// ---------------------------------------------------------------------------
+// State audit — the invariants run after every mutation
+// ---------------------------------------------------------------------------
+
+function listWorkUnits(dir) {
+  const wf = path.join(dir, '.ledger');
+  if (!fs.existsSync(wf)) return [];
+  return fs.readdirSync(wf, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+    .filter((e) => fs.existsSync(path.join(wf, e.name, 'manifest.json')))
+    .map((e) => e.name);
+}
+
+/** The branch the linked worktree at `tree` has out, read from git's own files. @param {string} tree */
+function branchOutAt(tree) {
+  const gitDir = fs.readFileSync(path.join(tree, '.git'), 'utf8').trim().replace(/^gitdir: /, '');
+  return fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf8').trim().replace(/^ref: refs\/heads\//, '');
+}
+
+/**
+ * A unit's landing record (landing-record.cjs) held to its shape: each of
+ * the unit's own tasks, by its internal id, landed in repositories of the
+ * project's — `.` its own — each record its fields alone, `by` in the
+ * schema, `at` an instant, and its commit, tip and first landing commits
+ * that repository holds.
+ * @param {string} dir @param {string} wu @param {unknown} landings @param {(why: string) => string} ctx
+ */
+function auditLandings(dir, wu, landings, ctx) {
+  assert.ok(landings !== null && typeof landings === 'object' && !Array.isArray(landings), ctx(`${wu}: landings is not a record by task`));
+  /** @type {Map<string, string[]>} the commits each repository's records name */
+  const named = new Map();
+  for (const [id, byRepo] of Object.entries(/** @type {Record<string, Record<string, any>>} */ (landings))) {
+    assert.strictEqual(stepOfId(id)?.prefix, wu, ctx(`${wu}: landings names ${id}, no task of its own`));
+    for (const [repo, record] of Object.entries(byRepo)) {
+      assert.ok(fs.existsSync(path.join(dir, repo, '.git')), ctx(`${wu}: ${id} landed in ${repo}, no repository of the project's`));
+      assert.deepStrictEqual(Object.keys(record).sort(), [...schema.LANDING_RECORD_FIELDS].sort(), ctx(`${wu}: ${id}'s landing in ${repo} is not a landing record`));
+      assert.ok(schema.LANDING_BY.includes(record.by) && !Number.isNaN(Date.parse(record.at)), ctx(`${wu}: ${id}'s landing in ${repo} by ${record.by} at ${record.at}`));
+      named.set(repo, [...(named.get(repo) ?? []), record.commit, record.tip, record.first]);
+    }
+  }
+  for (const [repo, shas] of named) {
+    assert.doesNotThrow(() => git(path.join(dir, repo), ['rev-list', '--no-walk', ...new Set(shas)]), ctx(`${wu}: a landing in ${repo} names a commit ${repo} lacks`));
+  }
+}
+
+/** The refs and status each unit's own branch was last audited at, by its folder and unit. @type {Map<string, string>} */
+const unitBranchAudits = new Map();
+
+/** A loose branch ref's commit in the repository at `dir`, null where git holds it packed or not at all. @param {string} dir @param {string} branch */
+const looseRef = (dir, branch) => {
+  try {
+    return fs.readFileSync(path.join(dir, '.git', 'refs', 'heads', branch), 'utf8').trim();
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * A unit's own branch held to its design (7.2.34, 7.2.38): an epic's or a
+ * feature's, `feat/{unit}`, a branch of the project's repository; the
+ * default branch, past it, holding none of the unit's tasks' landings, nor
+ * its merge, until the unit completes, and that merge at most once after —
+ * read again only once either branch or the unit's status moves.
+ * @param {string} dir @param {string} wu @param {Record<string, any>} manifest @param {(why: string) => string} ctx
+ */
+function auditUnitBranch(dir, wu, manifest, ctx) {
+  const branch = `feat/${wu}`;
+  assert.ok(['epic', 'feature'].includes(manifest.work_type) && manifest.build.branch === branch, ctx(`${wu}: a ${manifest.work_type} records build.branch ${JSON.stringify(manifest.build.branch)}`));
+  const completed = manifest.status === 'completed';
+  const refs = [looseRef(dir, 'main'), looseRef(dir, branch)];
+  const key = `${completed}:${refs.join(':')}`;
+  if (!refs.includes(null) && unitBranchAudits.get(`${dir}\0${wu}`) === key) return;
+  /** @type {string[]} */
+  let past = [];
+  try {
+    past = git(dir, ['log', '--format=%B%x1e', `refs/heads/${branch}..main`]).split('\x1e').map((message) => message.trim()).filter(Boolean);
+  } catch {
+    assert.fail(ctx(`${wu}: build.branch names ${branch}, no branch of the project's repository`));
+  }
+  const task = new RegExp(`^Task: ${wu}-\\d+-\\d+$`, 'm');
+  const merges = past.filter((message) => message.split('\n')[0].replace(/ \(#\d+\)$/, '') === `Merge ${branch}`).length;
+  if (!completed) assert.ok(!past.some((message) => task.test(message)), ctx(`${wu}: the default branch holds a task of the unit's landed past ${branch} before the unit completes`));
+  assert.ok(merges <= (completed ? 1 : 0), ctx(`${wu}: the default branch holds ${merges} merge(s) of ${branch} while the unit is ${manifest.status}`));
+  if (!refs.includes(null)) unitBranchAudits.set(`${dir}\0${wu}`, key);
+}
+
+// The project_id each project's state was minted with, by its folder, while
+// the state lasts.
+/** @type {Map<string, string>} */
+const mintedIds = new Map();
+
+function auditState(dir, label) {
+  const ctx = (msg) => `[${label}] ${msg}`;
+
+  // Project manifest parses, and wherever the state is keeps the id the
+  // trust log knows the project by (16.13.5), the one it was minted with: a
+  // writer that rewrote it whole would drop it, and one that set it would
+  // change it. A state started again mints its own.
+  const projPath = path.join(dir, '.ledger', 'manifest.json');
+  const project = fs.existsSync(projPath) ? JSON.parse(fs.readFileSync(projPath, 'utf8')) : null;
+  if (fs.existsSync(path.join(dir, '.ledger'))) {
+    assert.ok(isId(project?.project_id), ctx(`the project manifest's project_id is ${JSON.stringify(project?.project_id)}`));
+    if (!mintedIds.has(dir)) mintedIds.set(dir, project.project_id);
+    assert.strictEqual(project.project_id, mintedIds.get(dir), ctx('the project manifest\'s project_id is not the one it was minted with'));
+  } else {
+    mintedIds.delete(dir);
+  }
+
+  // The roadmap always derives — every item's state lands in vocabulary
+  // (lifecycle by join: never stored, so it must always be computable).
+  const rm = roadmapState(dir);
+  for (const row of rm.items) {
+    assert.ok(['waiting', 'in-flight', 'shipped', 'orphaned'].includes(row.state),
+      ctx(`roadmap item ${row.name}: state "${row.state}" not in vocabulary`));
+  }
+  for (const row of [...rm.items, ...rm.archived]) {
+    assert.ok(['idea', 'bug', 'quick-fix'].includes(row.kind),
+      ctx(`roadmap item ${row.name}: kind ${JSON.stringify(row.kind)} not in vocabulary`));
+    // A source is recorded only once it is on disk, and whatever moves the
+    // file carries the pointer with it — an archive moves none.
+    for (const source of row.sources) {
+      assert.ok(fs.existsSync(path.join(dir, '.ledger', source)),
+        ctx(`roadmap item ${row.name}: source ${source} is not on disk`));
+    }
+  }
+  // An archived item is off its horizon, joined to no work and holding no
+  // postpone, kept with the instant it went (18.8.13).
+  for (const row of rm.archived) {
+    const item = project.roadmap.items[row.name];
+    assert.deepStrictEqual(['horizon', 'pulled_to', 'postponed_from'].filter((key) => key in item), [],
+      ctx(`archived roadmap item ${row.name} still holds what a live item does`));
+    assert.match(row.archived.at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/, ctx(`archived roadmap item ${row.name}: at is no instant`));
+  }
+
+  // A file the person shares is an asset: nothing records an import.
+  assert.strictEqual(project?.roadmap?.imports, undefined, ctx('the roadmap records imports'));
+
+  // The environment setup, wherever it is written, reads as its schema
+  // holds it (22.5.12), so the brief, the commit door and the build read it.
+  if (project?.environment !== undefined) {
+    assert.deepStrictEqual(environmentFaults(project.environment), [], ctx('the environment setup does not read'));
+  }
+
+  // Every inbox closure recorded names an item in the archive, closed by a
+  // unit of the project or by none, at a time (18.6.4, P4): whatever brings
+  // an item back or deletes it takes its record with it.
+  for (const [key, closure] of Object.entries(project?.inbox_closed ?? {})) {
+    assert.ok(fs.existsSync(path.join(dir, '.ledger', '.inbox', '.archived', key)), ctx(`inbox closure ${key} names no archived item`));
+    assert.ok(closure.unit === null || fs.existsSync(path.join(dir, '.ledger', closure.unit, 'manifest.json')), ctx(`inbox closure ${key} names ${closure.unit}, no unit of the project`));
+    assert.match(closure.at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/, ctx(`inbox closure ${key} was closed at ${closure.at}`));
+  }
+
+  // The ledger reads whole: it starts byte for byte with the one the state
+  // branch last committed, and every line is an event of its version's shape.
+  // Its projections show what is current in it.
+  if (fs.existsSync(statePath(dir, LEDGER))) {
+    assert.doesNotThrow(() => ledgerEntries(statePath(dir)), ctx('the ledger does not read'));
+    auditLedgerOnce(dir, ctx);
+  }
+
+  for (const wu of listWorkUnits(dir)) {
+    const raw = fs.readFileSync(path.join(dir, '.ledger', wu, 'manifest.json'), 'utf8');
+    let manifest;
+    try {
+      manifest = JSON.parse(raw);
+    } catch (e) {
+      assert.fail(ctx(`${wu}/manifest.json does not parse: ${e.message}`));
+    }
+
+    // Root schema.
+    assert.ok(schema.VALID_WORK_TYPES.includes(manifest.work_type),
+      ctx(`${wu}: work_type "${manifest.work_type}" not in schema`));
+    assert.ok(schema.VALID_WORK_UNIT_STATUSES.includes(manifest.status),
+      ctx(`${wu}: status "${manifest.status}" not in schema`));
+    if ('build' in manifest) {
+      assert.ok(schema.BUILD_POSITIONS.includes(manifest.build?.position),
+        ctx(`${wu}: the build's position "${manifest.build?.position}" not in schema`));
+    }
+
+    assert.strictEqual(manifest.imports, undefined, ctx(`${wu}: records imports`));
+
+    // A quick-fix's record names each nested repository its fixes committed
+    // in once, by its folder, each a repository of the project's.
+    if (manifest.fixes?.repos !== undefined) {
+      const { repos } = manifest.fixes;
+      assert.ok(Array.isArray(repos) && new Set(repos).size === repos.length, ctx(`${wu}: fixes.repos ${JSON.stringify(repos)} is not a list naming each repository once`));
+      for (const repo of repos) assert.ok(fs.existsSync(path.join(dir, repo, '.git')), ctx(`${wu}: fixes.repos names ${repo}, no repository of the project's`));
+    }
+
+    // A quick-fix's worktree stands only while its fixes are built, on its
+    // one branch: laid out at its first fix's start, taken apart at its
+    // close, cancel or move (fix-branch.cjs).
+    const fixTree = path.join(layoutsFolder(dir), layoutFolderName(wu));
+    if (fs.existsSync(fixTree)) {
+      assert.ok(manifest.work_type === 'quick-fix' && manifest.status === 'in-progress' && derivations.fixesBegun(manifest), ctx(`${wu}: a quick-fix's worktree stands for a ${manifest.status} ${manifest.work_type}`));
+      assert.strictEqual(branchOutAt(fixTree), quickFixBranch(wu), ctx(`${wu}: its worktree has another branch out`));
+    }
+
+    if (manifest[schema.LANDINGS] !== undefined) auditLandings(dir, wu, manifest[schema.LANDINGS], ctx);
+    if (manifest.build?.branch !== undefined) auditUnitBranch(dir, wu, manifest, ctx);
+
+    // A review asked for at a quick-fix's close is recorded on its fixes as
+    // the instant it was asked, a quick-fix's alone.
+    if (manifest.fixes?.review_asked !== undefined) {
+      const asked = manifest.fixes.review_asked;
+      assert.ok(typeof asked === 'string' && !Number.isNaN(Date.parse(asked)), ctx(`${wu}: fixes.review_asked ${JSON.stringify(asked)} is not an instant`));
+      assert.strictEqual(manifest.work_type, 'quick-fix', ctx(`${wu}: fixes.review_asked on a ${manifest.work_type}`));
+    }
+
+    // Finish's checklist is worked only once there is something to finish:
+    // a quick-fix's fixes begun, any other unit's build — never one a move
+    // carried over from the type it was.
+    if (manifest.checklists?.finish !== undefined) {
+      const begun = manifest.work_type === 'quick-fix' ? derivations.fixesBegun(manifest) : derivations.buildBegun(manifest);
+      assert.ok(begun, ctx(`${wu}: a finish checklist on a ${manifest.work_type} whose ${manifest.work_type === 'quick-fix' ? 'fixes' : 'build'} has not begun`));
+    }
+
+    // A bugfix's investigation closes into its spec as a mark keyed by the
+    // unit, keeping its recap and the root cause and the fix by their ids
+    // alone, and once ready to build's yes concludes it, its close is taken
+    // at the instant it concluded (investigation-conclude.cjs): a bugfix
+    // whose build has begun has its investigation concluded.
+    if (manifest.work_type === 'bugfix' && derivations.buildBegun(manifest)) {
+      assert.strictEqual(manifest.phases?.investigation?.items?.[wu]?.status, 'completed', ctx(`${wu}: its build begun, its investigation not concluded`));
+    }
+    const conclusion = manifest.checklists?.conclusion;
+    if (conclusion !== undefined) {
+      assert.deepStrictEqual([manifest.work_type, Object.keys(conclusion)], ['bugfix', [wu]], ctx(`${wu}: a conclusion close on a ${manifest.work_type}, or keyed by another topic`));
+      const { closed, voided, taken, hunt, root_cause: rootCause, fix, fixes, area, ...more } = conclusion[wu];
+      assert.deepStrictEqual([typeof closed, typeof hunt, typeof rootCause, typeof fix, more], ['string', 'string', 'string', 'string', {}], ctx(`${wu}: a conclusion close out of its shape`));
+      assert.ok([voided, taken, fixes, area].every((field) => field === undefined || typeof field === 'string'), ctx(`${wu}: a conclusion close's optional fields out of their shape`));
+      const item = manifest.phases?.investigation?.items?.[wu];
+      if (item?.status === 'completed') assert.strictEqual(conclusion[wu].taken, item.concluded_at, ctx(`${wu}: concluded at ${item.concluded_at}, its close taken at ${conclusion[wu].taken}`));
+    }
+
+    // No phase-named shadow roots beside `phases`.
+    for (const key of Object.keys(manifest)) {
+      assert.ok(!schema.VALID_PHASES.includes(key),
+        ctx(`${wu}: root key "${key}" shadows a phase — writes are landing outside phases.*`));
+    }
+
+    // Phase tree schema.
+    const phases = manifest.phases || {};
+    for (const [phase, data] of Object.entries(phases)) {
+      assert.ok(schema.VALID_PHASES.includes(phase), ctx(`${wu}: unknown phase "${phase}"`));
+      const items = (data && data.items) || {};
+      for (const [topic, item] of Object.entries(items)) {
+        assert.ok(item && typeof item === 'object' && !Array.isArray(item),
+          ctx(`${wu}.${phase}.${topic}: item is not an object`));
+        assert.ok(!('reconcile_needed' in item), ctx(`${wu}.${phase}.${topic}: carries a reconcile flag`));
+        const vocab = schema.VALID_PHASE_STATUSES[phase];
+        if (phase === 'discovery') {
+          assert.ok(!('status' in item),
+            ctx(`${wu}.discovery.${topic}: map items carry no status field`));
+        } else if ('status' in item) {
+          assert.ok(vocab.includes(item.status),
+            ctx(`${wu}.${phase}.${topic}: status "${item.status}" not in ${phase} vocabulary`));
+        }
+      }
+      // Derivation must hold for every phase present.
+      derivations.phaseStatus(manifest, phase);
+    }
+
+    // Every discovery item derives a lifecycle and a next action.
+    const mapItems = (phases.discovery && phases.discovery.items) || {};
+    for (const topic of Object.keys(mapItems)) {
+      const life = derivations.computeTopicLifecycle(manifest, topic);
+      assert.ok(life && typeof life.lifecycle === 'string' && life.lifecycle.length > 0,
+        ctx(`${wu}.discovery.${topic}: lifecycle did not derive`));
+    }
+
+    // Unit-level derivations never throw on legal state.
+    derivations.computeNextPhase(manifest);
+
+    // Every agent-state store (one per topic, colocated) is schema-valid.
+    const cacheRoot = path.join(dir, '.ledger', '.cache', wu);
+    if (fs.existsSync(cacheRoot)) {
+      for (const ph of fs.readdirSync(cacheRoot, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+        const phDir = path.join(cacheRoot, ph.name);
+        for (const tp of fs.readdirSync(phDir, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+          const storePath = path.join(phDir, tp.name, 'state.json');
+          if (!fs.existsSync(storePath)) continue;
+          const store = JSON.parse(fs.readFileSync(storePath, 'utf8'));
+          for (const [key, row] of Object.entries(store.agents || {})) {
+            assert.ok(['in-flight', 'pending', 'acknowledged', 'incorporated'].includes(row.status),
+              ctx(`agent ${ph.name}/${tp.name}/${key}: status "${row.status}" not in vocabulary`));
+            assert.ok(row.surfaced.every((f) => row.findings.includes(f)),
+              ctx(`agent ${ph.name}/${tp.name}/${key}: surfaced ids must be recorded findings`));
+            if (ph.name === 'discussion' && ['review', 'closing-pass'].includes(row.kind)) {
+              assert.ok(Object.hasOwn(row, 'ledger_mark'),
+                ctx(`agent ${ph.name}/${tp.name}/${key}: a discussion review or closing pass row must carry the ledger's mark at its dispatch — arming and the gap review measure from it`));
+            }
+          }
+        }
+      }
+    }
+
+    // An epic's menu draws over whatever state the pipeline is in while the
+    // epic is in progress; a cancelled or a finished epic's it refuses.
+    if (manifest.work_type === 'epic' && manifest.status === 'in-progress') auditMenuDrawn(dir, () => epicMenuSurface(dir, wu), `${label} — ${wu}'s epic menu`);
+    auditMenuDrawn(dir, () => manageUnitSurface(dir, wu), `${label} — ${wu} in manage`);
+  }
+
+  // The start menu renders whatever state the pipeline is in once boot has
+  // the state's worktree in place, which its read stands on, and, announced,
+  // states its gate beside it; every route it builds into a skill is one the
+  // handoff takes as it stands.
+  if (fs.existsSync(path.join(statePath(dir), '.git'))) auditStartMenu(dir, label);
+
+  // Manage, the closed units, triage, the archived items and the roadmap
+  // draw over whatever state the pipeline is in.
+  auditMenuDrawn(dir, () => manageSurface(dir), `${label} — manage`);
+  auditMenuDrawn(dir, () => closedSurface(dir), `${label} — the closed units`);
+  auditMenuDrawn(dir, () => triageSurface(dir, undefined), `${label} — triage`);
+  auditMenuDrawn(dir, () => archivedSurface(dir), `${label} — the archived items`);
+  auditMenuDrawn(dir, () => roadmapSurface(dir), `${label} — the roadmap`);
+}
+
+// The ledger's projections, held to properties the events and the manifests
+// settle whatever the fold does inside, both read here directly: a unit is
+// live while its manifest is there and not cancelled, a topic while its map
+// row is neither cancelled nor postponed, and the product's place, which no
+// unit holds, always — what it shows is `ledger product`'s, under discovery,
+// product-wide in the product record, or a question discovery did not ask
+// among the product's questions, never a record's, and it has no copy; a
+// line an absorb's or a split's carry lists is made in the unit and on the
+// topic the carry is, its phase its own, the file a link names where the
+// carry moved it, and shown so; a line a retired unit left is carried to
+// the product's place, so nothing of the unit shows it; an
+// event is in a live place while
+// the unit and topic it was made on are live — a move while its unit is, a
+// question's wording made on the topic the last move its unit made of the
+// question to a topic in a live place took it to; a move to the roadmap
+// leaves it where it stands. A question's line is the wordings
+// of its chain in a live place, in the ledger's order: the last is the
+// question's wording, the rest earlier ones, and a wording reads as the
+// nearest wording in a live place it grew from, down its chain. An entry
+// stands where the earliest entry of its chain in a live place was made —
+// a question where the first wording of its line was — or where the first
+// was when none is; it is placed where it stands, and where it was made
+// where that differs (5.8.19). Current is what the records show. Every
+// entry in a live place is shown, or leads to a shown entry down its live
+// replacements — a question's wording, to the next on its line — or, with
+// none, its live merges; a shown entry is in a live place, no live
+// replacement names it, no live merge that would still lead to a shown
+// entry took it as a duplicate, a question is the last wording of its
+// line, and it shows exactly once in its unit's record and once in its
+// topic's. A question answers to every wording of its chain, the first and
+// each replacement since, on its line or not: each map shows each question
+// on one row, never two wordings of one, and never open while a shown entry
+// answers any wording of it; it holds a row for each shown question
+// standing on the topic — answered by the shown entries answering any
+// wording of it and those the leading merges of any wording lead to, merged
+// while one leads, later where the last live move the map's unit made of it
+// took it to the roadmap and it is neither, moved in from where the last
+// live move to a topic the map's unit made of it was made, while that is
+// live, and waiting on the last experiment of the unit not abandoned that
+// names any wording of it while it is open; a row for
+// each shown question standing on another topic of the map's unit that the
+// unit moved away from the topic by a live move, leading to where it stands
+// now; and a row for each other shown question placed on the topic or with
+// an answer placed there, saying where it stands. A row of a
+// question standing off the topic shows its answers placed on the topic
+// that no question standing there shows; and a row of its own for each
+// shown answer placed on the topic that answers no shown question, saying
+// where it stands where that is another place. Each record shows its maps'
+// answers, with exactly the entries standing elsewhere that were made
+// there, that its entries rely on, its leading merges went into or that
+// answer its questions; its live moves and merges, a merge's duplicate
+// where it is live and whether the merge leads; each entry's live
+// confirmations, for each file linked from it, in the order each was
+// first linked, the latest live status and apart from it the latest live
+// lift, what the late one-decision check last found of it where it found
+// anything, and its chain down to the first entry not in a live place — a
+// question's, the earlier wordings of its line. A place that is not live
+// shows nothing; the product record holds the shown entries marked
+// product-wide.
+/** @param {string} dir @param {(msg: string) => string} ctx */
+function auditLedger(dir, ctx) {
+  const root = statePath(dir);
+  /** @type {Record<string, any>[]} */
+  const written = fs.readFileSync(path.join(root, LEDGER), 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line));
+  const carriedBy = new Map(written.filter((e) => e.event === 'rehomed').flatMap((c) => c.lines.map((/** @type {string} */ id) => [id, c])));
+  /** A carried line where its carry took it, a link's file where the carry moved it. @param {Record<string, any>} e */
+  const carried = (e) => {
+    const carry = carriedBy.get(e.id);
+    const moved = carry.files.find((/** @type {string[]} */ [from]) => from === e.path);
+    return { ...e, unit: carry.unit, topic: carry.topic, ...(e.event === 'asset' && moved ? { path: moved[1] } : {}) };
+  };
+  const events = written.map((e) => (carriedBy.has(e.id) ? carried(e) : e));
+  const byId = new Map(events.map((e) => [e.id, e]));
+  /** @param {string} short */
+  const full = (short) => /** @type {Record<string, any>} */ (events.find((e) => e.id.startsWith(short))).id;
+  /** @type {Map<string, Record<string, any>|null>} */
+  const manifests = new Map();
+  /** @param {string} unit @param {string|null} topic */
+  const placeLive = (unit, topic) => {
+    if (unit === PRODUCT) return topic === null;
+    if (!manifests.has(unit)) {
+      const file = path.join(root, unit, 'manifest.json');
+      manifests.set(unit, fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null);
+    }
+    const manifest = manifests.get(unit);
+    const row = topic === null ? undefined : manifest?.phases?.discovery?.items?.[topic];
+    return manifest != null && manifest.status !== 'cancelled' && row?.cancelled !== true && row?.postponed !== true;
+  };
+  const ENTRIES = ['asked', 'found', 'decided', 'replaced'];
+  /** The entry `id` replaced, or null. @param {string} id @returns {string|null} */
+  const replacedBy = (id) => (byId.get(id).event === 'replaced' ? byId.get(id).replaces : null);
+  /** @param {string} id @returns {string[]} the entry and every earlier one of its chain */
+  const chainOf = (id) => (replacedBy(id) === null ? [id] : [id, ...chainOf(/** @type {string} */ (replacedBy(id)))]);
+  /** @param {string} id @returns {Record<string, any>} */
+  const firstOf = (id) => byId.get(/** @type {string} */ (chainOf(id).at(-1)));
+  /** @param {Record<string, any>} e */
+  const isQuestion = (e) => e.event === 'asked' || e.of === 'question';
+  const moves = events.filter((e) => e.event === 'moved' && placeLive(e.unit, null));
+  /** Whether a move took its question to a topic, not to the roadmap. @param {Record<string, any>} m */
+  const toTopic = (m) => !m.to.startsWith(ROADMAP);
+  /** The moves in a live place `unit` made of `id`'s question, in the ledger's order. @param {string} id @param {string} unit */
+  const movesOf = (id, unit) => moves.filter((m) => m.unit === unit && firstOf(m.question).id === firstOf(id).id);
+  /** @type {Map<string, string|null>} */
+  const madeOn = new Map();
+  /** The topic `id` was made on: a question's, the one the last move its unit made of it in a live place took it to, if any. @param {string} id */
+  const topicOf = (id) => {
+    if (!madeOn.has(id)) {
+      const e = byId.get(id);
+      const move = isQuestion(e) ? movesOf(id, e.unit).filter(toTopic).at(-1) : undefined;
+      madeOn.set(id, move === undefined ? e.topic : move.to);
+    }
+    return /** @type {string|null} */ (madeOn.get(id));
+  };
+  /** @param {string} id */
+  const inLivePlace = (id) => placeLive(byId.get(id).unit, topicOf(id));
+  /** Each question's line, by its chain's first wording: its wordings in a live place, in the ledger's order. @type {Map<string, string[]>} */
+  const lines = new Map();
+  for (const e of events.filter((ev) => isQuestion(ev) && inLivePlace(ev.id))) lines.set(firstOf(e.id).id, [...(lines.get(firstOf(e.id).id) ?? []), e.id]);
+  /** @param {string} id */
+  const lineOf = (id) => lines.get(firstOf(id).id) ?? [];
+  const position = new Map(events.map((e, at) => [e.id, at]));
+  /** The wordings of `id`'s line after the nearest wording in a live place it grew from; the whole line where none is. @param {string} id */
+  const wordingsAfter = (id) => {
+    const from = chainOf(id).find(inLivePlace);
+    return from === undefined ? lineOf(id) : lineOf(id).filter((wording) => position.get(wording) > position.get(from));
+  };
+  /** @param {string} id @returns {{unit: string, topic: string|null}} */
+  const standing = (id) => {
+    const earliest = isQuestion(byId.get(id)) ? lineOf(id)[0] : chainOf(id).filter(inLivePlace).at(-1);
+    const at = /** @type {string} */ (earliest ?? chainOf(id).at(-1));
+    return { unit: byId.get(at).unit, topic: topicOf(at) };
+  };
+  /** Where `id` is placed: where it stands, and where it was made where that differs. @param {string} id */
+  const placed = (id) => {
+    const at = standing(id);
+    const made = { unit: byId.get(id).unit, topic: topicOf(id) };
+    return at.unit === made.unit && at.topic === made.topic ? [at] : [at, made];
+  };
+  const liveEvents = (/** @type {string} */ event) => events.filter((e) => e.event === event && inLivePlace(e.id));
+  const replacements = liveEvents('replaced');
+  const merges = liveEvents('merged');
+  const confirmations = liveEvents('still-holds');
+  const keeps = liveEvents('kept');
+  const links = liveEvents('asset');
+  /** The files linked from `id`, in the order each was first linked: for each, the latest live status and, apart from it, the latest live lift. @param {string} id */
+  const assetsOf = (id) => {
+    /** @type {Map<string, {path: string, status: string|null, into: string|null}>} */
+    const files = new Map();
+    for (const { path: file, status, into } of links.filter((a) => a.entry === id)) {
+      const was = files.get(file) ?? { path: file, status: null, into: null };
+      files.set(file, { path: file, status: status ?? was.status, into: into ?? was.into });
+    }
+    return [...files.values()];
+  };
+  /** The roadmap `id`'s question went to as later, where the last live move its unit made of it went there: `roadmap:{item}`, or null. @param {string} id */
+  const laterOf = (id) => {
+    const last = movesOf(id, standing(id).unit).at(-1);
+    return last === undefined || toTopic(last) ? null : last.to;
+  };
+  /** The last experiment of `unit` not abandoned that names any wording of `id`'s question, and whether it still runs, or null. @param {string} unit @param {string} id */
+  const waitingOn = (unit, id) => {
+    const items = manifests.get(unit)?.phases?.experiment?.items ?? {};
+    const named = Object.values(items).flatMap((item) => Object.entries(item?.experiments ?? {}))
+      .filter(([, r]) => byId.has(r.question) && r.status !== 'abandoned' && firstOf(r.question).id === firstOf(id).id);
+    const last = named.at(-1);
+    return last === undefined ? null : { experiment: last[0], running: last[1].status !== 'concluded' };
+  };
+  /** What the late check last found of each entry it judged. @type {Map<string, string>} */
+  const lateChecks = new Map(events.filter((e) => e.event === 'checked').map((e) => [e.entry, e.rules]));
+
+  /** @param {string[]} args */
+  const ledger = (args) => {
+    const res = engine.run(['ledger', ...args], { cwd: dir });
+    assert.strictEqual(res.code, 0, ctx(`ledger ${args.join(' ')} does not read: ${res.stderr}`));
+    return JSON.parse(res.stdout);
+  };
+  const units = [...new Set(events.flatMap((e) => [e.unit, standing(e.id).unit]))].filter((unit) => unit !== PRODUCT);
+  const topics = [...new Set(events.flatMap((e) => [[e.unit, e.topic], [standing(e.id).unit, standing(e.id).topic], ...(e.event === 'moved' && toTopic(e) ? [[e.unit, e.to]] : [])])
+    .filter(([, topic]) => topic !== null).map((pair) => pair.join('\0')))].map((key) => key.split('\0'));
+  /** @type {Map<string, Record<string, any>>} */
+  const records = new Map([...units.map((unit) => [`${unit}\0`, ledger(['record', unit])]), ...topics.map(([unit, topic]) => [`${unit}\0${topic}`, ledger(['record', unit, topic])])]);
+  const maps = new Map(topics.map(([unit, topic]) => [`${unit}\0${topic}`, ledger(['map', unit, topic])]));
+  /** @param {Record<string, any>} record @returns {Record<string, any>[]} */
+  const main = (record) => [...record.questions, ...record.findings, ...record.decisions];
+  const product = ledger(['product']);
+  /** @type {Map<string, string[]>} */
+  const shownAt = new Map();
+  for (const [place, record] of records) for (const e of main(record)) shownAt.set(full(e.id), [...(shownAt.get(full(e.id)) ?? []), place]);
+  const atProduct = [...product.findings, ...product.decisions].filter((e) => standing(full(e.id)).unit === PRODUCT);
+  for (const e of [...product.discovery, ...atProduct, ...product.questions]) shownAt.set(full(e.id), [...(shownAt.get(full(e.id)) ?? []), `${PRODUCT}\0`]);
+  const shown = (/** @type {string} */ id) => shownAt.has(id);
+
+  /** Where `id` leads while not shown: a question's wording, the next on its line; its live replacements, or, with none, the entries its live merges went into. @param {string} id */
+  const next = (id) => {
+    if (isQuestion(byId.get(id))) return wordingsAfter(id).slice(0, 1);
+    const replacers = replacements.filter((r) => r.replaces === id).map((r) => r.id);
+    return replacers.length > 0 ? replacers : merges.filter((m) => m.duplicate === id).map((m) => m.into);
+  };
+  /** The shown entries `id` leads to, never through `avoid`. @param {string} id @param {string|null} [avoid] @returns {string[]} */
+  const reach = (id, avoid = null) => {
+    const seen = new Set([avoid]);
+    /** @type {Set<string>} */
+    const found = new Set();
+    const walk = (/** @type {string} */ at) => {
+      if (seen.has(at)) return;
+      seen.add(at);
+      if (shown(at)) found.add(at);
+      else next(at).forEach(walk);
+    };
+    walk(id);
+    return [...found].sort();
+  };
+  /** Whether a merge leads somewhere: its duplicate, if any, is not shown, and what it went into leads to a shown entry. @param {Record<string, any>} m */
+  const leads = (m) => (m.duplicate === null || !shown(m.duplicate)) && reach(m.into, m.duplicate).length > 0;
+  /** The shown entries answering any wording of `question`'s chain. @param {string} question */
+  const answering = (question) => events.filter((e) => typeof e.answers === 'string' && firstOf(e.answers).id === firstOf(question).id && shown(e.id)).map((e) => e.id);
+  /** @param {string} question */
+  const answersOf = (question) => {
+    const own = answering(question);
+    const leading = merges.filter((m) => firstOf(m.question).id === firstOf(question).id && leads(m));
+    return { answers: [...new Set([...own, ...leading.flatMap((m) => reach(m.into, m.duplicate))])].sort(), merged: leading.length > 0 };
+  };
+  const answeringShown = new Set([...shownAt.keys()].filter((id) => isQuestion(byId.get(id))).flatMap((id) => answersOf(id).answers));
+  /** @param {string} id */
+  const placesOf = (id) => [`${standing(id).unit}\0`, ...(standing(id).topic === null ? [] : [`${standing(id).unit}\0${standing(id).topic}`])];
+
+  for (const e of events.filter((ev) => ENTRIES.includes(ev.event))) {
+    if (shown(e.id)) {
+      assert.ok(inLivePlace(e.id), ctx(`${e.id} shows from a place that is not live`));
+      assert.deepStrictEqual([...(shownAt.get(e.id) ?? [])].sort(), placesOf(e.id).sort(), ctx(`${e.id} does not show once in its unit's record and once in its topic's`));
+      assert.ok(replacements.every((r) => r.replaces !== e.id), ctx(`${e.id} shows though a live replacement names it`));
+      assert.ok(!isQuestion(e) || lineOf(e.id).at(-1) === e.id, ctx(`${e.id} shows though it is an earlier wording of ${lineOf(e.id).at(-1)}, the last of its line`));
+      for (const m of merges.filter((merge) => merge.duplicate === e.id)) {
+        assert.deepStrictEqual(reach(m.into, e.id), [], ctx(`${e.id} shows though ${m.id}, a merge that leads to a shown entry, took it as a duplicate`));
+      }
+    } else if (inLivePlace(e.id)) {
+      assert.ok(reach(e.id).length > 0, ctx(`${e.id}, in a live place, neither shows nor leads to an entry that does`));
+    }
+  }
+
+  for (const [place, record] of records) {
+    const [unit, topic] = /** @type {[string, string]} */ (place.split('\0'));
+    const at = { unit, topic: topic === '' ? null : topic };
+    const within = (/** @type {string} */ id) => standing(id).unit === unit && (at.topic === null || standing(id).topic === at.topic);
+    const made = (/** @type {Record<string, any>} */ e) => e.unit === unit && (at.topic === null || e.topic === at.topic);
+    if (!placeLive(at.unit, at.topic)) {
+      assert.deepStrictEqual([main(record), record.moved, record.merged, record.other_topics], [[], [], [], []], ctx(`${place}'s record, not live, shows something`));
+      continue;
+    }
+    for (const e of main(record)) {
+      const id = full(e.id);
+      const beneath = chainOf(id).slice(1);
+      const cut = beneath.findIndex((old) => !inLivePlace(old));
+      const earlier = lineOf(id).filter((wording) => position.get(wording) < position.get(id)).reverse();
+      assert.deepStrictEqual(e.replaced.map((/** @type {{id: string}} */ r) => full(r.id)), isQuestion(byId.get(id)) ? earlier : cut === -1 ? beneath : beneath.slice(0, cut),
+        ctx(`${place} does not fold ${e.id}'s live chain beneath it`));
+      for (const shownEntry of [e, ...e.replaced]) {
+        assert.deepStrictEqual(shownEntry.holds.map((/** @type {{id: string}} */ h) => full(h.id)), confirmations.filter((c) => c.entry === full(shownEntry.id)).map((c) => c.id),
+          ctx(`${place} does not show ${shownEntry.id}'s live confirmations alone`));
+        assert.deepStrictEqual(shownEntry.kept.map((/** @type {{id: string}} */ k) => full(k.id)), keeps.filter((k) => k.entry === full(shownEntry.id)).map((k) => k.id),
+          ctx(`${place} does not show the person's live keeps of ${shownEntry.id} alone`));
+        assert.strictEqual(shownEntry.late_check, lateChecks.get(full(shownEntry.id)), ctx(`${place} does not show what the late check last found of ${shownEntry.id}`));
+        assert.deepStrictEqual(shownEntry.assets, assetsOf(full(shownEntry.id)), ctx(`${place} does not show the latest live link of each file linked from ${shownEntry.id}`));
+      }
+    }
+    assert.deepStrictEqual(record.moved.map((/** @type {{id: string, text: string}} */ m) => [full(m.id), m.text]), moves.filter(made).map((m) => [m.id, byId.get(m.question).text]),
+      ctx(`${place}'s record does not show its live moves`));
+    assert.deepStrictEqual(record.merged.map((/** @type {{id: string, duplicate_entry: {id: string}|null, holds: boolean}} */ m) => [full(m.id), m.duplicate_entry === null ? null : full(m.duplicate_entry.id), m.holds]),
+      merges.filter(made).map((m) => [m.id, m.duplicate !== null && inLivePlace(m.duplicate) ? m.duplicate : null, leads(m)]), ctx(`${place}'s record does not show its live merges, each holding while it leads`));
+    /** @type {Map<string, Set<string>>} */
+    const expected = new Map();
+    const tie = (/** @type {string[]} */ ids, /** @type {string} */ to) => {
+      for (const id of ids.filter((shownId) => !within(shownId))) expected.set(id, new Set([...(expected.get(id) ?? []), to]));
+    };
+    for (const e of main(record)) {
+      const id = full(e.id);
+      for (const relied of byId.get(id).relies_on) tie(reach(relied), relied);
+      if (isQuestion(byId.get(id))) tie(answersOf(id).answers, id);
+    }
+    for (const m of merges.filter(made).filter(leads)) tie(reach(m.into), m.into);
+    for (const id of shownAt.keys()) {
+      if (!within(id) && placed(id).some((p) => p.unit === unit && (at.topic === null || p.topic === at.topic))) expected.set(id, expected.get(id) ?? new Set());
+    }
+    assert.deepStrictEqual(new Map(record.other_topics.map((/** @type {{id: string, named: string[]}} */ o) => [full(o.id), new Set(o.named.map(full))])), expected,
+      ctx(`${place}'s record does not show exactly the entries standing elsewhere tied to it`));
+  }
+
+  for (const [place, map] of maps) {
+    const [unit, topic] = /** @type {[string, string]} */ (place.split('\0'));
+    const record = /** @type {Record<string, any>} */ (records.get(place));
+    if (!placeLive(unit, topic)) {
+      assert.deepStrictEqual(map.questions, [], ctx(`${place}'s map, not live, shows something`));
+      continue;
+    }
+    const on = (/** @type {{unit: string, topic: string|null}} */ p) => p.unit === unit && p.topic === topic;
+    const shownRow = (/** @type {{id: string, answers: {id: string}[]}} */ row) => full(row.id);
+    const standingHere = map.questions.filter((/** @type {{stands: string}} */ row) => !['moved-away', 'elsewhere', 'question-set-aside'].includes(row.stands));
+    const questionRows = map.questions.filter((/** @type {{stands: string}} */ row) => row.stands !== 'question-set-aside').map(shownRow);
+    for (const [at, id] of questionRows.entries()) {
+      const twice = questionRows.slice(at + 1).find((other) => firstOf(other).id === firstOf(id).id);
+      assert.strictEqual(twice, undefined, ctx(`${place}'s map shows ${id} and ${twice}, two wordings of one question`));
+    }
+    for (const row of standingHere) {
+      assert.ok(row.stands !== 'open' || answering(full(row.id)).length === 0, ctx(`${place}'s map shows ${row.id} open, though a shown entry answers a wording of it`));
+    }
+    const questionsHere = [...shownAt.keys()].filter((id) => isQuestion(byId.get(id)) && on(standing(id)));
+    assert.deepStrictEqual(standingHere.map(shownRow).sort(), [...questionsHere].sort(),
+      ctx(`${place}'s map does not hold a row for each shown question standing on it`));
+    for (const row of map.questions) {
+      assert.deepStrictEqual(row.waiting_on, row.stands === 'open' ? waitingOn(unit, full(row.id)) : null, ctx(`${place}'s map does not mark ${row.id} waiting on the experiment of its unit measuring it alone`));
+      if (row.stands === 'question-set-aside') assert.ok([...main(record), ...record.other_topics].some((e) => full(e.id) === full(row.id)), ctx(`${place}'s record does not show ${row.id}, which its map shows as a row of its own`));
+      for (const { id: answer } of row.answers) {
+        assert.ok([...main(record), ...record.other_topics].some((e) => full(e.id) === full(answer)), ctx(`${place}'s record does not show ${answer}, which its map shows answering ${row.id}`));
+      }
+    }
+    for (const row of standingHere) {
+      const movedIn = movesOf(full(row.id), unit).filter(toTopic).at(-1);
+      const { answers, merged } = answersOf(full(row.id));
+      const later = laterOf(full(row.id));
+      const stands = merged ? 'merged' : answers.length > 0 ? 'answered' : later === null ? 'open' : 'later';
+      assert.deepStrictEqual([row.moved_from, row.moved_to], [movedIn === undefined || !placeLive(unit, movedIn.topic) ? null : movedIn.topic, stands === 'later' ? later : null],
+        ctx(`${place}'s map does not show the live topic ${row.id} moved in from by its unit's last live move to a topic, and the roadmap it is later on`));
+      assert.deepStrictEqual([row.answers.map((/** @type {{id: string}} */ a) => full(a.id)).sort(), row.stands], [answers, stands],
+        ctx(`${place}'s map does not answer ${row.id} by its shown answers`));
+      for (const answer of answers) {
+        const elsewhere = record.other_topics.find((/** @type {{id: string}} */ o) => full(o.id) === answer);
+        assert.ok(main(record).some((e) => full(e.id) === answer) || elsewhere?.named.map(full).includes(full(row.id)), ctx(`${place}'s record does not show ${answer}, answering ${row.id}`));
+      }
+    }
+    const shownHere = new Set(questionsHere.flatMap((id) => answersOf(id).answers));
+    const answersHere = (/** @type {string} */ id) => answersOf(id).answers.filter((a) => !shownHere.has(a) && placed(a).some(on));
+    /** @param {string} stands */
+    const rowsOf = (stands) => map.questions.filter((/** @type {{stands: string}} */ row) => row.stands === stands)
+      .map((/** @type {{id: string, moved_from: string|null, moved_to: string|null, stands_in: object|null, answers: {id: string}[]}} */ row) => [full(row.id), row.moved_from, row.moved_to, row.stands_in, row.answers.map((a) => full(a.id)).sort()]).sort();
+    const offTopic = [...shownAt.keys()].filter((id) => isQuestion(byId.get(id)) && !on(standing(id)));
+    const movedAway = offTopic.filter((id) => standing(id).unit === unit && movesOf(id, unit).some((m) => m.topic === topic));
+    assert.deepStrictEqual(rowsOf('moved-away'), movedAway.map((id) => [id, null, standing(id).topic, null, answersHere(id)]).sort(),
+      ctx(`${place}'s map does not lead each shown question its unit moved away from it to where it stands now, with its answers placed there`));
+    const elsewhere = offTopic.filter((id) => !movedAway.includes(id) && (placed(id).some(on) || answersHere(id).length > 0));
+    assert.deepStrictEqual(rowsOf('elsewhere'), elsewhere.map((id) => [id, null, null, standing(id), answersHere(id)]).sort(),
+      ctx(`${place}'s map does not show each shown question standing elsewhere placed on it, or answered by an entry placed there, where it stands (5.8.19)`));
+    const alone = [...shownAt.keys()].filter((id) => typeof byId.get(id).answers === 'string' && !answeringShown.has(id) && placed(id).some(on));
+    assert.deepStrictEqual(rowsOf('question-set-aside'), alone.map((id) => [id, null, null, on(standing(id)) ? null : standing(id), []]).sort(),
+      ctx(`${place}'s map does not show each shown answer placed on it that answers no shown question as a row of its own (5.8.19)`));
+  }
+
+  assert.deepStrictEqual([...product.findings, ...product.decisions].map((/** @type {{id: string}} */ e) => full(e.id)).sort(), [...shownAt.keys()].filter((id) => byId.get(id).product_wide === true).sort(),
+    ctx('the product record does not hold the shown entries marked product-wide'));
+
+  const headings = new Set([...shownAt.keys()].filter((id) => byId.get(id).product_wide === true && typeof byId.get(id).answers === 'string')
+    .flatMap((id) => events.filter((e) => isQuestion(e) && firstOf(e.id).id === firstOf(byId.get(id).answers).id).map((e) => e.id)));
+  auditCopies(root, events, shownAt, placed, headings, full, ctx);
+}
+
+// The ledger audit, run once per state it reads. It is the oracle's dearest
+// — `ledger record` and `ledger map` for every unit and topic, and the
+// copies — and a function of what it reads alone: the files and folders its
+// reads touch (the engine's reads run in this process), and through git the
+// ledger the state branch last committed, which the read's check holds the
+// file to (every other git read it makes names an object by its id, which
+// never changes). So it is keyed on exactly those: every path the last full
+// audit touched, as it stands now — a file's bytes, a folder's entries, a
+// stat's identity, or its absence — and the committed ledger's object. A
+// state whose every read answers as it did passes as it did. A path the
+// audit starts to read joins the key as it does, so no read can be left out
+// of it; and every VERIFY_EVERY-th pass in a row runs the audit in full and
+// fails where the paths it reads differ from the ones keyed — an input that
+// changes which paths the audit reads.
+const VERIFY_EVERY = 8;
+const TRACKED_READS = ['readFileSync', 'openSync', 'existsSync', 'statSync', 'lstatSync', 'readdirSync', 'accessSync', 'realpathSync', 'opendirSync'];
+/** The last full audit of each state, by its folder. @type {Map<string, {reads: string[], key: string, passes: number}>} */
+const ledgerAudits = new Map();
+/** How many full audits and passes each state has had. @type {Map<string, {full: number, passed: number}>} */
+const ledgerAuditCounts = new Map();
+
+/**
+ * `fn` run with every file-system read it makes by path noted as `{op} {path}`.
+ * @param {() => void} fn @returns {string[]}
+ */
+function readsOf(fn) {
+  /** @type {Set<string>} */
+  const reads = new Set();
+  /** @type {Record<string, Function>} */
+  const real = {};
+  for (const op of TRACKED_READS) {
+    real[op] = /** @type {any} */ (fs)[op];
+    /** @type {any} */ (fs)[op] = function tracked(/** @type {any[]} */ ...args) {
+      if (typeof args[0] === 'string' || Buffer.isBuffer(args[0])) reads.add(`${op} ${path.resolve(String(args[0]))}`);
+      return real[op].apply(this, args);
+    };
+  }
+  try {
+    fn();
+  } finally {
+    for (const op of TRACKED_READS) /** @type {any} */ (fs)[op] = real[op];
+  }
+  return [...reads].sort();
+}
+
+/**
+ * What each noted read answers now, and the ledger the state branch last
+ * committed, as one digest.
+ * @param {string} dir @param {string[]} reads @returns {string}
+ */
+function readsKey(dir, reads) {
+  const hash = crypto.createHash('sha1');
+  hash.update(stateGit(dir, ['ls-tree', BRANCH_REF, '--', LEDGER]).trim());
+  for (const read of reads) {
+    const op = read.slice(0, read.indexOf(' '));
+    const at = read.slice(read.indexOf(' ') + 1);
+    const stat = fs.statSync(at, { bigint: true, throwIfNoEntry: false });
+    let answer = 'absent';
+    if (stat && op.endsWith('statSync')) answer = `${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.mode}`;
+    else if (stat?.isDirectory()) answer = fs.readdirSync(at, { withFileTypes: true }).map((e) => `${e.name}${e.isDirectory() ? '/' : ''}`).sort().join('\0');
+    else if (stat) answer = crypto.createHash('sha1').update(fs.readFileSync(at)).digest('hex');
+    hash.update(`\0${read}\0${answer}`);
+  }
+  return hash.digest('hex');
+}
+
+/** @param {string} dir @param {(msg: string) => string} ctx */
+function auditLedgerOnce(dir, ctx) {
+  const last = ledgerAudits.get(dir);
+  const counts = ledgerAuditCounts.get(dir) ?? { full: 0, passed: 0 };
+  ledgerAuditCounts.set(dir, counts);
+  const unchanged = last !== undefined && readsKey(dir, last.reads) === last.key;
+  if (last !== undefined && unchanged && last.passes < VERIFY_EVERY - 1) {
+    last.passes += 1;
+    counts.passed += 1;
+    return;
+  }
+  counts.full += 1;
+  const reads = readsOf(() => auditLedger(dir, ctx));
+  if (last !== undefined && unchanged) {
+    assert.deepStrictEqual(reads, last.reads,
+      ctx('the ledger audit read other paths over a state its key held unchanged — an input reaches it other than through its reads and the state branch, and its key misses it'));
+  }
+  ledgerAudits.set(dir, { reads, key: readsKey(dir, reads), passes: 0 });
+}
+
+/** How many times the ledger audit ran in full over the state in `dir`, and how many times it passed the state unchanged. @param {string} dir */
+function ledgerAuditsOf(dir) {
+  return { ...(ledgerAuditCounts.get(dir) ?? { full: 0, passed: 0 }) };
+}
+
+// The ledger's copies in the knowledge directory, held to the records: a
+// copy for each place a shown entry is placed in — its unit's own level, a
+// topic, or the product's place, whose copy shows its findings alone — and
+// for no other; each naming every
+// entry shown there and no entry that is not shown, so no replaced answer is
+// in one; the product record's file naming the shown entries marked
+// product-wide alone; no words of an entry that is not shown — a question's
+// wording, an answer's text, its why — in any copy or the product record's
+// file, but where a shown entry says them too, or, in the product record's
+// file, the question a shown product-wide decision answers, which heads it
+// there; and the store indexing the records' copies, never the product
+// record's file.
+/**
+ * @param {string} root @param {Record<string, any>[]} events @param {Map<string, string[]>} shownAt
+ * @param {(id: string) => {unit: string, topic: string|null}[]} placed
+ * @param {Set<string>} headings  each wording of a question a shown product-wide decision answers
+ * @param {(short: string) => string} full @param {(msg: string) => string} ctx
+ */
+function auditCopies(root, events, shownAt, placed, headings, full, ctx) {
+  /** @type {Map<string, string[]>} */
+  const expected = new Map();
+  const byId = new Map(events.map((e) => [e.id, e]));
+  const finding = (/** @type {string} */ id) => byId.get(id).event === 'found' || byId.get(id).of === 'finding';
+  for (const id of shownAt.keys()) {
+    for (const { unit, topic } of placed(id).filter((at) => at.unit !== PRODUCT || finding(id))) {
+      const file = topic === null ? `${RECORDS_DIR}/${unit}.md` : `${RECORDS_DIR}/${unit}/${topic}.md`;
+      expected.set(file, [...(expected.get(file) ?? []), id]);
+    }
+  }
+  const markdown = (/** @type {string} */ rel) => (fs.existsSync(path.join(root, rel)) ? fs.readdirSync(path.join(root, rel), { withFileTypes: true }) : [])
+    .flatMap((entry) => (entry.isDirectory() ? markdown(`${rel}/${entry.name}`) : entry.name.endsWith('.md') ? [`${rel}/${entry.name}`] : []));
+  const copies = markdown(RECORDS_DIR).sort();
+  assert.deepStrictEqual(copies, [...expected.keys()].sort(), ctx('the record copies are not one for each place a shown entry is placed in'));
+  /** @param {string} rel */
+  const named = (rel) => [...fs.readFileSync(path.join(root, rel), 'utf8').matchAll(/Entry (\w+)\.$/gm)].map((m) => full(m[1]));
+  for (const [file, ids] of expected) {
+    const names = named(file);
+    assert.deepStrictEqual(ids.filter((id) => !names.includes(id)), [], ctx(`${file} does not name every entry its record shows`));
+    assert.deepStrictEqual(names.filter((id) => !shownAt.has(id)), [], ctx(`${file} names an entry that is not current`));
+  }
+  assert.deepStrictEqual([...new Set(named(PRODUCT_FILE))].sort(), [...shownAt.keys()].filter((id) => byId.get(id).product_wide === true).sort(),
+    ctx('the product record\'s file does not name the shown entries marked product-wide alone'));
+  /** @param {Record<string, any>} e @returns {string[]} */
+  const words = (e) => [e.text, e.why, e.how, e.rules_out, e.alternatives, e.evidence, e.drops].flat().filter((w) => typeof w === 'string');
+  const shownWords = [...shownAt.keys()].flatMap((id) => words(byId.get(id)));
+  const unshown = events.filter((e) => ['asked', 'found', 'decided', 'replaced'].includes(e.event) && !shownAt.has(e.id))
+    .flatMap((e) => words(e).map((w) => [e.id, w])).filter(([, w]) => !shownWords.some((shown) => shown.includes(w)));
+  for (const file of [...copies, PRODUCT_FILE]) {
+    const text = fs.readFileSync(path.join(root, file), 'utf8');
+    const heads = (/** @type {string} */ id) => file === PRODUCT_FILE && headings.has(id);
+    assert.deepStrictEqual(unshown.filter(([id, w]) => !heads(id) && text.includes(w)), [], ctx(`${file} holds the words of an entry that is not shown`));
+  }
+  const storeFile = knowledgeFiles(root).store;
+  const chunks = fs.existsSync(storeFile) ? knowledgeStore.allChunks(knowledgeStore.loadStore(storeFile)).filter((c) => c.phase === 'record') : [];
+  assert.deepStrictEqual([...new Set(chunks.map((c) => c.source_file))].sort(), copies, ctx('the store does not index the record copies alone'));
+  for (const file of copies) {
+    const held = chunks.filter((c) => c.source_file === file).sort((a, b) => a.id.localeCompare(b.id)).map((c) => c.content);
+    const cut = chunker.chunk(fs.readFileSync(path.join(root, file), 'utf8'), RECORD_CHUNKING).map((c) => c.content);
+    assert.deepStrictEqual(held, cut, ctx(`the store's chunks of ${file} are not the copy as it stands`));
+  }
+  assert.deepStrictEqual(chunks.flatMap((c) => unshown.filter(([, w]) => c.content.includes(w))), [], ctx('a chunk in the store holds the words of an entry that is not shown'));
+}
+
+// The trust log held to the ledger (16.13.3, 16.13.4, 16.12.1), read from
+// the sim's own config folder, the project's events alone, each once by its
+// id: a call for each of Claude's answers, a decision or its replacement of
+// one, but one carried over and one landed at a raise's id, the person's
+// "don't care" on it; a reversal, naming the entry it reverses, for
+// each of the person's replacements of a decision that held Claude's lean —
+// Claude leaned down its chain, its own call, handed over or not, or a
+// sealed answer, and it did not stand over the lean — made for a changed
+// mind or a mistake and carrying no sealed answer of Claude's; a raise,
+// naming the line — but a keep of Claude's call gone ahead names the call
+// it agrees with — for each of the person's answers to the lean a raise
+// sealed — an entry, a keep of the decision Claude proposed to replace, or
+// their "don't care", Claude's answer at the raise's id, given so and
+// marked so, or, on a blind question's call gone ahead, a keep of it
+// given so, and no other — beside the raises the person did not follow;
+// every answer to what a question waiting in the build waited on — the
+// question it answers, by any wording, parked before it, or the decision
+// it replaces or keeps, parked since its last keep — landed through its
+// raise, a fact's, which logs no raise, by the seal the conversation
+// answered it from (12.13.16); one raise not followed for each "I don't
+// follow" the conversations' seals count, but a fact's; none of them for
+// anything else. Each raise logs what its call was decided from beyond its
+// label, as the ledger holds what that rests on (16.4.7, 16.5.7, 19.4.20):
+// where its question waited in the build, as its first park was decided —
+// blocking build work where that park held a task, never as the parks stood
+// at the answer, the decision it would replace whose it was as it parked,
+// the person's where a keep of theirs stood on it, and the park's mark —
+// but a blind question whose call went ahead while it waits — on that
+// call, asked-blind, naming the task the call was made for — as that call
+// was decided: blocking build work where it was made for a task, replacing
+// nothing (16.17.6) — and every park of a question holds its first park's;
+// elsewhere blocking no build work, the decision it would replace whose it
+// was as the answer landed, and the one a command just pressed, which
+// lands no line, read off the seal it was pressed on; and nothing left
+// waiting in a conversation, as no append fails. A raise answered and the
+// line it landed agree on whether the answer took Claude's lean — its row,
+// or the row the separate call read from the person's own words — the line
+// standing over the lean exactly where it did not (16.19.1). Each raise
+// names the decision it would replace as its answer's line does — the one
+// a replacement replaces or a keep keeps, Claude's call gone ahead on a
+// blind question — none for a question's answer; and its question's id,
+// the first wording of the question it answers, or for a blind question on
+// Claude's call gone ahead, of the question that call answers — none for a
+// replacement — and the experiment of its unit running on that question,
+// by any wording, as the question was raised, none where none ran: as its
+// seal held it, or its first park where it waited in the build, each held
+// to the experiments running as the oracle first saw it, after the command
+// that raised it (9.1.11, 16.17.4). Every verdict
+// names a departure the trust log holds — a raise answered against the
+// lean, a keep among them, or a reversal — that the ledger holds as a
+// decision whose answer stood over the lean, or a keep (16.13.6), and none
+// follows one that is no skip (16.10.1); the verdict a command that `ran`
+// gave has its line, the latest.
+// Every call and raise carries the kind its label composes (16.11.3), and
+// the decision it names the kind and hard-to-undo mark that label gives; a
+// raise drawn from a park holds the label the park sealed, so the question
+// is labelled once; and a fact, sealed or parked, holds none (16.3.8). Each
+// blind question is drawn once in the trust log, with the kind its label
+// composes (16.17.5): one sealed in a conversation, naming its seal; one
+// parked, naming its first park — or, where its call went ahead, that call.
+// Each yes to the convergence offer names a topic of its unit's discussion
+// by its key (16.8.6). Each learned gate run as a step names a row of the
+// gate that runs as one, under the id its project, gate and showing draw,
+// so a showing stepped is logged once (3.2.7). Each care entry dropped is gone
+// from the record of the person: none there of its project and kind added
+// when it says, nor dropped before it was added (16.5.2).
+/**
+ * The experiment each seal and first park of a scenario was raised under, by
+ * its id, as the oracle first saw it: its memory across the scenario's
+ * audits, an experiment's record keeping no time it stopped running.
+ * @type {WeakMap<object, Map<string, string|null>>}
+ */
+const measuredAtSight = new WeakMap();
+
+/** @param {Sim} sim @param {string} label @param {string[]} [ran] the command, where it succeeded */
+function auditTrust(sim, label, ran = []) {
+  const ctx = (/** @type {string} */ msg) => `[${label}] ${msg}`;
+  const ledgerFile = statePath(sim.dir, LEDGER);
+  if (!fs.existsSync(ledgerFile)) return;
+  /** @type {Record<string, any>[]} */
+  const entries = fs.readFileSync(ledgerFile, 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line));
+  const byId = new Map(entries.map((e) => [e.id, e]));
+  const project = JSON.parse(fs.readFileSync(statePath(sim.dir, 'manifest.json'), 'utf8')).project_id;
+  const log = path.join(sim.configDir, TRUST_LOG);
+  /** @type {Record<string, any>[]} */
+  const lines = fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line)) : [];
+  const events = [...new Map(lines.map((e) => [e.id, e])).values()].filter((e) => e.project === project);
+  const ofType = (/** @type {string} */ type) => events.filter((e) => e.type === type);
+  const isDecision = (/** @type {Record<string, any>} */ e) => e.event === 'decided' || e.of === 'decision';
+  const isKeep = (/** @type {Record<string, any>} */ e) => e.event === 'kept';
+  /** Whether a line is the person's keep of Claude's call gone ahead while a blind question waited on it (16.17.6). @type {(e: Record<string, any>) => boolean} */
+  const keepsAhead = (e) => isKeep(e) && e.reason === 'asked-blind';
+  /** The entry an answer's raise event names: the line it landed, but the call a keep of a call gone ahead agrees with. @type {(e: Record<string, any>) => string} */
+  const namedBy = (e) => (keepsAhead(e) ? e.entry : e.id);
+  const keptAhead = new Map(entries.filter(keepsAhead).map((e) => [e.entry, e]));
+  /** The line a raise event's answer landed: the keep of the call it names, else the entry it names. @type {(raise: Record<string, any>) => Record<string, any>|undefined} */
+  const answeredLine = (raise) => keptAhead.get(raise.entry) ?? byId.get(raise.entry);
+
+  const conversations = path.join(sim.configDir, 'conversations');
+  const folders = fs.existsSync(conversations) ? fs.readdirSync(conversations) : [];
+  /** @type {Record<string, any>[]} */
+  const sealed = folders.map((name) => path.join(conversations, name, RAISE_SHOWN)).filter((file) => fs.existsSync(file)).flatMap((file) => Object.values(JSON.parse(fs.readFileSync(file, 'utf8'))));
+  const sealIds = new Set(sealed.map((s) => s.id));
+  const claudes = (/** @type {Record<string, any>} */ e) => e.by === 'claude' && e.given !== 'carried';
+  const leftToClaude = (/** @type {Record<string, any>} */ e) => isDecision(e) && claudes(e) && sealIds.has(e.id);
+  assert.deepStrictEqual(ofType('call').map((e) => e.entry).sort(), entries.filter((e) => isDecision(e) && claudes(e) && !leftToClaude(e)).map((e) => e.id).sort(),
+    ctx('the trust log does not hold one call for each of Claude\'s answers, and no other'));
+  assert.deepStrictEqual(entries.filter(leftToClaude).filter((e) => e.given !== 'dont-care').map((e) => e.id), [],
+    ctx('Claude\'s answer landed at a raise\'s id is given otherwise than as the person\'s "don\'t care"'));
+  /** @type {(e: Record<string, any>) => boolean} */
+  const leaned = (e) => claudes(e) || typeof e.sealed === 'string' || (e.event === 'replaced' && leaned(byId.get(e.replaces)));
+  const reversing = entries.filter((e) => e.event === 'replaced' && e.of === 'decision' && e.by === 'person' && e.sealed === null
+    && ['changed-mind', 'was-wrong'].includes(e.reason) && leaned(byId.get(e.replaces)) && byId.get(e.replaces).who_moved_whom !== 'person-moved-claude');
+  assert.deepStrictEqual(ofType('reversal').map((e) => [e.entry, e.reverses]).sort(), reversing.map((e) => [e.id, e.replaces]).sort(),
+    ctx('the trust log does not hold one reversal for each of the person\'s replacements standing over a lean the entry it replaces held, and no other'));
+  assert.deepStrictEqual(ofType('raise').filter((e) => !e.didnt_follow).map((e) => e.entry).sort(),
+    entries.filter((e) => (isDecision(e) && e.by === 'person' && e.sealed !== null) || isKeep(e) || leftToClaude(e)).map(namedBy).sort(),
+    ctx('the trust log does not hold one raise for each of the person\'s answers to the lean a raise sealed, and no other'));
+  const leftKept = entries.filter((e) => isKeep(e) && e.given === 'dont-care').map((e) => e.entry);
+  assert.deepStrictEqual(ofType('raise').filter((e) => e.dont_care).map((e) => e.entry).sort(), [...entries.filter(leftToClaude).map((e) => e.id), ...leftKept].sort(),
+    ctx('the trust log does not mark a raise "don\'t care" for each of the person\'s "don\'t care" answers, and no other'));
+  /** @type {(id: string) => string} */
+  const firstWording = (id) => (byId.get(id)?.event === 'replaced' && byId.get(id).of === 'question' ? firstWording(byId.get(id).replaces) : id);
+  /** @type {(e: Record<string, any>) => {question: string|null, decision: string|null}|null} */
+  const answered = (e) => {
+    if (e.event === 'decided') return { question: firstWording(e.answers), decision: null };
+    if (e.event === 'replaced' && e.of === 'decision') return { question: null, decision: e.replaces };
+    return isKeep(e) ? { question: null, decision: e.entry } : null;
+  };
+  /** The parks of the question a line answers that waited in the build as it landed, none where none did. @type {(e: Record<string, any>) => Record<string, any>[]} */
+  const parksWaited = (e) => {
+    const subject = answered(e);
+    const at = entries.indexOf(e);
+    return subject === null ? [] : entries.slice(0, at).filter((p, i) => p.event === 'parked'
+      && ((subject.question !== null && p.question !== null && firstWording(p.question) === subject.question) || (subject.decision !== null && p.replaces === subject.decision))
+      && !entries.slice(i, at).some((k) => isKeep(k) && k.entry === p.replaces));
+  };
+  /** @type {(e: Record<string, any>) => boolean} */
+  const waitedOn = (e) => parksWaited(e).length > 0;
+  /** Whose the decision `id` was as the ledger stood before line `at` (16.5.7): the person's where a keep of theirs stood on it, else its maker's where it was their own, else how it was given. @type {(id: string, at: number) => string} */
+  const whose = (id, at) => {
+    const decision = byId.get(id);
+    if (entries.slice(0, at).some((k) => isKeep(k) && k.entry === id)) return 'person';
+    return decision.given === 'own' ? decision.by : decision.given;
+  };
+  /** Whether two parks are about the same thing: the question, by any wording, or the decision. @type {(a: Record<string, any>, b: Record<string, any>) => boolean} */
+  const aboutTheSame = (a, b) => (a.question === null ? b.replaces === a.replaces : b.question !== null && firstWording(b.question) === firstWording(a.question));
+  /** The first park of the question a park is one of: the earliest of its unit under its number, about the same thing. @type {(p: Record<string, any>) => Record<string, any>} */
+  const firstParkOf = (p) => entries.find((q) => q.event === 'parked' && q.unit === p.unit && q.number === p.number && aboutTheSame(q, p));
+  /** Whether a park is a blind question whose call went ahead (16.17.6): it names the task the call went ahead for. @type {(p: Record<string, any>) => boolean} */
+  const wentAhead = (p) => p.went_ahead !== null;
+  for (const park of entries.filter((p) => p.event === 'parked' && wentAhead(p))) {
+    const call = byId.get(park.replaces);
+    assert.deepStrictEqual([call.by, call.task, park.reason, park.task, park.blind], ['claude', park.went_ahead, 'asked-blind', null, true],
+      ctx(`the park ${park.id} is no blind question on Claude's call gone ahead for the task it names, parking none`));
+  }
+  for (const park of entries.filter((p) => p.event === 'parked' && p.reason === 'asked-blind' && p.task !== null)) {
+    const next = entries[entries.indexOf(park) + 1];
+    assert.deepStrictEqual([firstParkOf(park).went_ahead, next === undefined ? null : answered(next)?.decision ?? null], [park.task, park.replaces],
+      ctx(`the park ${park.id} holding task ${park.task} open is not its question's call gone ahead for it, answered at once`));
+  }
+  /** What a question's first park was decided from beyond its label, by what the ledger holds as it parked: a blind question's whose call went ahead, as that call was, its question the call's. @type {(first: Record<string, any>) => Record<string, unknown>} */
+  const parkDecidedFrom = (first) => (wentAhead(first)
+    ? { blocks_build: byId.get(first.replaces).task !== null, replaced_by: null, always: first.always, measured: first.measured, chain: firstWording(byId.get(first.replaces).answers) }
+    : {
+      blocks_build: first.task !== null, replaced_by: first.replaces === null ? null : whose(first.replaces, entries.indexOf(first)), always: first.always, measured: first.measured,
+      chain: first.question === null ? null : firstWording(first.question),
+    });
+  /** What a raise event says its call was decided from, of `fields`. @type {(event: Record<string, any>, fields: string[]) => Record<string, unknown>} */
+  const decidedFrom = (event, fields) => Object.fromEntries(fields.map((f) => [f, event[f]]));
+  /** The experiment of `unit` running now on the question whose first wording is `chain`, by its id, null for none. @type {(unit: string, chain: string|null) => string|null} */
+  const runningOn = (unit, chain) => {
+    const file = statePath(sim.dir, unit, 'manifest.json');
+    const items = fs.existsSync(file) ? Object.values(JSON.parse(fs.readFileSync(file, 'utf8')).phases?.experiment?.items ?? {}) : [];
+    return items.flatMap((item) => Object.entries(/** @type {Record<string, any>} */ (item).experiments ?? {}))
+      .find(([, record]) => chain !== null && !EXPERIMENT_TERMINAL_STATUSES.includes(record.status) && typeof record.question === 'string' && firstWording(record.question) === chain)?.[0] ?? null;
+  };
+  const sighted = measuredAtSight.get(sim) ?? new Map();
+  measuredAtSight.set(sim, sighted);
+  const raisedUnder = [
+    ...sealed.filter((seal) => seal.parks === null).map((seal) => ({ id: seal.id, unit: seal.place.unit, chain: seal.chain, measured: seal.measured })),
+    ...entries.filter((p) => p.event === 'parked' && firstParkOf(p) === p),
+  ];
+  for (const { id, unit, chain, measured } of raisedUnder) {
+    if (!sighted.has(id)) sighted.set(id, runningOn(unit, chain));
+    assert.strictEqual(measured, sighted.get(id), ctx(`${id} does not hold the experiment running on its question as it was raised, ${sighted.get(id)}`));
+  }
+  for (const park of entries.filter((p) => p.event === 'parked')) {
+    assert.deepStrictEqual(decidedFrom(park, ['blocks_build', 'replaced_by', 'always', 'measured', 'chain']), parkDecidedFrom(firstParkOf(park)),
+      ctx(`the park ${park.id} does not hold what its question's first park was decided from`));
+  }
+  /** What an answer's raise was decided from, by the ledger: its question's first park's where it waited in the build, else no build work blocked, the decision it replaces or keeps whose it was, the question it answers by its first wording, and the experiment running on it as its seal was first seen. @type {(e: Record<string, any>) => Record<string, unknown>} */
+  const answerDecidedFrom = (e) => {
+    const [first] = parksWaited(e);
+    if (first !== undefined) return parkDecidedFrom(first);
+    const { question = null, decision = null } = answered(e) ?? {};
+    return { blocks_build: false, replaced_by: decision === null ? null : whose(decision, entries.indexOf(e)), chain: question, measured: sighted.get(e.id) };
+  };
+  const answers = ofType('raise').filter((e) => !e.didnt_follow);
+  for (const raise of answers) {
+    const line = /** @type {Record<string, any>} */ (answeredLine(raise));
+    const expected = answerDecidedFrom(line);
+    assert.deepStrictEqual(decidedFrom(raise, Object.keys(expected)), expected,
+      ctx(`the raise ${raise.id} does not log what its call was decided from, as the ledger holds it`));
+    assert.strictEqual(raise.replaces, answered(line)?.decision ?? null, ctx(`the raise ${raise.id} does not name the decision its answer's line replaces or keeps`));
+  }
+  /** When an answer's call was decided: as its question's first park was made where it waited in the build, else as its seal was made, where the seal stands. @type {(raise: Record<string, any>) => string|undefined} */
+  const decidedWhen = (raise) => parksWaited(byId.get(raise.entry))[0]?.at ?? sealed.find((s) => s.id === raise.entry)?.at;
+  for (const raise of answers) {
+    const when = decidedWhen(raise);
+    assert.ok(Date.parse(raise.raised) <= Date.parse(raise.at) && (when === undefined || raise.raised === when),
+      ctx(`the raise ${raise.id} does not log when its call was decided, ${when}, but ${raise.raised}`));
+  }
+  for (const call of ofType('call')) {
+    assert.strictEqual(call.blocks_build, call.sort === null ? null : (byId.get(call.entry)?.task ?? null) !== null,
+      ctx(`the call ${call.id} does not log whether it blocked build work, as the entry it landed says`));
+  }
+  const raised = new Set([...answers.map((e) => e.entry), ...sealed.filter((s) => s.fact && s.answered !== null).map((s) => s.id)]);
+  assert.deepStrictEqual(entries.filter((e) => waitedOn(e) && !raised.has(namedBy(e))).map((e) => e.id), [],
+    ctx('an answer to what a question waiting in the build waited on landed other than through its raise'));
+  const notFollowed = ofType('raise').filter((e) => e.didnt_follow);
+  assert.strictEqual(notFollowed.length, sealed.filter((s) => !s.fact).reduce((sum, s) => sum + s.didnt_follow, 0),
+    ctx('the trust log does not hold one raise not followed for each "I don\'t follow" the seals count'));
+  const pressed = ran[0] === 'raise' && ran[1] === 'answer' && ran.includes('--didnt-follow') ? sealed.find((s) => s.id.startsWith(ran[2])) : undefined;
+  if (pressed !== undefined && !pressed.fact && pressed.answered === null) {
+    const expected = pressed.parks === null
+      ? { blocks_build: false, replaced_by: pressed.replaces === null ? null : whose(pressed.replaces.entry, entries.length), chain: pressed.answers === null ? null : firstWording(pressed.answers), measured: sighted.get(pressed.id) }
+      : parkDecidedFrom(byId.get(pressed.parks.park));
+    assert.deepStrictEqual(decidedFrom(notFollowed.at(-1) ?? {}, [...Object.keys(expected), 'replaces']), { ...expected, replaces: pressed.replaces?.entry ?? null },
+      ctx('the raise not followed does not log what its call was decided from, as the ledger holds it'));
+  }
+  const waiting = folders.filter((name) => fs.existsSync(path.join(conversations, name, PENDING)));
+  assert.deepStrictEqual(waiting, [], ctx('an event waits in a conversation, though no append failed'));
+  /** Whether a raise's answer took the lean: its row, or the row read from the person's own words. @type {(e: Record<string, any>) => boolean} */
+  const tookTheLean = (e) => (e.answer ?? e.reading) === e.sealed;
+  for (const raise of answers) {
+    assert.strictEqual(tookTheLean(raise), answeredLine(raise)?.who_moved_whom !== 'person-moved-claude',
+      ctx(`the raise ${raise.id} and the line it landed disagree on whether the person's answer took Claude's lean`));
+  }
+  const departures = new Set([...answers.filter((e) => !tookTheLean(e)), ...ofType('reversal')].map((e) => e.entry));
+  /** @type {Map<string, Record<string, any>[]>} */
+  const given = new Map();
+  for (const v of ofType('verdict')) {
+    assert.ok(departures.has(v.entry), ctx(`the verdict ${v.id} names ${v.entry}, which is no departure the trust log holds`));
+    const judged = byId.get(v.entry) ?? {};
+    assert.ok((isDecision(judged) || isKeep(judged)) && judged.who_moved_whom === 'person-moved-claude', ctx(`the verdict ${v.id} names ${v.entry}, which is no departure in the ledger`));
+    given.set(v.entry, [...(given.get(v.entry) ?? []), v]);
+  }
+  for (const [entry, verdicts] of given) {
+    const judged = verdicts.slice(0, -1).filter((v) => v.verdict !== 'skip');
+    assert.deepStrictEqual(judged, [], ctx(`${entry} was given a verdict after one that was no skip`));
+  }
+  for (const e of [...ofType('call'), ...ofType('raise')]) {
+    assert.strictEqual(e.kind, kindOf(e.label), ctx(`the ${e.type} ${e.id} carries the kind ${e.kind}, which its label does not compose`));
+    const decision = byId.get(e.entry);
+    if (decision === undefined || !isDecision(decision)) continue;
+    assert.deepStrictEqual([decision.kind, decision.hard_to_undo], [kindOf(e.label), hardToUndo(e.label)], ctx(`${e.entry} holds a kind or a hard-to-undo mark its label does not give`));
+  }
+  for (const seal of sealed.filter((s) => s.parks !== null)) {
+    assert.deepStrictEqual(seal.label, byId.get(seal.parks.park)?.label, ctx(`the raise ${seal.id} drawn from ${seal.parks.park} holds a label the park did not seal`));
+  }
+  assert.deepStrictEqual([...sealed.filter((s) => s.fact), ...entries.filter((e) => e.event === 'parked' && e.call.lean === null)].filter((s) => s.label !== null).map((s) => s.id), [],
+    ctx('a fact holds a label'));
+  const drawnBlind = [
+    ...sealed.filter((s) => s.blind && s.parks === null).map((s) => [s.id, kindOf(s.label)]),
+    ...entries.filter((p) => p.event === 'parked' && p.blind && firstParkOf(p) === p).map((p) => [wentAhead(p) ? p.replaces : p.id, kindOf(p.label)]),
+  ];
+  assert.deepStrictEqual(ofType('blind-draw').map((e) => [e.entry, e.kind]).sort(), drawnBlind.sort(),
+    ctx('the trust log does not hold one draw for each blind question, with its kind, and no other'));
+  for (const e of ofType('convergence')) {
+    const unit = statePath(sim.dir, e.unit, 'manifest.json');
+    const discussed = fs.existsSync(unit) ? JSON.parse(fs.readFileSync(unit, 'utf8')).phases.discussion?.items ?? {} : {};
+    assert.ok(Object.hasOwn(discussed, e.topic), ctx(`the convergence ${e.id} names ${e.unit}.${e.topic}, no topic of its unit's discussion`));
+  }
+  for (const step of ofType('step')) {
+    assert.ok(Object.hasOwn(LEARNED[step.gate] ?? {}, step.row), ctx(`the step ${step.id} ran ${step.gate} on ${step.row}, no row of a learned gate that runs as a step`));
+    assert.strictEqual(step.id, idFrom('step', project, step.gate, step.showing), ctx(`the step ${step.id} is not logged under the id its project, gate and showing draw`));
+  }
+  const recordFile = path.join(sim.configDir, PERSON);
+  const record = fs.existsSync(recordFile) ? fs.readFileSync(recordFile, 'utf8') : '';
+  for (const drop of ofType('care-drop')) {
+    assert.ok(!record.includes(`: ${drop.kind} · ${project} · ${drop.added}`) && Date.parse(drop.added) <= Date.parse(drop.at),
+      ctx(`the care entry the drop ${drop.id} names, ${drop.kind} added ${drop.added}, still stands in the record, or was dropped before it was added`));
+  }
+  if (ran[0] === 'verdict' && ran[1] === 'give') {
+    const [, , prefix, verdict, , point] = ran;
+    const latest = ofType('verdict').at(-1);
+    assert.ok(latest !== undefined && latest.entry.startsWith(prefix) && latest.verdict === verdict && latest.point === point, ctx(`the trust log's latest verdict is not ${ran.slice(2).join(' ')}`));
+  }
+}
+
+// A route the engine builds into a work skill hands off as it stands, so the
+// handoff table must take it whole and carry it unchanged — a route and the
+// table can never drift.
+/** @param {string} dir @param {{route?: string|null}[]} keys @param {string} label */
+function auditRoutes(dir, keys, label) {
+  for (const { route } of keys) {
+    if (!route) continue;
+    const [named, ...args] = shellWords(route);
+    assert.ok(HANDOFF_TARGETS.includes(named.slice(1)), `[${label}] ${route} reaches no handoff target`);
+    let text;
+    try {
+      ({ text } = resolveHandoff(dir, named, args));
+    } catch (err) {
+      assert.fail(`[${label}] the handoff refuses ${route}: ${err.message}`);
+    }
+    assert.strictEqual(text, `Invoke \`${route}\`.`, `[${label}] the handoff does not carry ${route} as it stands`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The gate payload
+// ---------------------------------------------------------------------------
+
+// The start menu over the project as it stands, its MENU composed as `render
+// start-menu` composes it — leaving the conversation where it is — and each
+// row's next going where it says: a handoff the table takes as it stands, a
+// unit's Continue its unit takes — an epic onto its menu, whatever it waits
+// on — or refuses with the line of a unit that waits on the cut. Drawn with
+// the waits left out: what each row counts is the start menu suite's.
+/** @param {string} dir @param {string} label */
+function auditStartMenu(dir, label) {
+  const at = `${label} — the start menu`;
+  const m = MENUS['start-menu'];
+  auditGate(announcedRender(() => menuSection(m.gate, MENU_INSTRUCTION, menuBody(m, {}, startMenuScreen(startMenuRead(dir, { waits: false }))))), at);
+  for (const { key, next } of /** @type {import('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs').GateShown} */ (gateShown()).options) {
+    if (next?.kind === 'handoff') auditRoutes(dir, [{ route: [`/${next.skill}`, ...next.args].join(' ') }], `${at} — ${key}`);
+    if (next?.kind === 'engine' && next.argv[0] === 'handoff') auditContinue(dir, next.argv, `${at} — ${key}`);
+  }
+  auditStartRoute(dir, label);
+}
+
+/** The move `compose` makes, or null where it refuses. @param {() => {skill: string, args: string}} compose */
+function composes(compose) {
+  try {
+    return compose();
+  } catch {
+    return null;
+  }
+}
+
+// Boot's route over the project as it stands (boot-route.cjs): each unit in
+// progress whose Continue composes, named alone, goes where that Continue
+// goes — never to a topic of the same name, a pivot's first among them —
+// and the start's pick draws over every piece a route could name: each
+// unit in progress whose move composes, each closed unit, and each topic of
+// an epic in progress whose move composes.
+/** @param {string} dir @param {string} label */
+function auditStartRoute(dir, label) {
+  const manifests = listWorkUnits(dir).map((wu) => JSON.parse(fs.readFileSync(path.join(dir, '.ledger', wu, 'manifest.json'), 'utf8')));
+  /** @type {string[]} */
+  const pieces = [];
+  for (const manifest of manifests) {
+    const unit = manifest.name;
+    if (manifest.status !== 'in-progress') {
+      pieces.push(unit);
+      continue;
+    }
+    const move = composes(() => unitHandoff(dir, [unit]));
+    if (move !== null) {
+      pieces.push(unit);
+      const { go, route } = /** @type {any} */ (entryOf(dir, unit));
+      assert.deepStrictEqual({ go, unit: route?.unit, topic: route?.topic, skill: route?.next.skill, args: route?.next.args.join(' ') },
+        { go: 'route', unit, topic: undefined, skill: move.skill, args: move.args }, `[${label} — the start's route] ${unit}, named alone, does not go where its Continue goes`);
+    }
+    if (manifest.work_type !== 'epic') continue;
+    pieces.push(...Object.keys(manifest.phases?.discovery?.items ?? {}).filter((topic) => composes(() => topicHandoff(dir, [unit, topic])) !== null).map((topic) => `${unit}/${topic}`));
+  }
+  if (pieces.length > 0) auditMenuDrawn(dir, () => workPick(pickRows(dir, pieces.join(','))), `${label} — the start's pick`);
+}
+
+/** A unit's Continue, `handoff unit`, as the start menu's row leads to it. @param {string} dir @param {string[]} argv @param {string} label */
+function auditContinue(dir, argv, label) {
+  assert.strictEqual(argv[1], 'unit', `[${label}] the start menu's one handoff is a unit's Continue`);
+  try {
+    unitHandoff(dir, argv.slice(2));
+  } catch (err) {
+    assert.fail(`[${label}] Continue refuses ${argv[2]}: ${err.message}`);
+  }
+}
+
+/** One render with the gate surface announced, collected from its start. @param {() => string} render */
+function announcedRender(render) {
+  return announced(() => {
+    openGate();
+    return render();
+  });
+}
+
+// A menu the engine draws in the menus' frame (menus.cjs), drawn in process
+// in no conversation, so nothing is recorded: announced, it states its gate
+// beside it, and each row it hands off from is one the handoff takes as it
+// stands.
+/** @param {string} dir @param {() => string} draw @param {string} label */
+function auditMenuDrawn(dir, draw, label) {
+  auditGate(announcedRender(draw), label);
+  for (const { key, next } of /** @type {import('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs').GateShown} */ (gateShown()).options) {
+    if (next?.kind !== 'handoff') continue;
+    assert.doesNotThrow(() => resolveHandoff(dir, next.skill, next.args), `[${label}] the handoff refuses row ${key}'s /${next.skill} ${next.args.join(' ')}`);
+  }
+}
+
+/** @typedef {import('./pipeline-world.cjs').Sim} Sim */
+
+// With the gate surface announced, the same render states its menu as data
+// directly above the markdown, and that data has to be the whole menu.
+/** @param {Sim} sim @param {string[]} args @param {Record<string,string>|null} identity @param {string} [cwd] @returns {void} */
+function auditGatePayload(sim, args, identity, cwd = sim.dir) {
+  const env = { ...sim.envOf(identity), LEDGER_GATE_SURFACE: '1' };
+  const stated = auditGate(engine.run(['render', ...args], { cwd, env }).stdout, `render ${args.join(' ')} — gate payload`);
+  auditGateShown(sim, stated, identity, `render ${args.join(' ')}`);
+}
+
+// ---------------------------------------------------------------------------
+// The gate shown, and the answers given at it
+// ---------------------------------------------------------------------------
+
+// The gate a render's menu states is the one its conversation was shown:
+// the record `gate` answers against holds it — named as its MENU declares
+// it, up to its first ` — ` — row for row, and unanswered.
+/**
+ * @param {Sim} sim @param {import('./gate-audit.cjs').GatePayload|null} stated
+ * @param {Record<string,string>|null} identity @param {string} label
+ */
+function auditGateShown(sim, stated, identity, label) {
+  if (stated === null) return;
+  const folder = path.join(sim.configDir, 'conversations', sim.envOf(identity).CLAUDE_CODE_SESSION_ID);
+  const shown = JSON.parse(fs.readFileSync(path.join(folder, SHOWN), 'utf8'));
+  /** @param {{key: string, word: string|null, head: string, recommended: boolean}} o */
+  const row = ({ key, word, head, recommended }) => ({ key, word, head, recommended });
+  assert.deepStrictEqual(
+    { gate: shown.gate, question: shown.question, options: shown.options.map(row), typed: shown.typed.map((/** @type {{label: string}} */ t) => t.label), answered: shown.answered },
+    { gate: stated.gate.split(' — ')[0], question: stated.question, options: stated.options.map(row), typed: stated.typed.map((t) => t.label), answered: null },
+    `[${label}] the gate shown is not the gate the menu states`,
+  );
+}
+
+/** The sim's trust log, a line apiece. @param {Sim} sim @returns {string[]} */
+function trustLines(sim) {
+  const file = path.join(sim.configDir, TRUST_LOG);
+  return fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split('\n').slice(0, -1) : [];
+}
+
+// Each answer through `gate` is one line of the trust log: the gate event
+// holding the gate, the row recommended, the row picked and how it came, as
+// `gate` answered them.
+/** @param {Sim} sim @param {Record<string, unknown>} answered @param {string[]} before @param {string} label */
+function auditGateAnswer(sim, answered, before, label) {
+  const lines = trustLines(sim);
+  assert.deepStrictEqual(lines.slice(0, before.length), before, `[${label}] the trust log was not appended to`);
+  assert.strictEqual(lines.length, before.length + 1, `[${label}] the answer is not one line of the trust log`);
+  const { type, gate, recommended, picked, via } = JSON.parse(lines[lines.length - 1]);
+  assert.deepStrictEqual({ type, gate, recommended, picked, via }, { type: 'gate', gate: answered.gate, recommended: answered.recommended, picked: answered.picked, via: answered.via },
+    `[${label}] the trust log's line is not the answer given`);
+}
+
+module.exports = {
+  auditState, auditGatePayload, auditTrust, shellWords, trustLines, auditGateAnswer, ledgerAuditsOf,
+};

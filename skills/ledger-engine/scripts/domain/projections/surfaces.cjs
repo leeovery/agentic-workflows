@@ -1,0 +1,904 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: shared render-surface primitives — the single builder every engine-rendered
+// menu, callout, and content frame flows through. The skill-visible formatting
+// rules (CONVENTIONS.md: The Design System — Forms, Callouts and blockers)
+// exist in code exactly once, here; restyling a surface class is a
+// one-place change.
+// Drawn borders never frame content — markdown and fences re-flow with the
+// terminal; fixed-width borders cannot.
+// The rules of what the engine alone draws:
+// - Markers. Every TITLE, DISPLAY and MENU marker's instruction opens
+//   `emit verbatim as ` and its form, then any behaviour clause (`, then
+//   STOP for the user's response`); the render sweep in
+//   tests/scripts/gate-audit.cjs holds it. The fence decides how demoted
+//   content reads: italic in a menu, a `↳` line in a fenced display.
+// - Menus. A dot rule opens the menu, and none closes it. Every menu asks
+//   one question, glyphed `◆` (sixty characters or fewer, ending in `?`);
+//   anything to say first is a plain statement above it. Rows are
+//   `**`k/word`** → Label`, arrows aligned as rendered. A label says what
+//   choosing it does, naming a hard-to-reverse consequence plainly. Command
+//   rows come first and one prompt row last, whose label tells the person
+//   what to say (`**Comment** → Tell me what to change`). A yes is `y/yes`,
+//   never a synonym; `n/no` is for plain refusal only. A bare yes/no pair
+//   carries no labels. The same action keeps the same key on every menu:
+//   `a` archive, `w` work, `b` back, `h` help. `b/back` draws the surface
+//   before it; it never re-invokes a skill and never exits. Every menu has
+//   `h` help; gates and raises do not. Anything with a fixed shape is its
+//   own row, and typing stays open for a question. Items appear once, in
+//   the menu; a row's metadata tail reads italic. With one item to act on,
+//   the auto-select line stands in for the menu.
+// - Lists. `•` bullets for a flat list, and `·` for quiet sub-detail within
+//   an item. A tree, `├─` for each child and `└─` for the last, for items
+//   with child data, a blank line between top-level items. A status sits
+//   in a right-aligned `[term]` column, or on a `↳` line beneath a row with
+//   a body.
+// - Inside a display, `── Title ──` divides grouped content. A key sits
+//   under the display it explains, listing only what that display shows.
+// A learned process gate's MENU (learned-gates.cjs) is drawn with the step
+// the decision point gave it for that gate (decision-point.cjs, `gateStep`),
+// and refused without one or with another gate's; shown, the gate shown
+// keeps the showing it was drawn on and its hold; run as an automatic step,
+// it draws in the menu's place a DATA naming the row it ran and that row's
+// `next`, with the warnings of logging the step where its append failed
+// (16.13.3), and the row's one-line report under a marker that does not
+// stop (3.2.9, 6.6.14). Its gate is never shown, the one shown before it
+// goes (gate.cjs), and nothing goes to `gate`. Any other MENU is drawn as
+// it is, its name looked up and nothing read.
+// ---------------------------------------------------------------------------
+
+const { wrap } = require('../../kernel/render.cjs');
+const { displayWidth } = require('../../kernel/terminal.cjs');
+const { learnedGate, reportOf } = require('../learned-gates.cjs');
+
+const DOTS = '· · · · · · · · · · · ·';
+
+// The menu's label glyph. Squares are structure; a menu is a decision, so it
+// takes the diamond — the one place the user must act.
+const MENU_GLYPH = '◆';
+
+const GLYPHED_LINE = new RegExp(`^\\*\\*\`${MENU_GLYPH} (.*)\`\\*\\*$`);
+
+/** The decision line for a short plain ask. @param {string} ask @returns {string} */
+function glyphed(ask) {
+  return `**\`${MENU_GLYPH} ${ask}\`**`;
+}
+
+// Option lines align their arrows into one column. The padding is measured
+// against the widest key in the same block, never against the terminal, so
+// the column itself is stable at any width. The label after the arrow is the
+// half that consults the terminal: a long label wraps at the display width
+// with continuations aligned under the label column, so the key column and
+// the label column never bleed into one another (Menus, above).
+const OPTION = /^(\*\*.+?\*\*) → (.*)$/;
+
+// Continuation indents are non-breaking spaces — menus are markdown-emitted,
+// four real leading spaces is a code block to a renderer, and lesser leading
+// runs are stripped. Do not "fix" them back to spaces.
+const NBSP = '\u00a0';
+
+// ` → ` renders three columns — the space each side of the arrow plus the
+// arrow itself; the label column sits that far past the key column.
+const ARROW_GAP = 3;
+
+// Below this label budget wrapping stops paying for itself — only reachable
+// when a pathologically wide key column meets the narrowest pane. The line
+// stays whole and soft-wraps, exactly as an unwrapped menu always has.
+const MIN_LABEL_BUDGET = 16;
+
+// The column aligns as RENDERED, not as authored: `**` and backticks are
+// markup the renderer consumes, and a cmdOption head carries two more markup
+// characters than a promptOption head — measuring source length would land
+// mixed blocks two columns apart on screen. Padding spaces sit outside the
+// markup, so rendered pad equals source pad.
+/** @param {string} head */
+function renderedLen(head) {
+  return head.replace(/\*\*/g, '').replace(/`/g, '').length;
+}
+
+// Wrapping a label needs its markup understood twice over: width is rendered
+// width (markers are consumed by the renderer), and a break must never strand
+// a span's closing marker on the next line — the MENU surface is markdown,
+// so each emitted line has to stand alone. The scanner walks one word and
+// carries the open-span state across it: a backtick opens a code span (inside
+// one, only the closing backtick is markup), a backslash escape is the one
+// character it escapes, `**`/`~~`/`*` toggle emphasis spans tracked as a
+// stack (a marker matching the innermost open span closes it; any other
+// opens).
+
+const ESCAPABLE = /[!-/:-@[-`{-~]/;
+
+/** @typedef {{code: boolean, spans: string[]}} MarkupState */
+
+/** @param {string[]} spans @param {string} marker */
+function toggleSpan(spans, marker) {
+  if (spans[spans.length - 1] === marker) spans.pop();
+  else spans.push(marker);
+}
+
+/** @param {string} word @param {MarkupState} state @returns {{rendered: number, state: MarkupState}} */
+function scanWord(word, state) {
+  let code = state.code;
+  const spans = state.spans.slice();
+  let rendered = 0;
+  for (let i = 0; i < word.length;) {
+    if (code) {
+      if (word[i] === '`') code = false; else rendered += 1;
+      i += 1;
+      continue;
+    }
+    if (word[i] === '\\' && ESCAPABLE.test(word[i + 1] ?? '')) { rendered += 1; i += 2; continue; }
+    if (word[i] === '`') { code = true; i += 1; continue; }
+    const two = word.slice(i, i + 2);
+    if (two === '**' || two === '~~') { toggleSpan(spans, two); i += 2; continue; }
+    if (word[i] === '*') { toggleSpan(spans, '*'); i += 1; continue; }
+    rendered += 1;
+    i += 1;
+  }
+  return { rendered, state: { code, spans } };
+}
+
+// Innermost span closes first; the continuation reopens in original order.
+/** @param {MarkupState} state */
+function closeMarkers(state) {
+  return (state.code ? '`' : '') + state.spans.slice().reverse().join('');
+}
+
+/** @param {MarkupState} state */
+function openMarkers(state) {
+  return state.spans.join('') + (state.code ? '`' : '');
+}
+
+/**
+ * Greedy word-wrap an option label to `budget` rendered columns, each
+ * segment self-contained markdown. A single word wider than the budget is
+ * left whole to soft-wrap — hard-splitting could cut a marker in two.
+ * @param {string} label @param {number} budget @returns {string[]}
+ */
+function wrapLabel(label, budget) {
+  const words = String(label).trim().split(/\s+/).filter(Boolean);
+  const segments = [];
+  let line = '';
+  let lineWidth = 0;
+  let open = /** @type {MarkupState} */ ({ code: false, spans: [] });
+  for (const word of words) {
+    const next = scanWord(word, open);
+    if (!line) {
+      line = word;
+    } else if (lineWidth + 1 + next.rendered <= budget) {
+      line += ' ' + word;
+      lineWidth += 1;
+    } else {
+      segments.push(line + closeMarkers(open));
+      line = openMarkers(open) + word;
+      lineWidth = 0;
+    }
+    lineWidth += next.rendered;
+    open = next.state;
+  }
+  if (line) segments.push(line);
+  return segments.length ? segments : [label];
+}
+
+/**
+ * Pad option lines so their arrows share a rendered column, wrapping each
+ * label at the display width with continuations aligned under the label
+ * column. Non-option lines pass through untouched, so a block may mix
+ * options with plain text. The first `skip` lines are head chrome and are
+ * never scanned — a label carrying model-authored text may legitimately
+ * contain an option-shaped `**…** → …` run without capturing the column.
+ * @param {string[]} lines @param {{width?: number, skip?: number}} [opts] @returns {string[]}
+ */
+function alignOptions(lines, { width = displayWidth(), skip = 0 } = {}) {
+  const widths = lines.map((l, i) => { if (i < skip) return -1; const m = OPTION.exec(l); return m ? renderedLen(m[1]) : -1; });
+  const column = Math.max(-1, ...widths);
+  if (column < 0) return lines.slice();
+  const labelColumn = column + ARROW_GAP;
+  const budget = width - labelColumn;
+  /** @type {string[]} */
+  const out = [];
+  lines.forEach((l, i) => {
+    if (widths[i] < 0) { out.push(l); return; }
+    const m = /** @type {RegExpExecArray} */ (OPTION.exec(l));
+    const segments = budget >= MIN_LABEL_BUDGET ? wrapLabel(m[2], budget) : [m[2]];
+    out.push(`${m[1]}${' '.repeat(column - widths[i])} → ${segments[0]}`);
+    for (const seg of segments.slice(1)) out.push(NBSP.repeat(labelColumn) + seg);
+  });
+  return out;
+}
+
+const GATE_SURFACE_ENV = 'LEDGER_GATE_SURFACE';
+
+const GATE_INSTRUCTION = 'json for a gate surface — never display';
+
+const GATE_MOD_INSTRUCTION = 'json for the gate mod — never display';
+
+const TAIL_SEPARATOR = ' — ';
+
+const NOTE_SEPARATOR = ' · ';
+
+const RECOMMENDED_MARKER = ' (recommended)';
+
+/**
+ * An option row's label in parts. The tail is the row's metadata, drawn
+ * italic after a dash; a cue flags the tail's state, plain after a dot; a
+ * row with a holder is one a live session occupies — drawn struck through,
+ * the holder plain after the strike; a recommended row closes on the marker.
+ * @typedef {object} LabelParts
+ * @property {string} head
+ * @property {string} [tail]
+ * @property {string} [cue]
+ * @property {string} [holder]
+ * @property {boolean} [recommended]
+ */
+
+// A plain string is the head alone, so it may carry none of the markup the
+// parts draw. Text the engine did not author passes as `{head}`, whatever it
+// contains.
+/** @typedef {string|LabelParts} OptionLabel */
+
+const INLINE_PARTS = [`${TAIL_SEPARATOR}*`, RECOMMENDED_MARKER, '~~'];
+
+/** @param {OptionLabel} label @returns {LabelParts} */
+function labelParts(label) {
+  if (typeof label === 'string') {
+    const inline = INLINE_PARTS.find((markup) => label.includes(markup));
+    if (inline !== undefined) {
+      throw new Error(`option label "${label}" draws "${inline.trim()}" inline — pass it as parts ({head, tail, cue, holder, recommended})`);
+    }
+    return { head: label };
+  }
+  if (label.cue && !label.tail) {
+    throw new Error(`option label "${label.head}": a cue notes a tail — a row without one carries its note as the tail`);
+  }
+  return label;
+}
+
+/** The label as its row draws it. @param {OptionLabel} label @returns {string} */
+function drawLabel(label) {
+  const { head, tail, cue, holder, recommended } = labelParts(label);
+  let text = head;
+  if (tail) text += `${TAIL_SEPARATOR}*${tail}*`;
+  if (cue) text += `${NOTE_SEPARATOR}${cue}`;
+  if (holder) text = `~~${text}~~${NOTE_SEPARATOR}${holder}`;
+  return recommended ? `${text}${RECOMMENDED_MARKER}` : text;
+}
+
+/** @typedef {{key: string, word: string|null, head: string, tail: string|null, cue: string|null, holder: string|null, detail: string|null, struck: boolean, recommended: boolean}} GateOption */
+/** @typedef {{label: string, description: string, detail: string|null}} GateTyped */
+/** @typedef {GateOption|GateTyped} GateRow */
+/** @typedef {{question: string, statement: string}} GateProse */
+
+/**
+ * What answering a row leads to, as the menu's composer declares it — an
+ * engine command to run, by its argv after `engine`; a handoff into a skill,
+ * as `engine handoff` takes it; a skill invoked in this conversation, with
+ * nothing cleared and no handoff for the gate mod to carry (24.1.2); or
+ * carrying on in the flow — for `gate` to answer with (gate.cjs), never to
+ * act on.
+ * @typedef {{kind: 'engine', argv: string[]} | {kind: 'handoff', skill: string, args: string[]} | {kind: 'invoke', skill: string, args: string[]} | {kind: 'continue'}} Next
+ */
+
+/**
+ * The gate a command is collecting; `literal` where the menu's words are
+ * another's, written as given, so a code span in them reaches the payload
+ * as written (`wordsAsWritten`).
+ * @typedef {{prose: GateProse|null, rows: Map<string, GateRow>, options: GateOption[], typed: GateTyped[], next: Map<GateRow, Next>, literal: boolean}} GateCollection
+ */
+
+/** @typedef {{key: string, word: string|null, head: string, tail: string|null, detail: string|null, recommended: boolean, next: Next|null}} ShownOption */
+/** A typed row, answered in words — a Comment, an Ask. @typedef {{label: string, next: Next|null}} ShownTyped */
+/**
+ * The gate a MENU stated: its name as declared, its question, its rows and
+ * what each leads to, and a learned gate's showing and its hold
+ * (learned-gates.cjs), each null for any other.
+ * @typedef {{gate: string, question: string, options: ShownOption[], typed: ShownTyped[], showing: string|null, hold: Hold|null}} GateShown
+ */
+/** @typedef {import('../learned-gates.cjs').GateStep} GateStep */
+/** @typedef {import('../learned-gates.cjs').Hold} Hold */
+
+// A render is synchronous, so one collection is enough: opened as the command
+// begins — by the engine's dispatch, never by what it renders — and taken
+// at the first MENU.
+/** @type {GateCollection|null} */
+let collected = null;
+
+// The gate the command's MENU stated, for the conversation's record of the
+// gate shown (gate.cjs): set as the MENU is emitted, written by the caller
+// once the command is done.
+/** @type {GateShown|null} */
+let shown = null;
+
+// Whether the command's MENU ran as an automatic step in its gate's place.
+let stepped = false;
+
+/**
+ * Whether the gate surface announced itself to this process — the mod sets
+ * the variable at session start, and every command the session runs
+ * inherits it.
+ * @returns {boolean}
+ */
+function gateSurfaceAnnounced() {
+  return process.env[GATE_SURFACE_ENV] === '1';
+}
+
+/**
+ * Begin collecting this command's gate, the gate shown before it forgotten.
+ * Every gate is collected, announced or not; only its GATE block waits on
+ * the announcement, which keeps default output byte-identical.
+ * @returns {void}
+ */
+function openGate() {
+  collected = { prose: null, rows: new Map(), options: [], typed: [], next: new Map(), literal: false };
+  shown = null;
+  stepped = false;
+}
+
+/**
+ * The gate the command's MENU stated since the gate was opened; null where
+ * it stated none.
+ * @returns {GateShown|null}
+ */
+function gateShown() {
+  return shown;
+}
+
+/**
+ * Whether the command's MENU ran as an automatic step since the gate was
+ * opened, so no gate stands shown.
+ * @returns {boolean}
+ */
+function gateStepped() {
+  return stepped;
+}
+
+/**
+ * Compose a menu as an illustration — drawn inside a display, never answered —
+ * so nothing it builds reaches the gate the render's own MENU states.
+ * @template T @param {() => T} compose @returns {T}
+ */
+function illustrate(compose) {
+  const held = collected;
+  collected = null;
+  try {
+    return compose();
+  } finally {
+    collected = held;
+  }
+}
+
+/**
+ * The GATE block for the MENU about to be emitted — `''` where the gate
+ * surface is unannounced, nothing was collected, or the menu composed
+ * neither a frame nor a row — and the gate it states kept as the gate
+ * shown, on a learned gate's showing and its hold. Taken once: a second
+ * menu in one response finds nothing, and a response with no menu drops
+ * what it gathered at the next command.
+ * @param {string} name  the gate's name, `MENU:` prefix already dropped
+ * @param {{showing: string|null, hold: Hold|null}} drawnOn
+ * @returns {string}
+ */
+function gateBlock(name, { showing, hold }) {
+  const taken = collected;
+  collected = null;
+  if (taken === null || (taken.prose === null && taken.rows.size === 0)) return '';
+  const question = taken.prose?.question ?? '';
+  /** @param {GateRow} row */
+  const nextOf = (row) => taken.next.get(row) ?? null;
+  shown = {
+    gate: name,
+    question,
+    options: taken.options.map((o) => ({ key: o.key, word: o.word, head: o.head, tail: o.tail, detail: o.detail, recommended: o.recommended, next: nextOf(o) })),
+    typed: taken.typed.map((t) => ({ label: t.label, next: nextOf(t) })),
+    showing,
+    hold,
+  };
+  if (!gateSurfaceAnnounced()) return '';
+  const payload = JSON.stringify({
+    gate: name,
+    question,
+    statement: taken.prose?.statement ?? '',
+    options: taken.options,
+    typed: taken.typed,
+  });
+  return `=== GATE (${GATE_INSTRUCTION}) ===\n${payload}\n`;
+}
+
+// Angle brackets are escaped alongside the markdown set: a renderer that
+// passes raw HTML through would swallow an unescaped `<!-- -->` whole.
+/** Backslash-escape markdown-active characters in plain prose. @param {string} text */
+function escapeMarkdown(text) {
+  return String(text).replace(/[\\`*_~[\]<>]/g, (c) => `\\${c}`);
+}
+
+// A code span: a backtick run, then text, closed by a run as long, on its
+// line.
+const CODE_SPAN = /((?<!`)(`+)(?!`)[^\n]*?[^`\n]\2(?!`))/;
+
+/** Prose escaped as `escapeMarkdown` escapes it, each code span in it kept one. @param {string} text */
+function escapeProse(text) {
+  const parts = String(text).split(CODE_SPAN);
+  return parts.map((part, at) => (at % 3 === 0 ? escapeMarkdown(part) : at % 3 === 1 ? part : '')).join('');
+}
+
+/**
+ * The menu being collected draws another's words as written, its code
+ * spans among them: the payload keeps each span's backticks, which the
+ * engine's own markup drops.
+ * @returns {void}
+ */
+function wordsAsWritten() {
+  if (collected !== null) collected.literal = true;
+}
+
+// A code span's content and an escaped character are literal text; every
+// other marker is presentation.
+const MARKUP = /(?<!`)(`+)(?!`)(.*?[^`])\1(?!`)|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]/g;
+
+/**
+ * Prose without the engine's markup — the payload states no presentation —
+ * but, in a menu drawing another's words as written, each code span kept
+ * whole (`wordsAsWritten`).
+ * @param {string} text @returns {string}
+ */
+function stripMarkup(text) {
+  const literal = collected?.literal === true;
+  return String(text).replace(MARKUP, (whole, _run, code, escaped) => (code === undefined ? escaped ?? '' : literal ? whole : code)).trim();
+}
+
+/** A label part as text, `null` when the row draws none. @param {string|undefined} part @returns {string|null} */
+function plainPart(part) {
+  return part ? stripMarkup(part) : null;
+}
+
+/**
+ * Record one pressable row — a single key the person can be offered, each
+ * part of its label as text, its markup removed and its escapes honoured —
+ * and what answering it leads to, where its composer declared that.
+ * @param {string} line  the row as drawn
+ * @param {string|number} key @param {string|null|undefined} word @param {LabelParts} parts @param {Next} [next]
+ * @returns {void}
+ */
+function recordOption(line, key, word, { head, tail, cue, holder, recommended }, next) {
+  if (collected === null) return;
+  /** @type {GateOption} */
+  const option = {
+    key: String(key),
+    word: word ?? null,
+    head: stripMarkup(head),
+    tail: plainPart(tail),
+    cue: plainPart(cue),
+    holder: plainPart(holder),
+    detail: null,
+    struck: Boolean(holder),
+    recommended: Boolean(recommended),
+  };
+  collected.rows.set(line, option);
+  collected.options.push(option);
+  if (next) collected.next.set(option, next);
+}
+
+/**
+ * Record one typed row — a natural reply, never a press — and what answering
+ * it leads to, where its composer declared that.
+ * @param {string} line  the row as drawn
+ * @param {string} label @param {string} description @param {Next} [next] @returns {void}
+ */
+function recordTyped(line, label, description, next) {
+  if (collected === null) return;
+  /** @type {GateTyped} */
+  const typed = { label: stripMarkup(label), description: stripMarkup(description), detail: null };
+  collected.rows.set(line, typed);
+  collected.typed.push(typed);
+  if (next) collected.next.set(typed, next);
+}
+
+/**
+ * Record what a frame says around its rows. A line directly beneath a row,
+ * no blank between, is that row's detail; the line the frame asks on is the
+ * question; every other line is the statement, in order. The first frame
+ * composed is the one the MENU draws.
+ * @param {string[]} lines  the frame's lines, its label already glyphed
+ * @returns {void}
+ */
+function recordFrame(lines) {
+  if (collected === null || collected.prose !== null) return;
+  const { rows } = collected;
+  /** @type {string[]} */
+  const prose = [];
+  /** @type {GateRow|null} */
+  let above = null;
+  for (const line of lines) {
+    if (line === '') { above = null; continue; }
+    const row = rows.get(line);
+    if (row) above = row;
+    else if (above !== null && !GLYPHED_LINE.test(line)) describe(above, line);
+    else prose.push(line);
+  }
+  const ask = prose.findIndex((line) => GLYPHED_LINE.test(line));
+  collected.prose = {
+    question: ask === -1 ? '' : stripMarkup(GLYPHED_LINE.exec(prose[ask])?.[1] ?? ''),
+    statement: prose
+      .filter((_, i) => i !== ask)
+      .flatMap((line) => line.split('\n').map(stripMarkup))
+      .filter(Boolean)
+      .join('\n'),
+  };
+}
+
+/** Add one line to a row's detail. @param {GateRow} row @param {string} line @returns {void} */
+function describe(row, line) {
+  const text = stripMarkup(line);
+  row.detail = row.detail === null ? text : `${row.detail}\n${text}`;
+}
+
+// `MENU: task gate` → `task gate`.
+/** @param {string} name @returns {string} */
+function gateName(name) {
+  return name.replace(/^MENU:\s*/, '');
+}
+
+// What a gate off the learned list is drawn on: no showing, and no hold.
+const NO_SHOWING = Object.freeze({ showing: null, hold: null });
+
+/**
+ * One `=== NAME (instruction) ===` demarcated section, a MENU carrying its
+ * gate payload immediately above it where the gate surface announced, so a
+ * surface drawing the gate never has to read the markdown back out — the
+ * gate shown on a learned gate's showing and its hold.
+ * @param {string} name @param {string} instruction @param {string} body @param {{showing: string|null, hold: Hold|null}} [drawnOn]
+ * @returns {string}
+ */
+function sectionOf(name, instruction, body, drawnOn = NO_SHOWING) {
+  const block = `=== ${name} (${instruction}) ===\n${body.replace(/\n+$/, '')}\n`;
+  return name.startsWith('MENU') ? gateBlock(gateName(name), drawnOn) + block : block;
+}
+
+// The help row is a menu's alone (18.9.4): a question typed at a gate or a
+// raise sets it aside, so neither carries one.
+const HELP_ROW = /^\*\*`h\/help`\*\*/m;
+
+/**
+ * One `=== NAME (instruction) ===` demarcated section — the one place a
+ * MENU's marker is built but a menu's (`menuSection`), so every MENU states
+ * the gate shown. A MENU here is a gate's or a raise's, and one drawing the
+ * help row is refused; a learned gate's is drawn as its step says, and
+ * refused without one, or with one for another gate.
+ * @param {string} name @param {string} instruction @param {string} body
+ * @param {GateStep} [step] the decision point's, on a learned gate
+ * @returns {string}
+ */
+function section(name, instruction, body, step) {
+  if (name.startsWith('MENU') && HELP_ROW.test(body)) {
+    throw new Error(`${gateName(name)}: a gate or a raise carries no h/help row — a question typed at it sets it aside (18.9.4); only a menu draws help`);
+  }
+  const learned = name.startsWith('MENU') ? learnedGate(gateName(name)) : null;
+  if (learned === null) return sectionOf(name, instruction, body);
+  if (step?.gate !== learned) {
+    const given = step === undefined ? '' : `, not as ${step.gate}'s`;
+    throw new Error(`${gateName(name)}: a learned gate is drawn as the decision point steps it${given} — decision-point.cjs gateStep`);
+  }
+  return step.step === 'automatic' ? automaticStep(learned, step.row, step.warnings) : sectionOf(name, instruction, body, step);
+}
+
+/**
+ * The learned gate `gate` run as an automatic step on its row `row`, in its
+ * menu's place: a DATA naming the gate, the row and the row's `next`, and
+ * the `warnings` of logging it, then the row's report. The menu's rows are
+ * taken, so no gate is shown.
+ * @param {string} gate @param {string} row @param {string[]} [warnings]
+ * @returns {string}
+ */
+function automaticStep(gate, row, warnings = []) {
+  const taken = collected;
+  collected = null;
+  shown = null;
+  stepped = true;
+  const option = taken?.options.find((o) => o.key === row);
+  const report = reportOf(gate, row);
+  if (taken === null || option === undefined || report === null) {
+    throw new Error(`${gate}: row ${row} runs as no automatic step — learned-gates.cjs reports each row that does, and its menu draws it`);
+  }
+  const next = taken.next.get(option) ?? null;
+  return dataSection([`automatic step: ${gate}`, `ran: ${row}`, `next: ${JSON.stringify(next)}`, ...warnings.map((warning) => `warning: ${warning}`)])
+    + sectionOf('DISPLAY: automatic step', AUTOMATIC_STEP_INSTRUCTION, report);
+}
+
+/**
+ * A menu's MENU section, under the gate `name` — the one way a MENU carries
+ * the help row.
+ * @param {string} name @param {string} instruction @param {string} body
+ * @returns {string}
+ */
+function menuSection(name, instruction, body) {
+  return sectionOf(`MENU: ${name}`, instruction, body);
+}
+
+// The four render forms (CONVENTIONS.md: The Design System, Forms), each said
+// one way, keyed by the fence each names. Every TITLE, DISPLAY and MENU
+// marker's instruction is built from them here.
+const RENDER_FORMS = {
+  markdown: 'markdown (not a code block)',
+  text: 'a text code block (```text fence)',
+  properties: 'a properties code block (```properties fence)',
+  diff: 'a diff code block (```diff fence)',
+};
+
+/** @typedef {keyof typeof RENDER_FORMS} RenderForm */
+
+/**
+ * A marker's instruction: emit verbatim in `form`, then the section's
+ * behaviour clause, which opens on its own separator.
+ * @param {RenderForm} form
+ * @param {string} [behaviour]  e.g. `, directly above the menu`
+ * @returns {string}
+ */
+function emitAs(form, behaviour = '') {
+  return `emit verbatim as ${RENDER_FORMS[form]}${behaviour}`;
+}
+
+/**
+ * A marker's instruction held to a moment in the flow — the moment set after
+ * the form, so the marker still opens on it, and the behaviour clause after
+ * the moment.
+ * @param {RenderForm} form
+ * @param {string} moment  e.g. `after the result summary`
+ * @param {string} [behaviour]
+ * @returns {string}
+ */
+function timedInstruction(form, moment, behaviour = '') {
+  return emitAs(form, ` ${moment}${behaviour}`);
+}
+
+// A menu's instruction: the person answers it, so emitting it ends the turn.
+const STOP_CLAUSE = ", then STOP for the user's response";
+const MENU_INSTRUCTION = emitAs('markdown', STOP_CLAUSE);
+
+// The instructions for a DISPLAY that is the whole response: emitting it
+// leaves the turn open, and the marker says so — a section whose response
+// also carries a MENU needs none of this, because the menu's own
+// instruction ends the turn. Two facts, never blurred:
+// CONTINUE is for displays where no gate exists at all (the word "gate"
+// never appears — naming one would imply something to skip). It names no
+// next step: where the flow goes is the prose's to own, and an engine string
+// that duplicated it would be a second routing source to keep in sync. The
+// markdown variant serves surfaces whose register cannot live in a fence.
+const CONTINUE_CLAUSE = ' — do not stop; continue as the skill instructs';
+const CONTINUE_INSTRUCTION = emitAs('text', CONTINUE_CLAUSE);
+const CONTINUE_MARKDOWN_INSTRUCTION = emitAs('markdown', CONTINUE_CLAUSE);
+// A learned gate the engine ran as an automatic step: its DATA names the row
+// it ran and that row's next, as an answer at the gate would (6.6.14).
+const AUTOMATIC_STEP_INSTRUCTION = emitAs('text', ' — an automatic step: do not stop; carry on along the row it ran, as its DATA names it');
+
+// The view's chrome heading (CONVENTIONS.md: The Design System, Chrome):
+// one markdown H1 in the chrome family's heaviest register — bold inline code with the
+// filled square, so the renderer styles it at any terminal width.
+const TITLE_INSTRUCTION = emitAs('markdown', " — the view's chrome heading");
+
+/**
+ * A TITLE section carrying `text` as the view's chrome heading.
+ * @param {string} text
+ * @returns {string}
+ */
+function titleSection(text) {
+  return section('TITLE', TITLE_INSTRUCTION, `# **\`■ ${text}\`**`);
+}
+
+// The reasoning surface beside a render (CONVENTIONS.md: Engine
+// Sections) — the flow decides from it, the user never sees it.
+const DATA_INSTRUCTION = 'reason from this — never display or parse the sections below';
+
+/**
+ * A DATA section carrying `lines`.
+ * @param {string[]} lines
+ * @returns {string}
+ */
+function dataSection(lines) {
+  return section('DATA', DATA_INSTRUCTION, lines.join('\n'));
+}
+
+/**
+ * The menu frame: an opening dot rule above the content. One-sided by
+ * design — output stops while the user chooses, so their own input closes
+ * the block more definitively than a drawn rule could. Projections with
+ * bespoke option grouping build their lines and frame them here.
+ *
+ * A leading label (first line, blank line beneath it) takes the decision
+ * glyph here rather than in `menu`, so a menu reads the same whether its
+ * options were grouped by `menu` or composed by the projection itself —
+ * unless a line already carries the glyph, which makes the leading line
+ * context. `skip` exempts that many leading lines from the option scan: a
+ * caller whose head chrome interpolates non-constant text must declare it,
+ * or an option-shaped run in the text captures the arrow column.
+ * @param {string[]} lines @param {{width?: number, skip?: number}} [opts] @returns {string}
+ */
+function menuFrame(lines, { width, skip = 0 } = {}) {
+  const labelled = !lines.some((line) => GLYPHED_LINE.test(line)) && lines[1] === '' && isGlyphable(lines[0]);
+  const framed = labelled ? [glyphed(lines[0]), ...lines.slice(1)] : lines;
+  recordFrame(framed);
+  const body = alignOptions(framed, { width, skip });
+  asksOverRows(body);
+  consentAsks(body);
+  return [DOTS, ...body].join('\n');
+}
+
+// A row's code-span head — cmdOption and bareOption write it.
+// The glyphed question shares the head's markup, so the glyph is what tells
+// them apart.
+/** @param {string} span */
+const headedRow = (span) => new RegExp(`^\\*\\*\`(?!${MENU_GLYPH} )${span}\`\\*\\*(?: +→ |$)`);
+const OPTION_ROW = headedRow('[^`]+');
+
+// Every menu asks: a glyphed question — glyphable, ending in `?` — stands
+// above its first row, and at least one row is a key to press. The check
+// runs over the composed lines, so a menu grouped by `menu` and one a
+// projection composes itself meet the same rule.
+/** @param {string[]} body */
+function asksOverRows(body) {
+  if (!body.some((line) => OPTION_ROW.test(line))) {
+    throw new Error('menu: no row to press — a menu offers at least one single key (cmdOption or bareOption)');
+  }
+  const firstRow = body.findIndex((line) => OPTION_ROW.test(line));
+  const ask = body.slice(0, firstRow).map((line) => GLYPHED_LINE.exec(line)).find(Boolean);
+  if (!ask) {
+    throw new Error('menu: every menu asks a glyphed question — no `◆ …?` line stands above the rows; a statement stays context above a short question');
+  }
+  if (!ask[1].endsWith('?') || !isGlyphable(ask[1])) {
+    throw new Error(`menu: every menu asks a glyphed question — "${ask[1]}" is not one`);
+  }
+}
+
+// An `n/no` row answers a `y/yes` row — a consent gate's affirmative key is
+// never a verb synonym.
+const YES_ROW = '**`y/yes`**';
+const NO_ROW = '**`n/no`**';
+
+/** @param {string[]} body */
+function consentAsks(body) {
+  if (body.some((line) => line.startsWith(NO_ROW)) && !body.some((line) => line.startsWith(YES_ROW))) {
+    throw new Error('menu: an n/no row answers a y/yes row — a consent gate\'s affirmative key is y/yes, never a verb synonym');
+  }
+}
+
+// A label earns the decision glyph only when it is a short plain phrase.
+// Longer labels are context rather than a label — they carry their own
+// emphasis, run to several lines, and would have to be nested inside a code
+// span to take the glyph, which renders the markup literally. Those pass
+// through as prose above the options, where they already read correctly.
+const LABEL_MAX = 60;
+
+/** @param {string} label */
+function isGlyphable(label) {
+  return Boolean(label) && label.length <= LABEL_MAX && !/[\n*`]/.test(label);
+}
+
+/**
+ * Framed menu for the common shape: contextual label, blank line, options.
+ * A label that is itself a short plain question carries the decision glyph;
+ * any other label is a statement, and the ask rides `question` beneath it —
+ * the statement stays context, the question takes the glyph.
+ * @param {string} label @param {string[]} options
+ * @param {{question?: string}} [opts]
+ * @returns {string}
+ */
+function menu(label, options, { question } = {}) {
+  const lines = label ? [label, ''] : [];
+  if (question) lines.push(glyphed(question), '');
+  // Everything above the options is head chrome — never scanned for the
+  // arrow column, so a label quoting model text cannot shift the options.
+  const skip = lines.length;
+  return menuFrame([...lines, ...options], { skip });
+}
+
+/**
+ * Command option line — a discrete input the user types verbatim
+ * (Menus, in the header): key and word share one code
+ * span, the arrow separates it from the label. The word is omitted for bare-key
+ * options (numbered entries). Arrows are aligned by the enclosing frame.
+ * `next` is what answering the row leads to (gate.cjs).
+ * @param {string} key @param {string | null | undefined} word @param {OptionLabel} label
+ * @param {{next?: Next}} [opts]
+ * @returns {string}
+ */
+function cmdOption(key, word, label, { next } = {}) {
+  const line = `**\`${word ? `${key}/${word}` : key}\`** → ${drawLabel(label)}`;
+  recordOption(line, key, word, labelParts(label), next);
+  return line;
+}
+
+/**
+ * Bare command option — key and word, no arrow and no label. The shape a
+ * yes/no gate takes (Menus, in the header): the
+ * question above the options already says what yes means, so a label would
+ * only repeat it.
+ * Carries no arrow, so the enclosing frame passes it through unaligned.
+ * `next` is what answering the row leads to (gate.cjs).
+ * @param {string} key @param {string} word @param {{next?: Next}} [opts]
+ * @returns {string}
+ */
+function bareOption(key, word, { next } = {}) {
+  const line = `**\`${key}/${word}\`**`;
+  recordOption(line, key, word, { head: '' }, next);
+  return line;
+}
+
+/**
+ * Prompt option line — the user responds naturally; the description directs
+ * their response. Plain bold rather than a code span, because there is no
+ * literal input to type. `next` is what answering the row leads to
+ * (gate.cjs).
+ * @param {string} label @param {string} description @param {{next?: Next}} [opts]
+ * @returns {string}
+ */
+function promptOption(label, description, { next } = {}) {
+  const line = `**${label}** → ${description}`;
+  recordTyped(line, label, description, next);
+  return line;
+}
+
+/**
+ * `⚑` callout block: flag at 2-space indent, continuation lines aligned
+ * beneath the text. A string wraps to `width` (flag gutter subtracted);
+ * a pre-wrapped array renders as given.
+ * @param {string | string[]} text
+ * @param {{width?: number}} [opts]
+ * @returns {string}
+ */
+function callout(text, { width = displayWidth() } = {}) {
+  const segs = Array.isArray(text) ? text : wrap(text, width - 4);
+  return segs.map((l, i) => (i === 0 ? `  ⚑ ${l}` : `    ${l}`)).join('\n');
+}
+
+/**
+ * Indented paragraphs: each wrapped at the display width beneath `indent`
+ * (two columns by default), the budget measured from that column so a
+ * hand-picked width can never overflow the pane.
+ * @param {string[]} paragraphs
+ * @param {{indent?: string, width?: number}} [opts]
+ * @returns {string[]}
+ */
+function indentedBody(paragraphs, { indent = '  ', width = displayWidth() } = {}) {
+  const budget = width - indent.length;
+  return paragraphs.flatMap((p) => wrap(p, budget).map((line) => `${indent}${line}`));
+}
+
+/**
+ * One `•` row at `indent` (the callout indent by default), continuations
+ * aligned under the text.
+ * @param {string} text
+ * @param {{indent?: string, width?: number}} [opts]
+ * @returns {string[]}
+ */
+function bulletRow(text, { indent = '  ', width = displayWidth() } = {}) {
+  return wrap(text, width - indent.length - 2).map((s, i) => (i === 0 ? `${indent}• ${s}` : `${indent}  ${s}`));
+}
+
+/** Text cut to `max` characters, an ellipsis ending what was cut. @param {string} text @param {number} max */
+function clipped(text, max) {
+  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
+}
+
+/**
+ * Flat wrapped tree list (`├─`/`└─`): one item per branch, item text wrapped
+ * with continuations aligned under the text column (gutter `│` while
+ * siblings remain, blank under the last).
+ * @param {string[]} items
+ * @param {{indent?: string, width?: number}} [opts]
+ * @returns {string}
+ */
+function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
+  const budget = width - indent.length - 3;
+  const out = [];
+  items.forEach((item, i) => {
+    const isLast = i === items.length - 1;
+    const segs = wrap(item, budget);
+    out.push(`${indent}${isLast ? '└─' : '├─'} ${segs[0]}`);
+    const cont = `${indent}${isLast ? '   ' : '│  '}`;
+    for (const seg of segs.slice(1)) out.push(cont + seg);
+  });
+  return out.join('\n');
+}
+
+module.exports = { DOTS, NBSP, NOTE_SEPARATOR, gateSurfaceAnnounced, openGate, gateShown, gateStepped, illustrate, section, menuSection, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, dataSection, CONTINUE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, menu, drawLabel, cmdOption, bareOption, promptOption, escapeMarkdown, escapeProse, wordsAsWritten, callout, indentedBody, bulletRow, clipped, treeList };
+

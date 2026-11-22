@@ -2,23 +2,34 @@
 
 // The suite's hermetic environment, pinned at require time and inherited by
 // every process a test spawns: an empty system-config directory, an empty
-// Claude Code config directory, no provider key, no gate surface or handoff
-// announcement, no Claude Code session, no user or system git config, a
-// fixed display width. A test never reads the developer's config or
-// credentials, never writes their Claude Code settings, never reaches an
-// embedding provider — every knowledge store a test builds is keyword-only —
-// never renders a gate or handoff payload it did not announce itself, and
-// never marks a conversation it did not name itself.
+// Claude Code config directory, an empty gh config directory and no gh token
+// or host, no provider key, no gate surface or handoff announcement, no
+// Claude Code session, no user or system git config, no ssh command of the
+// developer's, no tmux or Portal session, a fixed display width, and a stub
+// for the `claude` binary. A
+// test never reads the developer's config or credentials, never writes
+// their Claude Code settings, never reaches an embedding provider — every
+// knowledge store a test builds is keyword-only — never reaches a real
+// Claude, never reaches GitHub through the developer's gh login, never
+// reaches a remote through the developer's ssh, never renders a gate or
+// handoff payload it did not announce itself, never marks a conversation it
+// did not name itself, and never labels the developer's terminal session.
 //
 // Every `tests/scripts/test-*.cjs` requires this before anything else, and a
 // caller composing an explicit child environment spreads the exported
 // entries into it. `test-hermetic-env.cjs` guards both.
 //
 // A suite that fakes `$HOME` to reach a system config takes the pinned
-// WORKFLOWS_CONFIG_DIR back off the environment it passes down, since that
-// answers ahead of `$HOME`. The shell tiers pin their own subset in their npm
-// scripts; `test:mod` stands outside the pin altogether — `claude plugin test`
-// runs the mod suites against its own stand-in environment and files.
+// LEDGER_CONFIG_DIR, or WORKFLOWS_CONFIG_DIR for a released migration, back
+// off the environment it passes down, since each answers ahead of `$HOME`.
+// The shell tiers pin their own subset in their npm scripts; `test:mod`
+// stands outside the pin altogether — `claude plugin test` runs the mod
+// suites against its own stand-in environment and files.
+//
+// The CPU meter comes first: armed, it runs the suite again under time(1)
+// before anything here is pinned.
+
+require('./cpu-meter.cjs');
 
 const fs = require('fs');
 const os = require('os');
@@ -55,15 +66,27 @@ function pinnedDir(name, meetsPin, prefix) {
   return meetsPin(inherited) ? inherited : scratchDir(prefix);
 }
 
+/** What reaches a gh login besides its config directory. */
+const GH_LOGIN = Object.freeze(['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN', 'GH_HOST']);
+
+/** What names the terminal multiplexer's session: tmux's, and Portal's. */
+const MULTIPLEXER = Object.freeze(['TMUX', 'TMUX_PANE', 'ZMX_SESSION', 'ZMX_DIR']);
+
 const HERMETIC_ENV = Object.freeze({
-  WORKFLOWS_CONFIG_DIR: pinnedDir('WORKFLOWS_CONFIG_DIR', isEmptyConfigDir, 'wf-config-'),
+  LEDGER_CONFIG_DIR: pinnedDir('LEDGER_CONFIG_DIR', isEmptyConfigDir, 'wf-config-'),
+  // The released migrations' name for the user-level folder.
+  WORKFLOWS_CONFIG_DIR: pinnedDir('WORKFLOWS_CONFIG_DIR', isEmptyDir, 'wf-legacy-config-'),
   CLAUDE_CONFIG_DIR: pinnedDir('CLAUDE_CONFIG_DIR', isEmptyDir, 'wf-claude-config-'),
+  GH_CONFIG_DIR: pinnedDir('GH_CONFIG_DIR', isEmptyDir, 'wf-gh-config-'),
   GIT_CONFIG_GLOBAL: '/dev/null',
   GIT_CONFIG_SYSTEM: '/dev/null',
   // Width is detected from the reader's terminal, and CLAUDE_PID reaches
   // every test env — without a pin, a suite would render against whatever
   // pane happened to be open.
-  WORKFLOWS_DISPLAY_WIDTH: '65',
+  LEDGER_DISPLAY_WIDTH: '65',
+  // The separate Claude call runs the binary this names: the stub, which
+  // has no login unless a test arms it with answers.
+  LEDGER_CLAUDE: path.join(__dirname, 'claude-stub.sh'),
 });
 
 Object.assign(process.env, HERMETIC_ENV);
@@ -73,10 +96,22 @@ delete process.env.OPENAI_API_KEY;
 // A session whose gate surface is loaded announces it to every command it
 // runs, the suite included — and every golden pins the unannounced bytes.
 // The gate mod announces the handoff the same way.
-delete process.env.WORKFLOWS_GATE_SURFACE;
-delete process.env.WORKFLOWS_HANDOFF;
+delete process.env.LEDGER_GATE_SURFACE;
+delete process.env.LEDGER_HANDOFF;
 // Claude Code hands every command it runs its conversation's id, and every
 // engine call marks that conversation's folder.
 delete process.env.CLAUDE_CODE_SESSION_ID;
+// It hands them the session's effort too, which boot reports.
+delete process.env.CLAUDE_EFFORT;
+// The developer's own ssh command overrides any a suite stands in for a
+// remote with, and would carry their keys to it.
+delete process.env.GIT_SSH_COMMAND;
+delete process.env.GIT_SSH;
+// A token or host for gh wins over its config directory, as the provider
+// key does over stored credentials.
+for (const name of GH_LOGIN) delete process.env[name];
+// Session labels read the terminal's multiplexer from these: a suite that
+// inherited them would relabel the developer's own session.
+for (const name of MULTIPLEXER) delete process.env[name];
 
 module.exports = HERMETIC_ENV;

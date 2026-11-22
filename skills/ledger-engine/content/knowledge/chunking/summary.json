@@ -1,0 +1,10 @@
+{
+  "phase": "summary",
+  "confidence": "high",
+  "strategy": "split-on-heading",
+  "primary_level": 2,
+  "fallback_level": 3,
+  "keep_whole_below": 0,
+  "strip_frontmatter": true,
+  "skip_empty_sections": true
+}

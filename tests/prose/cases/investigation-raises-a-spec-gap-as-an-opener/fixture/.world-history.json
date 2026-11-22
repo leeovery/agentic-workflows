@@ -1,9 +1,0 @@
-[
-  {
-    "message": "spec(crash-fix): gap routed to crash-fix",
-    "files": [
-      ".workflows/crash-fix/investigation/.mailbox/crash-fix/001-tax-location-without-an-address.md",
-      ".workflows/crash-fix/manifest.json"
-    ]
-  }
-]

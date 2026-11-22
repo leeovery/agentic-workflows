@@ -3,6 +3,8 @@
 // What a query prints of each result: the excerpt the framing it kept picks,
 // and — read from its file as it stands, under the project root — the
 // headings enclosing that excerpt and the chunk's lines.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 
@@ -12,11 +14,11 @@ const path = require('path');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { chunk } = require('../../skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs');
-const { withPassages } = require('../../skills/workflow-engine/scripts/domain/knowledge/passages.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
+const { chunk } = require('../../skills/ledger-engine/scripts/kernel/knowledge/chunker.cjs');
+const { withPassages } = require('../../skills/ledger-engine/scripts/domain/knowledge/passages.cjs');
 
-const SOURCE = '.workflows/auth/discussion/auth.md';
+const SOURCE = '.ledger/.knowledge/records/auth/auth.md';
 
 const FILE = [
   '---',
@@ -41,14 +43,14 @@ const FILE = [
 /** The file's chunk, as the store holds it. @param {string} content */
 function chunkDoc(content) {
   return {
-    id: 'auth-discussion-auth-001',
+    id: 'auth-record-auth-001',
     content,
     heading_path: '',
     work_unit: 'auth',
     work_type: 'feature',
-    phase: 'discussion',
+    phase: 'record',
     topic: 'auth',
-    confidence: 'low-medium',
+    confidence: 'high',
     source_file: SOURCE,
     timestamp: 1700000000000,
   };
@@ -56,7 +58,7 @@ function chunkDoc(content) {
 
 /** The chunk as a result ranked on framing `kept`. @param {string} content @param {number} kept */
 function result(content, kept) {
-  return { ...chunkDoc(content), score: 1, scoring: { framings: [], kept, cut: 20, decay: 1, boost: 0, tier: 0 } };
+  return { ...chunkDoc(content), score: 1, scoring: { framings: [], kept, cut: 20, decay: 1, boost: 0 } };
 }
 
 describe('withPassages', () => {

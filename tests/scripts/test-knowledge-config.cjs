@@ -1,5 +1,7 @@
 'use strict';
 
+// Layer: unit.
+
 require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
@@ -20,8 +22,8 @@ const {
   credentialsPath,
   DEFAULTS,
   PROVIDER_ENV_VARS,
-} = require('../../skills/workflow-engine/scripts/kernel/knowledge/config.cjs');
-const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
+} = require('../../skills/ledger-engine/scripts/kernel/knowledge/config.cjs');
+const { StubProvider } = require('../../skills/ledger-engine/scripts/kernel/knowledge/embeddings.cjs');
 const {
   buildSystemConfigOpenAI,
   buildSystemConfigStub,
@@ -29,10 +31,10 @@ const {
   detectSystemConfig,
   detectProjectInit,
   describeValidationError,
-} = require('../../skills/workflow-engine/scripts/domain/knowledge/setup.cjs');
-const { resolveSimilarityThreshold } = require('../../skills/workflow-engine/scripts/domain/knowledge/query.cjs');
-const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
-const { QuotaError, RateLimitError, WaitBudget } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
+} = require('../../skills/ledger-engine/scripts/domain/knowledge/setup.cjs');
+const { resolveSimilarityThreshold } = require('../../skills/ledger-engine/scripts/domain/knowledge/query.cjs');
+const { knowledgeFiles } = require('../../skills/ledger-engine/scripts/kernel/knowledge/files.cjs');
+const { QuotaError, RateLimitError, WaitBudget } = require('../../skills/ledger-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
 
 let tmpDir;
 
@@ -47,6 +49,41 @@ function teardown() {
 function writeJSON(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+}
+
+/**
+ * Every rename made while the test runs: its source, its target, what the
+ * source held, and what the target held just before it was replaced.
+ * @param {import('node:test').TestContext} t
+ */
+function watchRenames(t) {
+  const rename = fs.renameSync;
+  /** @type {{from: string, to: string, held: string, replaced: string}[]} */
+  const renames = [];
+  t.mock.method(fs, 'renameSync', (/** @type {string} */ from, /** @type {string} */ to) => {
+    renames.push({ from, to, held: fs.readFileSync(from, 'utf8'), replaced: fs.readFileSync(to, 'utf8') });
+    rename(from, to);
+  });
+  return renames;
+}
+
+/**
+ * `write` over the existing `filePath` lands through one temp file beside it,
+ * renamed into place: the target keeps what it held until the rename, and
+ * nothing is left behind.
+ * @param {import('node:test').TestContext} t @param {string} filePath @param {() => void} write
+ */
+function assertRenamedIn(t, filePath, write) {
+  const old = fs.readFileSync(filePath, 'utf8');
+  const renames = watchRenames(t);
+
+  write();
+
+  assert.deepStrictEqual(renames.map(({ from, to, replaced }) => [path.dirname(from), to, replaced]), [[path.dirname(filePath), filePath, old]]);
+  assert.notStrictEqual(renames[0].from, filePath, 'the write went straight to the target');
+  assert.strictEqual(renames[0].held, fs.readFileSync(filePath, 'utf8'));
+  assert.notStrictEqual(renames[0].held, old);
+  assert.deepStrictEqual(fs.readdirSync(path.dirname(filePath)), [path.basename(filePath)]);
 }
 
 // ---------------------------------------------------------------------------
@@ -611,10 +648,10 @@ describe('writeCredentials', () => {
     assert.strictEqual(parsed.credentials.anthropic.api_key, 'sk-anthropic');
   });
 
-  it('uses atomic write (no .tmp left behind on success)', () => {
+  it('writes atomically: a temp file beside the credentials, renamed over them', (t) => {
     const filePath = path.join(tmpDir, 'credentials.json');
     writeCredentials(filePath, 'openai', 'sk-1');
-    assert.ok(!fs.existsSync(filePath + '.tmp'));
+    assertRenamedIn(t, filePath, () => writeCredentials(filePath, 'openai', 'sk-2'));
   });
 
   it('rejects a missing provider name', () => {
@@ -737,10 +774,10 @@ describe('writeConfigFile', () => {
     assert.ok(fs.existsSync(filePath));
   });
 
-  it('uses atomic write (no temp file left behind on success)', () => {
+  it('writes atomically: a temp file beside the config, renamed over it', (t) => {
     const filePath = path.join(tmpDir, 'config.json');
     writeConfigFile(filePath, { knowledge: {} });
-    assert.deepStrictEqual(fs.readdirSync(tmpDir), ['config.json']);
+    assertRenamedIn(t, filePath, () => writeConfigFile(filePath, { knowledge: { provider: 'openai' } }));
   });
 
   it('rejects payloads missing the knowledge wrapper', () => {
@@ -918,16 +955,16 @@ describe('detectSystemConfig', () => {
   });
 });
 
-describe('systemConfigPath — WORKFLOWS_CONFIG_DIR override', () => {
+describe('systemConfigPath — LEDGER_CONFIG_DIR override', () => {
   it('resolves the config and credentials paths from the override, like the engine', () => {
-    const prev = process.env.WORKFLOWS_CONFIG_DIR;
-    process.env.WORKFLOWS_CONFIG_DIR = '/tmp/wf-elsewhere';
+    const prev = process.env.LEDGER_CONFIG_DIR;
+    process.env.LEDGER_CONFIG_DIR = '/tmp/wf-elsewhere';
     try {
       assert.strictEqual(systemConfigPath(), path.join('/tmp/wf-elsewhere', 'config.json'));
       assert.strictEqual(credentialsPath(), path.join('/tmp/wf-elsewhere', 'credentials.json'));
     } finally {
-      if (prev === undefined) delete process.env.WORKFLOWS_CONFIG_DIR;
-      else process.env.WORKFLOWS_CONFIG_DIR = prev;
+      if (prev === undefined) delete process.env.LEDGER_CONFIG_DIR;
+      else process.env.LEDGER_CONFIG_DIR = prev;
     }
   });
 });
@@ -978,7 +1015,7 @@ describe('describeValidationError', () => {
 });
 
 describe('metadataMissing — the store left without its metadata', () => {
-  const { metadataMissing } = require('../../skills/workflow-engine/scripts/domain/knowledge/embedder.cjs');
+  const { metadataMissing } = require('../../skills/ledger-engine/scripts/domain/knowledge/embedder.cjs');
   beforeEach(setup);
   afterEach(teardown);
 
@@ -1019,24 +1056,26 @@ describe('detectProjectInit', () => {
 
   it('reports all-absent when the directory does not exist', () => {
     const result = detectProjectInit(knowledgeFiles(tmpDir));
-    assert.strictEqual(result.dirExists, false);
     assert.strictEqual(result.configExists, false);
     assert.strictEqual(result.storeExists, false);
     assert.strictEqual(result.fullyInitialised, false);
     assert.strictEqual(result.partiallyInitialised, false);
   });
 
-  it('reports partiallyInitialised when the directory exists but files are missing', () => {
-    const dir = path.join(tmpDir, '.workflows', '.knowledge');
-    fs.mkdirSync(dir, { recursive: true });
-    const result = detectProjectInit(knowledgeFiles(tmpDir));
-    assert.strictEqual(result.dirExists, true);
+  it('reports nothing set up where the directory holds only the ledger\'s copies, which live there either way (4.11.10)', () => {
+    const files = knowledgeFiles(tmpDir);
+    fs.mkdirSync(path.join(files.dir, 'records', 'fumi'), { recursive: true });
+    fs.writeFileSync(path.join(files.dir, 'records', 'fumi', 'note-window.md'), '# fumi / note-window\n');
+    fs.writeFileSync(path.join(files.dir, 'product.md'), '# The product record\n');
+    fs.writeFileSync(files.copiesOutdated, 'token');
+    fs.writeFileSync(files.copiesLive, '{}');
+    const result = detectProjectInit(files);
     assert.strictEqual(result.fullyInitialised, false);
-    assert.strictEqual(result.partiallyInitialised, true);
+    assert.strictEqual(result.partiallyInitialised, false);
   });
 
   it('reports partiallyInitialised when only some files are present', () => {
-    const dir = path.join(tmpDir, '.workflows', '.knowledge');
+    const dir = knowledgeFiles(tmpDir).dir;
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'config.json'), '{}', 'utf8');
     const result = detectProjectInit(knowledgeFiles(tmpDir));
@@ -1047,7 +1086,7 @@ describe('detectProjectInit', () => {
   });
 
   it('reports fullyInitialised when all three files exist', () => {
-    const dir = path.join(tmpDir, '.workflows', '.knowledge');
+    const dir = knowledgeFiles(tmpDir).dir;
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'config.json'), '{}', 'utf8');
     fs.writeFileSync(path.join(dir, 'store.bin'), '', 'utf8');

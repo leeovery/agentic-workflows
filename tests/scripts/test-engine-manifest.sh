@@ -1,8 +1,8 @@
 #!/bin/bash
 #
 # Contract suite for the engine's manifest field surface (`engine manifest …`,
-# skills/workflow-engine/scripts/domain/fields.cjs).
-# Validates get, set, list, push, pull, delete, exists, key-of, resolve.
+# skills/ledger-engine/scripts/domain/fields.cjs).
+# Validates get, set, list, push, pull, delete, exists, key-of.
 # Uses dot-path syntax: <work-unit>[.<phase>[.<topic>]]
 #
 # Output contract: reads print bare stdout; mutations answer with the
@@ -13,7 +13,7 @@
 set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENGINE_JS="$SCRIPT_DIR/../../skills/workflow-engine/scripts/engine.cjs"
+ENGINE_JS="$SCRIPT_DIR/../../skills/ledger-engine/scripts/engine.cjs"
 
 # Colors for output
 RED='\033[0;31m'
@@ -26,8 +26,10 @@ TESTS_RUN=0
 TESTS_PASSED=0
 TESTS_FAILED=0
 
-# Create a temporary directory for test fixtures
-TEST_DIR=$(mktemp -d)
+# The test project: a git repository with its state worktree, the suites'
+# one fixture.
+TEST_DIR=$(node -e 'process.stdout.write(require(process.argv[1]).setupFixture("engine-manifest-"))' \
+  "$SCRIPT_DIR/discovery-test-utils.cjs")
 trap "rm -rf $TEST_DIR" EXIT
 
 echo "Test directory: $TEST_DIR"
@@ -37,9 +39,10 @@ echo ""
 # Helper functions
 #
 
+# An empty state: everything in the state worktree but its git link and
+# ignore rules taken away.
 setup_fixture() {
-    rm -rf "$TEST_DIR/.workflows"
-    mkdir -p "$TEST_DIR/.workflows"
+    find "$TEST_DIR/.ledger" -mindepth 1 -maxdepth 1 ! -name .git ! -name .gitignore -exec rm -rf {} +
 }
 
 # Fixture: create a work unit on disk — the same document `engine workunit
@@ -53,14 +56,14 @@ create_wu() {
     node -e '
       const fs = require("fs"), path = require("path");
       const [name, type, desc] = process.argv.slice(1);
-      const dir = path.join(".workflows", name);
+      const dir = path.join(".ledger", name);
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, "manifest.json"), JSON.stringify({
         name, work_type: type, status: "in-progress",
         created: new Date().toISOString().slice(0, 10),
         description: desc, phases: {},
       }, null, 2) + "\n");
-      const projPath = path.join(".workflows", "manifest.json");
+      const projPath = path.join(".ledger", "manifest.json");
       const proj = fs.existsSync(projPath) ? JSON.parse(fs.readFileSync(projPath, "utf8")) : {};
       proj.work_units = proj.work_units || {};
       proj.work_units[name] = { work_type: type };
@@ -91,7 +94,7 @@ assert_contains() {
 
     TESTS_RUN=$((TESTS_RUN + 1))
 
-    if echo "$content" | grep -q -- "$expected"; then
+    if grep -q -- "$expected" <<<"$content"; then
         echo -e "  ${GREEN}✓${NC} $description"
         TESTS_PASSED=$((TESTS_PASSED + 1))
         return 0
@@ -111,7 +114,7 @@ assert_not_contains() {
 
     TESTS_RUN=$((TESTS_RUN + 1))
 
-    if echo "$content" | grep -q -- "$unexpected"; then
+    if grep -q -- "$unexpected" <<<"$content"; then
         echo -e "  ${RED}✗${NC} $description"
         echo -e "    Unexpectedly found: $unexpected"
         TESTS_FAILED=$((TESTS_FAILED + 1))
@@ -215,16 +218,14 @@ assert_exit_code() {
 echo -e "${YELLOW}Test: work-unit document shape (asserted against the ENGINE-created manifest)${NC}"
 setup_fixture
 # Real contract: the engine writes the document; the assertions read what it
-# wrote. A git repo is required — workunit create commits.
+# wrote, and commits it on the state branch.
 cd "$TEST_DIR"
-git init -q -b main . >/dev/null 2>&1
-git config user.email test@example.com && git config user.name Test && git config commit.gpgsign false
-mkdir -p "$TEST_DIR/.workflows/.cache/dark-mode/discovery"
-printf '# Discovery Session 001\n\n## Exploration\n\nDark mode.\n' > "$TEST_DIR/.workflows/.cache/dark-mode/discovery/session-001.md"
-node "$ENGINE_JS" workunit create dark-mode feature --description "Add dark mode" --session-log-file .workflows/.cache/dark-mode/discovery/session-001.md >/dev/null
+mkdir -p "$TEST_DIR/.ledger/.cache/dark-mode/discovery"
+printf '# Discovery Session 001\n\n## Exploration\n\nDark mode.\n' > "$TEST_DIR/.ledger/.cache/dark-mode/discovery/session-001.md"
+node "$ENGINE_JS" workunit create dark-mode feature --description "Add dark mode" --session-log-file .ledger/.cache/dark-mode/discovery/session-001.md >/dev/null
 
-assert_file_exists "$TEST_DIR/.workflows/dark-mode/manifest.json" "manifest.json created by the engine"
-content=$(cat "$TEST_DIR/.workflows/dark-mode/manifest.json")
+assert_file_exists "$TEST_DIR/.ledger/dark-mode/manifest.json" "manifest.json created by the engine"
+content=$(cat "$TEST_DIR/.ledger/dark-mode/manifest.json")
 assert_contains "$content" '"name": "dark-mode"' "name field set"
 assert_contains "$content" '"work_type": "feature"' "work_type field set"
 assert_contains "$content" '"status": "in-progress"' "status defaults to in-progress"
@@ -233,10 +234,9 @@ assert_contains "$content" '"phases": {}' "phases initialized empty"
 # Fixture↔engine equivalence, enforced: create_wu's document must match the
 # engine's byte-for-byte (modulo nothing — both stamp today's date).
 create_wu dark-mode-fixture feature "Add dark mode"
-engine_doc=$(sed 's/dark-mode/UNIT/g' "$TEST_DIR/.workflows/dark-mode/manifest.json")
-fixture_doc=$(sed 's/dark-mode-fixture/UNIT/g' "$TEST_DIR/.workflows/dark-mode-fixture/manifest.json")
+engine_doc=$(sed 's/dark-mode/UNIT/g' "$TEST_DIR/.ledger/dark-mode/manifest.json")
+fixture_doc=$(sed 's/dark-mode-fixture/UNIT/g' "$TEST_DIR/.ledger/dark-mode-fixture/manifest.json")
 assert_equals "$engine_doc" "$fixture_doc" "create_wu fixture matches the engine-created document byte-for-byte"
-rm -rf "$TEST_DIR/.git"
 
 echo ""
 
@@ -398,10 +398,10 @@ echo ""
 echo -e "${YELLOW}Test: set parses a bare tilde as null${NC}"
 setup_fixture
 create_wu tilde-test feature "Tilde test"
-response=$(run_cli set tilde-test.planning.tilde-test task '~' 2>/dev/null)
-stored=$(node -e "const m=require(process.argv[1]); console.log(JSON.stringify(m.phases.planning.items['tilde-test'].task))" "$TEST_DIR/.workflows/tilde-test/manifest.json")
+response=$(run_cli set tilde-test.implementation.tilde-test task '~' 2>/dev/null)
+stored=$(node -e "const m=require(process.argv[1]); console.log(JSON.stringify(m.phases.implementation.items['tilde-test'].task))" "$TEST_DIR/.ledger/tilde-test/manifest.json")
 
-assert_equals "$response" '{"ok":true,"path":"tilde-test.planning.tilde-test","set":{"task":null}}' "Response reports null for a bare tilde"
+assert_equals "$response" '{"ok":true,"path":"tilde-test.implementation.tilde-test","set":{"task":null}}' "Response reports null for a bare tilde"
 assert_equals "$stored" "null" "Manifest stores JSON null, not the literal string"
 
 echo ""
@@ -411,10 +411,10 @@ echo ""
 echo -e "${YELLOW}Test: batch pair parses a bare tilde as null${NC}"
 setup_fixture
 create_wu tilde-batch feature "Tilde batch"
-run_cli set tilde-batch.planning.tilde-batch task='~' plan_format=local-markdown current='~' >/dev/null 2>&1
-stored=$(node -e "const i=require(process.argv[1]).phases.planning.items['tilde-batch']; console.log(JSON.stringify([i.task, i.plan_format, i.current]))" "$TEST_DIR/.workflows/tilde-batch/manifest.json")
+run_cli set tilde-batch.implementation.tilde-batch task='~' label=alpha current='~' >/dev/null 2>&1
+stored=$(node -e "const i=require(process.argv[1]).phases.implementation.items['tilde-batch']; console.log(JSON.stringify([i.task, i.label, i.current]))" "$TEST_DIR/.ledger/tilde-batch/manifest.json")
 
-assert_equals "$stored" '[null,"local-markdown",null]' "Positional and batch tildes both land as null"
+assert_equals "$stored" '[null,"alpha",null]' "Positional and batch tildes both land as null"
 
 echo ""
 
@@ -458,36 +458,11 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: set topic-level research with topic works${NC}"
-setup_fixture
-create_wu topicful feature "Topic research"
-run_cli set topicful.research.exploration status in-progress >/dev/null 2>&1
-output=$(run_cli_stdout get topicful.research.exploration status)
-
-assert_equals "$output" "in-progress" "Set research with topic routes correctly"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: set topic-level research for epic uses items${NC}"
-setup_fixture
-create_wu topicful2 epic "Topic research epic"
-run_cli set topicful2.research.exploration status in-progress >/dev/null 2>&1
-run_cli set topicful2.research.exploration status completed >/dev/null 2>&1
-output=$(run_cli_stdout get topicful2.research.exploration status)
-
-assert_equals "$output" "completed" "Epic research with topic uses items path"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
 echo -e "${YELLOW}Test: get phase-level (2-segment) returns whole phase object${NC}"
 setup_fixture
 create_wu topicful3 feature "Topic get"
-run_cli set topicful3.research.exploration status completed >/dev/null 2>&1
-output=$(run_cli_stdout get topicful3.research)
+run_cli set topicful3.discussion.topicful3 status completed >/dev/null 2>&1
+output=$(run_cli_stdout get topicful3.discussion)
 
 assert_contains "$output" '"status": "completed"' "Get phase-level returns phase object"
 
@@ -498,10 +473,10 @@ echo ""
 echo -e "${YELLOW}Test: set phase-level field (2-segment path)${NC}"
 setup_fixture
 create_wu phase-set feature "Phase set"
-run_cli set phase-set.planning format local-markdown >/dev/null 2>&1
-output=$(run_cli_stdout get phase-set.planning format)
+run_cli set phase-set.implementation label alpha >/dev/null 2>&1
+output=$(run_cli_stdout get phase-set.implementation label)
 
-assert_equals "$output" "local-markdown" "Phase-level set works"
+assert_equals "$output" "alpha" "Phase-level set works"
 
 echo ""
 
@@ -529,16 +504,16 @@ echo ""
 echo -e "${YELLOW}Test: set refuses a status write onto a cancelled item — reactivate owns that path${NC}"
 setup_fixture
 create_wu cancelled-item epic "Cancelled"
-run_cli set cancelled-item.specification.dropped status cancelled >/dev/null 2>&1
-assert_exit_code 1 "single set refused" set cancelled-item.specification.dropped status proposed
-assert_exit_code 1 "batch set refused" set cancelled-item.specification.dropped status=proposed order=1
-output=$(run_cli set cancelled-item.specification.dropped status proposed || true)
-assert_contains "$output" 'is cancelled — reactivate it instead (engine topic reactivate cancelled-item specification dropped)' "refusal names the reactivate by its unit"
-assert_exit_code 1 "field delete refused" delete cancelled-item.specification.dropped status
-assert_exit_code 1 "item delete refused" delete cancelled-item.specification items.dropped
-output=$(run_cli delete cancelled-item.specification items.dropped || true)
-assert_contains "$output" 'is cancelled — reactivate it instead (engine topic reactivate cancelled-item specification dropped)' "delete refusal names the reactivate too"
-output=$(run_cli_stdout get cancelled-item.specification.dropped status)
+run_cli set cancelled-item.discussion.dropped status cancelled >/dev/null 2>&1
+assert_exit_code 1 "single set refused" set cancelled-item.discussion.dropped status in-progress
+assert_exit_code 1 "batch set refused" set cancelled-item.discussion.dropped status=in-progress previous_status=completed
+output=$(run_cli set cancelled-item.discussion.dropped status in-progress || true)
+assert_contains "$output" 'is cancelled — reactivate it instead (engine topic reactivate cancelled-item discovery dropped)' "refusal names the reactivate by its unit"
+assert_exit_code 1 "field delete refused" delete cancelled-item.discussion.dropped status
+assert_exit_code 1 "item delete refused" delete cancelled-item.discussion items.dropped
+output=$(run_cli delete cancelled-item.discussion items.dropped || true)
+assert_contains "$output" 'is cancelled — reactivate it instead (engine topic reactivate cancelled-item discovery dropped)' "delete refusal names the reactivate too"
+output=$(run_cli_stdout get cancelled-item.discussion.dropped status)
 assert_equals "$output" "cancelled" "the item stays cancelled"
 
 echo ""
@@ -562,21 +537,6 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: set and delete refuse a promoted item — it continues in its cross-cutting unit${NC}"
-setup_fixture
-create_wu promoted-item epic "Promoted"
-run_cli set promoted-item.discussion.fees status=promoted promoted_to=fees-cc >/dev/null 2>&1
-assert_exit_code 1 "status write refused" set promoted-item.discussion.fees status completed
-output=$(run_cli set promoted-item.discussion.fees status completed || true)
-assert_contains "$output" 'is promoted (to ..fees-cc..) — promotion is terminal; continue it from the cross-cutting work unit' "refusal names the unit"
-assert_exit_code 1 "item delete refused" delete promoted-item.discussion items.fees
-output=$(run_cli_stdout get promoted-item.discussion.fees status)
-assert_equals "$output" "promoted" "the item stays promoted"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
 echo -e "${YELLOW}Test: set validates correct phase statuses${NC}"
 setup_fixture
 create_wu valid-status feature "Valid"
@@ -593,59 +553,18 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: unstarted is legal on research and discussion only${NC}"
+echo -e "${YELLOW}Test: unstarted is legal on discussion and investigation, never implementation${NC}"
 setup_fixture
 create_wu unstarted-check feature "Unstarted"
-run_cli set unstarted-check.research.unstarted-check status unstarted >/dev/null 2>&1
 run_cli set unstarted-check.discussion.unstarted-check status unstarted >/dev/null 2>&1
+run_cli set unstarted-check.investigation.unstarted-check status unstarted >/dev/null 2>&1
 
-research_status=$(run_cli_stdout get unstarted-check.research.unstarted-check status)
 disc_status=$(run_cli_stdout get unstarted-check.discussion.unstarted-check status)
+inv_status=$(run_cli_stdout get unstarted-check.investigation.unstarted-check status)
 
-assert_equals "$research_status" "unstarted" "Research accepts unstarted"
 assert_equals "$disc_status" "unstarted" "Discussion accepts unstarted"
+assert_equals "$inv_status" "unstarted" "Investigation accepts unstarted"
 assert_exit_code 1 "Implementation rejects unstarted" set unstarted-check.implementation.unstarted-check status unstarted
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: set rejects invalid gate modes${NC}"
-setup_fixture
-create_wu gate-check feature "Gate"
-assert_exit_code 1 "Invalid gate mode rejected" set gate-check.planning.gate-check task_gate_mode manual
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: set accepts valid gate modes${NC}"
-setup_fixture
-create_wu gate-valid feature "Gate"
-run_cli set gate-valid.implementation.gate-valid task_gate_mode auto >/dev/null 2>&1
-output=$(run_cli_stdout get gate-valid.implementation.gate-valid task_gate_mode)
-
-assert_equals "$output" "auto" "Gate mode set to auto"
-
-run_cli set gate-valid.implementation.gate-valid task_gate_mode bounded >/dev/null 2>&1
-output=$(run_cli_stdout get gate-valid.implementation.gate-valid task_gate_mode)
-
-assert_equals "$output" "bounded" "Gate mode set to bounded"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: set refuses a gate off its phase and bounded off a bound${NC}"
-setup_fixture
-create_wu gate-home feature "Gate"
-assert_exit_code 1 "Implementation gate refused on a planning item" set gate-home.planning.gate-home task_gate_mode auto
-assert_exit_code 1 "bounded refused on a gate with no bound" set gate-home.implementation.gate-home consolidation_gate_mode bounded
-assert_exit_code 1 "bounded refused on a walk's gate_mode" set gate-home.review.gate-home staging.c1.gate_mode bounded
-run_cli set gate-home.planning.gate-home task_list_gate_mode auto >/dev/null 2>&1
-output=$(run_cli_stdout get gate-home.planning.gate-home task_list_gate_mode)
-
-assert_equals "$output" "auto" "Planning gate lands on the planning item"
 
 echo ""
 
@@ -765,12 +684,12 @@ echo -e "${YELLOW}Test: list skips dot-prefixed directories${NC}"
 setup_fixture
 create_wu visible feature "Visible"
 # Create dot-prefixed directories that should be skipped
-mkdir -p "$TEST_DIR/.workflows/.archive/old-thing"
-cat > "$TEST_DIR/.workflows/.archive/old-thing/manifest.json" << 'EOF'
+mkdir -p "$TEST_DIR/.ledger/.archive/old-thing"
+cat > "$TEST_DIR/.ledger/.archive/old-thing/manifest.json" << 'EOF'
 {"name":"old-thing","work_type":"feature","status":"cancelled"}
 EOF
-mkdir -p "$TEST_DIR/.workflows/.cache"
-mkdir -p "$TEST_DIR/.workflows/.state"
+mkdir -p "$TEST_DIR/.ledger/.cache"
+mkdir -p "$TEST_DIR/.ledger/.state"
 output=$(run_cli_stdout list)
 
 assert_contains "$output" '"name": "visible"' "Visible work unit listed"
@@ -803,7 +722,7 @@ output=$(run_cli_stdout get my-feat.discussion.my-feat status)
 assert_equals "$output" "in-progress" "Feature phase created with in-progress status"
 
 # Verify internal structure uses items (unified with epic)
-content=$(cat "$TEST_DIR/.workflows/my-feat/manifest.json")
+content=$(cat "$TEST_DIR/.ledger/my-feat/manifest.json")
 assert_contains "$content" '"items"' "Feature manifest has items key"
 assert_contains "$content" '"my-feat"' "Feature items key matches work unit name"
 
@@ -923,7 +842,7 @@ run_cli set routing-feat.discussion.routing-feat status in-progress >/dev/null 2
 run_cli set routing-feat.discussion.routing-feat status completed >/dev/null 2>&1
 
 # Verify internal structure uses items (same as epic)
-content=$(cat "$TEST_DIR/.workflows/routing-feat/manifest.json")
+content=$(cat "$TEST_DIR/.ledger/routing-feat/manifest.json")
 assert_contains "$content" '"discussion"' "Discussion phase exists"
 assert_contains "$content" '"items"' "Feature manifest has items key"
 assert_contains "$content" '"routing-feat"' "Items key matches work unit name"
@@ -941,7 +860,7 @@ run_cli set routing-epic.discussion.topic-b status in-progress >/dev/null 2>&1
 run_cli set routing-epic.discussion.topic-a status completed >/dev/null 2>&1
 
 # Verify internal structure has items
-content=$(cat "$TEST_DIR/.workflows/routing-epic/manifest.json")
+content=$(cat "$TEST_DIR/.ledger/routing-epic/manifest.json")
 assert_contains "$content" '"items"' "Epic manifest has items"
 assert_contains "$content" '"topic-a"' "topic-a exists"
 assert_contains "$content" '"topic-b"' "topic-b exists"
@@ -1154,7 +1073,7 @@ const m = JSON.parse(fs.readFileSync(p, 'utf8'));
 m.phases = m.phases || {};
 m.phases.implementation = {};
 fs.writeFileSync(p, JSON.stringify(m, null, 2) + '\n');
-" "$TEST_DIR/.workflows/wc-empty/manifest.json"
+" "$TEST_DIR/.ledger/wc-empty/manifest.json"
 output=$(run_cli_stdout get wc-empty.implementation.* status)
 assert_equals "$output" "" "Wildcard on empty phase returns empty stdout"
 run_cli_stdout get wc-empty.implementation.* status >/dev/null
@@ -1194,21 +1113,21 @@ echo ""
 echo -e "${YELLOW}Test: delete work-unit-level field${NC}"
 setup_fixture
 create_wu del-wu feature "Delete WU"
-run_cli set del-wu.research analysis_cache '{"checksum":"abc","generated":"2026-01-01"}' >/dev/null 2>&1
-run_cli delete del-wu.research analysis_cache >/dev/null 2>&1
-output=$(run_cli_stdout exists del-wu.research analysis_cache)
+run_cli set del-wu.discussion analysis_cache '{"checksum":"abc","generated":"2026-01-01"}' >/dev/null 2>&1
+run_cli delete del-wu.discussion analysis_cache >/dev/null 2>&1
+output=$(run_cli_stdout exists del-wu.discussion analysis_cache)
 
 assert_equals "$output" "false" "Deleted field no longer exists"
 
 # Verify sibling fields preserved
-run_cli set del-wu.research status completed >/dev/null 2>&1
+run_cli set del-wu.discussion status completed >/dev/null 2>&1
 
 # Re-create and delete to check siblings
-run_cli set del-wu.research analysis_cache '{"checksum":"xyz"}' >/dev/null 2>&1
-run_cli delete del-wu.research analysis_cache >/dev/null 2>&1
-research_status=$(run_cli_stdout get del-wu.research status)
+run_cli set del-wu.discussion analysis_cache '{"checksum":"xyz"}' >/dev/null 2>&1
+run_cli delete del-wu.discussion analysis_cache >/dev/null 2>&1
+phase_status=$(run_cli_stdout get del-wu.discussion status)
 
-assert_equals "$research_status" "completed" "Sibling fields preserved after delete"
+assert_equals "$phase_status" "completed" "Sibling fields preserved after delete"
 
 echo ""
 
@@ -1217,16 +1136,16 @@ echo ""
 echo -e "${YELLOW}Test: delete topic-level field for feature${NC}"
 setup_fixture
 create_wu del-feat feature "Delete feat"
-run_cli set del-feat.planning.del-feat status in-progress >/dev/null 2>&1
-run_cli set del-feat.planning.del-feat task_list_gate_mode auto >/dev/null 2>&1
-run_cli delete del-feat.planning.del-feat task_list_gate_mode >/dev/null 2>&1
-output=$(run_cli_stdout exists del-feat.planning.del-feat task_list_gate_mode)
+run_cli set del-feat.discussion.del-feat status in-progress >/dev/null 2>&1
+run_cli set del-feat.discussion.del-feat analysis_cache '{"checksum":"abc"}' >/dev/null 2>&1
+run_cli delete del-feat.discussion.del-feat analysis_cache >/dev/null 2>&1
+output=$(run_cli_stdout exists del-feat.discussion.del-feat analysis_cache)
 
 assert_equals "$output" "false" "Deleted topic-level field gone"
 
 # Verify status preserved
-plan_status=$(run_cli_stdout get del-feat.planning.del-feat status)
-assert_equals "$plan_status" "in-progress" "Phase status preserved after delete"
+discussion_status=$(run_cli_stdout get del-feat.discussion.del-feat status)
+assert_equals "$discussion_status" "in-progress" "Phase status preserved after delete"
 
 echo ""
 
@@ -1253,12 +1172,12 @@ echo ""
 echo -e "${YELLOW}Test: delete nested dot-path field${NC}"
 setup_fixture
 create_wu del-nested feature "Nested"
-run_cli set del-nested.research analysis_cache.checksum "abc123" >/dev/null 2>&1
-run_cli set del-nested.research analysis_cache.generated "2026-01-01" >/dev/null 2>&1
-run_cli delete del-nested.research analysis_cache.checksum >/dev/null 2>&1
+run_cli set del-nested.discussion analysis_cache.checksum "abc123" >/dev/null 2>&1
+run_cli set del-nested.discussion analysis_cache.generated "2026-01-01" >/dev/null 2>&1
+run_cli delete del-nested.discussion analysis_cache.checksum >/dev/null 2>&1
 
-checksum_exists=$(run_cli_stdout exists del-nested.research analysis_cache.checksum)
-generated_exists=$(run_cli_stdout exists del-nested.research analysis_cache.generated)
+checksum_exists=$(run_cli_stdout exists del-nested.discussion analysis_cache.checksum)
+generated_exists=$(run_cli_stdout exists del-nested.discussion analysis_cache.generated)
 
 assert_equals "$checksum_exists" "false" "Nested field deleted"
 assert_equals "$generated_exists" "true" "Sibling nested field preserved"
@@ -1270,14 +1189,14 @@ echo ""
 echo -e "${YELLOW}Test: delete entire subtree${NC}"
 setup_fixture
 create_wu del-tree feature "Tree"
-run_cli set del-tree.research analysis_cache '{"checksum":"abc","generated":"2026-01-01","files":["a.md","b.md"]}' >/dev/null 2>&1
-run_cli delete del-tree.research analysis_cache >/dev/null 2>&1
+run_cli set del-tree.discussion analysis_cache '{"checksum":"abc","generated":"2026-01-01","files":["a.md","b.md"]}' >/dev/null 2>&1
+run_cli delete del-tree.discussion analysis_cache >/dev/null 2>&1
 
-cache_exists=$(run_cli_stdout exists del-tree.research analysis_cache)
-research_exists=$(run_cli_stdout exists del-tree.research)
+cache_exists=$(run_cli_stdout exists del-tree.discussion analysis_cache)
+phase_exists=$(run_cli_stdout exists del-tree.discussion)
 
 assert_equals "$cache_exists" "false" "Entire subtree deleted"
-assert_equals "$research_exists" "true" "Parent key preserved"
+assert_equals "$phase_exists" "true" "Parent key preserved"
 
 echo ""
 
@@ -1303,9 +1222,9 @@ echo ""
 echo -e "${YELLOW}Test: delete phase-level field (2-segment path)${NC}"
 setup_fixture
 create_wu del-phase feature "Phase del"
-run_cli set del-phase.research analysis_cache '{"checksum":"abc"}' >/dev/null 2>&1
-run_cli delete del-phase.research analysis_cache >/dev/null 2>&1
-output=$(run_cli_stdout exists del-phase.research analysis_cache)
+run_cli set del-phase.discussion analysis_cache '{"checksum":"abc"}' >/dev/null 2>&1
+run_cli delete del-phase.discussion analysis_cache >/dev/null 2>&1
+output=$(run_cli_stdout exists del-phase.discussion analysis_cache)
 
 assert_equals "$output" "false" "Phase-level delete works"
 
@@ -1325,8 +1244,8 @@ echo ""
 echo -e "${YELLOW}Test: push phase-level (2-segment path)${NC}"
 setup_fixture
 create_wu push-phase feature "Phase push"
-run_cli push push-phase.research analysis_cache.files "a.md" >/dev/null 2>&1
-output=$(run_cli_stdout get push-phase.research analysis_cache.files)
+run_cli push push-phase.discussion analysis_cache.files "a.md" >/dev/null 2>&1
+output=$(run_cli_stdout get push-phase.discussion analysis_cache.files)
 
 assert_contains "$output" '"a.md"' "Phase-level push works"
 
@@ -1339,13 +1258,13 @@ echo ""
 echo -e "${YELLOW}Test: key-of finds key by value${NC}"
 setup_fixture
 create_wu key-of-test feature "Key-of test"
-run_cli set key-of-test.planning.key-of-test task_map.portal-1-1 tick-abc >/dev/null 2>&1
-run_cli set key-of-test.planning.key-of-test task_map.portal-1-2 tick-def >/dev/null 2>&1
+run_cli set key-of-test.implementation.key-of-test task_map.portal-1-1 ext-abc >/dev/null 2>&1
+run_cli set key-of-test.implementation.key-of-test task_map.portal-1-2 ext-def >/dev/null 2>&1
 
-output=$(run_cli_stdout key-of key-of-test.planning.key-of-test task_map tick-abc)
+output=$(run_cli_stdout key-of key-of-test.implementation.key-of-test task_map ext-abc)
 assert_equals "$output" "portal-1-1" "key-of returns correct key for first value"
 
-output=$(run_cli_stdout key-of key-of-test.planning.key-of-test task_map tick-def)
+output=$(run_cli_stdout key-of key-of-test.implementation.key-of-test task_map ext-def)
 assert_equals "$output" "portal-1-2" "key-of returns correct key for second value"
 
 echo ""
@@ -1355,9 +1274,9 @@ echo ""
 echo -e "${YELLOW}Test: key-of errors on missing value${NC}"
 setup_fixture
 create_wu key-of-miss feature "Key-of miss"
-run_cli set key-of-miss.planning.key-of-miss task_map.t-1 ext-1 >/dev/null 2>&1
+run_cli set key-of-miss.implementation.key-of-miss task_map.t-1 ext-1 >/dev/null 2>&1
 
-exit_code=$(run_cli_exit_code key-of key-of-miss.planning.key-of-miss task_map ext-notfound)
+exit_code=$(run_cli_exit_code key-of key-of-miss.implementation.key-of-miss task_map ext-notfound)
 assert_equals "$exit_code" "2" "key-of value-not-found exits 2 (expected miss)"
 
 echo ""
@@ -1367,9 +1286,9 @@ echo ""
 echo -e "${YELLOW}Test: key-of errors on non-object path${NC}"
 setup_fixture
 create_wu key-of-scalar feature "Key-of scalar"
-run_cli set key-of-scalar.planning.key-of-scalar format tick >/dev/null 2>&1
+run_cli set key-of-scalar.implementation.key-of-scalar label alpha >/dev/null 2>&1
 
-exit_code=$(run_cli_exit_code key-of key-of-scalar.planning.key-of-scalar format tick)
+exit_code=$(run_cli_exit_code key-of key-of-scalar.implementation.key-of-scalar label alpha)
 assert_equals "$exit_code" "1" "key-of errors when path is not an object"
 
 echo ""
@@ -1399,24 +1318,24 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: set and get project.defaults.plan_format${NC}"
+echo -e "${YELLOW}Test: set and get project.defaults.session_labels${NC}"
 setup_fixture
 create_wu my-proj feature "Setup"
-run_cli set project.defaults.plan_format local-markdown >/dev/null 2>&1
+run_cli set project.defaults.session_labels true >/dev/null 2>&1
 
-output=$(run_cli_stdout get project.defaults.plan_format)
-assert_equals "$output" "local-markdown" "Get project default plan_format"
+output=$(run_cli_stdout get project.defaults.session_labels)
+assert_equals "$output" "true" "Get project default session_labels"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: exists project.defaults.plan_format${NC}"
+echo -e "${YELLOW}Test: exists project.defaults.session_labels${NC}"
 setup_fixture
 create_wu ex-proj feature "Setup"
-run_cli set project.defaults.plan_format tick >/dev/null 2>&1
+run_cli set project.defaults.session_labels false >/dev/null 2>&1
 
-output=$(run_cli_stdout exists project.defaults.plan_format)
+output=$(run_cli_stdout exists project.defaults.session_labels)
 assert_equals "$output" "true" "Exists returns true for set default"
 
 output=$(run_cli_stdout exists project.defaults.nonexistent)
@@ -1426,13 +1345,13 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: delete project.defaults.plan_format${NC}"
+echo -e "${YELLOW}Test: delete project.defaults.session_labels${NC}"
 setup_fixture
 create_wu del-proj feature "Setup"
-run_cli set project.defaults.plan_format linear >/dev/null 2>&1
-run_cli delete project.defaults.plan_format >/dev/null 2>&1
+run_cli set project.defaults.session_labels true >/dev/null 2>&1
+run_cli delete project.defaults.session_labels >/dev/null 2>&1
 
-output=$(run_cli_stdout exists project.defaults.plan_format)
+output=$(run_cli_stdout exists project.defaults.session_labels)
 assert_equals "$output" "false" "Deleted project default no longer exists"
 
 echo ""
@@ -1492,9 +1411,9 @@ echo -e "${YELLOW}Test: get project.defaults returns empty when not set${NC}"
 setup_fixture
 create_wu err-proj feature "Error test"
 
-output=$(run_cli_stdout get project.defaults.plan_format)
+output=$(run_cli_stdout get project.defaults.session_labels)
 assert_equals "$output" "" "Missing project default returns empty stdout"
-run_cli_stdout get project.defaults.plan_format >/dev/null
+run_cli_stdout get project.defaults.session_labels >/dev/null
 assert_equals "$?" "0" "Missing project default exits 0"
 
 echo ""
@@ -1503,7 +1422,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set project.defaults without value errors${NC}"
 setup_fixture
-output=$(run_cli set project.defaults.plan_format 2>&1 || true)
+output=$(run_cli set project.defaults.session_labels 2>&1 || true)
 assert_contains "$output" "Usage" "Set without value shows usage"
 
 echo ""
@@ -1512,9 +1431,9 @@ echo ""
 
 echo -e "${YELLOW}Test: project set does not require work unit to exist${NC}"
 setup_fixture
-run_cli set project.defaults.plan_format tick >/dev/null 2>&1
-output=$(run_cli_stdout get project.defaults.plan_format)
-assert_equals "$output" "tick" "Can set project default without any work units"
+run_cli set project.defaults.session_labels true >/dev/null 2>&1
+output=$(run_cli_stdout get project.defaults.session_labels)
+assert_equals "$output" "true" "Can set project default without any work units"
 
 echo ""
 
@@ -1579,9 +1498,9 @@ echo ""
 echo -e "${YELLOW}Test: pull at phase level${NC}"
 setup_fixture
 create_wu pull-phase epic "Pull phase"
-run_cli set pull-phase.research surfaced_topics '["topic-a","topic-b","topic-c"]' >/dev/null 2>&1
-run_cli pull pull-phase.research surfaced_topics "topic-b" >/dev/null 2>&1
-output=$(run_cli_stdout get pull-phase.research surfaced_topics)
+run_cli set pull-phase.discussion surfaced_topics '["topic-a","topic-b","topic-c"]' >/dev/null 2>&1
+run_cli pull pull-phase.discussion surfaced_topics "topic-b" >/dev/null 2>&1
+output=$(run_cli_stdout get pull-phase.discussion surfaced_topics)
 
 assert_contains "$output" "topic-a" "Phase-level pull kept topic-a"
 assert_not_contains "$output" "topic-b" "Phase-level pull removed topic-b"
@@ -1634,14 +1553,12 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: superseded accepted as valid status for research${NC}"
+echo -e "${YELLOW}Test: the old spec's grouping statuses are refused for specification${NC}"
 setup_fixture
-create_wu supersede-research epic "Supersede research"
-run_cli set supersede-research.research.broad-topic status in-progress >/dev/null 2>&1
-run_cli set supersede-research.research.broad-topic status superseded >/dev/null 2>&1
-output=$(run_cli_stdout get supersede-research.research.broad-topic status)
-
-assert_equals "$output" "superseded" "Research accepts superseded status"
+create_wu grouping-spec epic "Grouping spec"
+assert_exit_code 1 "proposed rejected" set grouping-spec.specification.auth-flow status proposed
+assert_exit_code 1 "superseded rejected" set grouping-spec.specification.auth-flow status superseded
+assert_exit_code 1 "promoted rejected" set grouping-spec.specification.auth-flow status promoted
 
 echo ""
 
@@ -1660,14 +1577,12 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: cancelled accepted as valid status for planning${NC}"
+echo -e "${YELLOW}Test: set refuses a planning item, a legacy name no phase holds${NC}"
 setup_fixture
-create_wu cancel-plan epic "Cancel plan"
-run_cli set cancel-plan.planning.my-topic status in-progress >/dev/null 2>&1
-run_cli set cancel-plan.planning.my-topic status cancelled >/dev/null 2>&1
-output=$(run_cli_stdout get cancel-plan.planning.my-topic status)
+create_wu legacy-plan epic "Legacy plan"
+output=$(run_cli set legacy-plan.planning.my-topic status in-progress 2>&1 || true)
 
-assert_equals "$output" "cancelled" "Planning accepts cancelled status"
+assert_contains "$output" 'Invalid phase' "A write to planning is refused"
 
 echo ""
 
@@ -1718,22 +1633,6 @@ assert_equals "$prev" "in-progress" "previous_status stays for the reactivate to
 
 echo ""
 
-# ============================================================================
-# PROPOSED STATUS TESTS (spec groupings)
-# ============================================================================
-
-echo -e "${YELLOW}Test: proposed accepted as valid status for specification${NC}"
-setup_fixture
-create_wu prop-spec epic "Proposed spec"
-run_cli set prop-spec.specification.auth-flow status proposed >/dev/null 2>&1
-output=$(run_cli_stdout get prop-spec.specification.auth-flow status)
-
-assert_equals "$output" "proposed" "Specification accepts proposed status"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
 echo -e "${YELLOW}Test: bogus specification status rejected${NC}"
 setup_fixture
 create_wu bogus-spec epic "Bogus"
@@ -1744,63 +1643,15 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: re-upserting proposed status is idempotent${NC}"
-setup_fixture
-create_wu flip-spec epic "Flip"
-run_cli set flip-spec.specification.auth-flow status proposed >/dev/null 2>&1
-run_cli set flip-spec.specification.auth-flow status proposed >/dev/null 2>&1
-output=$(run_cli_stdout get flip-spec.specification.auth-flow status)
-assert_equals "$output" "proposed" "Second proposed write leaves the item proposed"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: upsert proposed item builds the exact shape${NC}"
-setup_fixture
-create_wu upsert-spec epic "Upsert"
-run_cli set upsert-spec.specification.auth-flow status proposed >/dev/null 2>&1
-run_cli set upsert-spec.specification.auth-flow sources.auth-design.status pending >/dev/null 2>&1
-run_cli set upsert-spec.specification.auth-flow sources.session-mgmt.status pending >/dev/null 2>&1
-status=$(run_cli_stdout get upsert-spec.specification.auth-flow status)
-src1=$(run_cli_stdout get upsert-spec.specification.auth-flow sources.auth-design.status)
-src2=$(run_cli_stdout get upsert-spec.specification.auth-flow sources.session-mgmt.status)
-rc_exists=$(run_cli_stdout exists upsert-spec.specification.auth-flow review_cycle)
-
-assert_equals "$status" "proposed" "Proposed item status set"
-assert_equals "$src1" "pending" "First source pending"
-assert_equals "$src2" "pending" "Second source pending"
-assert_equals "$rc_exists" "false" "Proposed item carries no review_cycle (invariant)"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: delete whole proposed spec item${NC}"
+echo -e "${YELLOW}Test: delete a whole spec item${NC}"
 setup_fixture
 create_wu del-spec epic "Delete"
-run_cli set del-spec.specification.auth-flow status proposed >/dev/null 2>&1
+run_cli set del-spec.specification.auth-flow status in-progress >/dev/null 2>&1
 run_cli set del-spec.specification.auth-flow sources.auth-design.status pending >/dev/null 2>&1
 run_cli delete del-spec.specification items.auth-flow >/dev/null 2>&1
 exists_after=$(run_cli_stdout exists del-spec.specification.auth-flow)
 
-assert_equals "$exists_after" "false" "Whole proposed item removed by delete items.{topic}"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: flip proposed to in-progress preserves sources${NC}"
-setup_fixture
-create_wu flip2-spec epic "Flip2"
-run_cli set flip2-spec.specification.auth-flow status proposed >/dev/null 2>&1
-run_cli set flip2-spec.specification.auth-flow sources.auth-design.status pending >/dev/null 2>&1
-run_cli set flip2-spec.specification.auth-flow status in-progress >/dev/null 2>&1
-status=$(run_cli_stdout get flip2-spec.specification.auth-flow status)
-src=$(run_cli_stdout get flip2-spec.specification.auth-flow sources.auth-design.status)
-
-assert_equals "$status" "in-progress" "Flip sets in-progress"
-assert_equals "$src" "pending" "Flip preserves source rows"
+assert_equals "$exists_after" "false" "Whole item removed by delete items.{topic}"
 
 echo ""
 
@@ -1825,7 +1676,7 @@ echo ""
 echo -e "${YELLOW}Test: discovery refuses every status write (empty vocabulary)${NC}"
 setup_fixture
 create_wu incept-status epic "Discovery status"
-run_cli set incept-status.discovery.foo routing research >/dev/null 2>&1
+run_cli set incept-status.discovery.foo summary "A topic" >/dev/null 2>&1
 
 for status in in-progress completed cancelled; do
     exit_code=$(run_cli_exit_code set incept-status.discovery.foo status "$status")
@@ -1833,23 +1684,6 @@ for status in in-progress completed cancelled; do
 done
 output=$(run_cli set incept-status.discovery.foo status in-progress 2>&1 || true)
 assert_contains "$output" "carry no status field" "Error explains map items carry no status"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: discovery accepts free-form routing field${NC}"
-setup_fixture
-create_wu incept-route epic "Discovery routing"
-run_cli set incept-route.discovery.foo routing research >/dev/null 2>&1
-output=$(run_cli_stdout get incept-route.discovery.foo routing)
-
-assert_equals "$output" "research" "Routing field stored unchanged"
-
-# Discussion routing also accepted (no validation enforced)
-run_cli set incept-route.discovery.foo routing discussion >/dev/null 2>&1
-output=$(run_cli_stdout get incept-route.discovery.foo routing)
-assert_equals "$output" "discussion" "Routing can be updated to discussion"
 
 echo ""
 
@@ -1871,12 +1705,12 @@ echo -e "${YELLOW}Test: get returns full discovery item${NC}"
 setup_fixture
 create_wu incept-get epic "Discovery get"
 run_cli set incept-get.discovery.foo summary "A topic" >/dev/null 2>&1
-run_cli set incept-get.discovery.foo routing research >/dev/null 2>&1
+run_cli set incept-get.discovery.foo description "What the topic covers" >/dev/null 2>&1
 output=$(run_cli_stdout get incept-get.discovery.foo)
 
 assert_not_contains "$output" '"status"' "Item JSON carries no status field"
 assert_contains "$output" '"summary": "A topic"' "Item JSON includes summary"
-assert_contains "$output" '"routing": "research"' "Item JSON includes routing"
+assert_contains "$output" '"description": "What the topic covers"' "Item JSON includes description"
 
 echo ""
 
@@ -1899,64 +1733,65 @@ echo ""
 echo -e "${YELLOW}Test: wildcard get on discovery phase${NC}"
 setup_fixture
 create_wu incept-wild epic "Discovery wildcard"
-run_cli set incept-wild.discovery.alpha routing research >/dev/null 2>&1
-run_cli set incept-wild.discovery.beta routing discussion >/dev/null 2>&1
-output=$(run_cli_stdout get 'incept-wild.discovery.*' routing)
+run_cli set incept-wild.discovery.alpha summary "Alpha" >/dev/null 2>&1
+run_cli set incept-wild.discovery.beta summary "Beta" >/dev/null 2>&1
+output=$(run_cli_stdout get 'incept-wild.discovery.*' summary)
 
 assert_contains "$output" '"topic": "alpha"' "Wildcard returns alpha topic"
 assert_contains "$output" '"topic": "beta"' "Wildcard returns beta topic"
-assert_contains "$output" '"value": "research"' "Wildcard returns alpha routing"
+assert_contains "$output" '"value": "Alpha"' "Wildcard returns alpha's summary"
+assert_contains "$output" '"value": "Beta"' "Wildcard returns beta's summary"
 
 echo ""
 
 # ============================================================================
-# IMPORTS[] FIELD TESTS
+# SEEDS[] FIELD TESTS — object-shaped array entries
 # ============================================================================
 
-echo -e "${YELLOW}Test: push creates imports[] array on first call${NC}"
+echo -e "${YELLOW}Test: push creates seeds[] array on first call${NC}"
 setup_fixture
-create_wu imp-create epic "Imports create"
-run_cli push imp-create imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
-output=$(run_cli_stdout get imp-create imports)
+create_wu seed-create epic "Seeds create"
+run_cli push seed-create seeds '{"dest":"seed.md","source":".inbox/ideas/seed.md"}' >/dev/null 2>&1
+output=$(run_cli_stdout get seed-create seeds)
 
-assert_contains "$output" '"path": "imports/seed.md"' "First push creates array with entry"
-assert_contains "$output" '"imported_at": "2026-05-09T10:00:00Z"' "Entry preserves imported_at"
+assert_contains "$output" '"dest": "seed.md"' "First push creates array with entry"
+assert_contains "$output" '"source": ".inbox/ideas/seed.md"' "Entry preserves source"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: push appends subsequent entries to imports[]${NC}"
+echo -e "${YELLOW}Test: push appends subsequent entries to seeds[]${NC}"
 setup_fixture
-create_wu imp-append epic "Imports append"
-run_cli push imp-append imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
-run_cli push imp-append imports '{"path":"imports/notes.md","imported_at":"2026-05-09T11:00:00Z"}' >/dev/null 2>&1
-output=$(run_cli_stdout get imp-append imports)
+create_wu seed-append epic "Seeds append"
+run_cli push seed-append seeds '{"dest":"seed.md","source":".inbox/ideas/seed.md"}' >/dev/null 2>&1
+run_cli push seed-append seeds '{"dest":"notes.md","source":".inbox/ideas/notes.md"}' >/dev/null 2>&1
+output=$(run_cli_stdout get seed-append seeds)
 
-assert_contains "$output" "imports/seed.md" "First entry preserved after append"
-assert_contains "$output" "imports/notes.md" "Second entry appended"
+assert_contains "$output" "seed.md" "First entry preserved after append"
+assert_contains "$output" "notes.md" "Second entry appended"
 
 # Verify it's a proper array of length 2
-length=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/imp-append/manifest.json','utf8')); console.log(m.imports.length)")
-assert_equals "$length" "2" "imports[] has two entries after two pushes"
+length=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.ledger/seed-append/manifest.json','utf8')); console.log(m.seeds.length)")
+assert_equals "$length" "2" "seeds[] has two entries after two pushes"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: pull removes a single imports[] entry by deep equality${NC}"
+echo -e "${YELLOW}Test: pull removes a single seeds[] entry by deep equality${NC}"
 setup_fixture
-create_wu imp-pull epic "Imports pull"
-run_cli push imp-pull imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
-run_cli push imp-pull imports '{"path":"imports/notes.md","imported_at":"2026-05-09T11:00:00Z"}' >/dev/null 2>&1
-run_cli pull imp-pull imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
-output=$(run_cli_stdout get imp-pull imports)
+create_wu seed-pull epic "Seeds pull"
+run_cli push seed-pull seeds '{"dest":"seed.md","source":".inbox/ideas/seed.md"}' >/dev/null 2>&1
+run_cli push seed-pull seeds '{"dest":"notes.md","source":".inbox/ideas/notes.md"}' >/dev/null 2>&1
+run_cli pull seed-pull seeds '{"dest":"seed.md","source":".inbox/ideas/seed.md"}' >/dev/null 2>&1
+output=$(run_cli_stdout get seed-pull seeds)
 
-assert_not_contains "$output" "imports/seed.md" "Pull removed seed.md entry"
-assert_contains "$output" "imports/notes.md" "Pull kept notes.md entry"
+assert_not_contains "$output" "seed.md" "Pull removed seed.md entry"
+assert_contains "$output" "notes.md" "Pull kept notes.md entry"
 
-length=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/imp-pull/manifest.json','utf8')); console.log(m.imports.length)")
-assert_equals "$length" "1" "imports[] has one entry after pull"
+length=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.ledger/seed-pull/manifest.json','utf8')); console.log(m.seeds.length)")
+assert_equals "$length" "1" "seeds[] has one entry after pull"
 
 echo ""
 
@@ -1964,23 +1799,23 @@ echo ""
 
 echo -e "${YELLOW}Test: pull is no-op when entry shape does not match${NC}"
 setup_fixture
-create_wu imp-pull-miss epic "Imports pull miss"
-run_cli push imp-pull-miss imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
-run_cli pull imp-pull-miss imports '{"path":"imports/seed.md","imported_at":"2026-05-09T99:99:99Z"}' >/dev/null 2>&1
-output=$(run_cli_stdout get imp-pull-miss imports)
+create_wu seed-pull-miss epic "Seeds pull miss"
+run_cli push seed-pull-miss seeds '{"dest":"seed.md","source":".inbox/ideas/seed.md"}' >/dev/null 2>&1
+run_cli pull seed-pull-miss seeds '{"dest":"seed.md","source":".inbox/ideas/other.md"}' >/dev/null 2>&1
+output=$(run_cli_stdout get seed-pull-miss seeds)
 
-assert_contains "$output" "imports/seed.md" "Non-matching pull preserved entry"
+assert_contains "$output" "seed.md" "Non-matching pull preserved entry"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: push onto non-array imports field fails${NC}"
+echo -e "${YELLOW}Test: push onto non-array seeds field fails${NC}"
 setup_fixture
-create_wu imp-bad epic "Imports bad"
-# Set imports to a non-array value first
-run_cli set imp-bad imports '"not-an-array"' >/dev/null 2>&1
-combined=$(cd "$TEST_DIR" && node "$ENGINE_JS" manifest push imp-bad imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' 2>&1; echo "__EXIT__=$?")
+create_wu seed-bad epic "Seeds bad"
+# Set seeds to a non-array value first
+run_cli set seed-bad seeds '"not-an-array"' >/dev/null 2>&1
+combined=$(cd "$TEST_DIR" && node "$ENGINE_JS" manifest push seed-bad seeds '{"dest":"seed.md","source":".inbox/ideas/seed.md"}' 2>&1; echo "__EXIT__=$?")
 exit_code=$(echo "$combined" | grep -o '__EXIT__=[0-9]*' | tail -1 | cut -d= -f2)
 output=$(echo "$combined" | grep -v '__EXIT__=')
 
@@ -1991,11 +1826,11 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: imports[] round-trip preserves entry shape${NC}"
+echo -e "${YELLOW}Test: seeds[] round-trip preserves entry shape${NC}"
 setup_fixture
-create_wu imp-roundtrip epic "Imports round-trip"
-run_cli push imp-roundtrip imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
-output=$(run_cli_stdout get imp-roundtrip imports)
+create_wu seed-roundtrip epic "Seeds round-trip"
+run_cli push seed-roundtrip seeds '{"dest":"seed.md","source":".inbox/ideas/seed.md"}' >/dev/null 2>&1
+output=$(run_cli_stdout get seed-roundtrip seeds)
 
 # Parse the JSON and confirm shape
 parsed=$(echo "$output" | node -e "
@@ -2006,7 +1841,7 @@ process.stdin.on('end',()=>{
   if (!Array.isArray(arr)) { console.log('not-array'); return; }
   if (arr.length !== 1) { console.log('wrong-length'); return; }
   const e = arr[0];
-  if (e.path === 'imports/seed.md' && e.imported_at === '2026-05-09T10:00:00Z') {
+  if (e.dest === 'seed.md' && e.source === '.inbox/ideas/seed.md') {
     console.log('shape-ok');
   } else {
     console.log('shape-wrong');
@@ -2017,137 +1852,13 @@ assert_equals "$parsed" "shape-ok" "Round-tripped entry has expected fields"
 
 echo ""
 
-# ============================================================================
-# RESOLVE COMMAND TESTS
-# ============================================================================
-
-echo -e "${YELLOW}Test: resolve discussion file path${NC}"
-setup_fixture
-create_wu auth-flow feature "Auth"
-output=$(run_cli_stdout resolve auth-flow.discussion.auth-flow)
-
-assert_contains "$output" "auth-flow/discussion/auth-flow.md" "Resolves discussion path"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve specification file path${NC}"
-setup_fixture
-create_wu auth-flow feature "Auth"
-output=$(run_cli_stdout resolve auth-flow.specification.auth-flow)
-
-assert_contains "$output" "auth-flow/specification/auth-flow/specification.md" "Resolves spec path with nested topic dir"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve investigation file path${NC}"
-setup_fixture
-create_wu auth-flow bugfix "Bug"
-output=$(run_cli_stdout resolve auth-flow.investigation.auth-flow)
-
-assert_contains "$output" "auth-flow/investigation/auth-flow.md" "Resolves investigation path"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve single research file path (3-segment)${NC}"
-setup_fixture
-create_wu payments epic "Payments"
-run_cli set payments.research.exploration status in-progress >/dev/null 2>&1
-output=$(run_cli_stdout resolve payments.research.exploration)
-
-assert_contains "$output" "payments/research/exploration.md" "Resolves single research item path"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve all research files (2-segment, from manifest items)${NC}"
-setup_fixture
-create_wu payments epic "Payments"
-run_cli set payments.research.exploration status in-progress >/dev/null 2>&1
-run_cli set payments.research.networking status in-progress >/dev/null 2>&1
-output=$(run_cli_stdout resolve payments.research)
-
-assert_contains "$output" "payments/research/exploration.md" "Lists exploration research item"
-assert_contains "$output" "payments/research/networking.md" "Lists networking research item"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve does NOT include unlisted research files${NC}"
-setup_fixture
-create_wu payments epic "Payments"
-run_cli set payments.research.tracked status in-progress >/dev/null 2>&1
-# Create an untracked file on disk that is NOT in the manifest
-mkdir -p "$TEST_DIR/.workflows/payments/research"
-echo "untracked" > "$TEST_DIR/.workflows/payments/research/rogue.md"
-output=$(run_cli_stdout resolve payments.research)
-
-assert_contains "$output" "payments/research/tracked.md" "Includes tracked research item"
-assert_not_contains "$output" "rogue" "Does not include untracked research file"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve errors for non-existent work unit${NC}"
-setup_fixture
-exit_code=$(run_cli_exit_code resolve nonexistent.discussion.foo)
-
-assert_equals "$exit_code" "2" "Non-existent work unit exits 2 (expected miss)"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve errors for non-indexed phase${NC}"
-setup_fixture
-create_wu auth-flow feature "Auth"
-exit_code=$(run_cli_exit_code resolve auth-flow.planning.auth-flow)
-output=$(run_cli resolve auth-flow.planning.auth-flow 2>&1 || true)
-
-assert_equals "$exit_code" "1" "Non-indexed phase exits 1"
-assert_contains "$output" "not indexed" "Error mentions not indexed"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve errors for insufficient segments${NC}"
-setup_fixture
-create_wu auth-flow feature "Auth"
-exit_code=$(run_cli_exit_code resolve auth-flow)
-output=$(run_cli resolve auth-flow 2>&1 || true)
-
-assert_equals "$exit_code" "1" "Single segment exits 1"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve outputs correct path even when file does not exist on disk${NC}"
-setup_fixture
-create_wu auth-flow feature "Auth"
-# Don't create the file on disk — resolve should still output the path
-output=$(run_cli_stdout resolve auth-flow.discussion.auth-flow)
-
-assert_contains "$output" "auth-flow/discussion/auth-flow.md" "Path returned even without file on disk"
-
-echo ""
-
 # ----------------------------------------------------------------------------
 
 echo -e "${YELLOW}Test: corrupt project manifest aborts with clear error (no silent clobber)${NC}"
 setup_fixture
 # Write a corrupt project manifest — invalid JSON with a trailing comma
 # (the exact pattern that silently wiped tick's work_units).
-cat > "$TEST_DIR/.workflows/manifest.json" <<'BADJSON'
+cat > "$TEST_DIR/.ledger/manifest.json" <<'BADJSON'
 {
   "work_units": {
     "existing-unit": {
@@ -2167,7 +1878,7 @@ assert_contains "$output" "by hand" "Error tells user to fix manually"
 
 # Verify the corrupt manifest was NOT overwritten — the trailing comma
 # should still be on disk.
-manifest_still_corrupt=$(cat "$TEST_DIR/.workflows/manifest.json" | node -e "let s=''; process.stdin.on('data',c=>s+=c); process.stdin.on('end',()=>{try{JSON.parse(s);console.log('parsed');}catch(e){console.log('still-corrupt');}});")
+manifest_still_corrupt=$(cat "$TEST_DIR/.ledger/manifest.json" | node -e "let s=''; process.stdin.on('data',c=>s+=c); process.stdin.on('end',()=>{try{JSON.parse(s);console.log('parsed');}catch(e){console.log('still-corrupt');}});")
 assert_equals "$manifest_still_corrupt" "still-corrupt" "Corrupt manifest preserved on disk (not clobbered)"
 
 echo ""
@@ -2179,7 +1890,7 @@ setup_fixture
 # No manifest.json on disk — a project write should create it fresh.
 exit_code=$(run_cli_exit_code set project.defaults.plan_format tick)
 assert_equals "$exit_code" "0" "First project write succeeds without existing manifest"
-written=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/manifest.json', 'utf8')).defaults.plan_format)" 2>/dev/null)
+written=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$TEST_DIR/.ledger/manifest.json', 'utf8')).defaults.plan_format)" 2>/dev/null)
 assert_equals "$written" "tick" "Manifest created with the written default"
 
 echo ""
@@ -2202,8 +1913,8 @@ exit_code=$(run_cli_exit_code set real work_type bogus)
 assert_equals "$exit_code" "1" "Invalid work-type → exit 1"
 
 # Corrupt manifest JSON → real error → exit 1.
-mkdir -p "$TEST_DIR/.workflows/corrupt-wu"
-echo "{not valid json" > "$TEST_DIR/.workflows/corrupt-wu/manifest.json"
+mkdir -p "$TEST_DIR/.ledger/corrupt-wu"
+echo "{not valid json" > "$TEST_DIR/.ledger/corrupt-wu/manifest.json"
 exit_code=$(run_cli_exit_code get corrupt-wu status)
 assert_equals "$exit_code" "1" "Corrupt work-unit JSON → exit 1"
 
@@ -2214,20 +1925,18 @@ echo ""
 echo -e "${YELLOW}Test: read/mutation exit-code contract, pinned distinctly (miss=2, error/mutation=1)${NC}"
 setup_fixture
 create_wu codes feature "Codes"
-run_cli set codes.planning.codes task_map.codes-1-1 ext-1 >/dev/null 2>&1
+run_cli set codes.implementation.codes task_map.codes-1-1 ext-1 >/dev/null 2>&1
 
 # Reads — an EXPECTED miss is exit 2, distinct from a real error's exit 1. A
 # regression collapsing 2 into 1 must fail here, not slip past a non-zero check.
 assert_exit_code 2 "key-of value-not-found → exit 2 (expected miss)" \
-    key-of codes.planning.codes task_map ext-absent
-assert_exit_code 2 "resolve on a missing work unit → exit 2 (expected miss)" \
-    resolve ghost.discussion.ghost
+    key-of codes.implementation.codes task_map ext-absent
+assert_exit_code 2 "key-of on a missing work unit → exit 2 (expected miss)" \
+    key-of ghost.implementation.ghost task_map ext-1
 
 # Reads — a real error is exit 1, never 2.
 assert_exit_code 1 "get on an invalid phase → exit 1 (real error)" \
     get codes.cooking.codes status
-assert_exit_code 1 "resolve on a non-indexed phase → exit 1 (real error)" \
-    resolve codes.planning.codes
 assert_exit_code 1 "key-of on a non-object path → exit 1 (real error)" \
     key-of codes work_type feature
 
@@ -2250,7 +1959,7 @@ echo ""
 
 echo -e "${YELLOW}Test: phases.discovery accepts writes for every work type${NC}"
 setup_fixture
-for wt in epic feature bugfix quick-fix cross-cutting; do
+for wt in epic feature bugfix quick-fix; do
     name="${wt//-/_}-disc"
     create_wu "$name" "$wt" "Discovery cross-type $wt"
     run_cli set "$name.discovery" active_session 1 >/dev/null 2>&1
@@ -2272,7 +1981,7 @@ echo ""
 
 echo -e "${YELLOW}Test: discovery status refusal names the map contract for every work type${NC}"
 setup_fixture
-for wt in epic feature bugfix quick-fix cross-cutting; do
+for wt in epic feature bugfix quick-fix; do
     name="${wt//-/_}-disc-item"
     create_wu "$name" "$wt" "Discovery item $wt"
     output=$(run_cli set "$name.discovery.topic-one" status in-progress 2>&1 || true)
@@ -2285,7 +1994,7 @@ echo ""
 
 echo -e "${YELLOW}Test: discovery item status writes refused for every work type${NC}"
 setup_fixture
-for wt in epic feature bugfix quick-fix cross-cutting; do
+for wt in epic feature bugfix quick-fix; do
     name="${wt//-/_}-disc-guard"
     create_wu "$name" "$wt" "Guard $wt"
     assert_exit_code 1 "$wt: discovery item status completed rejected" \

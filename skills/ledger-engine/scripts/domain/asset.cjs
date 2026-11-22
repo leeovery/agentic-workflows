@@ -1,0 +1,625 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: spikes and assets (9.10, 6.1.11) — `asset spike`, a spike's
+// folder, `asset import`, the files the person shares,
+// `asset add|status|lift`, the links from the ledger's entries
+// to the files that inform them, and `asset legacy|keep|discard`, the
+// files the migration kept with no place in the layout, read and sorted
+// (legacy-files.cjs). A link never moves a file: Claude writes it where it
+// lives, and the link records where that is.
+//
+// - A spike (9.10.10, 4.11.12, 4.11.13): `spike <unit|product> <slug>`
+//   numbers the unit's next spike, or the product's, in the order spikes
+//   start, one past the highest of its `spikes/NNN-{slug}/`, makes its
+//   folder and its twin at the same path under the gitignored cache, where
+//   its dependencies, builds and run output go, and answers both. Nothing is
+//   committed: the folder holds nothing yet. A slug one of its spikes has
+//   already is refused, so a spike carried on is never started twice.
+// - An import (9.10.5, 9.10.11): `import <unit|product> <path>…` copies the
+//   files the person shared into the unit's `assets/`, or the product's,
+//   each named by the landing's filename rules (import-landing.cjs), a
+//   shared folder landing whole under its own name, its tree and its names
+//   kept, and answers each one's path from the state root, a folder's its
+//   folder's with its files listed (`folders`), and each name it changed
+//   beyond the file rules (`renamed_imports`), for the log or an entry to
+//   link. Nothing is committed: a file enters the state with what links it.
+//   A path naming no file or folder refuses the call, naming every such
+//   path (`missing_imports`), as do a folder holding what cannot land,
+//   naming each such path with why, and a call whose every file the rules
+//   skip.
+// - A link is the ledger's `asset` event (ledger-events.cjs): an entry, a
+//   file's path from the state root, and the status the link gives the
+//   file, the lift it records, or both.
+//   - `add` is the first link of an entry and a path, and gives its status
+//     (9.10.7), at a unit or at the product, there for a file linked from a
+//     finding standing at the product's place (18.11.1). The path names
+//     something on disk below a home — the unit's `assets/` or one of its
+//     spikes, or the product's (9.10.5, 9.10.11) —
+//     or a spike's folder itself; a path naming nothing is refused, to be
+//     corrected or skipped (9.10.22). A file in a spike is reference unless the status is said,
+//     as draft code is (9.10.6); anywhere else it is said. An entry already
+//     linking the path is refused, its status changed through `status`.
+//   - `status` changes the status (9.10.7): every current entry of the
+//     unit linking the path takes it, or the one entry named.
+//   - `lift` records a linked file lifted into the project, at a path from
+//     the project's root that is there (9.10.16): a link giving no status,
+//     so a status after it leaves the lift standing (ledger-fold.cjs).
+//   Each link names a current entry made in the unit, or at the product's
+//   place (5.8.17), and `status` and `lift` an entry linking the path
+//   already; `lift` is a unit's alone. An entry the link would
+//   give nothing new is passed over, and a call giving none anything writes
+//   nothing.
+// - Each link is tagged as its entry is — its unit, topic and phase — so it
+//   stands while the entry's place does, and carries the conversation's
+//   session; with none the link is refused.
+// - Each path is stored as the file system spells what of it exists, so one
+//   file is one path where the file system ignores case, and a folder's
+//   without a trailing slash; a lift's is read from the call's folder, so a
+//   call from a subfolder of the project reads it from there.
+// - A link's commit is a ledger commit, which takes every file the ledger's
+//   links name (ledger.cjs): the file enters the state with its first link
+//   (9.10.4), and its edits land with every ledger commit after. A lift
+//   after the file moved into the product commits no removal of it. A file
+//   no entry and no log links (log-links.cjs) stays untracked (9.S38): two
+//   clones can start the same spike number for spikes nothing links yet.
+// - A link belongs to its entry: a replacement carries none forward, so a
+//   file the replaced entry linked is linked from the new one through `add`.
+//   A link to a question is tagged at the topic the question was written
+//   on, so it goes dead where that topic is set aside after the question
+//   moved.
+// - When: the argv, the unit and the paths are refused before the writer
+//   lock; under it the ledger is folded, the entry resolved and checked, the
+//   links appended and the ledger committed (`ledger({unit}): asset {id} …`)
+//   — held while the migration runs, the files with the line, as every
+//   state commit is (commit.cjs).
+//   Then, the lock released, the knowledge base's copies, which show each
+//   entry's files, are rendered and indexed (ledger-copies.cjs).
+// ---------------------------------------------------------------------------
+
+const fs = require('fs');
+const path = require('path');
+const { KEBAB_SLUG, KEBAB_SLUG_PATTERN, PRODUCT, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
+const { stateRoot, stateRelative, resolvedPath } = require('../kernel/state-root.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
+const { handedSession } = require('../kernel/process.cjs');
+const { appendEntry, carrying, commitLedger } = require('./ledger.cjs');
+const { ASSET_STATUSES, isPlainPath } = require('./ledger-events.cjs');
+const { shortIds, resolveId } = require('./ledger-ids.cjs');
+const { ID_FACTS, readFolded, factsOf, isLive, notCurrent, assetsOf } = require('./ledger-fold.cjs');
+const { manifestOf, liveness } = require('./ledger-units.cjs');
+const { ledgerMessage, staleness } = require('./ledger-write.cjs');
+const { refreshLedgerCopies } = require('./ledger-copies.cjs');
+const { withStateLock } = require('./state-worktree.cjs');
+const { HELD_NOTE } = require('./commit.cjs');
+const { PRODUCT_DIR, SPIKE_HOMES, assetHome } = require('./layout.cjs');
+const { planImports, copyImports, assertLandableSources } = require('./import-landing.cjs');
+const { legacyPlaces, surveyLegacy, readLegacy, keepLegacy, discardLegacy } = require('./legacy-files.cjs');
+const { loadAllManifests } = require('./reads.cjs');
+
+/** @typedef {import('./ledger-fold.cjs').Folded} Folded */
+/** @typedef {import('./ledger.cjs').EntryPlace} EntryPlace */
+/** @typedef {(place: EntryPlace) => Record<string, any>} EntryAt */
+
+/** A spike's folder name, its number and its slug. */
+const SPIKE_FOLDER = new RegExp(`^([0-9]{3,})-(${KEBAB_SLUG})$`);
+
+/**
+ * A verb's argv: its positionals as its usage shows them, the last one
+ * repeated where `more` says so, or all of them together where `repeated`
+ * does, one more it may take where `optional` names it, and each flag it
+ * takes, by name, whether it must be given.
+ * @typedef {{args: string[], more?: true, repeated?: true, optional?: string, flags: Record<string, boolean>}} Takes
+ */
+
+/** @type {Readonly<Record<string, Takes>>} */
+const VERBS = Object.freeze({
+  spike: { args: [`<work-unit|${PRODUCT}>`, '<slug>'], flags: {} },
+  import: { args: [`<work-unit|${PRODUCT}>`, '<path>'], more: true, flags: {} },
+  add: { args: [`<work-unit|${PRODUCT}>`, '<path>'], flags: { entry: true, status: false } },
+  status: { args: [`<work-unit|${PRODUCT}>`, '<path>', `<${ASSET_STATUSES.join('|')}>`], flags: { entry: false } },
+  lift: { args: ['<work-unit>', '<path>'], flags: { into: true, entry: true } },
+  legacy: { args: [], optional: `<work-unit|${PRODUCT}>`, flags: {} },
+  keep: { args: [`<work-unit|${PRODUCT}>`, '<path>'], repeated: true, flags: {} },
+  discard: { args: [`<work-unit|${PRODUCT}>`, '<path>'], flags: {} },
+});
+
+/** How each flag's value is shown. @type {Readonly<Record<string, string>>} */
+const SHOWN = Object.freeze({ entry: '<id>', status: `<${ASSET_STATUSES.join('|')}>`, into: '<path-in-project>' });
+
+/** @param {string} verb */
+function verbUsage(verb) {
+  const { args, more, repeated, optional, flags } = VERBS[verb];
+  const shown = Object.entries(flags).map(([flag, required]) => (required ? `--${flag} ${SHOWN[flag]}` : `[--${flag} ${SHOWN[flag]}]`));
+  const again = repeated ? [`[${args.join(' ')} …]`] : [];
+  return ['asset', verb, ...args, ...(more ? ['…'] : []), ...again, ...(optional === undefined ? [] : [`[${optional}]`]), ...shown].join(' ');
+}
+
+const ASSET_USAGE = Object.keys(VERBS).map(verbUsage).join('\n');
+
+/**
+ * A verb's argv read: its positionals and its flags by name. Refuses a
+ * flag the verb does not take, one given twice or with no value, a missing
+ * one it needs, and positionals of another count, each with its usage.
+ * @param {string} verb @param {string[]} argv
+ * @returns {{positional: string[], flags: Record<string, string>}}
+ */
+function readArgs(verb, argv) {
+  const usage = `Usage: engine ${verbUsage(verb)}`;
+  const { args, more, repeated, optional, flags: takes } = VERBS[verb];
+  /** @type {string[]} */
+  const positional = [];
+  /** @type {Record<string, string>} */
+  const flags = {};
+  for (let i = 0; i < argv.length; i += 1) {
+    if (!argv[i].startsWith('--')) {
+      positional.push(argv[i]);
+      continue;
+    }
+    const flag = argv[i].slice(2);
+    const value = argv[i + 1];
+    if (!Object.hasOwn(takes, flag) || Object.hasOwn(flags, flag) || value === undefined || value === '' || value.startsWith('--')) throw new Error(usage);
+    flags[flag] = value;
+    i += 1;
+  }
+  const most = args.length + (optional === undefined ? 0 : 1);
+  const counted = repeated ? positional.length % args.length === 0 : more || positional.length <= most;
+  if (positional.length < args.length || !counted || Object.entries(takes).some(([flag, required]) => required && !Object.hasOwn(flags, flag))) throw new Error(usage);
+  return { positional, flags };
+}
+
+/**
+ * The state root, `unit` checked: a unit the project has, and where `takes`
+ * names what the call adds to it, live (5.8.17) and not completed.
+ * @param {string} cwd @param {string} said @param {string} unit @param {{takes?: string}} [opts]
+ * @returns {string}
+ */
+function unitRoot(cwd, said, unit, { takes } = {}) {
+  const root = stateRoot(cwd);
+  const manifest = workUnitNameRefusal(unit) === null ? manifestOf(root, unit) : null;
+  if (manifest === null) throw new Error(`${said}: there is no work unit "${unit}"`);
+  const dead = takes === undefined ? null : liveness(root)(unit, null) ?? (manifest.status === 'completed' ? `${unit} is completed` : null);
+  if (dead !== null) throw new Error(`${said}: ${unit} takes no ${takes} — ${dead}`);
+  return root;
+}
+
+/**
+ * The state root, `name` checked: the product, or a unit the project has.
+ * @param {string} cwd @param {string} said @param {string} name
+ * @returns {string}
+ */
+function linkRoot(cwd, said, name) {
+  return name === PRODUCT ? stateRoot(cwd) : unitRoot(cwd, said, name);
+}
+
+/**
+ * The state root, and the folder from it that a spike or an import lands
+ * in: the product's, or a unit's, live where `takes` names what the call
+ * adds to it.
+ * @param {string} cwd @param {string} said @param {string} name a unit, or `product` @param {string} [takes]
+ * @returns {{root: string, owner: string}}
+ */
+function ownerOf(cwd, said, name, takes) {
+  if (name === PRODUCT) return { root: stateRoot(cwd), owner: PRODUCT_DIR };
+  return { root: unitRoot(cwd, said, name, { takes }), owner: name };
+}
+
+/** The spikes' folder names in `owner`, in the order they started. @param {string} root @param {string} owner @returns {string[]} */
+function spikesOf(root, owner) {
+  const dir = path.join(root, owner, 'spikes');
+  return fs.existsSync(dir) ? fs.readdirSync(dir).filter((name) => SPIKE_FOLDER.test(name)).sort() : [];
+}
+
+/**
+ * The status the unit's live links give each of its spikes, by folder:
+ * canonical where the latest status any of them gives the spike, or a file
+ * in it, is canonical; else reference. A spike no live link gives a status
+ * is absent. Read in one read of the ledger.
+ * @param {string} cwd @param {string} unit @param {string[]} warnings @returns {Map<string, string>}
+ */
+function spikeStatuses(cwd, unit, warnings) {
+  const root = stateRoot(cwd);
+  const home = `${unit}/spikes/`;
+  return readFolded(root, ID_FACTS, warnings, (facts, entryAt) => {
+    const read = { facts, live: liveness(root) };
+    /** @type {Map<string, string>} */
+    const given = new Map();
+    for (const [id, link] of facts) {
+      if (link.event === 'asset' && link.gives_status && String(link.path).startsWith(home) && isLive(read, id)) given.set(String(link.path), String(entryAt(link.place).status));
+    }
+    /** @type {Map<string, string>} */
+    const statuses = new Map();
+    for (const [file, status] of given) {
+      const [folder] = file.slice(home.length).split('/');
+      if (statuses.get(folder) !== 'canonical') statuses.set(folder, status);
+    }
+    return statuses;
+  });
+}
+
+/**
+ * `asset spike`: the unit's next spike, or the product's, its folder and its
+ * twin under the cache made, under the writer lock so two starts never take
+ * one number.
+ * @param {string} cwd @param {string[]} positional
+ */
+function startSpike(cwd, [name, slug]) {
+  const said = 'asset spike';
+  if (!KEBAB_SLUG_PATTERN.test(slug)) throw new Error(`${said}: "${slug}" is no slug — lowercase letters and digits, joined by single hyphens`);
+  const { root, owner } = ownerOf(cwd, said, name, 'spike');
+  return withStateLock(root, () => {
+    const spikes = spikesOf(root, owner);
+    const same = spikes.find((folder) => /** @type {RegExpExecArray} */ (SPIKE_FOLDER.exec(folder))[2] === slug);
+    if (same !== undefined) throw new Error(`${said}: ${name} has a spike "${slug}" already, spikes/${same} — carry on in it, or name the new one apart`);
+    const number = Math.max(0, ...spikes.map((folder) => Number(/** @type {RegExpExecArray} */ (SPIKE_FOLDER.exec(folder))[1]))) + 1;
+    const spike = `${String(number).padStart(3, '0')}-${slug}`;
+    const rel = `${owner}/spikes/${spike}`;
+    const folder = path.join(root, rel);
+    const cache = path.join(root, '.cache', rel);
+    fs.mkdirSync(folder, { recursive: true });
+    fs.mkdirSync(cache, { recursive: true });
+    return { spike, path: rel, folder, cache };
+  });
+}
+
+/**
+ * `asset import`: the files at `paths` copied into the unit's assets, or the
+ * product's, under the writer lock so two imports never take one name.
+ * @param {string} cwd @param {string[]} positional
+ */
+function importFiles(cwd, [name, ...paths]) {
+  const said = 'asset import';
+  const { root, owner } = ownerOf(cwd, said, name, 'file');
+  assertLandableSources(cwd, paths);
+  const dir = path.join(root, owner, 'assets');
+  return withStateLock(root, () => {
+    const { planned, skipped, renamed } = planImports(cwd, paths, dir);
+    if (planned.length === 0) throw new Error(`${said}: nothing to land — the filename rules skip every file given (${skipped.join(', ')})`);
+    copyImports(cwd, dir, planned);
+    const at = (/** @type {string} */ dest) => `${owner}/assets/${dest}`;
+    const folders = planned.flatMap(({ dest, files }) => (files === undefined ? [] : [{ path: at(dest), files: files.map(({ to }) => to) }]));
+    return {
+      imports: planned.map(({ dest }) => at(dest)),
+      skipped_imports: skipped,
+      ...(renamed.length === 0 ? {} : { renamed_imports: renamed.map(({ from, to }) => ({ from, to: at(to) })) }),
+      ...(folders.length === 0 ? {} : { folders }),
+    };
+  });
+}
+
+/**
+ * The home a linked path sits below, or is — a spike's folder itself — or
+ * null: one of the layout's asset homes, a unit's being `unit`'s own, and
+ * none of them the product's.
+ * @param {string} unit @param {string} rel
+ * @returns {string|null}
+ */
+function homeOf(unit, rel) {
+  const home = assetHome(rel);
+  if (home === null) return null;
+  return home.startsWith('{unit}/') && (unit === PRODUCT || rel.split('/')[0] !== unit) ? null : home;
+}
+
+/**
+ * A path from the state root, written plain — a folder's trailing slash
+ * dropped — as the file system spells what of it exists, so one file is one
+ * path where the file system ignores case. Refuses one not written plain,
+ * or leading out of the state.
+ * @param {string} said @param {string} cwd @param {string} given
+ * @returns {string}
+ */
+function spelledInState(said, cwd, given) {
+  const plain = `${said}: "${given}" is no path from the state root written plain — no part of it empty, . or ..`;
+  const named = given.endsWith('/') ? given.slice(0, -1) : given;
+  if (!isPlainPath(named)) throw new Error(plain);
+  const rel = stateRelative(cwd, path.join(stateRoot(cwd), named));
+  if (rel === null) throw new Error(plain);
+  return rel;
+}
+
+/**
+ * The status a first link gives the file at `rel`, checked: below one of
+ * the unit's homes, or the product's, and there on disk; the status said,
+ * or for a spike's file reference.
+ * @param {string} said @param {string} root @param {string} unit @param {string} rel @param {string|undefined} status
+ * @returns {string}
+ */
+function firstStatus(said, root, unit, rel, status) {
+  const home = homeOf(unit, rel);
+  if (home === null) {
+    const units = unit === PRODUCT ? '' : `${unit}/assets/, a spike of ${unit}'s, ${unit}/spikes/NNN-{slug}/, or `;
+    throw new Error(`${said}: ${rel} is not where an asset lives — ${units}the product's .product/assets/ or .product/spikes/NNN-{slug}/`);
+  }
+  if (!fs.existsSync(path.join(root, rel))) throw new Error(`${said}: ${rel} names no file — land the file shared first, asset import ${unit} '<path>', and link the path it answers, or correct the path`);
+  if (status !== undefined) return checkedStatus(said, status);
+  if (!SPIKE_HOMES.includes(home)) throw new Error(`${said}: a first link gives the file its status — --status <${ASSET_STATUSES.join('|')}>`);
+  return 'reference';
+}
+
+/** A status the link may give. @param {string} said @param {string} status */
+function checkedStatus(said, status) {
+  if (!ASSET_STATUSES.includes(status)) throw new Error(`${said}: "${status}" is no status — ${ASSET_STATUSES.join(' or ')}`);
+  return status;
+}
+
+/**
+ * The project path a lift names, checked — written plain, and there in the
+ * project, read from the call's folder — as the file system spells it.
+ * @param {string} said @param {string} cwd @param {string} into
+ */
+function checkedLift(said, cwd, into) {
+  if (!isPlainPath(into)) throw new Error(`${said}: --into "${into}" is no path in the project from its root written plain — no part of it empty, . or ..`);
+  const project = resolvedPath(codeRoot(cwd), '.');
+  const at = resolvedPath(project, into);
+  const rel = path.relative(project, at);
+  if (!fs.existsSync(at) || rel === '' || rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
+    throw new Error(`${said}: --into ${into} names nothing in the project — a lift is recorded once the code is there`);
+  }
+  return rel.split(path.sep).join('/');
+}
+
+/**
+ * What a link gives a file: its status, or null for a lift alone, and the
+ * project path it was lifted into, or null.
+ * @typedef {{status: string|null, into: string|null}} Gives
+ */
+
+/**
+ * The ledger as one link verb reads it under the lock: folded, read against
+ * liveness, each entry's line read again, and an id in its short form.
+ * @typedef {{read: Folded, entryAt: EntryAt, short: (id: string) => string}} Reading
+ */
+
+/** An entry a link names: its full id and its line. @typedef {{id: string, line: Record<string, any>}} Named */
+
+/**
+ * The entry `prefix` names, checked: an entry, current, made in `unit`.
+ * @param {string} said @param {Reading} reading @param {string} unit @param {string} prefix
+ * @returns {Named}
+ */
+function entryNamed(said, { read, entryAt, short }, unit, prefix) {
+  let id;
+  try {
+    id = resolveId(prefix, read.facts.keys());
+  } catch (err) {
+    throw new Error(`${said} --entry: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  const facts = factsOf(read, id);
+  const where = `${said} --entry names ${short(id)}`;
+  if (facts.kind === null) throw new Error(`${where}, a ${facts.event} event — it must name an entry`);
+  const stale = notCurrent(read, id);
+  if (stale !== null) throw new Error(`${where}, ${staleness(read, id, stale, short)}`);
+  const line = entryAt(facts.place);
+  if (line.unit !== unit) throw new Error(`${where}, an entry of ${line.unit} — an asset of ${unit}'s is linked from ${unit}'s own entries`);
+  return { id, line };
+}
+
+/**
+ * What the entry's live links give the file at `rel`: its standing status
+ * and lift, or null where none links it.
+ * @param {Reading} reading @param {string} id @param {string} rel
+ * @returns {Gives|null}
+ */
+function standing({ read, entryAt }, id, rel) {
+  const file = assetsOf(read, id).find((asset) => asset.path === rel);
+  if (file === undefined) return null;
+  const given = (/** @type {string|null} */ link, /** @type {'status'|'into'} */ field) => (link === null ? null : entryAt(factsOf(read, link).place)[field]);
+  return { status: given(file.status, 'status'), into: given(file.lift, 'into') };
+}
+
+/**
+ * The current entries made in `unit` that a live link ties to the file at
+ * `rel`, in the order each first linked it.
+ * @param {Reading} reading @param {string} unit @param {string} rel
+ * @returns {Named[]}
+ */
+function entriesLinking({ read, entryAt }, unit, rel) {
+  /** @type {Set<string>} */
+  const entries = new Set();
+  for (const [id, facts] of read.facts) {
+    if (facts.event === 'asset' && facts.path === rel && isLive(read, id)) entries.add(/** @type {string} */ (facts.entry));
+  }
+  return [...entries].filter((id) => notCurrent(read, id) === null).map((id) => ({ id, line: entryAt(factsOf(read, id).place) }))
+    .filter(({ line }) => line.unit === unit);
+}
+
+/**
+ * A link an entry is to append: the entry it names, and what it gives.
+ * @typedef {{entry: Named, gives: Gives}} Link
+ */
+
+/**
+ * The links a verb appends, worked out from the ledger under the lock:
+ * refused in the words of the command asking.
+ * @typedef {(reading: Reading) => Link[]} Plan
+ */
+
+/**
+ * The note a call that wrote nothing answers, or the one a commit's outcome
+ * gives.
+ * @param {Outcome|null} outcome
+ * @returns {string|undefined}
+ */
+function noteOf(outcome) {
+  if (outcome === null) return 'nothing written — every entry named already gives the file that';
+  if (outcome.held) return HELD_NOTE;
+  return outcome.failed ? 'commit pending — the link is in the ledger, and the next ledger write or boot commits it' : undefined;
+}
+
+/**
+ * A commit's outcome, as the state's commit door answers it.
+ * @typedef {{committed: string|null, failed: boolean, held?: true}} Outcome
+ */
+
+/**
+ * Under the writer lock: the ledger folded, the links `plan` works out
+ * appended, each tagged as its entry is and carrying `session`, and the
+ * ledger committed — with every file its links name — where any was. Answers each
+ * link's short id and the entry's, and the commit's outcome, or null where
+ * nothing was appended.
+ * @param {string} cwd @param {string} root @param {string} unit @param {string} rel @param {string} session @param {Plan} plan @param {string[]} warnings
+ * @returns {{links: {id: string, entry: string}[], outcome: Outcome|null}}
+ */
+function landLinks(cwd, root, unit, rel, session, plan, warnings) {
+  return withStateLock(root, () => {
+    const { planned, ids } = readFolded(root, ID_FACTS, warnings, (facts, entryAt) => {
+      const read = { facts, live: liveness(root) };
+      const shorts = shortIds(facts.keys());
+      return { planned: plan({ read, entryAt, short: (id) => /** @type {string} */ (shorts.get(id)) }), ids: [...facts.keys()] };
+    });
+    const appended = planned.map(({ entry: { id, line }, gives }) => appendEntry(root, {
+      event: 'asset', unit: line.unit, topic: line.topic, phase: line.phase, session, entry: id, path: rel, ...gives,
+    }, warnings));
+    const shorts = shortIds([...ids, ...appended.map((link) => /** @type {string} */ (link.id))]);
+    const short = (/** @type {unknown} */ id) => /** @type {string} */ (shorts.get(/** @type {string} */ (id)));
+    const topics = new Set(appended.map((link) => /** @type {string|null} */ (link.topic)));
+    const message = ledgerMessage(unit, 'asset', appended.map((link) => short(link.id)).join(' '), topics.size === 1 ? [...topics][0] : null);
+    return {
+      links: appended.map((link) => ({ id: short(link.id), entry: short(link.entry) })),
+      outcome: appended.length === 0 ? null : commitLedger(cwd, message, warnings),
+    };
+  });
+}
+
+/**
+ * The links `plan` works out landed (`landLinks`), then the knowledge
+ * base's copies rendered and indexed. Answers the path, each link's id and
+ * the entry it names, and the commit.
+ * @param {string} cwd @param {string} said @param {string} root @param {string} unit @param {string} rel @param {Plan} plan
+ */
+function linkFile(cwd, said, root, unit, rel, plan) {
+  /** @type {string[]} */
+  const warnings = [];
+  try {
+    const session = handedSession();
+    if (session === null) throw new Error(`${said}: no session to tag the link with — CLAUDE_CODE_SESSION_ID is not set`);
+    const { links, outcome } = landLinks(cwd, root, unit, rel, session, plan, warnings);
+    if (outcome !== null) refreshLedgerCopies(cwd, warnings);
+    const note = noteOf(outcome);
+    return {
+      path: rel, links, committed: outcome?.committed ?? null,
+      ...(note === undefined ? {} : { note }),
+      ...(warnings.length > 0 ? { warnings } : {}),
+    };
+  } catch (err) {
+    throw carrying(err, warnings);
+  }
+}
+
+/**
+ * `asset add`: the first link of an entry and a file, giving its status.
+ * @param {string} cwd @param {string[]} positional @param {Record<string, string>} flags
+ */
+function addAsset(cwd, [unit, given], flags) {
+  const said = 'asset add';
+  const root = linkRoot(cwd, said, unit);
+  const rel = spelledInState(said, cwd, given);
+  const status = firstStatus(said, root, unit, rel, flags.status);
+  return linkFile(cwd, said, root, unit, rel, (reading) => {
+    const entry = entryNamed(said, reading, unit, flags.entry);
+    const was = standing(reading, entry.id, rel);
+    if (was !== null) {
+      throw new Error(`${said}: ${reading.short(entry.id)} links ${rel} already${was.status === null ? '' : `, ${was.status}`} — its status changes through asset status`);
+    }
+    return [{ entry, gives: { status, into: null } }];
+  });
+}
+
+/**
+ * `asset status`: the file's status changed, on every current entry of the
+ * unit linking it, or the one named.
+ * @param {string} cwd @param {string[]} positional @param {Record<string, string>} flags
+ */
+function changeStatus(cwd, [unit, given, asked], flags) {
+  const said = 'asset status';
+  const status = checkedStatus(said, asked);
+  const root = linkRoot(cwd, said, unit);
+  const rel = spelledInState(said, cwd, given);
+  return linkFile(cwd, said, root, unit, rel, (reading) => {
+    const entries = flags.entry === undefined ? entriesLinking(reading, unit, rel) : [linking(said, reading, unit, rel, flags.entry)];
+    if (entries.length === 0) throw new Error(`${said}: no current entry of ${unit} links ${rel} — asset add links it first, giving its status`);
+    return entries.filter(({ id }) => standing(reading, id, rel)?.status !== status).map((entry) => ({ entry, gives: { status, into: null } }));
+  });
+}
+
+/**
+ * `asset lift`: a linked file recorded lifted into the project.
+ * @param {string} cwd @param {string[]} positional @param {Record<string, string>} flags
+ */
+function liftAsset(cwd, [unit, given], flags) {
+  const said = 'asset lift';
+  const into = checkedLift(said, cwd, flags.into);
+  const root = unitRoot(cwd, said, unit);
+  const rel = spelledInState(said, cwd, given);
+  return linkFile(cwd, said, root, unit, rel, (reading) => {
+    const entry = linking(said, reading, unit, rel, flags.entry);
+    return standing(reading, entry.id, rel)?.into === into ? [] : [{ entry, gives: { status: null, into } }];
+  });
+}
+
+/**
+ * The entry `prefix` names, checked as `entryNamed` checks it, and linking
+ * the file at `rel` already: a first link gives its status (9.10.7).
+ * @param {string} said @param {Reading} reading @param {string} unit @param {string} rel @param {string} prefix
+ * @returns {Named}
+ */
+function linking(said, reading, unit, rel, prefix) {
+  const entry = entryNamed(said, reading, unit, prefix);
+  if (standing(reading, entry.id, rel) === null) {
+    throw new Error(`${said}: ${reading.short(entry.id)} does not link ${rel} — a first link gives its status, through asset add`);
+  }
+  return entry;
+}
+
+/**
+ * `asset legacy [<place>]`: every place holding legacy files, with its
+ * folders, or the files of the one named, a unit's whatever its status.
+ * @param {string} cwd @param {string[]} positional
+ */
+function listLegacy(cwd, [name]) {
+  if (name === undefined) return surveyLegacy(cwd, legacyPlaces(cwd, loadAllManifests(cwd).map((manifest) => manifest.name)).map(({ place }) => place));
+  ownerOf(cwd, 'asset legacy', name);
+  return readLegacy(cwd, name);
+}
+
+/**
+ * A place and a path to sort, checked: a unit the project has, whatever its
+ * status, or the product, and a path written plain.
+ * @param {string} cwd @param {string} said @param {string} place @param {string} given
+ * @returns {import('./legacy-files.cjs').Sorted}
+ */
+function sortedAt(cwd, said, place, given) {
+  ownerOf(cwd, said, place);
+  return { place, rel: spelledInState(said, cwd, given) };
+}
+
+/** `asset keep <place> <path> …`: each place and path checked, then kept. @param {string} cwd @param {string[]} positional */
+function keepLegacyAt(cwd, positional) {
+  const pairs = positional.flatMap((place, i) => (i % 2 === 0 ? [[place, positional[i + 1]]] : []));
+  return keepLegacy(cwd, pairs.map(([place, given]) => sortedAt(cwd, 'asset keep', place, given)));
+}
+
+/** `asset discard <place> <path>`: the place and path checked, then discarded. @param {string} cwd @param {string[]} positional */
+function discardLegacyAt(cwd, [place, given]) {
+  const { rel } = sortedAt(cwd, 'asset discard', place, given);
+  return discardLegacy(cwd, place, rel);
+}
+
+/** What each verb does with its argv read. @type {Readonly<Record<string, (cwd: string, positional: string[], flags: Record<string, string>) => Record<string, unknown>>>} */
+const RUNS = Object.freeze({
+  spike: startSpike, import: importFiles, add: addAsset, status: changeStatus, lift: liftAsset,
+  legacy: listLegacy, keep: keepLegacyAt, discard: discardLegacyAt,
+});
+
+/**
+ * `asset <verb>`: the verb's argv read, then run.
+ * @param {string} cwd @param {string} verb @param {string[]} argv
+ * @returns {Record<string, unknown>}
+ */
+function runAssetVerb(cwd, verb, argv) {
+  if (!Object.hasOwn(RUNS, verb)) throw new Error(`Usage: engine asset <${Object.keys(RUNS).join('|')}> …\n${ASSET_USAGE}`);
+  const { positional, flags } = readArgs(verb, argv);
+  return RUNS[verb](cwd, positional, flags);
+}
+
+module.exports = { ASSET_USAGE, SPIKE_FOLDER, runAssetVerb, spikesOf, spikeStatuses };

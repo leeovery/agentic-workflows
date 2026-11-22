@@ -1,0 +1,343 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: the trust log's events and their schemas (16.13.4). Pure. The
+// trust log (trust-log.cjs) holds one event a line, JSON, ended by LF alone:
+// what the ask rule's counts need, and no decision's content, which stays in
+// the project's ledger (16.13.3).
+//
+// Every event opens with the same fields: the version of its line's shape,
+// its id, the time the engine wrote it, its type, the project it happened
+// in — the project's id (16.13.5) and its name, its main checkout's folder,
+// both null for an event before the project has state — the model, by its
+// id (16.4.4): for a raise, and a call a raise decided, the one the call was
+// made under, as the raise sealed it; for a call Claude's own `ledger
+// decide` or `ledger replace` lands, the caller's, which makes the call
+// there and then; for any other event, the one the conversation ran on;
+// null where none could be read — and the conversation's session, by
+// Claude Code's id for it, null where none was handed over. Then its own:
+//
+// - gate: an answer at a gate, by the gate's name (16.11.9), and the row
+//   the engine recommended, null where it recommended none; then the
+//   answer, as a raise's is; and the showing it answered, a learned gate's
+//   digest (learned-gates.cjs), so a replay draws its blind ask again —
+//   null at any other gate.
+// - raise: a question raised to the person (16.9) — the ledger entry the
+//   answer landed as, but for a keep of Claude's call gone ahead while a
+//   blind question waited, that call, the entry the person agreed with
+//   (16.17.6, raise.cjs); the decision it would replace, by its entry — on
+//   a blind question drawn on Claude's call gone ahead, that call, so a
+//   replay reads an answer against it as overruling the call — null for a
+//   question's answer; the question's kind (16.11) and the label it was
+//   composed from, Claude's sort of it as a call with one defensible answer
+//   or several (16.3.7), and the row of Claude's sealed answer; then the
+//   answer, and whether the person didn't follow, which leaves no answer,
+//   no reading and no entry (16.9.3, 16.12.3); whether the answer was the
+//   person's "don't care", which lands Claude's lean as the builder's, so
+//   the answer is the sealed one, typed and no free text (9.2.14, 16.5.4) —
+//   the entry it lands says it is given so, and a later raise to replace
+//   that entry names it so as whose the decision was; on Claude's call gone
+//   ahead while a blind question waited, the call it keeps stands as built,
+//   the builder's; and what the decision point decided the call from that
+//   its label does not hold, as the raise sealed it, so a replay of the
+//   rule over the log decides as it did: whether it blocked build work, a
+//   task parking on it as it was raised (16.4.7); whose the decision it
+//   would replace was — who decided it, or as the person's keep of it since
+//   was given, theirs or their "don't care" — null for a question's answer
+//   (16.5.7); Claude's mark that it always asks, null for none (19.4.20,
+//   19.4.22); whether its question is a point of the record the person
+//   brought from before (`from_before`, added at version 2, false on a line
+//   before it), whose answer weighs nothing (trust-evidence.cjs); the experiment still running that measured its question, by
+//   its id, null for none (9.1.11); and the question's id its blind draw
+//   hashes, the first entry of its chain — on a blind question drawn on
+//   Claude's call gone ahead, the chain of the question that call answers —
+//   null on any other replacement, which is never drawn (16.17.4, E3); and
+//   when the rule decided it, as sealed: as it was raised in the
+//   conversation, or parked in the build — the event's own time is its
+//   answer's, which may come long after; and whether it was asked blind,
+//   Claude's answer held back (16.17.2), so an answer given cold reads as
+//   one on its own, wherever its draw names.
+//   Whether it was sent to check first is not logged: a call whose label
+//   says Claude could find it out never proceeds — the rule sends it to
+//   check, or asks — so a replay never counts it as one it would skip, and
+//   the label holds it already (16.3.1). A raise followed has its entry: the
+//   command that writes the entry records the event (16.13.3).
+// - call: a call Claude made (16.3.7), by its ledger entry, with its kind,
+//   its label and its sort; and, for a call a raise decided, whether it
+//   blocked build work, as the decision point decided it, null for any
+//   other. The rule decided it as it landed, the event's own time; and
+//   what else the rule reads asks whatever the counts, so a call that went
+//   ahead held none of it: no entry of the person's to replace, no mark of
+//   Claude's, no experiment measuring its question, no label sending it to
+//   check.
+// - verdict: a departure's verdict (16.10.9), by its ledger entry — nothing,
+//   a fix later, a real loss, or a skip — and the point it was given at.
+// - blind-draw: a call drawn as a blind question (16.17.5), with its kind,
+//   by the ledger line that holds Claude's call: the line the person's
+//   answer lands at, which seals it; in the build, the park the question
+//   waits on; or, where Claude's call went ahead while the question waits
+//   (16.17.6), the call's own entry, whose call event it makes no evidence
+//   (trust-evidence.cjs). It is logged once, at the draw (raise.cjs).
+// - reversal: the person's later reversal (16.12.1), by its entry, pointing
+//   back at the entry it reverses.
+// - position-switch: a build's position switched (3.3.7), by its unit, to
+//   auto or step.
+// - convergence: a topic's convergence offer accepted (16.8.6), by its unit
+//   and topic.
+// - correction: the person's correction of a question's kind or of a
+//   departure's verdict (16.15.4), by its entry: what they corrected it to,
+//   the other null.
+// - step: a learned gate run as an automatic step (3.2.7, learned-gates.cjs),
+//   by the gate's name, the row it ran and the showing it ran on — no
+//   answer, so nothing that counts the person's answers reads it, and the
+//   gate's own bound least of all; a replay decides it again (replay.cjs).
+//   Its id is drawn from the project, the gate and its showing, so a redraw
+//   of the same showing is read once (decision-point.cjs).
+// - care-drop: a care entry dropped from the record of the person (16.5.2,
+//   person-verbs.cjs), in the project the event is keyed by: its kind, and
+//   when it was added, as the record held it — hand-editable, so the event
+//   carries the time it removed, and a replay pairs the entry by its
+//   project, kind and that time, reading each entry as it stood (replay.cjs).
+//   The record keeps what stands now; the log, what stood.
+//
+// An answer, at a gate or to a raise, is how it came — `via`, pressed with
+// a click or typed at the keyboard (6.6.4): the mod says which, and with
+// the mod off every answer is typed — and what it is: a row's key, which a
+// typed answer can be too (6.S18), or free text (`with_text`), which only
+// the keyboard gives. A row's key names its row, and nothing is read from
+// it; free text names none and is never kept (16.13.3) — the row the
+// separate call reads from it is its reading, null where it reads none
+// (16.19.1, 16.19.8).
+//
+// No field carries words: a row is named by its key, a gate by its name,
+// a unit and a topic by their slugs, a model and a session by their ids —
+// only the project's name is its checkout folder's, as it is — so the log
+// keeps a decision's content out (16.13.3). A label is the labeller's twelve
+// answers, true or false in 16.11.2's order, with the labeller that wrote
+// them, by the id of the model its call ran on (16.11.5, 16.19.6,
+// 16.19.11). The kind and the label are null where the labeller gave none,
+// a fact never labelled (labeller.cjs); the sort is Claude's, carried by its
+// raise or its call (raise.cjs), null on a call no raise made. An event whose
+// fields contradict each other is no event: free text pressed or naming a
+// row, read as a row though it is no free text, or a row's key answer naming
+// none; a raise followed with no entry, or not followed with an answer, a
+// reading, an entry or a "don't care"; a "don't care" whose answer is not the
+// sealed one, pressed, or free text; an entry reversing itself; and a
+// correction of both or of neither.
+//
+// One file serves every project on the machine, and each project runs the
+// engine its own copy of Ledger installs, so engines of several
+// releases read and write it at once. Its format is never changed in place:
+//
+// - A release that changes an event's shape, or adds an event, bumps the
+//   version, and a line carries the version its own event's shape was last
+//   changed in — so a release that changes one event leaves every other
+//   readable by the engines before it. A field a later version added reads
+//   at its default from a line written before it (event-fields.cjs).
+// - A line no event of this engine's schema — a newer release's, at a
+//   version above the schema's or of a type it does not know, or one that is
+//   no event at all — is skipped, never a stop and never rewritten.
+// ---------------------------------------------------------------------------
+
+const {
+  type, TEXT, ID, FLAG, TIME, VERSION, KEY, KINDS, CARE_KINDS, ALWAYS_MARK, EXPERIMENT, MODEL, LABEL: A_LABEL, oneOf, nullable, field, event, addedIn, readFields,
+} = require('./event-fields.cjs');
+const { DECIDED_BY } = require('./ledger-events.cjs');
+const { KEBAB_SLUG_PATTERN, BUILD_POSITIONS } = require('../kernel/manifest-schema.cjs');
+const { isObject } = require('../kernel/manifest-io.cjs');
+
+/** @typedef {import('./event-fields.cjs').Field} Field */
+/** @typedef {import('./event-fields.cjs').Schema} Schema */
+
+const KIND = nullable(oneOf(...KINDS));
+// A gate's name, as the engine's menus name their gates: a few lowercase words.
+const GATE = type('a gate\'s name: up to five lowercase words, 40 characters at most', (v) => typeof v === 'string' && v.length <= 40
+  && /^[a-z0-9]+(?:-[a-z0-9]+)*(?: [a-z0-9]+(?:-[a-z0-9]+)*){0,4}$/.test(v));
+// A learned gate's showing: its digest (learned-gates.cjs).
+const SHOWING = type('a showing\'s digest: 16 hex digits', (v) => typeof v === 'string' && /^[0-9a-f]{16}$/.test(v));
+// A work unit's or a topic's name.
+const SLUG = type('a slug', (v) => typeof v === 'string' && KEBAB_SLUG_PATTERN.test(v));
+// A Claude Code session's id.
+const SESSION = type('a session id', (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(v));
+// Claude's sort of a call (16.3.7).
+const SORT = nullable(oneOf('one', 'several'));
+const LABEL = nullable(A_LABEL);
+const JUDGED = ['nothing', 'fix', 'loss'];
+const VERDICTS = [...JUDGED, 'skip'];
+// Where a verdict is given: a topic's decided screen, ready to build, an
+// investigation's conclusion, the finish gate, a quick-fix's close
+// (16.10.10), and the verdict queue (16.10.7).
+const VERDICT_POINTS = ['decided', 'ready-to-build', 'conclusion', 'finish', 'close', 'queue'];
+
+/** @type {Field[]} */
+const HEADER = [
+  field('v', VERSION),
+  field('id', ID),
+  field('at', TIME),
+  field('type', TEXT),
+  field('project', nullable(ID)),
+  field('project_name', nullable(TEXT)),
+  field('model', nullable(MODEL)),
+  field('session', nullable(SESSION)),
+];
+
+// How an answer came, whether it was free text, and the row that reads as.
+const HOW_ANSWERED = [
+  field('via', oneOf('pressed', 'typed')),
+  field('with_text', FLAG),
+  field('reading', nullable(KEY)),
+];
+
+/** @type {Schema} */
+const SCHEMA = {
+  version: 2,
+  events: {
+    gate: event([
+      field('gate', GATE),
+      field('recommended', nullable(KEY)),
+      field('picked', nullable(KEY)),
+      ...HOW_ANSWERED,
+      field('showing', nullable(SHOWING)),
+    ]),
+    raise: event([
+      field('entry', nullable(ID)),
+      field('replaces', nullable(ID)),
+      field('kind', KIND),
+      field('label', LABEL),
+      field('sort', SORT),
+      field('sealed', KEY),
+      field('answer', nullable(KEY)),
+      ...HOW_ANSWERED,
+      field('didnt_follow', FLAG),
+      field('dont_care', FLAG),
+      field('blocks_build', FLAG),
+      field('replaced_by', nullable(oneOf(...DECIDED_BY))),
+      field('always', nullable(ALWAYS_MARK)),
+      field('measured', nullable(EXPERIMENT)),
+      field('chain', nullable(ID)),
+      field('raised', TIME),
+      field('blind', FLAG),
+      field('from_before', FLAG, { version: 2, default: false }),
+    ]),
+    call: event([field('entry', ID), field('kind', KIND), field('label', LABEL), field('sort', SORT), field('blocks_build', nullable(FLAG))]),
+    verdict: event([field('entry', ID), field('verdict', oneOf(...VERDICTS)), field('point', oneOf(...VERDICT_POINTS))]),
+    'blind-draw': event([field('entry', ID), field('kind', KIND)]),
+    reversal: event([field('entry', ID), field('reverses', ID)]),
+    'position-switch': event([field('unit', SLUG), field('to', oneOf(...BUILD_POSITIONS))]),
+    convergence: event([field('unit', SLUG), field('topic', SLUG)]),
+    correction: event([field('entry', ID), field('kind', KIND), field('verdict', nullable(oneOf(...JUDGED)))]),
+    step: event([field('gate', GATE), field('row', KEY), field('showing', SHOWING)]),
+    'care-drop': event([field('kind', oneOf(...CARE_KINDS)), field('added', TIME)]),
+  },
+};
+
+const KEYBOARD = 'free text comes only from the keyboard';
+
+/**
+ * Where an answer naming `row` contradicts how it came: free text pressed,
+ * or naming a row; read as a row though it is no free text; a row's key
+ * naming none. Null where they agree.
+ * @param {unknown} row @param {Record<string, unknown>} event
+ * @returns {string|null}
+ */
+function answerContradiction(row, { via, with_text: withText, reading }) {
+  if (withText) {
+    if (via !== 'typed') return KEYBOARD;
+    return row === null ? null : 'free text names no row: the separate call reads one from it';
+  }
+  if (reading !== null) return 'only free text is read as a row';
+  return row === null ? 'an answer that is no free text names its row' : null;
+}
+
+/**
+ * Where a raise the person didn't follow contradicts itself: it has no
+ * answer, no reading and no entry, is no "don't care", and free text came
+ * from the keyboard.
+ * @param {Record<string, unknown>} event @returns {string|null}
+ */
+function notFollowedContradiction({ entry, answer, reading, via, with_text: withText, dont_care: dontCare }) {
+  if (entry !== null || answer !== null || reading !== null || dontCare) return 'a raise not followed has no answer, no reading and no entry, and is no "don\'t care"';
+  return withText && via !== 'typed' ? KEYBOARD : null;
+}
+
+/**
+ * Where the person's "don't care" contradicts itself: it lands the sealed
+ * answer, typed, as no free text.
+ * @param {Record<string, unknown>} event @returns {string|null}
+ */
+function dontCareContradiction({ answer, sealed, via, with_text: withText, reading }) {
+  return answer === sealed && via === 'typed' && !withText && reading === null ? null : 'a "don\'t care" lands the sealed answer, typed, as no free text';
+}
+
+/**
+ * Where a raise the person followed contradicts itself: it has its entry,
+ * and its answer agrees with how it came — a "don't care" as one does.
+ * @param {Record<string, unknown>} event @returns {string|null}
+ */
+function followedContradiction(event) {
+  if (event.entry === null) return 'a raise answered has the ledger entry its answer landed as';
+  return event.dont_care ? dontCareContradiction(event) : answerContradiction(event.answer, event);
+}
+
+/**
+ * What each event's fields must agree on: the contradiction, where they do
+ * not, else null.
+ * @type {Record<string, (event: Record<string, unknown>) => string|null>}
+ */
+const AGREEMENT = {
+  gate: (event) => answerContradiction(event.picked, event),
+  raise: (event) => (event.didnt_follow ? notFollowedContradiction(event) : followedContradiction(event)),
+  reversal: ({ entry, reverses }) => (entry === reverses ? 'an entry cannot reverse itself' : null),
+  correction: ({ kind, verdict }) => ((kind === null) === (verdict === null) ? 'a correction changes a kind or a verdict, one and not both' : null),
+};
+
+/**
+ * The version a line of event `type` carries: the one its shape was last
+ * changed in.
+ * @param {string} type
+ */
+function lineVersion(type) {
+  const { since, fields } = SCHEMA.events[type];
+  return Math.max(since, ...[...HEADER, ...fields].map(addedIn));
+}
+
+/**
+ * `value` read as an event of the shape its version names, every field in
+ * the schema's order; or why this engine cannot read it: no JSON object, no
+ * version, a newer release's version — `later`, for an engine that will —
+ * or a type its version does not hold, a field missing, of the wrong type,
+ * or one the type does not hold, or fields that contradict each other.
+ * @param {unknown} value
+ * @returns {{event: Record<string, unknown>} | {not: string, later?: true}}
+ */
+function readTrustEvent(value) {
+  if (!isObject(value)) return { not: 'it is not a JSON object' };
+  const { v, type } = value;
+  if (!VERSION.test(v)) return { not: `its v, ${JSON.stringify(v)}, is not a schema version` };
+  const version = /** @type {number} */ (v);
+  if (version > SCHEMA.version) return { not: `a newer Ledger wrote it, at version ${version}; this one reads up to ${SCHEMA.version}`, later: true };
+  const known = Object.keys(SCHEMA.events).filter((name) => SCHEMA.events[name].since <= version);
+  if (typeof type !== 'string' || !known.includes(type)) return { not: `its type ${JSON.stringify(type)} is none of version ${version}'s: ${known.join(', ')}` };
+  const read = readFields(value, [...HEADER, ...SCHEMA.events[type].fields], version, type);
+  const contradiction = 'event' in read ? AGREEMENT[type]?.(read.event) ?? null : null;
+  return contradiction === null ? read : { not: `its fields disagree: ${contradiction}` };
+}
+
+/**
+ * Event `type` as its line is written: `header`, the fields the engine
+ * sets, and the type's own `fields`, in the schema's order. Refuses a type
+ * the schema does not hold, a header field among `fields`, and fields that
+ * are not the type's own, saying why.
+ * @param {string} type @param {Record<string, unknown>} header @param {Record<string, unknown>} fields
+ * @returns {Record<string, unknown>}
+ */
+function trustEvent(type, header, fields) {
+  if (!Object.hasOwn(SCHEMA.events, type)) throw new Error(`the trust log holds no ${type} event: ${Object.keys(SCHEMA.events).join(', ')}`);
+  const set = Object.keys(fields).find((key) => HEADER.some((f) => f.name === key));
+  if (set !== undefined) throw new Error(`a ${type} event's own fields cannot set ${set}: the engine sets it`);
+  const read = readTrustEvent({ ...header, ...fields, v: lineVersion(type), type });
+  if ('not' in read) throw new Error(`a ${type} event cannot be recorded: ${read.not}`);
+  return read.event;
+}
+
+module.exports = { SCHEMA, SESSION, VERDICTS, VERDICT_POINTS, readTrustEvent, trustEvent };

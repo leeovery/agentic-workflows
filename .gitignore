@@ -7,6 +7,4 @@
 .tick/cache.db
 .tick/lock
 node_modules/
-.npm-cache/
-.workflows/.knowledge/store.bin
 tests/.cache/

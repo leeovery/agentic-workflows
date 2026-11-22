@@ -1,0 +1,348 @@
+'use strict';
+
+// The user docs (23.4) and the README, read as they ship. The book is the
+// chapters 23.4.2 lists and nothing else, so no planning.md and no
+// collaboration chapter apart from trust stand in it, and its index links
+// each (23.S11, 23.S17); history covers the reshape, and the tracker is met
+// in the configuration and build chapters (23.S11). The main session's
+// recommended minimum effort, medium, is stated (23.S13). The README's
+// pipeline table is the engine's own pipelines, so it names no retired
+// phase (23.S14). None of the author's own products and projects is named
+// in the docs or the README (23.S12, 23.4.6), but Portal, on the lines of
+// the configuration chapter's section that presents the multiplexers a
+// session is labelled in. The docs, the README, help
+// and the glossary call the product Ledger, never the name it was built
+// under, but where history tells of it or the glossary's avoid line names
+// it (23.S19, 23.1.4). The skills, the briefs, the agents, the engine, the
+// migrations not yet released, the tests, the book and the README never
+// call it the workflows either, in any of the forms `WORKFLOWS_NAMED`
+// lists — "the workflows", "workflows'" before a word, "Workflows" opening
+// a sentence on a verb, a workflow(s) state or project, the singular before
+// a word only the product takes or a verb, "the workflow engine", "the
+// Workflow" — even split across a line, but in history, a released
+// migration and its suite, the tests' fixtures, what a run writes, this
+// guard's own sentences and the glossary's avoid line; each form is held
+// to sentences of its own, and none to an ordinary word. Every link of the
+// docs' and the README's resolves, to its file and the heading it names.
+// "The docs" is every markdown file under `docs/`, the engine's command
+// reference among them; the book is its top level alone.
+//
+// Layer: unit. World: the repository's own files, read.
+
+require('./hermetic-env.cjs');
+
+const { describe, it } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+
+const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES } = require('../../skills/ledger-engine/scripts/kernel/manifest-schema.cjs');
+const { helpFiles, REPO } = require('./tool-names.cjs');
+
+const DOCS = path.join(REPO, 'docs');
+const GLOSSARY = path.join('skills', 'ledger-shared', 'references', 'glossary.md');
+
+/** Each chapter 23.4.2 lists, by its file; the index is the book's README. */
+const CHAPTERS = {
+  'an introduction': 'introduction.md',
+  'how it fits together': 'how-it-fits-together.md',
+  'work types': 'work-types.md',
+  discovery: 'discovery.md',
+  discussion: 'discussion.md',
+  experiments: 'experiments.md',
+  investigation: 'investigation.md',
+  specification: 'specification.md',
+  'the build': 'the-build.md',
+  review: 'review.md',
+  trust: 'trust.md',
+  verification: 'verification.md',
+  'state and git': 'state-and-git.md',
+  tracking: 'tracking.md',
+  'the knowledge base': 'knowledge-base.md',
+  'the engine': 'engine.md',
+  reliability: 'reliability.md',
+  configuration: 'configuration.md',
+  lifecycle: 'lifecycle-operations.md',
+  agents: 'agents.md',
+  contributing: 'contributing.md',
+  history: 'history.md',
+};
+const INDEX = 'README.md';
+
+/**
+ * The author's own products and projects (23.4.6, O9), those on his board and
+ * those the design record's rehearsal names: the distinctive names in any
+ * case, those that are also words capitalised. Tick and agntc, which the docs
+ * present, are not among them.
+ */
+const OWN_NAMES = [
+  /\b(?:SitRep|Switchboard|Turnstile|DocMan|Folio|Portal|rootshell|Fumi|Evvi|Codeintel|quiz-biz|Goosemates)\b/i,
+  /\b(?:Harness|Fabric|Kit|Stitch|Mint|Pigeon|Galley|Nod)\b/,
+];
+/**
+ * Where an own name may stand: the configuration chapter's section on
+ * session labels, which presents the multiplexers Ledger labels a session in,
+ * Portal among them — that name alone, and only on a line between the
+ * section's heading and the next.
+ */
+const LABEL_WAYS = { chapter: path.join('docs', 'configuration.md'), heading: '## Session labels', name: /\bPortal\b/g };
+/** The exception over the chapter as `text` reads. @param {(rel: string) => string} text */
+const presentsAMultiplexer = (text) => (/** @type {string} */ rel, /** @type {string} */ line, /** @type {number} */ at) => {
+  if (rel !== LABEL_WAYS.chapter) return false;
+  const { start, end } = sectionLines(text(rel), LABEL_WAYS.heading);
+  return at > start && at < end && !OWN_NAMES.some((names) => names.test(line.replace(LABEL_WAYS.name, '')));
+};
+const PRESENTS_A_MULTIPLEXER = presentsAMultiplexer((rel) => read(rel));
+/** The name the product was built under (23.1.4). */
+const OLD_NAMES = /\bLeeway\b/;
+const PRODUCT = /\bLedger\b/;
+/** Where an old name may stand: history, telling of it, and the glossary's avoid lines, naming it. */
+const TELLS_OF_IT = (/** @type {string} */ rel, /** @type {string} */ line) => rel === path.join('docs', 'history.md') || (rel === GLOSSARY && line.startsWith('_Avoid_:'));
+
+/** What may part two words of a name: whitespace, a line break, a comment's, a quote's or a heading's marker, and the engine's string wrap, `' +`. */
+const PARTS = String.raw`(?:\s|\/\/|\*|>|#|'\s*\+\s*')+`;
+/** Not after a word or a path: `.workflows/`. */
+const FREE = String.raw`(?<![\w./])`;
+/** The verbs a sentence that opens on the product's old name went on with. */
+const PRODUCT_VERBS = 'run|runs|can|keep|keeps|carry|carries|read|reads|write|writes|make|makes|ship|ships|own|owns|draw|draws|invoke|invokes|hand|hands|need|needs|offer|offers|ask|asks|say|says|show|shows|hold|holds|record|records|commit|commits|land|lands|give|gives|move|moves|will|never';
+
+/**
+ * The workflows as the product's name, each form with sentences it catches,
+ * even where a line break, a marker or the engine's string wrap parts the
+ * words. What none of them catches: the singular before any word but those
+ * named, "Workflows" capitalised mid-sentence, a sentence opening on
+ * "Workflows" and a verb not named, and the singular before "file" or
+ * "artifact", which are GitHub Actions' own words too.
+ */
+const WORKFLOWS_NAMED = [
+  { form: '"the workflows"', pattern: new RegExp(String.raw`\bthe${PARTS}workflows\b`, 'gi'), catches: ['The workflows run on Claude Code', '> The mod draws the\n> workflows\' menus', '// the\n// workflows', 'nothing in the \' +\n  \'workflows runs'] },
+  { form: '"workflows\'" before a word', pattern: new RegExp(String.raw`${FREE}workflows\\?['’](?=[ \t]+[a-z])`, 'gi'), catches: ['it holds workflows\' state', String.raw`it holds workflows\' state`, 'test(\'workflows’ harness stays on'] },
+  { form: '"Workflows" opening a sentence on a verb', pattern: new RegExp(String.raw`(?<=^[ \t>#*/|⚑(\["'\x60-]*|[.!?]\s+)Workflows(?=${PARTS}(?:${PRODUCT_VERBS})\b)`, 'gm'), catches: ['> Workflows run on Claude Code 2.1.287', 'the line before\n- Workflows offer a first session a short walk', '| Workflows keep |', '\'Workflows read up to version 3', '⚑ Workflows need a newer Claude Code', 'It stopped. Workflows can rename it'] },
+  { form: 'a workflow(s) state or project', pattern: new RegExp(String.raw`${FREE}workflows?${PARTS}(?:state|project)s?\b`, 'gi'), catches: ['there is no workflows state here', 'a workflow project', 'two workflows projects'] },
+  { form: 'the singular before a word only the product takes', pattern: new RegExp(String.raw`${FREE}workflow${PARTS}(?:harness|conversation|session|skill|prose|position|ontology|vocabulary|content|render|value|migration|side|agent)s?\b`, 'gi'), catches: ['sets the workflow harness', 'A workflow\n * conversation\'s compaction', 'chore: apply workflow migrations', 'its workflow side in', 'No custom workflow agents exist'] },
+  { form: '"the workflow engine"', pattern: new RegExp(String.raw`\bthe${PARTS}workflow${PARTS}engine\b|\bWorkflow${PARTS}Engine\b`, 'g'), catches: ['the workflow engine\'s gates', '# Workflow Engine'] },
+  { form: 'the singular at the head of a verb', pattern: new RegExp(String.raw`\b(?:the|no)${PARTS}workflow${PARTS}(?:cannot|can|runs|run|proceeds|instructs|keeps|carries|reads|makes|says)\b`, 'gi'), catches: ['the workflow cannot proceed', 'no workflow runs until it is initialised', 'continue as the workflow instructs'] },
+  { form: '"the Workflow" capitalised', pattern: new RegExp(String.raw`\b[Tt]he${PARTS}Workflow\b`, 'g'), catches: ['## Purpose in the Workflow'] },
+];
+/** Ordinary words no form may catch. */
+const ORDINARY = [
+  'never the workflow around it',
+  'Ledger is not a general workflow engine',
+  'the workflow file and the workflow artifact GitHub Actions keep',
+  'the old .workflows state',
+  'project: \'Agentic Engineering Workflows\'',
+  'description: \'…your CI workflows\'',
+  '## Workflows',
+  'Workflows differ between teams.',
+  '## Git Workflow',
+];
+/** The last migration released: its words, and those its suite pins, are never edited. */
+const LAST_RELEASED = 72;
+/** A migration's file or its suite's, its number captured. */
+const MIGRATION_NUMBERED = /^(?:skills\/ledger-migrate\/scripts\/migrations\/|tests\/scripts\/test-migration-)(\d{3})\b/;
+/** Where it stands in the tests: data standing for a project's own files, and this guard's own sentences. */
+const TESTS_NAMING_IT = [
+  path.join('tests', 'fixtures'),
+  path.join('tests', 'scripts', 'test-docs.cjs'),
+];
+/** What a run writes, never read: every folder so named. */
+const CACHE = '.cache';
+
+/** @param {string} rel from the repository's root */
+const read = (rel) => fs.readFileSync(path.join(REPO, rel), 'utf8');
+
+/** Whether `rel` is a released migration's file or its suite's. @param {string} rel */
+const released = (rel) => Number(rel.split(path.sep).join('/').match(MIGRATION_NUMBERED)?.[1] ?? Infinity) <= LAST_RELEASED;
+
+/**
+ * Every file under `tops`, from the repository's root, but a released
+ * migration's, those `skips` names and those in them, never descending into
+ * a cache. @param {string[]} tops @param {string[]} [skips] @returns {string[]}
+ */
+const filesUnder = (tops, skips = []) => tops.flatMap((top) => fs.readdirSync(path.join(REPO, top), { withFileTypes: true })
+  .map((entry) => ({ entry, rel: path.join(top, entry.name) }))
+  .filter(({ entry, rel }) => entry.name !== CACHE && !skips.includes(rel) && !released(rel))
+  .flatMap(({ entry, rel }) => (entry.isDirectory() ? filesUnder([rel], skips) : entry.isFile() ? [rel] : [])));
+
+/**
+ * Each place of `rel`'s that names the product the workflows: where, as
+ * `{file}:{line}: {match}`, and whether it stands, as the glossary's avoid
+ * line names it.
+ * @param {string} rel @returns {{at: string, stands: boolean}[]}
+ */
+function workflowsNamed(rel) {
+  const text = read(rel);
+  return WORKFLOWS_NAMED.flatMap(({ pattern }) => [...text.matchAll(pattern)]).map((found) => {
+    const start = text.lastIndexOf('\n', found.index) + 1;
+    return {
+      at: `${rel}:${text.slice(0, found.index).split('\n').length}: ${found[0]}`,
+      stands: rel === GLOSSARY && text.startsWith('_Avoid_:', start),
+    };
+  });
+}
+
+/** Every markdown file the book holds, from the repository's root. */
+const bookFiles = () => fs.readdirSync(DOCS).filter((name) => name.endsWith('.md')).map((name) => path.join('docs', name));
+
+/** Every markdown file under `docs/`, the book's and those in its folders beside it, from the repository's root. */
+const docsFiles = () => filesUnder(['docs']).filter((rel) => rel.endsWith('.md'));
+
+/**
+ * Each line of `files` that `pattern` finds, as `{file}:{line}: {match}`, but
+ * those `passes` lets stand, given the line and its index.
+ * @param {string[]} files @param {RegExp} pattern @param {(rel: string, line: string, at: number) => boolean} [passes]
+ */
+function linesNaming(files, pattern, passes = () => false) {
+  return files.flatMap((rel) => read(rel).split('\n').flatMap((line, i) => {
+    const found = pattern.exec(line);
+    return found && !passes(rel, line, i) ? [`${rel}:${i + 1}: ${found[0]}`] : [];
+  }));
+}
+
+/**
+ * Where a chapter's section under `heading` sits, by line index: its heading,
+ * and the next heading of its level or the chapter's end.
+ * @param {string} text @param {string} heading @returns {{start: number, end: number}}
+ */
+function sectionLines(text, heading) {
+  const lines = text.split('\n');
+  const start = lines.indexOf(heading);
+  assert.ok(start >= 0, `the chapter has ${heading}`);
+  const level = /^#+ /.exec(heading)?.[0] ?? '## ';
+  const end = lines.findIndex((line, i) => i > start && line.startsWith(level));
+  return { start, end: end < 0 ? lines.length : end };
+}
+
+/** A chapter's section under `heading`, to the next heading of its level. @param {string} text @param {string} heading */
+function sectionOf(text, heading) {
+  const start = text.indexOf(`\n${heading}\n`);
+  assert.ok(start >= 0, `the chapter has ${heading}`);
+  const level = /^#+ /.exec(heading)?.[0] ?? '## ';
+  const end = text.indexOf(`\n${level}`, start + heading.length + 1);
+  return text.slice(start, end < 0 ? undefined : end);
+}
+
+/**
+ * The README's pipeline table: each row's work type and its phases, lowercased, an
+ * aside in brackets dropped. @param {string} text @returns {{type: string, phases: string[]}[]}
+ */
+function pipelineTable(text) {
+  const table = /^\| Type \| Pipeline \|\n\|[-| ]+\|\n((?:\|.*\|\n?)+)/m.exec(text);
+  assert.ok(table, 'the README has its pipeline table, | Type | Pipeline |');
+  return table[1].trim().split('\n').map((row) => {
+    const [type, pipeline] = row.split('|').slice(1, 3).map((cell) => cell.trim().toLowerCase());
+    return { type, phases: pipeline.split('→').map((phase) => phase.replace(/\(.*?\)/g, '').trim()) };
+  });
+}
+
+/** A heading's anchor, as GitHub makes it. @param {string} heading */
+const anchorOf = (heading) => heading.toLowerCase().replace(/[^\w\s-]/g, '').trim().replace(/\s/g, '-');
+
+/**
+ * Each link of `rel`'s that goes nowhere: a file of the repository missing,
+ * or a heading of it, by its anchor, absent. A web address is passed over.
+ * @param {string} rel from the repository's root
+ */
+function brokenLinks(rel) {
+  const text = read(rel);
+  const targets = [...text.matchAll(/\]\(([^)\s]+)\)/g), ...text.matchAll(/<a href="([^"]+)"/g)].map(([, target]) => target);
+  return targets.filter((target) => !/^[a-z]+:/.test(target)).filter((target) => {
+    const [file, anchor] = target.split('#');
+    const linked = file === '' ? rel : path.join(path.dirname(rel), file);
+    if (!fs.existsSync(path.join(REPO, linked))) return true;
+    return anchor !== undefined && ![...read(linked).matchAll(/^#+ (.+)$/gm)].some(([, heading]) => anchorOf(heading) === anchor);
+  }).map((target) => `${rel}: ${target}`);
+}
+
+describe('the user docs (23.4)', () => {
+  it('every link of the docs\' and the README\'s goes somewhere, to the heading it names', () => {
+    assert.deepStrictEqual([...docsFiles(), 'README.md'].flatMap(brokenLinks), []);
+  });
+
+  it('23.S11, 23.S17: the book is the chapters 23.4.2 lists and its index, nothing else — no planning.md, no collaboration chapter apart from trust', () => {
+    assert.deepStrictEqual(bookFiles().map((rel) => path.basename(rel)).sort(), [...Object.values(CHAPTERS), INDEX].sort());
+  });
+
+  it('23.S17: the index links every chapter', () => {
+    const index = read(path.join('docs', INDEX));
+    assert.deepStrictEqual(Object.entries(CHAPTERS).filter(([, file]) => !index.includes(`](${file})`)).map(([chapter]) => chapter), []);
+  });
+
+  it('23.S11: history covers the reshape: its three strands, the state branch, the release, and the name it was built under', () => {
+    const reshape = sectionOf(read('docs/history.md'), '## The reshape');
+    for (const told of [/\bcontracts\b/, /\btrust\b/, /\bverification\b/, /\bbranch of its own\b/, /\bone release\b/, /\bLeeway\b/]) assert.match(reshape, told);
+  });
+
+  it('23.S11: the tracker is met in the configuration and the build chapters, where the task driver keeps the build\'s tasks in it', () => {
+    for (const file of ['configuration.md', 'the-build.md']) assert.match(read(path.join('docs', file)), /\btask driver\b[^.\n]*\bkeeps the build's tasks in your tracker\b/, `${file} covers the tracker`);
+  });
+
+  it('23.S13: the docs state the main session\'s recommended minimum effort, medium', () => {
+    assert.match(read('docs/configuration.md'), /\brecommends a minimum of \*\*medium\*\*/);
+  });
+
+  it('23.S12: none of the author\'s own products and projects is named in the docs or the README, but Portal where the configuration chapter presents the multiplexers that label a session', () => {
+    assert.deepStrictEqual(OWN_NAMES.flatMap((names) => linesNaming([...docsFiles(), 'README.md'], names, PRESENTS_A_MULTIPLEXER)), []);
+  });
+
+  it('the session labels\' exception holds Portal between that section\'s heading and the next alone: in any other chapter, elsewhere in the configuration chapter, or beside another own name, it is named', () => {
+    const lines = read(LABEL_WAYS.chapter).split('\n');
+    const { start, end } = sectionLines(lines.join('\n'), LABEL_WAYS.heading);
+    const naming = lines.map((line, at) => ({ line, at })).filter(({ line, at }) => at > start && at < end && /\bPortal\b/.test(line));
+    assert.ok(naming.length > 0, 'the section presents Portal');
+    for (const { line, at } of naming) assert.ok(PRESENTS_A_MULTIPLEXER(LABEL_WAYS.chapter, line, at));
+    const [{ line, at }] = naming;
+    assert.ok(!PRESENTS_A_MULTIPLEXER(path.join('docs', 'the-build.md'), line, at), 'the same line in another chapter');
+    assert.ok(!PRESENTS_A_MULTIPLEXER('README.md', line, at), 'the same line in the README');
+    assert.ok(!PRESENTS_A_MULTIPLEXER(LABEL_WAYS.chapter, line, start), 'on the section\'s heading');
+    assert.ok(!PRESENTS_A_MULTIPLEXER(LABEL_WAYS.chapter, line, end), 'at the next heading, past the section');
+    assert.ok(!PRESENTS_A_MULTIPLEXER(LABEL_WAYS.chapter, line, start - 1), 'before the section');
+    const withBeside = presentsAMultiplexer(() => `${LABEL_WAYS.heading}\n${line}\n${line} SitRep\n`);
+    assert.ok(withBeside(LABEL_WAYS.chapter, line, 1), 'a section holding both still passes Portal alone');
+    assert.ok(!withBeside(LABEL_WAYS.chapter, `${line} SitRep`, 2), 'another own name beside it, on a line of the section');
+  });
+
+  it('23.S19: the docs, the README, help and the glossary call the product Ledger, never an old name but where history tells of it or the glossary\'s avoid line names it', () => {
+    const surfaces = { docs: docsFiles(), readme: ['README.md'], help: helpFiles().filter((rel) => rel !== GLOSSARY), glossary: [GLOSSARY] };
+    for (const [surface, files] of Object.entries(surfaces)) assert.ok(files.some((rel) => PRODUCT.test(read(rel))), `${surface} names Ledger`);
+    assert.deepStrictEqual(linesNaming(Object.values(surfaces).flat(), OLD_NAMES, TELLS_OF_IT), []);
+  });
+
+  it('the skills, the briefs, the agents, the engine, the migrations not yet released, the tests, the docs and the README call the product Ledger, never the workflows, but the glossary\'s avoid line naming it', () => {
+    const files = [
+      ...filesUnder(['skills', 'agents']),
+      ...filesUnder(['tests'], TESTS_NAMING_IT),
+      ...docsFiles().filter((rel) => rel !== path.join('docs', 'history.md')),
+      'README.md',
+    ];
+    const named = files.flatMap(workflowsNamed);
+    const migration = (/** @type {string} */ name) => path.join('skills', 'ledger-migrate', 'scripts', 'migrations', name);
+
+    assert.ok(files.includes(GLOSSARY) && files.length > 100, 'the guard reads what ships');
+    assert.ok(files.includes(path.join('docs', 'engine', 'commands.md')), 'the guard reads the docs in folders of their own');
+    assert.ok(files.includes(migration('073-environment-linters.cjs')) && files.includes(migration('079-records.md')), 'the guard reads the migrations not yet released');
+    assert.ok(!files.includes(migration('072-roadmap-kinds-and-notes.cjs')) && !files.includes(path.join('tests', 'scripts', 'test-migration-072.cjs')), 'the guard passes a released migration and its suite by');
+    assert.ok(files.includes(path.join('tests', 'scripts', 'engine-harness.cjs')) && !files.some((rel) => rel.startsWith(TESTS_NAMING_IT[0])), 'the guard reads the tests, never their fixtures');
+    assert.ok(named.some(({ stands }) => stands), 'the guard meets the glossary\'s avoid line');
+    assert.deepStrictEqual(named.filter(({ stands }) => !stands).map(({ at }) => at), []);
+  });
+
+  it('each form of the workflows catches its own sentences, and none catches an ordinary word', () => {
+    const catching = (/** @type {RegExp} */ pattern, /** @type {string} */ text) => [...text.matchAll(pattern)].length > 0;
+    for (const { form, pattern, catches } of WORKFLOWS_NAMED) {
+      for (const text of catches) assert.ok(catching(pattern, text), `${form} catches ${JSON.stringify(text)}`);
+    }
+    assert.deepStrictEqual(ORDINARY.filter((text) => WORKFLOWS_NAMED.some(({ pattern }) => catching(pattern, text))), []);
+  });
+});
+
+describe('the README (23.4.8)', () => {
+  it('23.S14: its pipeline table is the engine\'s own pipelines, every work type once, naming no retired phase', () => {
+    const rows = pipelineTable(read('README.md'));
+    assert.deepStrictEqual(rows.map(({ type }) => type), VALID_WORK_TYPES);
+    for (const { type, phases } of rows) {
+      const pipeline = ['discovery', ...WORK_TYPE_PIPELINES[type]].filter((phase) => phase !== 'experiment' || phases.includes(phase));
+      assert.deepStrictEqual(phases, pipeline, `${type}'s row`);
+    }
+  });
+});

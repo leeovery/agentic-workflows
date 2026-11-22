@@ -1,0 +1,209 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// `engine board` in the review phase (ledger-engine/scripts/domain/
+// projections/board-review.cjs, 20.10): the round under way, each area by
+// its reports and the briefs this conversation issued for it in that round;
+// and the build past the cut in step, its fix phase with a task behind the
+// one in flight and the phase whose merge waits; and a decided topic a
+// changed answer holds, waiting in the review (12.15.4). A round recorded
+// failing is test-engine-board-review-rounds.cjs, one that ends the phase
+// test-engine-board-review-rounds-end.cjs; where the review stands on
+// every view, test-engine-board-review-standing.cjs.
+//
+// Layer: verb. World: the review phase's (review-world.cjs) — `pay`, its
+// build finished, its spec of two areas — copied for each test.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+const {
+  UNIT, SESSION_ID, EVERY, RECEIPT, FOUND, FAILING, useWorld, env, enter, inStep, reportText, reported, named, recorded, issued, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, firstRoundFailed, commitFile, ok, writeState, statePath, git,
+  readManifest, createManifest,
+} = require('./review-world.cjs');
+const { MADE } = require('./ledger-world.cjs');
+const { area, tests, facts, placed, reviewBoard } = require('./review-board-world.cjs');
+const { withEnv, holdLock, lockAttempts, layout, traced } = require('./engine-harness.cjs');
+
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
+const { issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
+const { runsRel } = require(path.join(SCRIPTS, 'domain/runs.cjs'));
+
+/** @type {string} */
+let dir;
+useWorld((made) => {
+  dir = made;
+});
+
+const { board, head } = reviewBoard(() => dir);
+
+describe('the round under way (20.10.1)', () => {
+  it('each area is waiting, being read since its brief was issued in this conversation (P15), or read with every finding its reports hold, as FOUND lists them (N5); FOUND each finding a landed report holds, by its call and report item, unnumbered; NOT PROVEN each scenario not proven at the change\'s tips — its work not landed among them, a later run on code since amended counting for nothing — as the round will judge it, and so its check\'s page, wherever the session has gone (N3); the banner says the round reads (N2)', () => {
+    enter();
+    const { res } = issued(['review-area', UNIT, '--area', '1', '--base', 'main', '--letter', 'a']);
+    const since = fs.statSync(issuedOf(res.id)).mtime.toISOString();
+    reported(1, ['2-refunds'], { '2-refunds-a': ['bug: A refund is lost.'], '2-refunds-b': ['bug: A refund is lost.', 'nit: A name.'] });
+    cutUnmerged();
+    git(dir, ['checkout', '-q', '-b', 'amended', 'main~1']);
+    commitFile(dir, 'src/receipt-again.js');
+    git(dir, ['checkout', '-q', 'main']);
+    const ranAt = (/** @type {string} */ name, /** @type {string} */ verdict, /** @type {string} */ ref) => writeState(dir, `${runsRel(UNIT, '1.S2')}/${name}.json`, JSON.stringify({
+      verdict, unfixed: false, at: '2026-11-02T10:00:00.000Z', checkout: dir, commits: [{ repo: '.', commit: git(dir, ['rev-parse', ref]).trim() }], task: null, evidence: [], recordings: [],
+    }));
+    ranAt('run-002', 'pass', `refs/heads/${fixBranch(2, 2, 'Refund twice')}`);
+    ranAt('run-003', 'fail', 'refs/heads/amended');
+    const reading = board();
+    ok(dir, ['session', 'label', 'roadmap'], { env: env() });
+
+    assert.deepStrictEqual(board(['--page', 'check:1:1.S2', '--page-unit', UNIT]).view.standing, 'proven');
+    assert.deepStrictEqual(reading, {
+      view: {
+        ...head(1),
+        built: 4,
+        recorded: false,
+        areas: [area('1', 'Cards', 'reading', { since }), area('2', 'Refunds', 'read', { found: 3 }), tests('waiting')],
+        found: [
+          { round: 1, finding: null, from: '2-refunds-a#1', area: '2-refunds', call: 'bug', text: 'A refund is lost.' },
+          { round: 1, finding: null, from: '2-refunds-b#1', area: '2-refunds', call: 'bug', text: 'A refund is lost.' },
+          { round: 1, finding: null, from: '2-refunds-b#2', area: '2-refunds', call: 'nit', text: 'A name.' },
+        ],
+        not_proven: [
+          { round: 1, scenario: '2.S1', standing: 'named, not run', text: 'Given a charge, when it is refunded whole, then the card is credited.' },
+        ],
+        inbox: [],
+        verdict: null,
+        fixes: null,
+      },
+      banner: { name: 'Pay', state: 'running', facts: placed(['feature', 'review'], 'round 1 reading') },
+    });
+  });
+
+  it('an area is read once both its reviewers\' reports are written, and only its own brief puts it being read', () => {
+    enter();
+    issued(['review-area', UNIT, '--area', '1', '--base', 'main', '--letter', 'a']);
+    writeState(dir, `${UNIT}/review/round-1/2-refunds-a.md`, reportText([]));
+
+    assert.deepStrictEqual(board().view.areas.map(({ state }) => state), ['reading', 'waiting', 'waiting']);
+  });
+
+  it('a brief issued for an area in one round never puts the next round\'s read of it being read; that round\'s own brief does, on its own clock (P15)', () => {
+    enter();
+    issued(['review-area', UNIT, '--area', '1', '--base', 'main', '--letter', 'a']);
+    reported(1, EVERY, FAILING);
+    fixPhaseWritten(3, [['Send the receipt', '§1.2']]);
+    recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
+    fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
+    enter();
+    named(['1-cards']);
+    const before = board().view.areas[0];
+    const { res } = issued(['review-area', UNIT, '--area', '1', '--base', 'main', '--letter', 'a']);
+
+    assert.deepStrictEqual([before, board().view.areas[0]], [area('1', 'Cards', 'waiting'), area('1', 'Cards', 'reading', { since: fs.statSync(issuedOf(res.id)).mtime.toISOString() })]);
+  });
+
+  it('a board call finds the project\'s repositories, and the branch each lands on, once — the tasks landed and the change both reading them (N6)', () => {
+    enter();
+    reported(1, ['2-refunds'], { '2-refunds-a': ['bug: A refund is lost.'], '2-refunds-b': [] });
+    const reads = (/** @type {string[]} */ args) => {
+      const { commands } = traced(() => board(args));
+      const times = (/** @type {RegExp} */ command) => commands.filter((each) => command.test(each)).length;
+      return [times(/^ls-files --stage -z$/), times(/config --get init\.defaultBranch$/)];
+    };
+
+    assert.deepStrictEqual([reads([]), reads(['--tab', 'all'])], [[1, 1], [1, 1]]);
+  });
+});
+
+/** Where the conversation keeps the record of whose a brief is. @param {string} id */
+function issuedOf(id) {
+  return withEnv({ LEDGER_CONFIG_DIR: env().LEDGER_CONFIG_DIR }, () => issuedPath(SESSION_ID, id));
+}
+
+describe('the build past the cut (P14, 7.2.4, 12.7.9)', () => {
+  it('in step, lists the review\'s fixes after the cut\'s phases, a fix task behind the one in flight, naming it, and the phase whose merge waits at its gate, which the banner leaves to the gate — drawn while a peer holds the writer lock, never trying it', (t) => {
+    fixPhaseWritten(3, [['Send the receipt', '§1.2'], ['Send it once', '§1.2']]);
+    ok(dir, ['task', 'start', UNIT, '3.1'], { env: env() });
+    ok(dir, ['task', 'start', UNIT, '3.2'], { env: env() });
+    cutUnmerged();
+    inStep();
+    ok(dir, ['enter', 'implementation', UNIT], { env: env() });
+    const lock = holdLock(statePath(dir, layout.lock));
+    const attempts = lockAttempts(t, lock, () => { throw new Error('the board waited on the writer lock'); });
+    const { view, banner } = board();
+
+    assert.deepStrictEqual([
+      view.phases.map(({ phase, name, state, tasks }) => [phase, name, state, tasks.map(({ task, state: stands, on }) => [task, stands, ...on].join(' '))]),
+      view.progress.running, banner.facts.map(({ text }) => text), attempts,
+    ], [
+      [
+        [1, 'Cards', 'complete', ['1.1 done', '1.2 done', '1.3 closed']],
+        [2, 'Refunds', 'merging', ['2.1 done', '2.2 done']],
+        [3, 'the review\'s fixes, round 1', 'running', ['3.1 building', '3.2 behind 3.1']],
+      ],
+      1, ['feature', 'build', '1 building'], [],
+    ]);
+  });
+
+  it('in step, shows a fix phase merging once its fix tasks are done and its stack waits at its merge gate', () => {
+    firstRoundFailed();
+    fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
+    inStep();
+    ok(dir, ['enter', 'implementation', UNIT], { env: env() });
+
+    assert.deepStrictEqual(board().view.phases.map(({ phase, state }) => [phase, state]), [[1, 'complete'], [2, 'complete'], [3, 'merging']]);
+  });
+
+  it('draws This session, the unit\'s tab and All work at round 1 reading and after a failed round, every fix phase the build may yet write read as not written, while a peer holds the writer lock, never trying it', (t) => {
+    enter();
+    const lock = statePath(dir, layout.lock);
+    const attempts = lockAttempts(t, lock, () => { throw new Error('the board waited on the writer lock'); });
+    const drawn = () => {
+      holdLock(lock);
+      const from = attempts.length;
+      const kinds = [[], ['--tab', 'unit'], ['--tab', 'all']].map((args) => board(args).view.kind);
+      fs.rmSync(lock);
+      return [kinds, attempts.slice(from)];
+    };
+    const reading = drawn();
+    firstRoundFailed();
+
+    assert.deepStrictEqual([reading, drawn()], [[['review', 'unit', 'all'], []], [['review', 'unit', 'all'], []]]);
+  });
+});
+
+describe('what else of the review waits on the person (20.10.1, 12.15.4)', () => {
+  /** A ledger write by the person at `address`: its short id. @param {string} verb @param {string} address @param {string[]} flags @param {Record<string, unknown>} content */
+  const write = (verb, address, flags, content) => ok(dir, ['ledger', verb, address, ...flags], { env: env(), stdin: JSON.stringify({ ...MADE, by: 'person', ...content }) }).id;
+
+  /** The unit's topic's answer, and a decision relying on it, written as its discussion would have before its spec: the answer's id. */
+  function decidedOnTopic() {
+    const manifest = readManifest(dir, UNIT);
+    const spec = statePath(dir, layout.unit(UNIT, 'spec.md'));
+    const held = fs.readFileSync(spec);
+    const { build: _build, cut: _cut, checklists: _checklists, ...before } = manifest;
+    createManifest(dir, UNIT, { ...before, phases: { discussion: { items: { [UNIT]: { status: 'in-progress' } } } } });
+    fs.rmSync(spec);
+    const topic = `${UNIT}.discussion.${UNIT}`;
+    const split = write('decide', topic, ['--answers', write('ask', topic, [], { text: 'Is a refund ever split?' })], { text: 'Never split.', why: 'Simple.' });
+    write('decide', topic, ['--answers', write('ask', topic, [], { by: 'claude', text: 'Does a receipt list refunds?' }), '--relies-on', split], { by: 'claude', text: 'One line per refund.', why: 'Never split.' });
+    fs.writeFileSync(spec, held);
+    createManifest(dir, UNIT, manifest);
+    return split;
+  }
+
+  it('a decided topic a changed answer holds, its door the review, is counted on the banner and listed in WAITING ON YOU, opening the topic', () => {
+    const split = decidedOnTopic();
+    write('replace', `${UNIT}.review`, ['--replaces', split, '--reason', 'changed-mind'], { drops: ['never split'], text: 'Split when asked.', why: 'Wanted.' });
+    enter();
+    const { view, banner } = board();
+
+    assert.deepStrictEqual([banner.facts.at(-1), view.waiting], [
+      { text: '1 waiting on you', needs: true },
+      [{ kind: 'affected', id: UNIT, text: 'Pay: a decision it relies on changed', page: `topic:${UNIT}` }],
+    ]);
+  });
+});

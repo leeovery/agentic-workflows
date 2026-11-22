@@ -1,5 +1,0 @@
-Execute skills/workflow-experiment-process/SKILL.md with arguments
-$0=epic, $1=search-relevance, and $2=synonym-handling. Play the
-described user through the amendment exchange, the run, and the
-conclusion. Stop at the hand-off that invokes the pipeline bridge — do
-not follow into it.

@@ -3,14 +3,16 @@
 // A query's ranking: each framing's searches blended, each chunk keeping its
 // best framing's score, each topic's records put in its order — and the
 // explanation `query --explain` prints beneath a result.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { searchFramings, mergeFramings, rerank, orderTopics, explanation } = require('../../skills/workflow-engine/scripts/kernel/knowledge/ranking.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
+const { searchFramings, mergeFramings, rerank, explanation } = require('../../skills/ledger-engine/scripts/kernel/knowledge/ranking.cjs');
 
 /** A feature's discussion chunk, `n` its ordinal, embedded as `embedding`. */
 function doc(n, content, embedding) {
@@ -23,7 +25,7 @@ function doc(n, content, embedding) {
     phase: 'discussion',
     topic: 'unit',
     confidence: 'medium',
-    source_file: '.workflows/unit/discussion/unit.md',
+    source_file: '.ledger/.knowledge/records/unit/unit.md',
     timestamp: new Date(2026, 0, 2).getTime(),
     embedding,
   };
@@ -112,55 +114,8 @@ describe('mergeFramings', () => {
   });
 });
 
-describe('orderTopics', () => {
-  /**
-   * A ranked result, best first by its place in the list: `topic` and
-   * `stage` say where it sits, a result with no topic outside any.
-   * @param {string} id @param {string|null} topic @param {number} [stage] @param {number} [kept]
-   */
-  function ranked(id, topic, stage = 0, kept = 1) {
-    return { id, topic, stage, scoring: { kept } };
-  }
-
-  /** @param {Array<Record<string, any>>} results */
-  const order = (results) => orderTopics(/** @type {any} */ (results), (r) => (r.topic ? { topic: r.topic, stage: r.stage } : null));
-  const ids = (results) => results.map((r) => r.id);
-
-  it("puts a topic's later record ahead of an earlier, within the places the topic's results hold", () => {
-    const placed = order([
-      ranked('research', 'auth', 1),
-      ranked('other', null),
-      ranked('discussion', 'auth', 2),
-      ranked('spec', 'auth', 3),
-    ]);
-    assert.deepStrictEqual(ids(placed), ['spec', 'other', 'discussion', 'research']);
-  });
-
-  it('keeps each stage in its own order, and a topic with one stage as it ranked', () => {
-    const placed = order([
-      ranked('discussion-a', 'auth', 2),
-      ranked('spec-a', 'auth', 3),
-      ranked('billing-b', 'billing', 2),
-      ranked('discussion-b', 'auth', 2),
-      ranked('spec-b', 'auth', 3),
-      ranked('billing-a', 'billing', 2),
-    ]);
-    assert.deepStrictEqual(ids(placed), ['spec-a', 'spec-b', 'billing-b', 'discussion-a', 'discussion-b', 'billing-a']);
-  });
-
-  it("orders a topic's results only among those that kept the same framing", () => {
-    const placed = order([ranked('discussion', 'auth', 2, 1), ranked('spec', 'auth', 3, 2)]);
-    assert.deepStrictEqual(ids(placed), ['discussion', 'spec']);
-  });
-
-  it('records the place its score gave a result the order moved, and nothing on one it left', () => {
-    const placed = order([ranked('research', 'auth', 1), ranked('other', null), ranked('spec', 'auth', 3)]);
-    assert.deepStrictEqual(placed.map((r) => r.scoring.moved), [{ from: 3, to: 1 }, undefined, { from: 1, to: 3 }]);
-  });
-});
-
 describe('explanation', () => {
-  it("prints each framing's scores, then the framing kept, worked through decay, boost and tier", () => {
+  it("prints each framing's scores, then the framing kept, worked through decay and boost", () => {
     const db = axisStore();
     const { cut, framings } = searchFramings(db, ['receipts', 'ledgers'], { limit: 10, similarity: 0.3, vectors: axis(2) });
     const dated = mergeFramings(framings, cut).map((r) => ({ ...r, progressElapsed: 3 }));
@@ -170,23 +125,13 @@ describe('explanation', () => {
     assert.deepStrictEqual(explanation(results.find((r) => r.id === VECTOR)), [
       'Framing 1: keyword absent, vector 0.6000 → 0.6000, blended 0.3600',
       `Framing 2: keyword ${ledgers} → 1.0000, vector 0.6000 → 0.6000, blended 0.7600`,
-      "Score: kept framing 2's 0.7600 × 0.9000 decay + 0.1000 boost + 0.0300 tier = 0.8140",
+      "Score: kept framing 2's 0.7600 × 0.9000 decay + 0.1000 boost = 0.7840",
     ]);
     assert.deepStrictEqual(explanation(results.find((r) => r.id === BOTH)), [
       `Framing 1: keyword ${receipts} → 1.0000, vector 1.0000 → 1.0000, blended 1.0000`,
       'Framing 2: keyword absent, vector 1.0000 → 1.0000, blended 0.6000',
-      "Score: kept framing 1's 1.0000 × 0.9000 decay + 0.1000 boost + 0.0300 tier = 1.0300",
+      "Score: kept framing 1's 1.0000 × 0.9000 decay + 0.1000 boost = 1.0000",
     ]);
-  });
-
-  it("closes on where its topic's order moved a result, and only a result it moved", () => {
-    const db = axisStore();
-    const { cut, framings } = searchFramings(db, ['receipts'], { limit: 10, similarity: 0.3, vectors: null });
-    const results = rerank(mergeFramings(framings, cut), [], 3);
-    /** @param {number} stage  the best result's, the other's the rest of 3 */
-    const staged = (stage) => (r) => ({ topic: 'unit', stage: r.id === results[0].id ? stage : 3 - stage });
-    assert.strictEqual(explanation(orderTopics(results, staged(1))[0]).at(-1), 'Topic order: moved from 2 by score to 1');
-    assert.match(explanation(orderTopics(results, staged(2))[0]).at(-1), /^Score: /);
   });
 
   it('keyword-only, prints the raw keyword score, and a framing whose hits lack the chunk as not in its top N', () => {
@@ -197,7 +142,7 @@ describe('explanation', () => {
     assert.deepStrictEqual(explanation(both), [
       `Framing 1: keyword ${raw.toFixed(4)}`,
       'Framing 2: not in its top 20',
-      `Score: kept framing 1's ${raw.toFixed(4)} × 1.0000 decay + 0.0000 boost + 0.0300 tier = ${(raw + 0.03).toFixed(4)}`,
+      `Score: kept framing 1's ${raw.toFixed(4)} × 1.0000 decay + 0.0000 boost = ${raw.toFixed(4)}`,
     ]);
   });
 

@@ -1,6 +1,0 @@
-Execute skills/workflow-discussion-process/SKILL.md with arguments
-$0=feature, $1=pay. Play the described user through the session and
-its conclusion. Stop at the hand-off that invokes the pipeline bridge
-— do not follow into it. If instead the session is still asking the
-user after they have said three times that they have nothing to add,
-stop there and report where the prose left you.

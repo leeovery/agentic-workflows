@@ -1,0 +1,1600 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: the ledger's write verbs (6.1.4) — ask, find, decide, replace,
+// hold, move and merge — each appending one event through the stream
+// (ledger.cjs) and committing the ledger to the state branch.
+//
+// - Where: the engine's dot-path, `<unit>.<phase>.<topic>`, or
+//   `<unit>.<phase>` for an entry made at the unit's level. The unit must
+//   exist, and the phase be discovery or one of its work type's. A topic
+//   exists only before the spec (4.11.2) and must hold an item in the phase;
+//   from the spec on every entry is the unit's, carrying no topic (5.2.3).
+//   The product's place, `product.discovery`, holds what is found of the
+//   product as a whole, which no unit holds (8.12.9): it has no manifest,
+//   no other phase and no topic. Discovery, at the product's place or a
+//   unit's, takes findings alone, none of them product-wide: nothing in it
+//   is decided (8.3.4, 8.9.6), so any other write made there, a raise's
+//   among them, is refused before anything is read.
+//   The unit and topic must be live (5.8.17), as a move's destination must,
+//   both before the lock and again under it. The session is the
+//   conversation's own (CLAUDE_CODE_SESSION_ID); a write without one is
+//   refused. A raise (raise.cjs), whose answer is a decision or the
+//   replacement of one, reads and checks its place and its links as
+//   `decide` or `replace` does before the lock, as it draws, refused in its
+//   own words; and what it lands — the person's answer, their keep of the
+//   decision Claude proposed to replace, or Claude's call the decision
+//   point lets proceed — is that write's, or the keep's, its place read
+//   again and its links checked under the same lock, after the raise's own
+//   check of the ledger, in the raise's words. A raise in the build that asks
+//   parks its task instead (raise.cjs): its `parked` line is landed the same
+//   way, its place read again and its links checked under the lock, and its
+//   number the raise's to mint there. A task closed in the build is taken off
+//   its questions by an `unparked` line naming the parks it is taken off,
+//   landed the same way (task-parks.cjs). While a question waits in the
+//   build, `decide` on it, `move` and `merge` of it, `replace` of the
+//   decision it would replace, and a merge naming that decision its
+//   duplicate are refused under the lock, naming its raise: the person
+//   answers it there alone (questions.cjs).
+// - What: the content comes as one JSON object on stdin, the links as flags,
+//   and the task an entry is made for, `--task {phase}.{n}`, a flag taken
+//   at the build's places alone (12.12.5), its entry's `task` null
+//   elsewhere. Content never carries a link, nor anything the engine gives. A link names
+//   an entry by a prefix of its id, resolved as git resolves a short hash
+//   (5.3.5), and must name what it links to: a decision answers a question
+//   (5.5.1), and only a question moves or merges. An entry is replaced,
+//   held or relied on only while current — a replacement names one entry,
+//   its siblings untouched (5.3.13) — a question is answered, has parts,
+//   moves or merges only while current, and a merge goes into a current
+//   decision — current by the one rule every read decides by
+//   (ledger-fold.cjs), so a question is named in its wording, the last of
+//   its line.
+// - Whose: a decision answers, and a move or a merge takes, a question of the
+//   write's own unit alone, while another unit's entry may be replaced
+//   (5.6.1) or held. An entry is the unit's, and stands on the topic, that
+//   the earliest entry of its chain in a live place was made on — normally
+//   the first, a question's wording on the topic its unit last moved it to
+//   — by the rule every read places it by (ledger-fold.cjs); before the
+//   spec, an entry of the unit is written on only from the topic it stands
+//   on: another topic's change goes to it by message (5.6.9, 10.2.2).
+// - How each relates: a question moves to another topic of its unit (5.3.3),
+//   or to an item of the project's roadmap as later, `roadmap:{item}`
+//   (9.5.4);
+//   a merge's duplicate is a current decision answering the question merged,
+//   by any of its wordings, standing or set aside (ledger-fold.cjs), other
+//   than the one it goes into (5.5.4, 5.5.5); a hold names the latest live
+//   replacement on the way to its current form, past each merge that holds,
+//   of an entry the held entry is held against: one it relies on, or the
+//   question an answer answers (5.6.10); a replacement's cause is never what
+//   it replaces, a new fact's being a finding and another topic's a decision
+//   standing on a topic other than the one the replaced entry stands on
+//   (5.3.8); who moved whom is what the departure rule allows
+//   (ledger-verdicts.cjs) — never the person's answer standing over Claude's
+//   lean on an entry Claude made, and on the person's replacement of a
+//   decision, what its reason and the entry it replaces allow. The person's
+//   entry carries no sealed answer of Claude's, and their decision on a
+//   chain Claude never leaned on, written or replaced, moves no one: their
+//   answer to Claude's lean is a raise's, which sealed the lean before they
+//   answered. The person's keep of a decision as it stands, where Claude
+//   proposed to replace it, is a raise's answer alone, no verb writing it:
+//   held to the links of the replacement it stood over — the decision
+//   current, the write's to replace, and the cause what the reason needs.
+// - What the content says of itself: the person's decision is their own,
+//   never given as "your call", "don't care" or carried over, each of which
+//   is Claude's line (9.2.14, 9.2.16, 21.6.5), and a decision is carried
+//   over only while the migration runs — at any other time it is a call of
+//   Claude's, which the trust log is told of; a finding says how it is
+//   known (9.2.12), a measurement — measured, or exploratory, in the
+//   conversation — with the command run and its result (9.9.7), and a
+//   command never comes without its result, nor a result without its
+//   command.
+// - What an experiment holds open (9.1.11): a question an experiment of its
+//   unit still running measures is closed by the person alone, their own
+//   answer or one they hand Claude; Claude's own decision, move or merge of
+//   it is refused, checked with the links, before the call and under the
+//   lock.
+// - What a point from before holds open: a question asked as one, its id in
+//   `from_before`, in any of its wordings, is answered by the person, their
+//   own answer or one they hand Claude, through its raise; Claude's own
+//   decision of it, and its merge into a decision standing as Claude's
+//   call, are refused, naming the raise, under the lock.
+// - What is the person's (16.5.7): a decision of theirs, as written or as
+//   their keep of it since gives it, is changed by a raise alone, which
+//   always asks them; Claude's own `ledger replace` of one is refused,
+//   checked with the links, before the call and under the lock. One they
+//   hand Claude is written as Claude's, given as they gave it.
+// - What the engine sets: a replacement's kind; the question a replaced
+//   decision answers, in its wording as the replacement is written — the
+//   last of its line, whatever wording the replaced decision named — so it
+//   is held against what it saw as an answer is (ledger-affected.cjs), or
+//   the wording the replaced decision named where every wording is set
+//   aside; the question a replaced question is part of; and, where the
+//   content leaves them out, the replaced entry's product-wide mark (5.2.5)
+//   and who moved whom where the departure rule settles it; a decision's
+//   being unchecked, where the one-decision check could not judge it
+//   (ledger-one-decision.cjs) — a raise's always, its draw having judged
+//   its rows without the why, so the late check judges it whole
+//   (ledger-late-check.cjs); and a decision's kind and whether it is hard to
+//   undo, from the labeller's label of its question (labeller.cjs, 16.11.2):
+//   Claude's own call labelled from the question's wording with its answer
+//   and what it rules out, the person's decision, or one carried over, from
+//   the wording alone, its answer not Claude's, and a raise's answer from
+//   the label its draw sealed — each null where no label was given.
+// - What the trust log is told (16.13.3, 16.13.4): Claude's answer — its
+//   decision, or its replacement of a decision, the person's among them
+//   (5.8.19) — logs a call, naming the entry, its kind and the label it was
+//   composed from, and its sort, null where no raise sorted it; the person's
+//   replacement the departure rule holds standing over a lean the entry it
+//   replaces held logs a reversal, naming the entry it reverses (16.12.1,
+//   ledger-verdicts.cjs). A decision carried over is no call of Claude's,
+//   and logs nothing (21.1.5, 21.6.5). Any other write logs nothing. What a
+//   raise lands logs the event the raise gives it: a raise answered, or a
+//   call carrying the decision point's sort; a fact's answer logs none, as
+//   it counts for nothing in the trust layer (16.3.8). The event is built
+//   in the command that writes its line, under the writer lock, and kept
+//   waiting in the conversation ahead of its line before the ledger's
+//   append, so what refuses it writes nothing, a project manifest holding
+//   no project_id among it; it lands after the ledger's append and before
+//   its commit, the trust log's own lock taken inside the writer's, where
+//   nothing but that append can fail: a failure is a warning, the event
+//   waiting on. A command killed between the two leaves it waiting for the
+//   conversation's next record or a boot, which lands it once the entry is
+//   in the ledger, and lets it go where the entry never came, so it is
+//   neither lost nor doubled (trust-log.cjs). What a raise lands lands as
+//   the id its raise minted, so its rerun after a kill past the append finds
+//   the ledger holding it, appends and logs nothing again, finishes what
+//   the kill left — the event kept ahead of the line landed, the ledger
+//   committed — and answers the line the ledger holds; its rerun after a
+//   kill before the append keeps its own event in place of the one the
+//   killed run kept, so the line has one event, the rerun's.
+// - When: all that the request alone settles is refused before the writer
+//   lock — its argv, its place, its content in the shape of the kind it
+//   writes, a replacement reading that kind from the ledger — so a malformed
+//   write never waits on a peer; then a decision's links are resolved and
+//   checked against the ledger as it stands — folded once before the lock,
+//   each question's wording kept for the label, a replacement's reading
+//   reused — so no call is spent on a write they refuse, and it is judged,
+//   one rule or several, by the separate Claude call, which no peer waits on
+//   either, and labelled meanwhile by the labeller's call, started before
+//   the check, waited on once it answers and cancelled where it refuses, so
+//   the write stays synchronous (kernel/claude-call.cjs `startClaude`).
+//   Under the lock the ledger is folded (ledger-fold.cjs), the place's
+//   liveness read again, every link resolved and its currency and relations
+//   checked again, the trust log's event built and kept, the entry appended,
+//   the event landed in the trust log, and the ledger committed, so no
+//   peer's write or lifecycle change lands between the check and the
+//   append. The answer is made once the lock is
+//   released: the entry's short id, the commit, and as warnings a push that
+//   failed and what a landing finished on the way said, which a refusal
+//   carries too.
+//   A question asked on a topic, or moved onto one, while the topic's
+//   decided close stands voids that close on the unit's manifest, under the
+//   same lock and in the same commit (checklist.cjs, 9.7.9), so the
+//   manifest alone says whether a close stands; a topic decided at its gate
+//   takes no question, asked there or moved to it — it reaches the topic as
+//   a message, which reopens it, a move made once it is sent (10.2.7). Past the unit's spec no topic
+//   takes a write: a change is the spec's, asked for there (4.11.2).
+//   Then, the lock released, the knowledge base's copies are rendered
+//   against the ledger and indexed (ledger-copies.cjs), a failure a warning
+//   on an entry that stands (22.6.15).
+// ---------------------------------------------------------------------------
+
+const { messageOf, stdinObject } = require('../kernel/call.cjs');
+const { VALID_PHASES, WORK_TYPE_PIPELINES, BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
+const { handedSession } = require('../kernel/process.cjs');
+const { appendEntry, carrying, commitLedger } = require('./ledger.cjs');
+const { HEADER, REASONS, ROADMAP, PRODUCT, entryKind, claudesCall, roadmapItemOf, eventFields } = require('./ledger-events.cjs');
+const { newId, shortId, resolveId } = require('./ledger-ids.cjs');
+const { ID_FACTS, foldLedger, readFolded, factsOf, standingOf, notCurrent, currentsOf, wordingOf, whoseDecision } = require('./ledger-fold.cjs');
+const { TOPIC_PHASES, hasItem, hasTopic, roadmapItemNamed, manifestOf, measuredBy, liveness } = require('./ledger-units.cjs');
+const { withStateLock, migrationRuns } = require('./state-worktree.cjs');
+const { HELD_NOTE } = require('./commit.cjs');
+const { checkOneDecision } = require('./ledger-one-decision.cjs');
+const { startLabel, questionText, labelFields } = require('./labeller.cjs');
+const { refreshLedgerCopies } = require('./ledger-copies.cjs');
+const { derivedMove, movedRefusal, reverses } = require('./ledger-verdicts.cjs');
+const { heldAgainst } = require('./ledger-affected.cjs');
+const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
+const { checkUnparked } = require('./questions.cjs');
+const { voidTopicClose, itemOf, itemArchived, bringBack } = require('./derivations.cjs');
+const { pastItsSpec } = require('./spec-standing.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
+
+/** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
+/** @typedef {import('./ledger-fold.cjs').Folded} Folded */
+/** The ledger as read before the lock: folded, and the text of each question's wording. @typedef {Folded & {asked: Map<string, string>}} Before */
+/** @typedef {import('./ledger-fold.cjs').Standing} Standing */
+/** @typedef {import('./ledger-fold.cjs').Liveness} Liveness */
+/** @typedef {import('./ledger-events.cjs').EntryKind} EntryKind */
+/** @typedef {import('./labeller.cjs').Label} Label */
+
+/**
+ * What a link must name: said for its refusal, and the test of the facts of
+ * the id it names.
+ * @typedef {{is: string, test: (facts: IdFacts) => boolean}} Names
+ */
+
+/**
+ * Whose entries a link may name: null, anyone's; 'topic', another unit's, or
+ * the write's own unit's, before the spec only its own topic's (5.6.9);
+ * 'unit', the write's own unit's alone, before the spec only its own
+ * topic's.
+ * @typedef {null|'topic'|'unit'} Owner
+ */
+
+/**
+ * A flag a write takes: the event's field it sets, how its value is shown in
+ * the usage, whether it must be given and whether it may be given more than
+ * once; and for a link, what it must name, whether that must be current,
+ * and whose it may be.
+ * @typedef {{field: string, shown: string, required: boolean, many: boolean, names: Names|null, current: boolean, owner: Owner}} Flag
+ */
+
+/**
+ * A write's links as its event holds them: an id, a list of ids, or null
+ * where an optional one is not given; a value as given.
+ * @typedef {Record<string, string|string[]|null>} Linked
+ */
+
+/**
+ * A write: the event it appends, the flags it takes, whether it is made
+ * from a topic alone, and what it checks of what it is given before the
+ * lock, of the places it names beyond its own as liveness reads them —
+ * before the lock and again under it — and of the entries its links name
+ * under it, each refused in the words of the command asking.
+ * @typedef {{
+ *   event: string,
+ *   flags: Flag[],
+ *   fromTopic: boolean,
+ *   checkGiven: (said: string, at: Address, given: Map<string, string[]>) => void,
+ *   checkLive: (said: string, at: Address, given: Map<string, string[]>, live: Liveness) => void,
+ *   checkLinked: (said: string, linked: Linked, read: Folded) => void,
+ * }} Write
+ */
+
+/**
+ * What a raise checks of the ledger under the lock, before its links
+ * resolve and its write's own checks run, so its refusal is the raise's
+ * own (raise.cjs).
+ * @typedef {(read: Folded) => void} ReadCheck
+ */
+
+/**
+ * Where a write is made: the dot-path naming it, the project's state root,
+ * the unit and its manifest — none at the product's place — the phase, and
+ * the topic, or null at the unit's level.
+ * @typedef {{dotpath: string, root: string, unit: string, manifest: Record<string, any>|null, phase: string, topic: string|null}} Address
+ */
+
+/** The entry at a place, read again from the ledger as it was read. @typedef {(place: import('./ledger.cjs').EntryPlace) => Record<string, unknown>} EntryAt */
+
+/**
+ * What a raise sets of its line from the ledger as it stands under the lock,
+ * folded and read again at any place through the lock's own read: a parked
+ * question's number and its call as sealed (questions.cjs); the task the
+ * person's answer to one is made for, the first it parks (raise.cjs).
+ * @typedef {(read: Folded, entryAt: EntryAt) => Record<string, unknown>} Mints
+ */
+
+/**
+ * What a ledger write checks under the lock of the entries its links name,
+ * resolved, beyond what every write of its kind checks.
+ * @typedef {(linked: Linked, read: Folded) => void} LinksCheck
+ */
+
+/**
+ * The trust log's event a write logs, built from the entry it is about to
+ * append, its id minted, and the label of a decision's question: the
+ * event's type and its own fields, and, for an event about a call a raise
+ * decided, the model it was decided under (trust-log.cjs).
+ * @typedef {(entry: Record<string, unknown>, label: Label|null) => {type: string, fields: Record<string, unknown>, model?: string|null}} Logs
+ */
+
+/**
+ * A write as asked, read whole and checked before the lock: the verb, the
+ * command asking, as its refusals name it, where it is made, the session,
+ * each flag's values by field, the kind of entry it writes — null for an
+ * event that is no entry — its content, checked in that kind's shape, and,
+ * for a decision, whether it lands unchecked: true until the one-decision
+ * check finds it holds one rule — and its question's label, null until the
+ * labeller gives one; the id it lands as, minted by its raise,
+ * or null for one minted under the lock; what it checks of the ledger under
+ * the lock before its links resolve, and after, and what it sets from it
+ * there; the trust log's event it logs, or null; and the ledger as it stood
+ * before the lock, folded the first time a step reads it.
+ * @typedef {{verb: string, said: string, write: Write, at: Address, session: string, given: Map<string, string[]>, kind: EntryKind|null, content: Record<string, unknown>, unchecked: boolean, label: Label|null, id: string|null, checkRead: ReadCheck, checkLinks: LinksCheck, mints: Mints, logs: Logs|null, before: () => Before}} Request
+ */
+
+/**
+ * A write landed: the entry's short id, the commit, a note where the commit
+ * is pending, and any warnings.
+ * @typedef {{id: string, committed: string|null, note?: string, warnings?: string[]}} Landed
+ */
+
+/**
+ * What a raise lands, landed: the line appended, or null; and the line the
+ * ledger already held at its id — written by an earlier run, so nothing was
+ * appended — or null.
+ * @typedef {{landed: Landed, line: Record<string, unknown>|null, held: Record<string, unknown>|null}} RaiseLanded
+ */
+
+/** Where a raise was drawn: its unit, its phase, and its topic, or null at the unit's level. @typedef {{unit: string, phase: string, topic: string|null}} Place */
+
+/**
+ * How a raise lands: as `ledger decide` writes, answering its question; as
+ * `ledger replace` writes, replacing a decision; as the person's keep of
+ * that decision as it stands; as `ledger ask` writes, the question a
+ * product-record line answers at the decided gate's yes (decided.cjs);
+ * asked in the build, as the question parked with its task; or, as a task
+ * closes in the build, as that task taken off its questions.
+ * @typedef {'decide'|'replace'|'keep'|'ask'|'park'|'unpark'} Lands
+ */
+
+/**
+ * What a raise lands (raise.cjs) — the person's answer to it, or Claude's
+ * call the decision point lets proceed: the command asking, as its refusals
+ * name it; where the raise was drawn; how it lands, and its links by full
+ * id, as the raise sealed them; the line's content; the label its draw
+ * gave the call, null where it gave none, and a decision it lands takes its
+ * kind from; the id it lands as,
+ * minted at the draw, or null for one minted under the lock; the trust
+ * log's event it logs, or null — a fact's answer logs none; what it checks
+ * of the ledger under the lock before its links resolve; and what it sets
+ * from it there, where it sets anything.
+ * @typedef {{said: string, place: Place, lands: Lands, linked: Linked, content: Record<string, unknown>, label?: Label|null, id: string|null, logs: Logs|null, checkRead: ReadCheck, mints?: Mints}} Raised
+ */
+
+/** @param {string} is @param {(facts: IdFacts) => boolean} test @returns {Names} */
+function names(is, test) {
+  return { is, test };
+}
+
+const AN_ENTRY = names('an entry', (f) => f.kind !== null);
+const A_QUESTION = names('a question', (f) => f.kind === 'question');
+const A_DECISION = names('a decision', (f) => f.kind === 'decision');
+const A_REPLACEMENT = names('a replacement', (f) => f.event === 'replaced');
+
+/**
+ * What a reason's cause must name, where the reason needs one (5.3.8): said
+ * for its refusal, and the test of the cause's facts and where it stands
+ * against where the replaced entry stands.
+ * @type {Readonly<Record<string, {is: string, test: (cause: IdFacts, causeAt: Standing, replacedAt: Standing) => boolean}>>}
+ */
+const CAUSES = Object.freeze({
+  'new-fact': { is: 'a finding', test: (cause) => cause.kind === 'finding' },
+  'other-topic': {
+    is: 'a decision on a topic other than the replaced entry\'s',
+    test: (cause, causeAt, replacedAt) => cause.kind === 'decision' && (causeAt.unit !== replacedAt.unit || causeAt.topic !== replacedAt.topic),
+  },
+});
+
+/**
+ * A link to one entry.
+ * @param {string} field @param {Names} what
+ * @param {{required?: boolean, current?: boolean, owner?: Owner}} [opts]
+ * @returns {Flag}
+ */
+function link(field, what, { required = false, current = false, owner = null } = {}) {
+  return { field, shown: '<id>', required, many: false, names: what, current, owner };
+}
+
+/** The links to the current entries an entry relies on, any number of them. @type {Flag} */
+const RELIES_ON = Object.freeze({ field: 'relies_on', shown: '<id>', required: false, many: true, names: AN_ENTRY, current: true, owner: null });
+
+/** A plain value, naming no entry. @param {string} field @param {string} shown @returns {Flag} */
+function plain(field, shown) {
+  return { field, shown, required: true, many: false, names: null, current: false, owner: null };
+}
+
+/** A replacement's reason, one of the four (5.6.2). */
+const REASON = plain('reason', `<${REASONS.join('|')}>`);
+
+/** The task an entry is made for, at the build's places alone (12.12.5). @type {Flag} */
+const TASK = Object.freeze({ ...plain('task', '<phase>.<n>'), required: false });
+
+/** A write that checks nothing of its own. */
+function nothingToCheck() {}
+
+/** What a write sets of its line under the lock where nothing is minted. @type {Mints} */
+const NOTHING_MINTED = () => ({});
+
+/** What a write checks of its links where it checks nothing of its own. @type {LinksCheck} */
+function linksUnchecked() {}
+
+/**
+ * A decision on, a move or a merge of, or a replacement of, what a question
+ * waiting in the build is about — a merge's duplicate among them, which sets
+ * aside the decision a replacement waiting would replace — refused in the
+ * words of `said`: the person answers it through its raise alone
+ * (questions.cjs).
+ * @param {string} said
+ * @returns {LinksCheck}
+ */
+function unparked(said) {
+  return ({ answers, question, replaces, duplicate }, read) => {
+    checkUnparked(read, { answers: oneId(answers ?? question), replaces: oneId(replaces) }, said);
+    if (typeof duplicate === 'string') checkUnparked(read, { replaces: duplicate }, said);
+  };
+}
+
+/**
+ * Claude's own replacement of a decision that is the person's (16.5.7) —
+ * theirs as written, or as their keep of it since gives it — refused in the
+ * words of `said`: changing it always comes to them, through a raise at the
+ * write's `place` for its reason and cause.
+ * @param {string} said @param {string} place
+ * @returns {LinksCheck}
+ */
+function theirsUnreplaced(said, place) {
+  return ({ replaces, reason, cause }, read) => {
+    const entry = oneId(replaces);
+    if (entry === null || whoseDecision(read, entry) !== 'person') return;
+    const short = (/** @type {string} */ id) => shortId(id, read.facts.keys());
+    const caused = oneId(cause);
+    throw new Error(`${said}: ${short(entry)} is the person's decision — Claude's change to it always comes to them: raise ${place} --replaces ${short(entry)} --reason ${reason}${caused === null ? '' : ` --cause ${short(caused)}`}`);
+  };
+}
+
+/**
+ * What a ledger verb checks of its links under the lock, and before it for
+ * a decision: what a question waiting in the build is about, where it
+ * answers one, and the person's decision, where Claude's own call at
+ * `place` would replace one.
+ * @param {string} said @param {Write} write @param {EntryKind|null} kind @param {Record<string, unknown>} content @param {string} place
+ * @returns {LinksCheck}
+ */
+function linksChecked(said, write, kind, { by, given }, place) {
+  const checks = [
+    ...(ANSWERING.has(write) ? [unparked(said)] : []),
+    ...(write === WRITES.replace && kind === 'decision' && by === 'claude' && given === 'own' ? [theirsUnreplaced(said, place)] : []),
+  ];
+  return (linked, read) => {
+    for (const check of checks) check(linked, read);
+  };
+}
+
+/** A link naming one entry, or null. @param {string|string[]|null|undefined} linked */
+function oneId(linked) {
+  return typeof linked === 'string' ? linked : null;
+}
+
+/**
+ * @param {string} event @param {Flag[]} flags
+ * @param {{fromTopic?: boolean, checkGiven?: Write['checkGiven'], checkLive?: Write['checkLive'], checkLinked?: Write['checkLinked']}} [opts]
+ * @returns {Write}
+ */
+function writeOf(event, flags, { fromTopic = false, checkGiven = nothingToCheck, checkLive = nothingToCheck, checkLinked = nothingToCheck } = {}) {
+  return { event, flags, fromTopic, checkGiven, checkLive, checkLinked };
+}
+
+/** @type {Readonly<Record<string, Write>>} */
+const WRITES = Object.freeze({
+  ask: writeOf('asked', [link('part_of', A_QUESTION, { current: true }), RELIES_ON, TASK]),
+  find: writeOf('found', [RELIES_ON, TASK]),
+  decide: writeOf('decided', [link('answers', A_QUESTION, { required: true, current: true, owner: 'unit' }), RELIES_ON, TASK]),
+  replace: writeOf('replaced', [
+    link('replaces', AN_ENTRY, { required: true, current: true, owner: 'topic' }),
+    REASON,
+    link('cause', AN_ENTRY),
+    RELIES_ON,
+    TASK,
+  ], { checkGiven: checkCauseGiven, checkLinked: causeChecked('replaces') }),
+  hold: writeOf('still-holds', [
+    link('entry', AN_ENTRY, { required: true, current: true, owner: 'topic' }),
+    link('after', A_REPLACEMENT, { required: true }),
+  ], { checkLinked: checkHeld }),
+  move: writeOf('moved', [link('question', A_QUESTION, { required: true, current: true, owner: 'unit' }), plain('to', `<topic|${ROADMAP}<item>>`)], {
+    fromTopic: true, checkGiven: checkDestination, checkLive: checkDestinationLive,
+  }),
+  merge: writeOf('merged', [
+    link('question', A_QUESTION, { required: true, current: true, owner: 'unit' }),
+    link('into', A_DECISION, { required: true, current: true }),
+    link('duplicate', A_DECISION, { current: true }),
+  ], { checkLinked: checkDuplicate }),
+});
+
+/** The writes refused while a question waits in the build on what they name: its raise alone answers it. */
+const ANSWERING = new Set([WRITES.decide, WRITES.replace, WRITES.move, WRITES.merge]);
+
+/**
+ * The person keeping a decision as it stands where Claude proposed to
+ * replace it: a raise's answer alone writes it (raise.cjs), so no verb
+ * takes it. It is held to the links the replacement it stood over was:
+ * the decision current and the write's to make, and the cause what the
+ * reason needs.
+ */
+const KEEP = writeOf('kept', [
+  link('entry', A_DECISION, { required: true, current: true, owner: 'topic' }),
+  REASON,
+  link('cause', AN_ENTRY),
+], { checkGiven: checkCauseGiven, checkLinked: causeChecked('entry') });
+
+/**
+ * A question the build needs the person for, parked with its task, or with
+ * none: a raise's alone writes it (raise.cjs), so no verb takes it. It is
+ * held to the links the answer it waits for will be: the question open and
+ * the unit's own, or the decision current and the write's to replace, and
+ * the cause what the reason needs.
+ */
+const PARK = writeOf('parked', [
+  link('question', A_QUESTION, { current: true, owner: 'unit' }),
+  link('replaces', A_DECISION, { current: true, owner: 'topic' }),
+  { ...REASON, required: false },
+  link('cause', AN_ENTRY),
+  RELIES_ON,
+  TASK,
+], { checkLinked: causeChecked('replaces') });
+
+/**
+ * A task closed in the build, taken off the questions parking it, naming
+ * the parks it is taken off: `task close` alone writes it (task-parks.cjs),
+ * so no verb takes it.
+ */
+const UNPARK = writeOf('unparked', [
+  { ...TASK, required: true },
+  { field: 'parks', shown: '<id>', required: true, many: true, names: names('a park', (f) => f.event === 'parked'), current: false, owner: null },
+]);
+
+/** The writes a raise lands through, by how it lands. @type {Readonly<Record<Lands, Write>>} */
+const RAISED = Object.freeze({ decide: WRITES.decide, replace: WRITES.replace, keep: KEEP, ask: WRITES.ask, park: PARK, unpark: UNPARK });
+
+/** Every field a flag sets, whichever write takes it: never content. */
+const FLAG_FIELDS = new Set([...Object.values(WRITES), KEEP, PARK, UNPARK].flatMap((w) => w.flags.map((flag) => flag.field)));
+
+/** The fields the engine gives an entry, never its content. */
+const ENGINE_FIELDS = new Set([...HEADER.map((f) => f.name), 'of', 'unchecked', 'kind', 'hard_to_undo', 'number']);
+
+/** The kinds of finding that are measurements, whose command the closing pass runs again (9.9.7). */
+const MEASURED = Object.freeze(['measured', 'exploratory']);
+
+/** The content a write may leave out, and what it takes instead. @type {Readonly<Record<string, unknown>>} */
+const DEFAULTS = Object.freeze({
+  rules_out: [], product_wide: false, sealed: null, alternatives: [], evidence: [], given: 'own', command: null, result: null, cites: [], from_before: null,
+});
+
+/** @param {Flag} flag */
+function flagName(flag) {
+  return `--${flag.field.replaceAll('_', '-')}`;
+}
+
+/** @param {Flag} flag */
+function flagUsage(flag) {
+  const shown = `${flagName(flag)} ${flag.shown}${flag.many ? ' …' : ''}`;
+  return flag.required ? shown : `[${shown}]`;
+}
+
+/**
+ * @param {string} verb @param {string} [said] the command, as its usage names it
+ * @param {string[]} [without] the fields of the verb's flags the command takes no flag for
+ */
+function verbUsage(verb, said = `ledger ${verb}`, without = []) {
+  const flags = WRITES[verb].flags.filter((flag) => !without.includes(flag.field));
+  return [`${said} <work-unit>.<phase>${WRITES[verb].fromTopic ? '.<topic>' : '[.<topic>]'}`, ...flags.map(flagUsage)].join(' ');
+}
+
+/** The write verbs' usage, a line each, its content as JSON on stdin. */
+const LEDGER_USAGE = Object.keys(WRITES).map((verb) => `${verbUsage(verb)}   (content as JSON on stdin)`).join('\n');
+
+/**
+ * A write's argv read: the dot-path it names, and each flag's values by
+ * field, in the order given. Refuses, in the words of `said`, the command
+ * asking, a flag the verb does not take — nor the command, for a field
+ * `without` names — a flag with no value, a flag given more often than it
+ * takes, a missing required flag, and anything but one dot-path, each with
+ * `usage`.
+ * @param {string} verb @param {string[]} args @param {string} said @param {string} usage @param {string[]} [without]
+ * @returns {{dotpath: string, given: Map<string, string[]>}}
+ */
+function readArgs(verb, args, said, usage, without = []) {
+  const { flags } = WRITES[verb];
+  /** @type {Map<string, string[]>} */
+  const given = new Map(flags.map((flag) => [flag.field, []]));
+  /** @type {string[]} */
+  const positional = [];
+  for (let i = 0; i < args.length; i += 1) {
+    if (!args[i].startsWith('--')) {
+      positional.push(args[i]);
+      continue;
+    }
+    const flag = flags.find((f) => flagName(f) === args[i] && !without.includes(f.field));
+    if (flag === undefined) throw new Error(`${said} takes no ${args[i]} — ${usage}`);
+    const named = args[i + 1];
+    if (named === undefined || named.startsWith('--') || named === '') throw new Error(`${said}: ${args[i]} takes ${flag.shown} — ${usage}`);
+    /** @type {string[]} */ (given.get(flag.field)).push(named);
+    i += 1;
+  }
+  if (positional.length !== 1) throw new Error(usage);
+  for (const flag of flags) {
+    const count = /** @type {string[]} */ (given.get(flag.field)).length;
+    if (flag.required && count === 0) throw new Error(`${said} needs ${flagName(flag)} ${flag.shown} — ${usage}`);
+    if (!flag.many && count > 1) throw new Error(`${said} takes one ${flagName(flag)} — ${usage}`);
+  }
+  return { dotpath: positional[0], given };
+}
+
+/** The phases a unit is written in: discovery, and its work type's. @param {Record<string, any>} manifest @returns {string[]} */
+function phasesOf(manifest) {
+  const workType = /** @type {keyof typeof WORK_TYPE_PIPELINES} */ (manifest.work_type);
+  return ['discovery', ...(Object.hasOwn(WORK_TYPE_PIPELINES, workType) ? WORK_TYPE_PIPELINES[workType] : [])];
+}
+
+/**
+ * Where `write` is made, read from its dot-path. Refuses, in the words of
+ * `said`, the command asking, a path of another shape, a phase that is none,
+ * anything but a finding in discovery, a place of the product's but its
+ * own, a unit that does not exist, a phase its work type does not have, a
+ * topic from the spec on, a topic with no item in the phase, and a unit or
+ * topic that is not live.
+ * @param {string} cwd @param {string} said @param {string} dotpath @param {Write} write
+ * @returns {Address}
+ */
+function addressOf(cwd, said, dotpath, write) {
+  const parts = dotpath.split('.');
+  if (parts.length < 2 || parts.length > 3 || parts.some((part) => part === '')) {
+    throw new Error(`${said}: "${dotpath}" names no place to write — <work-unit>.<phase>.<topic>, or <work-unit>.<phase> at the unit's level`);
+  }
+  const [unit, phase, topic = null] = parts;
+  if (!VALID_PHASES.includes(phase)) throw new Error(`${said}: "${phase}" is no phase — one of ${VALID_PHASES.join(', ')}`);
+  if (phase === 'discovery' && write.event !== 'found') throw new Error(`${said}: nothing is decided in discovery — carry it as input`);
+  const root = stateRoot(cwd);
+  if (unit === PRODUCT) return productAddress(said, dotpath, root, phase, topic);
+  const manifest = manifestOf(root, unit);
+  if (manifest === null) throw new Error(`${said}: there is no work unit "${unit}"`);
+  const phases = phasesOf(manifest);
+  if (!phases.includes(phase)) throw new Error(`${said}: ${unit} has no ${phase} phase — its work type, ${manifest.work_type}, has ${phases.join(', ')}`);
+  if (topic !== null && !TOPIC_PHASES.includes(phase)) {
+    throw new Error(`${said}: a topic exists only before the spec, and ${phase} is the unit's — write at ${unit}.${phase}`);
+  }
+  checkItemHeld(said, { unit, phase, topic }, () => manifest);
+  if (topic !== null && pastItsSpec(cwd, manifest)) {
+    throw new Error(`${said}: ${unit} has its spec — a topic exists only before it, and a change the person asks for is settled at ${unit}.specification`);
+  }
+  if (write.event === 'asked' && topic !== null) checkUndecided(said, manifest, topic, 'topic send');
+  const at = { dotpath, root, unit, manifest, phase, topic };
+  checkPlaceLive(said, at, liveness(root));
+  return at;
+}
+
+/**
+ * The product's place (8.12.9), which has no manifest and is always live.
+ * Refuses, in the words of `said`, the command asking, a phase but
+ * discovery and a topic.
+ * @param {string} said @param {string} dotpath @param {string} root @param {string} phase @param {string|null} topic
+ * @returns {Address}
+ */
+function productAddress(said, dotpath, root, phase, topic) {
+  if (phase !== 'discovery' || topic !== null) {
+    throw new Error(`${said}: "${dotpath}" is no place of the product's — what is found of the product as a whole goes at ${PRODUCT}.discovery`);
+  }
+  return { dotpath, root, unit: PRODUCT, manifest: null, phase, topic };
+}
+
+/**
+ * Refuse, in the words of `said`, the command asking, a write on a topic
+ * whose item the unit's manifest does not hold in the phase — as the address
+ * read it, and again under the writer lock, so a topic removed meanwhile
+ * takes nothing. A place at the unit's level names no item, and no manifest
+ * is read for it.
+ * @param {string} said @param {{unit: string, phase: string, topic: string|null}} at
+ * @param {() => Record<string, any>|null} manifestNow the unit's manifest, read when a topic needs it
+ */
+function checkItemHeld(said, { unit, phase, topic }, manifestNow) {
+  if (topic !== null && !hasItem(manifestNow() ?? {}, phase, topic)) throw new Error(`${said}: ${unit} has no topic "${topic}" in ${phase}`);
+}
+
+/**
+ * Refuse, in the words of `said`, the command asking, a write on a unit or
+ * topic that is not live as `live` reads it (5.8.17).
+ * @param {string} said @param {Address} at @param {Liveness} live
+ */
+function checkPlaceLive(said, at, live) {
+  const dead = live(at.unit, at.topic);
+  if (dead !== null) throw new Error(`${said}: ${at.dotpath} takes no writes — ${dead}`);
+}
+
+/**
+ * Refuse, in the words of `said`, the command asking, a plain value given
+ * that the event cannot hold: a reason outside the four (5.6.2) — the
+ * blind question's on Claude's call gone ahead the engine's alone — a
+ * topic that is no text, a task not as screens show one.
+ * @param {string} said @param {Write} write @param {Map<string, string[]>} given
+ */
+function checkValues(said, { event, flags }, given) {
+  for (const flag of flags.filter((f) => f.names === null)) {
+    const [named] = /** @type {string[]} */ (given.get(flag.field));
+    if (named === undefined) continue;
+    const { type } = /** @type {import('./ledger-events.cjs').Field} */ (eventFields(event, contentKind(event)).find((f) => f.name === flag.field));
+    const reason = flag.field === REASON.field;
+    if (!type.test(named) || (reason && !REASONS.includes(named))) throw new Error(`${said}: ${flagName(flag)} is ${reason ? `one of ${REASONS.join(', ')}` : type.is} — not "${named}"`);
+  }
+}
+
+/**
+ * The kind of entry whose content holds an event's fields beyond its own: a
+ * replacement's task is in the content of any kind, a decision's as well as
+ * the rest; null for any other event.
+ * @param {string} event
+ * @returns {EntryKind|null}
+ */
+function contentKind(event) {
+  return event === 'replaced' ? 'decision' : null;
+}
+
+/**
+ * Refuse, in the words of `said`, the command asking, a task given for an
+ * entry made outside the build (12.12.5).
+ * @param {string} said @param {Address} at @param {Map<string, string[]>} given
+ */
+function checkTaskPlace(said, at, given) {
+  if ((given.get('task') ?? []).length > 0 && !BUILD_PHASES.includes(at.phase)) {
+    throw new Error(`${said}: --task names the task an entry is made for in the build, and ${at.phase} is none of its phases — ${BUILD_PHASES.join(' or ')}`);
+  }
+}
+
+/**
+ * Refuse a reason that needs a cause given none (5.3.8).
+ * @param {string} said @param {Address} _at @param {Map<string, string[]>} given
+ */
+function checkCauseGiven(said, _at, given) {
+  const [reason] = /** @type {string[]} */ (given.get('reason'));
+  if (Object.hasOwn(CAUSES, reason) && /** @type {string[]} */ (given.get('cause')).length === 0) {
+    throw new Error(`${said} --reason ${reason} needs --cause <id>: ${CAUSES[reason].is}`);
+  }
+}
+
+/**
+ * Refuse a move to the topic it is made from, to a topic the unit does not
+ * have (5.3.3), or to a topic that is not live (5.8.17); and one to the
+ * roadmap naming an item it does not hold (9.5.4), or holds archived
+ * (18.8.13). A move is never made at
+ * the product's place, which takes findings alone, so a unit's manifest is
+ * there.
+ * @param {string} said @param {Address} at @param {Map<string, string[]>} given
+ */
+function checkDestination(said, at, given) {
+  const [to] = /** @type {string[]} */ (given.get('to'));
+  const item = roadmapItemOf(to);
+  if (item !== null) {
+    const held = roadmapItemNamed(at.root, item);
+    if (held === null) throw new Error(`${said}: --to names ${to}, and the roadmap has no item "${item}" — put it on the roadmap first`);
+    if (itemArchived(held) !== null) throw new Error(`${said}: --to names ${to}, and the roadmap's "${item}" is archived — ${bringBack(item)} first`);
+    return;
+  }
+  if (to === at.topic) throw new Error(`${said}: --to names ${to}, the topic it moves from — a question moves to another topic`);
+  checkDestinationLive(said, at, given, liveness(at.root));
+}
+
+/**
+ * Refuse a move to a topic the unit's manifest, read now, does not have
+ * (5.3.3) — under the writer lock, one removed since the address was read —
+ * or to one that is not live as `live` reads it (5.8.17).
+ * @param {string} said @param {Address} at @param {Map<string, string[]>} given @param {Liveness} live
+ */
+function checkDestinationLive(said, at, given, live) {
+  const [to] = /** @type {string[]} */ (given.get('to'));
+  if (roadmapItemOf(to) !== null) return;
+  const manifest = manifestOf(at.root, at.unit) ?? {};
+  if (!hasTopic(manifest, to)) throw new Error(`${said}: ${at.unit} has no topic "${to}" to move the question to`);
+  checkUndecided(said, manifest, to, 'topic send, then the move again');
+  const dead = live(at.unit, to);
+  if (dead !== null) throw new Error(`${said}: --to names ${to}, which takes no question — ${dead}`);
+}
+
+/**
+ * Refuse, in the words of `said`, a question opened on a topic decided at
+ * its gate: it reaches the topic as a message, which reopens it (10.2.7),
+ * as the topic's entry says, `way` the calls that take it there.
+ * @param {string} said @param {Record<string, any>} manifest @param {string} topic @param {string} way
+ */
+function checkUndecided(said, manifest, topic, way) {
+  if (itemOf(manifest, 'discussion', topic)?.status === 'completed') {
+    throw new Error(`${said}: the topic "${topic}" is decided — a question reaches it as a message sent to it, which reopens it: ${way}`);
+  }
+}
+
+/** @param {IdFacts} facts */
+function described(facts) {
+  return facts.kind === null ? `a ${facts.event} event` : `a ${facts.kind}`;
+}
+
+/** Where in its unit an entry stands. @param {Standing} standing */
+function whereItStands({ topic }) {
+  return topic === null ? 'at the unit\'s level' : `on ${topic}`;
+}
+
+/**
+ * Why a link whose entries are `owner`'s may not name an entry standing at
+ * `standing` from `at`, or null where it may: another unit's, for a link of
+ * the unit's own; before the spec, one of the unit's on another topic than
+ * the write's (5.6.9).
+ * @param {Owner} owner @param {Address} at @param {Standing} standing
+ * @returns {string|null}
+ */
+function strayed(owner, at, standing) {
+  if (owner === null) return null;
+  if (standing.unit !== at.unit) return owner === 'unit' ? `of ${standing.unit} — it must be ${at.unit}'s own` : null;
+  if (!TOPIC_PHASES.includes(at.phase) || standing.topic === at.topic) return null;
+  return `${whereItStands(standing)} — before the spec a topic writes on its own entries alone, and another topic's change goes to it by message`;
+}
+
+/**
+ * Why an entry that is not current cannot be named where a current one must
+ * be: what replaced it or merged it away as a duplicate, and where its chain
+ * leads now; or why its topic or unit is not live.
+ * @param {Folded} read @param {string} id @param {import('./ledger-fold.cjs').NotCurrent} why
+ * @param {(id: string) => string} short
+ * @returns {string}
+ */
+function staleness(read, id, why, short) {
+  if ('dead' in why) return `which is not current: ${why.dead}`;
+  const currents = currentsOf(read, id).map(short);
+  const now = currents.length === 0 ? 'nothing it leads to is current' : `the current one${currents.length > 1 ? 's are' : ' is'} ${currents.join(', ')}`;
+  if ('replaced_by' in why) return `which ${short(why.replaced_by)} replaced — ${now}`;
+  return `which ${short(why.merged_by)} merged as a duplicate — ${now}`;
+}
+
+/**
+ * The id a link's prefix names, checked against what the link must name: an
+ * entry not current is refused for a link that must be current, saying why
+ * and naming the current one, and an entry the link may not name from where
+ * the write is made is refused, saying where it stands — each in the words
+ * of `said`, the command asking.
+ * @param {string} said @param {Address} at @param {Flag} flag @param {string} prefix @param {Folded} read
+ * @returns {string}
+ */
+function resolveLink(said, at, flag, prefix, read) {
+  const { facts } = read;
+  const where = `${said} ${flagName(flag)}`;
+  const short = (/** @type {string} */ id) => shortId(id, facts.keys());
+  let id;
+  try {
+    id = resolveId(prefix, facts.keys());
+  } catch (err) {
+    throw new Error(`${where}: ${messageOf(err)}`);
+  }
+  const named = /** @type {IdFacts} */ (facts.get(id));
+  const what = /** @type {Names} */ (flag.names);
+  if (!what.test(named)) throw new Error(`${where} names ${short(id)}, ${described(named)} — it must name ${what.is}`);
+  const stale = flag.current ? notCurrent(read, id) : null;
+  if (stale !== null) throw new Error(`${where} names ${short(id)}, ${staleness(read, id, stale, short)}`);
+  const why = strayed(flag.owner, at, standingOf(read, id));
+  if (why !== null) throw new Error(`${where} names ${short(id)}, ${described(named)} ${why}`);
+  return id;
+}
+
+/**
+ * Each of `flags`' fields as the event holds it: a link's prefixes resolved
+ * to ids and checked, in the words of `said`, the command asking, and a
+ * value as given.
+ * @param {string} said @param {Flag[]} flags @param {Address} at @param {Map<string, string[]>} given @param {Folded} read
+ * @returns {Linked}
+ */
+function linksOf(said, flags, at, given, read) {
+  /** @type {Linked} */
+  const fields = {};
+  for (const flag of flags) {
+    const values = /** @type {string[]} */ (given.get(flag.field));
+    const resolved = flag.names === null ? values : [...new Set(values.map((prefix) => resolveLink(said, at, flag, prefix, read)))];
+    fields[flag.field] = flag.many ? resolved : resolved[0] ?? null;
+  }
+  return fields;
+}
+
+/**
+ * A request's links as its event holds them (`linksOf`).
+ * @param {Request} request @param {Folded} read
+ * @returns {Linked}
+ */
+function resolvedLinks({ said, write, at, given }, read) {
+  return linksOf(said, write.flags, at, given, read);
+}
+
+/**
+ * The check of a replacement's cause, the entry it replaces named by
+ * `field` — a keep's, the entry Claude proposed to replace: refuse a cause
+ * that is that entry, or that is not what the reason needs, by where each
+ * stands (5.3.8).
+ * @param {string} field
+ * @returns {Write['checkLinked']}
+ */
+function causeChecked(field) {
+  return (said, linked, read) => {
+    if (linked.cause === null) return;
+    const { facts } = read;
+    const [cause, replaces, reason] = /** @type {string[]} */ ([linked.cause, linked[field], linked.reason]);
+    const where = `${said} --cause names ${shortId(cause, facts.keys())}`;
+    if (cause === replaces) throw new Error(`${where}, the entry it replaces — a cause is what made the change`);
+    if (!Object.hasOwn(CAUSES, reason)) return;
+    const named = /** @type {IdFacts} */ (facts.get(cause));
+    const causeAt = standingOf(read, cause);
+    if (!CAUSES[reason].test(named, causeAt, standingOf(read, replaces))) {
+      throw new Error(`${where}, ${described(named)} ${whereItStands(causeAt)} — --reason ${reason} needs ${CAUSES[reason].is}`);
+    }
+  };
+}
+
+/**
+ * Refuse a confirmation of an entry after anything but the latest live
+ * replacement on the way to its current form of an entry it is held
+ * against — one it relies on, or the question an answer answers (5.6.10,
+ * ledger-affected.cjs): one on no such way, or an earlier one, naming the
+ * latest.
+ * @param {string} said @param {Linked} linked @param {Folded} read
+ */
+function checkHeld(said, linked, read) {
+  const [entry, after] = /** @type {string[]} */ ([linked.entry, linked.after]);
+  const ways = heldAgainst(read, entry);
+  if (ways.some(({ replacements }) => replacements.at(-1) === after)) return;
+  const short = (/** @type {string} */ id) => shortId(id, read.facts.keys());
+  const passed = ways.find(({ replacements }) => replacements.includes(after));
+  if (passed === undefined) {
+    throw new Error(`${said} --entry names ${short(entry)}, which is held against nothing ${short(after)} changed — it holds an entry relying on or answering one whose way to its current form the replacement is on`);
+  }
+  throw new Error(`${said} --after names ${short(after)}, an earlier change on the way of ${short(passed.held_against)} — a hold names the latest: ${short(/** @type {string} */ (passed.replacements.at(-1)))}`);
+}
+
+/**
+ * Refuse a merge's duplicate that is the entry it goes into, or that answers
+ * another question than the one merged, by any of its wordings, standing or
+ * set aside (5.3.13, 5.5.4, 5.5.5).
+ * @param {string} said @param {Linked} linked @param {Folded} read
+ */
+function checkDuplicate(said, linked, read) {
+  if (linked.duplicate === null) return;
+  const { facts } = read;
+  const [question, into, duplicate] = /** @type {string[]} */ ([linked.question, linked.into, linked.duplicate]);
+  const short = (/** @type {string} */ id) => shortId(id, facts.keys());
+  const where = `${said} --duplicate names ${short(duplicate)}`;
+  if (duplicate === into) throw new Error(`${where}, the decision --into names — a duplicate is another entry`);
+  const answers = /** @type {string} */ (factsOf(read, duplicate).answers);
+  if (factsOf(read, answers).root !== factsOf(read, question).root) {
+    throw new Error(`${where}, which answers ${short(answers)} — a duplicate answers the question merged, ${short(question)}, in any of its wordings`);
+  }
+}
+
+/**
+ * What follows from a replacement's link to what it replaces: the kind it
+ * stands for; for a decision, the question it answers in its wording as the
+ * replacement is written, whatever wording the replaced decision named — or
+ * that one, where every wording is set aside; for a question, the question
+ * it is part of. Nothing for any other write.
+ * @param {Write} write @param {Linked} linked @param {Folded} read
+ * @returns {Record<string, unknown>}
+ */
+function followed(write, linked, read) {
+  if (write.event !== 'replaced') return {};
+  const replaced = factsOf(read, /** @type {string} */ (linked.replaces));
+  const of = replaced.kind;
+  if (of === 'decision') {
+    const named = /** @type {string} */ (replaced.answers);
+    return { of, answers: wordingOf(read, named) ?? named };
+  }
+  if (of === 'question') return { of, part_of: replaced.part_of };
+  return { of };
+}
+
+/**
+ * The ids' facts, and the text of each question's wording, which a
+ * decision's label reads (labeller.cjs), in the one pass.
+ * @type {import('./ledger-fold.cjs').Fold<{facts: Map<string, IdFacts>, asked: Map<string, string>}>}
+ */
+const WORDED = Object.freeze({
+  start: () => ({ facts: ID_FACTS.start(), asked: new Map() }),
+  step: (state, event, place) => {
+    ID_FACTS.step(state.facts, event, place);
+    if (entryKind(event) === 'question') state.asked.set(/** @type {string} */ (event.id), /** @type {string} */ (event.text));
+  },
+});
+
+/**
+ * The ledger folded with each question's wording, read against liveness as
+ * the manifests say it now.
+ * @param {Address} at @param {string[]} warnings
+ * @returns {Before}
+ */
+function readNow(at, warnings) {
+  const { facts, asked } = foldLedger(at.root, WORDED, warnings);
+  return { facts, asked, live: liveness(at.root) };
+}
+
+/**
+ * The ledger as it stands before the lock, folded the first time a step
+ * asks for it and never again.
+ * @param {Address} at @param {string[]} warnings
+ * @returns {() => Before}
+ */
+function readBefore(at, warnings) {
+  /** @type {Before|null} */
+  let read = null;
+  return () => {
+    read ??= readNow(at, warnings);
+    return read;
+  };
+}
+
+/**
+ * The entry a replacement replaces, read from the ledger before the lock:
+ * its facts, its link checked as the lock checks it again, in the words of
+ * `said`, the command asking.
+ * @param {string} said @param {Address} at @param {Map<string, string[]>} given @param {Folded} read
+ * @returns {IdFacts}
+ */
+function replacedEntry(said, at, given, read) {
+  const flag = /** @type {Flag} */ (WRITES.replace.flags.find((f) => f.field === 'replaces'));
+  const id = resolveLink(said, at, flag, /** @type {string[]} */ (given.get('replaces'))[0], read);
+  return /** @type {IdFacts} */ (read.facts.get(id));
+}
+
+/**
+ * The content the write's event holds, from what stdin gave, and every
+ * fault of it, in the words of `said`, the command asking: for a
+ * replacement in the shape of the entry it replaces, each field typed as
+ * its schema names, one left out taking its default — for a replacement's
+ * product-wide mark, the replaced entry's. A fault is a link, a field the
+ * engine gives, a field the event does not hold — the fields it does
+ * named, but those its caller supplies itself, `supplied` — or one the
+ * caller never takes, `withheld`, which keeps its default; a field it
+ * needs that is missing, and one of another type; the content holds every
+ * field but those.
+ * @param {string} said @param {Write} write @param {Record<string, unknown>} given @param {IdFacts|null} replaced @param {readonly string[]} [supplied] @param {readonly string[]} [withheld]
+ * @returns {{content: Record<string, unknown>, faults: string[]}}
+ */
+function contentFaults(said, write, given, replaced, supplied = [], withheld = []) {
+  const fields = eventFields(write.event, replaced === null ? null : replaced.kind).filter((f) => !FLAG_FIELDS.has(f.name) && !ENGINE_FIELDS.has(f.name));
+  const defaults = replaced === null || replaced.product_wide === null ? DEFAULTS : { ...DEFAULTS, product_wide: replaced.product_wide };
+  const taken = fields.filter((f) => !withheld.includes(f.name));
+  const held = taken.map((f) => f.name).filter((name) => !supplied.includes(name)).join(', ');
+  const faults = Object.keys(given).flatMap((key) => {
+    if (FLAG_FIELDS.has(key)) {
+      const flag = write.flags.find((f) => f.field === key);
+      return [`${said}: the content carries ${key}, a link — a link is given as a flag${flag ? ` (${flagName(flag)})` : ''}, never in the content`];
+    }
+    if (ENGINE_FIELDS.has(key)) return [`${said}: the content carries ${key}, which the engine gives`];
+    return taken.some((f) => f.name === key) ? [] : [`${said}: the content has no field ${key} — it holds ${held}`];
+  });
+  /** @type {Record<string, unknown>} */
+  const content = {};
+  for (const { name, type } of fields) {
+    if (!Object.hasOwn(given, name) || withheld.includes(name)) {
+      if (Object.hasOwn(defaults, name)) content[name] = structuredClone(defaults[name]);
+      else faults.push(`${said}: the content needs ${name}`);
+    } else if (!type.test(given[name])) {
+      faults.push(`${said}: the content's ${name} is not ${type.is}`);
+    } else {
+      content[name] = given[name];
+    }
+  }
+  return { content, faults };
+}
+
+/**
+ * The content the write's event holds (`contentFaults`), refused, in the
+ * words of `said`, the command asking, at its first fault.
+ * @param {string} said @param {Write} write @param {Record<string, unknown>} given @param {IdFacts|null} replaced
+ * @returns {Record<string, unknown>}
+ */
+function contentFields(said, write, given, replaced) {
+  const { content, faults } = contentFaults(said, write, given, replaced);
+  if (faults.length > 0) throw new Error(faults[0]);
+  return content;
+}
+
+/**
+ * Claude's call logged (16.3.7), naming the entry, its kind and the label
+ * it was composed from, its sort, and whether it blocked build work as the
+ * decision point decided it — each null where no raise decided it — under
+ * `model`, where a raise decided it, the model it was decided under; with
+ * none, the call is the write's own, under its caller's.
+ * @param {'one'|'several'|null} sort @param {string|null} [model] @param {boolean|null} [blocks]
+ * @returns {Logs}
+ */
+function callLogged(sort, model, blocks = null) {
+  return ({ id, kind }, label) => ({ type: 'call', fields: { entry: id, kind, label, sort, blocks_build: blocks }, model });
+}
+
+/** The person's reversal logged (16.12.1), naming the entry and the entry it reverses. @type {Logs} */
+const REVERSAL_LOGGED = ({ id, replaces }) => ({ type: 'reversal', fields: { entry: id, reverses: replaces } });
+
+/**
+ * The trust log's event a write logs: a call for Claude's answer, a
+ * decision or a decision's replacement; a reversal for the person's
+ * replacement reversing the decision it replaces; null for any other.
+ * @param {EntryKind|null} kind @param {Record<string, unknown>} content @param {string|null} reason @param {IdFacts|null} replaced
+ * @returns {Logs|null}
+ */
+function trustEventOf(kind, content, reason, replaced) {
+  if (kind !== 'decision') return null;
+  if (content.by === 'claude') return claudesCall(content) ? callLogged(null) : null;
+  return reverses(content, kind, reason, replaced) ? REVERSAL_LOGGED : null;
+}
+
+/**
+ * Every fault, in the words of `said`, the command asking, of content that
+ * says of itself what cannot be: the person's decision given as anything
+ * but their own, a finding saying no kind, a measurement — measured or
+ * exploratory — with no command run or no result, and a command or a
+ * result without the other. Each is judged on the fields the content holds,
+ * a field of another type left out of it, which its own fault names.
+ * @param {string} said @param {EntryKind|null} kind @param {Record<string, unknown>} content
+ * @returns {string[]}
+ */
+function saidFaults(said, kind, content) {
+  const holds = (/** @type {string[]} */ ...names) => names.every((name) => Object.hasOwn(content, name));
+  const { by, given, known, command, result } = content;
+  if (kind === 'decision') {
+    return holds('by', 'given') && by === 'person' && given !== 'own' ? [`${said}: the person's decision is given ${given} — the person's own is given own, and what they hand over, or what is carried over, is Claude's line, by claude`] : [];
+  }
+  if (kind !== 'finding' || !holds('known')) return [];
+  if (known === null) return [`${said}: the content's known is null — a finding written now says how it is known`];
+  if (!holds('command', 'result')) return [];
+  if (MEASURED.includes(/** @type {string} */ (known)) && command === null) {
+    return [`${said}: ${known === 'exploratory' ? 'an exploratory' : 'a measured'} finding records the command run and its result — the content needs command and result`];
+  }
+  return (command === null) !== (result === null) ? [`${said}: a finding's command comes with its result — the content gives ${command === null ? 'a result and no command' : 'a command and no result'}`] : [];
+}
+
+/**
+ * Refuse, in the words of `said`, the command asking, content that says
+ * of itself what cannot be (`saidFaults`).
+ * @param {string} said @param {EntryKind|null} kind @param {Record<string, unknown>} content
+ */
+function checkSaid(said, kind, content) {
+  const [fault] = saidFaults(said, kind, content);
+  if (fault !== undefined) throw new Error(fault);
+}
+
+/**
+ * Refuse, in the words of `said`, the command asking, a product-wide entry
+ * made in discovery, which feeds the product record and decides nothing: a
+ * principle said there is decided in the first topic it bears on (8.9.3,
+ * 8.9.6).
+ * @param {string} said @param {Address} at @param {Record<string, unknown>} content
+ */
+function checkUnwidened(said, at, { product_wide: productWide }) {
+  if (at.phase === 'discovery' && productWide === true) {
+    throw new Error(`${said}: nothing found in discovery is product-wide — a line for the product record is decided in the first topic it bears on`);
+  }
+}
+
+/**
+ * Refuse, in the words of `said`, the command asking, a decision carried
+ * over outside the migration: carried over, it tells the trust log of no
+ * call (21.1.5), so at any other time it would hide one of Claude's.
+ * @param {string} said @param {Address} at @param {EntryKind|null} kind @param {Record<string, unknown>} content
+ */
+function checkCarried(said, at, kind, { given }) {
+  if (kind === 'decision' && given === 'carried' && !migrationRuns(at.root)) {
+    throw new Error(`${said}: the decision is given carried — a decision is carried over only by the migration, while it runs; Claude's own call is given own`);
+  }
+}
+
+/**
+ * The fault, in the words of `said`, the command asking, of the person's
+ * entry carrying Claude's sealed answer: the person's answer to Claude's
+ * lean is a raise's (raise.cjs), which sealed the lean before they answered
+ * and logs the answer beside its entry.
+ * @param {string} said @param {Record<string, unknown>} content
+ * @returns {string[]}
+ */
+function unsealedFaults(said, { by, sealed }) {
+  return by === 'person' && sealed !== undefined && sealed !== null
+    ? [`${said}: the person's entry carries sealed, Claude's lean — the person's answer to Claude's lean is recorded by raise answer, against the lean its raise sealed`] : [];
+}
+
+/** Refuse, in the words of `said`, the command asking, the person's entry carrying Claude's sealed answer (`unsealedFaults`). @param {string} said @param {Record<string, unknown>} content */
+function checkUnsealed(said, content) {
+  const [fault] = unsealedFaults(said, content);
+  if (fault !== undefined) throw new Error(fault);
+}
+
+/** The link naming the question an event closes, by the event. @type {Readonly<Record<string, string>>} */
+const CLOSES = Object.freeze({ decided: 'answers', moved: 'question', merged: 'question' });
+
+/**
+ * Refuse, in the words of `said`, the command asking, Claude's own close of
+ * a question an experiment of its unit still running measures (9.1.11): its
+ * decision, move or merge. The person closes it meanwhile, their own answer
+ * or one they hand Claude, and once the experiment ends the discussion
+ * writes the result.
+ * @param {Request} request @param {Linked} linked @param {Folded} read
+ */
+function checkUnmeasured({ said, write, at, content }, linked, read) {
+  const field = CLOSES[write.event];
+  const handed = write.event === 'decided' && content.given !== 'own';
+  if (field === undefined || content.by !== 'claude' || handed) return;
+  const question = /** @type {string} */ (linked[field]);
+  const measuring = measuredBy(/** @type {Record<string, any>} */ (manifestOf(at.root, at.unit)), read.facts, question);
+  if (measuring === null) return;
+  throw new Error(`${said}: ${shortId(question, read.facts.keys())} is measured by experiment ${measuring}, still running — Claude never closes a question its experiment measures; the person may, and once it ends the discussion writes the result`);
+}
+
+/**
+ * The question a write closes with a call of Claude's own, or null: Claude's
+ * own decision of it, or its merge into a decision that stands as Claude's
+ * call.
+ * @param {string} event @param {Record<string, unknown>} content @param {Linked} linked @param {Folded} read
+ * @returns {string|null}
+ */
+function closedAsClaudes(event, content, linked, read) {
+  if (event === 'decided') return content.by === 'claude' && content.given === 'own' ? /** @type {string} */ (linked.answers) : null;
+  if (event === 'merged') return whoseDecision(read, /** @type {string} */ (linked.into)) === 'claude' ? /** @type {string} */ (linked.question) : null;
+  return null;
+}
+
+/**
+ * Refuse, in the words of `said`, the command asking, the close of a
+ * question that is a point from before, in any of its wordings, with a
+ * call of Claude's own (`closedAsClaudes`): it comes to the person through
+ * its raise. Their answer, and one they hand Claude, land.
+ * @param {Request} request @param {Linked} linked @param {Folded} read
+ */
+function checkFromBefore({ said, write, at, content }, linked, read) {
+  const question = closedAsClaudes(write.event, content, linked, read);
+  const id = question === null ? null : factsOf(read, question).from_before;
+  if (question === null || id === null) return;
+  const short = shortId(question, read.facts.keys());
+  throw new Error(`${said}: ${short} is ${id}, a point from before — Claude never closes one with a call of its own; it comes to the person: raise ${at.dotpath} --answers ${short}`);
+}
+
+/**
+ * Where a decision or a replacement is to be written and the entries its
+ * links name, read and checked as `ledger <verb>` checks them before the
+ * lock, against the ledger as it stands, and refused in the words of
+ * `said`, the command asking: a raise (raise.cjs), whose answer is that
+ * write. Answers the place, the links, the ledger as read, and for a
+ * replacement the line of the entry it replaces, else null. The command
+ * takes no flag for a field `without` names.
+ * @param {string} cwd @param {'decide'|'replace'} verb @param {string[]} args @param {string} said @param {string} usage @param {string[]} warnings @param {string[]} [without]
+ * @returns {{at: Address, linked: Linked, read: Folded, replacing: Record<string, unknown>|null}}
+ */
+function writePlaced(cwd, verb, args, said, usage, warnings, without = []) {
+  const write = WRITES[verb];
+  const { dotpath, given } = readArgs(verb, args, said, usage, without);
+  const at = addressOf(cwd, said, dotpath, write);
+  checkValues(said, write, given);
+  write.checkGiven(said, at, given);
+  return readFolded(at.root, ID_FACTS, warnings, (facts, entryAt) => {
+    const read = { facts, live: liveness(at.root) };
+    const linked = linksOf(said, write.flags, at, given, read);
+    write.checkLinked(said, linked, read);
+    const replaces = linked.replaces ?? null;
+    return { at, linked, read, replacing: typeof replaces === 'string' ? entryAt(factsOf(read, replaces).place) : null };
+  });
+}
+
+/**
+ * A write as asked, read whole and checked before the lock: its argv, where
+ * it is made, the session, and its content in the shape of the kind it
+ * writes, a replacement reading the kind it replaces from the ledger.
+ * Refuses argv the verb does not take, a place it cannot write, no session,
+ * a value its event cannot hold, a task outside the build, stdin holding no
+ * JSON object, the person's
+ * entry carrying Claude's sealed answer, content the kind does not hold, a
+ * product-wide finding in discovery, a decision carried over outside the
+ * migration, and who moved whom the departure rule does not allow, which it
+ * sets where the writer leaves it out and the rule allows one value alone.
+ * @param {string} cwd @param {string} verb @param {string[]} args @param {() => string} stdin @param {string[]} warnings
+ * @returns {Request}
+ */
+function requestOf(cwd, verb, args, stdin, warnings) {
+  const said = `ledger ${verb}`;
+  const write = WRITES[verb];
+  const { dotpath, given } = readArgs(verb, args, said, `Usage: engine ${verbUsage(verb)}   (content as JSON on stdin)`);
+  const at = addressOf(cwd, said, dotpath, write);
+  if (write.fromTopic && at.topic === null) {
+    throw new Error(TOPIC_PHASES.includes(at.phase)
+      ? `${said}: a question moves from a topic — name it: ${at.unit}.${at.phase}.<topic>`
+      : `${said}: a question moves from a topic, and ${at.phase} has none — a topic exists only before the spec`);
+  }
+  const session = handedSession();
+  if (session === null) throw new Error(`${said}: no session to tag the entry with — CLAUDE_CODE_SESSION_ID is not set`);
+  checkValues(said, write, given);
+  checkTaskPlace(said, at, given);
+  write.checkGiven(said, at, given);
+  const content = stdinObject(stdin(), `ledger ${verb}`, 'the entry\'s content');
+  checkUnsealed(said, content);
+  const before = readBefore(at, warnings);
+  const replaced = write.event === 'replaced' ? replacedEntry(said, at, given, before()) : null;
+  const reason = replaced === null ? null : /** @type {string[]} */ (given.get('reason'))[0];
+  const kind = replaced === null ? entryKind({ event: write.event }) : replaced.kind;
+  const derived = derivedMove(content, kind, reason, replaced);
+  const fields = contentFields(said, write, derived === null ? content : { who_moved_whom: derived, ...content }, replaced);
+  checkSaid(said, kind, fields);
+  checkUnwidened(said, at, fields);
+  checkCarried(said, at, kind, fields);
+  const unmoved = movedRefusal(fields, kind, reason, replaced);
+  if (unmoved !== null) throw new Error(`${said}: who_moved_whom is ${fields.who_moved_whom} — ${unmoved}`);
+  return {
+    verb, said, write, at, session, given, kind,
+    content: fields,
+    unchecked: true,
+    label: null,
+    id: null,
+    checkRead: nothingToCheck,
+    checkLinks: linksChecked(said, write, kind, fields, at.dotpath),
+    mints: NOTHING_MINTED,
+    logs: trustEventOf(kind, fields, reason, replaced),
+    before,
+  };
+}
+
+/** A dot-path naming `place`. @param {Place} place */
+function dotpathOf({ unit, phase, topic }) {
+  return [unit, phase, ...(topic === null ? [] : [topic])].join('.');
+}
+
+/** A link's ids, or a value, as a flag gives them: none where it is null. @param {string|string[]|null|undefined} value @returns {string[]} */
+function valuesOf(value) {
+  if (value === null || value === undefined) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+/**
+ * What a raise lands as a request (`Raised`): made where the raise was
+ * drawn and linked as it sealed, read and checked as its write reads its
+ * place before the lock and its links under it, in the raise's words; its
+ * content in that write's shape, what it leaves out taking its default — a
+ * replacement's the shape of the entry it replaces, read before the lock
+ * whether or not it is current, since the line a rerun finds landed
+ * replaced it, and under the lock a ledger holding the raise's id is
+ * answered before any link is checked; a decision landing unchecked.
+ * @param {string} cwd @param {Raised} raised @param {string[]} warnings
+ * @returns {Request}
+ */
+function raisedRequest(cwd, { said, place, lands, linked, content, label = null, id, logs, checkRead, mints = NOTHING_MINTED }, warnings) {
+  const write = RAISED[lands];
+  const at = addressOf(cwd, said, dotpathOf(place), write);
+  const given = new Map(write.flags.map((flag) => [flag.field, valuesOf(linked[flag.field])]));
+  const before = readBefore(at, warnings);
+  const replaced = write === WRITES.replace ? factsOf(before(), /** @type {string} */ (linked.replaces)) : null;
+  return {
+    verb: lands, said, write, at,
+    session: /** @type {string} */ (handedSession()),
+    given,
+    kind: replaced === null ? entryKind({ event: write.event }) : replaced.kind,
+    content: contentFields(said, write, content, replaced),
+    unchecked: true,
+    label,
+    id, checkRead, checkLinks: linksUnchecked, mints, logs, before,
+  };
+}
+
+/**
+ * The event a request appends, its links resolved and checked against the
+ * folded ledger: its tags, its content, its links, what follows from them,
+ * and what the engine gives.
+ * @param {Request} request @param {Folded} read
+ * @returns {Record<string, unknown>}
+ */
+function eventOf(request, read) {
+  const { write, at, session, kind, content, unchecked, label } = request;
+  request.checkRead(read);
+  const linked = resolvedLinks(request, read);
+  write.checkLinked(request.said, linked, read);
+  request.checkLinks(linked, read);
+  checkUnmeasured(request, linked, read);
+  checkFromBefore(request, linked, read);
+  return {
+    event: write.event, unit: at.unit, topic: at.topic, phase: at.phase, session,
+    ...content, ...linked, ...followed(write, linked, read), ...(kind === 'decision' ? decisionGiven(label, unchecked) : {}),
+  };
+}
+
+/**
+ * What the engine gives a decision: the kind and the hard-to-undo mark its
+ * question's label gives, each null where it has none, and whether it
+ * lands unchecked.
+ * @param {Label|null} label @param {boolean} unchecked
+ */
+function decisionGiven(label, unchecked) {
+  return { ...labelFields(label), unchecked };
+}
+
+/**
+ * What the labeller reads of a decision (labeller.cjs, 16.11.2): the
+ * question's wording, `asked`, and, where the decision is Claude's own
+ * call, its answer and what it rules out — the person's, or one carried
+ * over, giving the wording alone.
+ * @param {Record<string, unknown>} content @param {string} asked
+ */
+function labelledText(content, asked) {
+  if (!claudesCall(content)) return questionText(asked, []);
+  return questionText(asked, [/** @type {string} */ (content.text), .../** @type {string[]} */ (content.rules_out)]);
+}
+
+/**
+ * A decision's links resolved and checked before the calls, against the
+ * ledger as read before the lock, as the lock checks them again, so no call
+ * is spent on a write its links refuse. Answers the entries they name, by
+ * short id, for the one-decision check's refusal, and what the labeller
+ * reads of the decision.
+ * @param {Request} request
+ * @returns {{named: import('./ledger-one-decision.cjs').Named, text: string}}
+ */
+function linkedBeforeCall(request) {
+  const read = request.before();
+  const { answers, replaces } = eventOf(request, read);
+  const short = (/** @type {unknown} */ id) => shortId(/** @type {string} */ (id), read.facts.keys());
+  const asked = /** @type {string} */ (read.asked.get(/** @type {string} */ (answers)));
+  return { named: { answers: short(answers), replaces: replaces === undefined ? null : short(replaces) }, text: labelledText(request.content, asked) };
+}
+
+/**
+ * A write as asked, a decision among them judged by the one-decision check,
+ * its run logged from `cwd`, and labelled by the labeller's call, started
+ * before the check, waited on once it answers and cancelled where it
+ * refuses.
+ * @param {string} cwd @param {Request} request @param {string[]} warnings
+ * @returns {Request}
+ */
+function checkedAndLabelled(cwd, request, warnings) {
+  if (request.kind !== 'decision') return request;
+  const { named, text } = linkedBeforeCall(request);
+  const labelling = startLabel(text);
+  try {
+    return { ...checkOneDecision(cwd, request, named, warnings), label: labelling.wait() };
+  } finally {
+    labelling.cancel();
+  }
+}
+
+/**
+ * A ledger commit's message: the unit, the event and its id, and the topic
+ * it stands on.
+ * @param {string} unit @param {string} event @param {string} id @param {string|null} topic
+ */
+function ledgerMessage(unit, event, id, topic) {
+  return `ledger(${unit}): ${event} ${id}${topic === null ? '' : ` in ${topic}`}`;
+}
+
+/**
+ * The ledger committed to the state branch with the files its asset links
+ * name (ledger.cjs), under the message of the request's entry `id`: a
+ * commit git refuses a warning.
+ * @param {string} cwd @param {Request} request @param {string} id @param {string[]} warnings
+ */
+function commitEntry(cwd, { at, write }, id, warnings, paths = []) {
+  return commitLedger(cwd, ledgerMessage(at.unit, write.event, id, at.topic), warnings, paths);
+}
+
+/**
+ * The topic whose work a write takes on, so voiding its close — a question
+ * asked there or moved onto it, or an entry replaced at a bugfix's
+ * investigation — or null for any other write.
+ * @param {Address} at @param {Write} write @param {Record<string, unknown>} fields @returns {string|null}
+ */
+function opensOn(at, write, fields) {
+  if (write.event === 'asked') return at.topic;
+  if (write.event === 'moved' && typeof fields.to === 'string' && roadmapItemOf(fields.to) === null) return fields.to;
+  if (write.event === 'replaced' && at.phase === 'investigation') return at.topic ?? at.unit;
+  return null;
+}
+
+/**
+ * The close of the topic whose work a write takes on voided, where one
+ * stands, under the writer lock the caller holds: the manifest's path for
+ * the commit where it was, else none.
+ * @param {string} cwd @param {Address} at @param {Write} write @param {Record<string, unknown>} fields @returns {string[]}
+ */
+function voidOnQuestion(cwd, at, write, fields) {
+  const topic = opensOn(at, write, fields);
+  if (topic === null || at.manifest === null) return [];
+  const manifest = loadWorkUnitManifest(cwd, at.unit);
+  if (!voidTopicClose(manifest, topic, new Date().toISOString())) return [];
+  saveWorkUnitManifest(cwd, at.unit, manifest);
+  return [`${at.unit}/manifest.json`];
+}
+
+/**
+ * Under the writer lock: the ledger folded; where it already holds the id
+ * the request's raise minted, the write a rerun of one killed past its
+ * append, or of one that finished, done as the first run left it — its
+ * event, kept ahead of the entry, landed, and the ledger committed —
+ * nothing appended again. Else the places the write names read live again
+ * and each topic's item read held, the event built with what the request
+ * sets of it from that read, the trust log's event built and kept
+ * waiting in the conversation, the entry appended, the event landed in the
+ * trust log, and the ledger committed to the state branch. Answers the entry's short id, the commit,
+ * the line appended, or null, and the entry the ledger already held, or null.
+ * @param {string} cwd @param {Request} request @param {string[]} warnings
+ * @returns {{id: string, outcome: {committed: string|null, failed: boolean, held?: true}, line: Record<string, unknown>|null, held: Record<string, unknown>|null}}
+ */
+function land(cwd, request, warnings) {
+  const { said, at, write, given, logs } = request;
+  const id = request.id ?? newId();
+  /** @type {{short: string, held: Record<string, unknown>|null, fields: Record<string, unknown>}} */
+  const { short, held, fields } = readFolded(at.root, ID_FACTS, warnings, (facts, entryAt) => {
+    const read = { facts, live: liveness(at.root) };
+    const short = shortId(id, facts.keys());
+    if (facts.has(id)) return { short, held: entryAt(factsOf(read, id).place), fields: {} };
+    checkPlaceLive(said, at, read.live);
+    checkItemHeld(said, at, () => manifestOf(at.root, at.unit));
+    write.checkLive(said, at, given, read.live);
+    return { short, held: null, fields: { ...eventOf(request, read), ...request.mints(read, entryAt) } };
+  });
+  if (held !== null) {
+    if (logs !== null) landKept(cwd, warnings);
+    return { id: short, outcome: commitEntry(cwd, request, id, warnings), line: null, held };
+  }
+  if (logs !== null) {
+    const { type, fields: own, model } = logs({ ...fields, id }, request.label);
+    keepEvent(newEvent(type, own, cwd, { model }), at.root, id);
+  }
+  const voided = voidOnQuestion(cwd, at, write, fields);
+  const line = appendEntry(at.root, fields, warnings, id);
+  if (logs !== null) landKept(cwd, warnings);
+  return { id: short, outcome: commitEntry(cwd, request, id, warnings, voided), line, held: null };
+}
+
+/**
+ * A request landed under the writer lock, then the knowledge base's copies
+ * rendered and indexed against the ledger; with the line appended, or null,
+ * and the entry the ledger already held at its id, or null.
+ * @param {string} cwd @param {Request} request @param {string[]} warnings
+ * @returns {RaiseLanded}
+ */
+function landed(cwd, request, warnings) {
+  const { id, outcome, line, held } = withStateLock(request.at.root, () => land(cwd, request, warnings));
+  refreshLedgerCopies(cwd, warnings);
+  /** @type {Landed} */
+  const result = { id, committed: outcome.committed };
+  if (outcome.held) result.note = HELD_NOTE;
+  else if (outcome.failed) result.note = 'commit pending — the entry is in the ledger, and the next ledger write or boot commits it';
+  if (warnings.length > 0) result.warnings = warnings;
+  return { landed: result, line, held };
+}
+
+/**
+ * `ledger <verb>`: one event appended and committed, then the knowledge
+ * base's copies rendered and indexed. Answers the entry's short id, the
+ * commit, and any warnings; a commit git refused is pending, and the next
+ * write's commit, or boot's, takes the ledger whole.
+ * @param {string} cwd @param {string} verb @param {string[]} args @param {() => string} stdin
+ * @returns {Landed}
+ */
+function writeLedger(cwd, verb, args, stdin) {
+  /** @type {string[]} */
+  const warnings = [];
+  try {
+    return landed(cwd, checkedAndLabelled(cwd, requestOf(cwd, verb, args, stdin, warnings), warnings), warnings).landed;
+  } catch (err) {
+    throw carrying(err, warnings);
+  }
+}
+
+/**
+ * What `raised` would land refused as its landing refuses it, against the
+ * ledger as it stands, writing nothing: its place, and its links resolved
+ * and checked — so a caller landing several checks each before it lands
+ * any. A raise whose id the ledger holds already passes, as its landing
+ * answers it before any link is checked.
+ * @param {string} cwd @param {Raised} raised @param {string[]} warnings
+ */
+function checkRaised(cwd, raised, warnings) {
+  const request = raisedRequest(cwd, raised, warnings);
+  const read = request.before();
+  if (request.id !== null && read.facts.has(request.id)) return;
+  eventOf(request, read);
+}
+
+/**
+ * What a raise lands — a decision, a replacement or a keep — through the
+ * lock the ledger's writes land through: answered as `writeLedger` answers,
+ * `warnings` the raise's own among them, beside the line the ledger already
+ * held at its id — a rerun whose first run appended it lands nothing
+ * again — or null.
+ * @param {string} cwd @param {Raised} raised @param {string[]} warnings
+ * @returns {RaiseLanded}
+ */
+function landRaised(cwd, raised, warnings) {
+  try {
+    return landed(cwd, raisedRequest(cwd, raised, warnings), warnings);
+  } catch (err) {
+    throw carrying(err, warnings);
+  }
+}
+
+module.exports = {
+  LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), WRITES, writeLedger, ledgerMessage, verbUsage, writePlaced, landRaised, checkRaised, callLogged, staleness, contentFaults, decisionGiven, saidFaults, unsealedFaults,
+};

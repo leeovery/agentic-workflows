@@ -3,7 +3,9 @@
 //
 // Tests for the presence heartbeat: beat / clear / scan / cleanup, the
 // held-process identity check (the one verdict — idle time is shown, never
-// judged), and the engine-rendered deferral section.
+// judged); a scan answers its JSON alone.
+//
+// Layer: verb.
 //
 
 require('./hermetic-env.cjs');
@@ -16,15 +18,14 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
-const { auditMarkers } = require('./gate-audit.cjs');
 
 function setup() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-presence-'));
-  fs.mkdirSync(path.join(dir, '.workflows', 'pay'), { recursive: true });
+  const dir = harness.setupGitFixture('engine-presence-');
+  fs.mkdirSync(path.join(dir, '.ledger', 'pay'), { recursive: true });
   return dir;
 }
 function cleanup(dir) {
-  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  harness.cleanupFixture(dir);
 }
 // Two session identities. OWN is this process — alive with a real start
 // time, so its records read held — and is what every scan runs as. PEER is
@@ -33,21 +34,23 @@ function cleanup(dir) {
 const OWN = { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-one' };
 const PEER = { CLAUDE_PID: '1', CLAUDE_CODE_SESSION_ID: 'sess-peer' };
 const engine = (dir, args, identity = OWN) => harness.okSections(dir, args, { env: identity });
-/** The deferral callout as one line — the renderer wraps it at the display width. */
-function unwrapped(sections) {
-  return sections.replace(/\n +/g, ' ');
-}
 const engineFails = (dir, args, env = {}) => harness.refuses(dir, args, { env });
 const engineWith = (dir, args, { env = {}, input, cwd = dir } = {}) =>
   harness.ok(cwd, args, { env: { ...OWN, ...env }, stdin: input });
 const EPOCH_START = 'Thu Jan  1 00:00:00 1970';
-function presenceFile(dir, phase, topic) {
-  return path.join(dir, '.workflows/.cache/pay', phase, topic, 'presence');
+/** `topic mailbox` on pay's alpha, the unit an epic. */
+function readMailbox(dir) {
+  fs.writeFileSync(path.join(dir, '.ledger', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'epic', status: 'in-progress', phases: {} }));
+  return engineWith(dir, ['topic', 'mailbox', 'pay', 'alpha']);
 }
+function presenceFile(dir, phase, topic) {
+  return path.join(dir, '.ledger/.cache/pay', phase, topic, 'presence');
+}
+/** A heartbeat as a session working in `dir`'s checkout writes it, unless the record names another. */
 function craftRecord(dir, phase, topic, record) {
   const p = presenceFile(dir, phase, topic);
   fs.mkdirSync(path.dirname(p), { recursive: true });
-  fs.writeFileSync(p, JSON.stringify(record) + '\n');
+  fs.writeFileSync(p, JSON.stringify({ checkout: dir, ...record }) + '\n');
 }
 
 describe('engine presence', () => {
@@ -55,127 +58,47 @@ describe('engine presence', () => {
   beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanup(dir); });
 
-  it('beat creates the heartbeat; scan reports it held with the deferral section', () => {
+  it('beat creates the heartbeat; scan reports it held, its JSON alone', () => {
     const beat = engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER).res;
     assert.deepStrictEqual(beat, { ok: true, work_unit: 'pay', phase: 'discussion', topic: 'alpha', beat: true });
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/.cache/pay/discussion/alpha/presence')));
+    assert.ok(fs.existsSync(path.join(dir, '.ledger/.cache/pay/discussion/alpha/presence')));
 
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
-    auditMarkers(sections, 'presence scan');
-    assert.deepStrictEqual(Object.keys(res), ['ok', 'work_unit', 'held', 'held_sources', 'sessions'],
-      'one verdict — no live total, no staleness window');
+    assert.deepStrictEqual(Object.keys(res), ['ok', 'work_unit', 'held', 'sessions'],
+      'one verdict — no live total, no staleness window, no source count');
     assert.strictEqual(res.held, 1);
-    assert.strictEqual(res.held_sources, 1, 'a discussion session is source material an analysis reads');
-    assert.deepStrictEqual(Object.keys(res.sessions[0]), ['phase', 'topic', 'age_seconds', 'held', 'session_id', 'pid']);
+    assert.deepStrictEqual(Object.keys(res.sessions[0]), ['phase', 'topic', 'age_seconds', 'held', 'session_id', 'pid', 'checkout']);
+    assert.strictEqual(res.sessions[0].checkout, dir, 'the beat records the checkout its session works in');
     assert.strictEqual(res.sessions[0].phase, 'discussion');
     assert.strictEqual(res.sessions[0].topic, 'alpha');
     assert.strictEqual(res.sessions[0].held, true);
-    assert.ok(sections.includes(
-      '=== DISPLAY: presence deferral (emit verbatim as a text code block (```text fence) only at an analysis deferral — do not stop; continue as the workflow instructs) ===',
-    ), `deferral marker carries its qualifier and the continuation instruction: ${sections}`);
-    assert.ok(sections.includes('\n  ⚑ Analyses deferred — 1 session(s): discussion/alpha (last'), `callout flag line at the 2-space indent: ${sections}`);
-    assert.match(unwrapped(sections),
-      /⚑ Analyses deferred — 1 session\(s\): discussion\/alpha \(last active \d+s ago\)\. They read the settled record, so they wait for those sessions to conclude; a session that is wedged but alive releases its hold with `node \.claude\/skills\/workflow-engine\/scripts\/engine\.cjs presence clear pay discussion alpha`\./,
-      `the callout names the row with its last-active age and the release: ${sections}`);
-    // The body is a callout: wrapped at the display width, continuations at
-    // the 4-space hang — never a hand-wrapped fixed column.
-    const { displayWidth } = require('../../skills/workflow-engine/scripts/kernel/terminal.cjs');
-    for (const line of sections.split('\n')) {
-      if (line.startsWith('===')) continue;
-      assert.ok(line.length <= displayWidth(), `deferral line overflows: ${line}`);
-    }
+    assert.strictEqual(sections, '', 'a scan renders nothing beside its JSON');
   });
 
-  it('the caller\'s own hold never defers — a session does not wait on itself', () => {
-    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha']);
-    const own = engine(dir, ['presence', 'scan', 'pay']);
-    assert.strictEqual(own.res.held, 1, 'the row is held');
-    assert.strictEqual(own.res.held_sources, 0, 'but it is this session\'s — an analysis run here is not waiting on it');
-    assert.strictEqual(own.sections, '');
-
-    engine(dir, ['presence', 'beat', 'pay', 'research', 'beta'], PEER);
-    const mixed = engine(dir, ['presence', 'scan', 'pay']);
-    assert.strictEqual(mixed.res.held_sources, 1);
-    assert.ok(unwrapped(mixed.sections).includes('1 session(s): research/beta (last active'), mixed.sections);
-    assert.ok(!mixed.sections.includes('discussion/alpha'), `the own row is never named: ${mixed.sections}`);
-  });
-
-  it('a held session outside the source phases defers no analysis', () => {
-    // The analyses read research and discussion; a laboratory, planning, or
-    // code session holds nothing they look at.
-    for (const phase of ['planning', 'specification', 'implementation', 'review', 'scoping', 'investigation', 'experiment']) {
-      engine(dir, ['presence', 'beat', 'pay', phase, 'alpha'], PEER);
-    }
-    const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
-    assert.strictEqual(res.held, 7, 'every session is held');
-    assert.strictEqual(res.held_sources, 0, 'none of them is source material');
-    assert.strictEqual(sections, '', 'nothing to defer, nothing rendered');
-
-    engine(dir, ['presence', 'beat', 'pay', 'research', 'beta'], PEER);
-    const second = engine(dir, ['presence', 'scan', 'pay']);
-    assert.strictEqual(second.res.held_sources, 1);
-    assert.ok(second.sections.includes('research/beta'), second.sections);
-    assert.ok(!second.sections.includes('planning/'), `the callout names source rows alone: ${second.sections}`);
-  });
-
-  it('held_sources counts held source rows alone — a dead source session is not one', () => {
+  it('held counts held rows alone — a dead session is not one', () => {
     const dead = spawnSync('node', ['-e', '']);
-    craftRecord(dir, 'research', 'beta', { pid: dead.pid, pid_start: null, session_id: 'gone' });
+    craftRecord(dir, 'discussion', 'beta', { pid: dead.pid, pid_start: EPOCH_START, session_id: 'gone' });
     engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER);
-    engine(dir, ['presence', 'beat', 'pay', 'planning', 'gamma'], PEER);
+    engine(dir, ['presence', 'beat', 'pay', 'review', 'gamma'], PEER);
 
-    const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
+    const { res } = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(res.sessions.length, 3, 'every row is listed, held or not');
-    assert.strictEqual(res.held, 2);
-    assert.strictEqual(res.held_sources, 1, 'the discussion alone: research is dead, planning is not a source');
-    assert.ok(unwrapped(sections).includes('1 session(s): discussion/alpha (last active'), sections);
-    assert.ok(!sections.includes('research/beta'), `a dead source row is never named: ${sections}`);
+    assert.strictEqual(res.held, 2, 'alpha and gamma: beta is dead');
+    assert.strictEqual(res.sessions.find((r) => r.topic === 'beta').held, false);
   });
 
-  it('an idle heartbeat stays held and still defers — the callout carries its age', () => {
+  it('an idle heartbeat stays held — its age shown, never judged', () => {
     // A session left idle for hours is still a session. The age is shown so
     // the user can weigh it; no surface turns it into a verdict.
-    engine(dir, ['presence', 'beat', 'pay', 'research', 'beta'], PEER);
-    const p = path.join(dir, '.workflows/.cache/pay/research/beta/presence');
+    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'beta'], PEER);
+    const p = path.join(dir, '.ledger/.cache/pay/discussion/beta/presence');
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
-    const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
+    const { res } = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(res.sessions[0].held, true, 'the owning process still runs');
     assert.ok(res.sessions[0].age_seconds >= 1100);
-    assert.strictEqual(res.held, 1);
-    assert.strictEqual(res.held_sources, 1, 'idle is not gone — the analysis still waits');
-    assert.ok(unwrapped(sections).includes('⚑ Analyses deferred — 1 session(s): research/beta (last active 20m ago).'),
-      `the callout names the row with its idle time: ${sections}`);
-  });
-
-  it('the deferral names every held source row with its own age, freshest first', () => {
-    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'platform-support'], PEER);
-    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'storage-and-sync'], PEER);
-    for (const [topic, minutes] of [['platform-support', 19], ['storage-and-sync', 20]]) {
-      const p = presenceFile(dir, 'discussion', topic);
-      const past = new Date(Date.now() - minutes * 60 * 1000);
-      fs.utimesSync(p, past, past);
-    }
-
-    const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
-    assert.strictEqual(res.held_sources, 2);
-    assert.ok(unwrapped(sections).includes(
-      '⚑ Analyses deferred — 2 session(s): discussion/platform-support (last active 19m ago), discussion/storage-and-sync (last active 20m ago). They read the settled record, so they wait for those sessions to conclude; a session that is wedged but alive releases its hold with `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear pay discussion platform-support`.',
-    ), sections);
-  });
-
-  it('render phase-note beats the addressed topic — announcing the entry is the same act as claiming the slot', () => {
-    fs.writeFileSync(path.join(dir, '.workflows/pay/manifest.json'), JSON.stringify({
-      name: 'pay', work_type: 'epic', status: 'in-progress',
-      phases: { experiment: { items: { alpha: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } } },
-    }) + '\n');
-    const out = harness.output(dir, ['render', 'phase-note', 'pay.experiment.alpha', '--verb', 'Starting', '--noun', 'E1'],
-      { env: OWN });
-    assert.ok(out.includes('Starting E1: Alpha'), out);
-    assert.ok(fs.existsSync(presenceFile(dir, 'experiment', 'alpha')), 'the note claimed the slot');
-    const scan = engine(dir, ['presence', 'scan', 'pay']).res;
-    assert.strictEqual(scan.sessions.filter((s) => s.phase === 'experiment' && s.topic === 'alpha' && s.held).length, 1);
+    assert.strictEqual(res.held, 1, 'idle is not gone');
   });
 
   it('clear drops the heartbeat and is a no-op when never set', () => {
@@ -186,15 +109,37 @@ describe('engine presence', () => {
     assert.strictEqual(engine(dir, ['presence', 'clear', 'pay', 'discussion', 'alpha']).res.cleared, true);
   });
 
-  it('covers every phase a session sits in — discovery excepted', () => {
-    for (const phase of ['research', 'experiment', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review']) {
+  it('covers every phase a session sits in, discovery among them', () => {
+    for (const phase of ['discovery', 'experiment', 'discussion', 'investigation', 'specification', 'implementation', 'review']) {
       assert.strictEqual(engine(dir, ['presence', 'beat', 'pay', phase, 'alpha']).res.beat, true, `${phase} beats`);
     }
     const scan = engine(dir, ['presence', 'scan', 'pay']).res;
-    assert.strictEqual(scan.sessions.length, 9, 'every phase reports a row');
-    assert.strictEqual(scan.held, 9);
-    // Discovery is engine-serialised by `discovery-session open` — no heartbeat.
-    assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'discovery', 'x']).error, /presence is research\|experiment\|discussion\|/);
+    assert.strictEqual(scan.sessions.length, 7, 'every phase reports a row');
+    assert.strictEqual(scan.held, 7);
+  });
+
+  it('the product\'s conversation beats at product, which has no directory of its own', () => {
+    assert.ok(!fs.existsSync(path.join(dir, '.ledger', 'product')));
+    assert.strictEqual(engine(dir, ['presence', 'beat', 'product', 'discovery', 'product']).res.beat, true);
+    const scan = engine(dir, ['presence', 'scan']).res;
+    assert.deepStrictEqual(scan.sessions.map((r) => `${r.work_unit}/${r.phase}/${r.topic}`), ['product/discovery/product']);
+    assert.match(engineFails(dir, ['presence', 'beat', 'ghost', 'discovery', 'ghost']).error, /no work unit directory/);
+  });
+
+  it('the product\'s conversation keeps a row for each conversation in it — every other place one — each read, beaten, cleared and swept as its own', () => {
+    for (const identity of [OWN, PEER]) engine(dir, ['presence', 'beat', 'product', 'discovery', 'product'], identity);
+    for (const identity of [OWN, PEER]) engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], identity);
+    const rows = () => engine(dir, ['presence', 'scan']).res.sessions.map((r) => `${r.work_unit} ${r.session_id}`).sort();
+    const both = rows();
+    engine(dir, ['presence', 'clear', 'product', 'discovery', 'product'], PEER);
+    const cleared = rows();
+    engine(dir, ['presence', 'beat', 'product', 'discovery', 'product'], PEER);
+    engine(dir, ['presence', 'cleanup', 'sess-peer']);
+    assert.deepStrictEqual([both, cleared, rows()], [
+      ['pay sess-peer', 'product sess-one', 'product sess-peer'],
+      ['pay sess-peer', 'product sess-one'],
+      ['product sess-one'],
+    ]);
   });
 
   it('refuses illegal phases, unknown work units, and malformed calls', () => {
@@ -214,7 +159,7 @@ describe('engine presence', () => {
   });
 
   it('the work-unit-less scan walks the whole cache root, naming each row\'s work unit', () => {
-    fs.mkdirSync(path.join(dir, '.workflows', 'ship'), { recursive: true });
+    fs.mkdirSync(path.join(dir, '.ledger', 'ship'), { recursive: true });
     engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER);
     engine(dir, ['presence', 'beat', 'ship', 'implementation', 'beta'], PEER);
 
@@ -227,12 +172,12 @@ describe('engine presence', () => {
       ['pay/discussion/alpha', 'ship/implementation/beta'],
     );
     assert.ok(res.sessions.every((r) => 'held' in r && !('live' in r) && 'age_seconds' in r && 'session_id' in r), 'the row shape is the scan\'s');
-    assert.strictEqual(sections, '', 'the deferral section belongs to the work-unit scan');
+    assert.strictEqual(sections, '', 'a scan renders nothing beside its JSON');
     assert.strictEqual(engine(dir, ['presence', 'scan', 'pay']).res.work_unit, 'pay', 'the per-work-unit form is unchanged');
   });
 
   it('the session-label store at the cache root is no work unit — the project scan reports nothing for it', () => {
-    const store = path.join(dir, '.workflows', '.cache', '.session-labels');
+    const store = path.join(dir, '.ledger', '.cache', '.session-labels');
     fs.mkdirSync(store, { recursive: true });
     fs.writeFileSync(path.join(store, 'abcd1234-7.json'), '{"tmux_id":"$7","original":"proj","applied":"proj · pay · discussion"}\n');
     const res = engine(dir, ['presence', 'scan']).res;
@@ -243,8 +188,7 @@ describe('engine presence', () => {
   });
 
   it('the project scan answers empty on a project that has never cached anything', () => {
-    const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-presence-bare-'));
-    fs.mkdirSync(path.join(bare, '.workflows'), { recursive: true });
+    const bare = harness.setupGitFixture('engine-presence-bare-');
     const res = engine(bare, ['presence', 'scan']).res;
     assert.deepStrictEqual(res.sessions, []);
     assert.strictEqual(res.held, 0);
@@ -277,12 +221,21 @@ describe('engine presence', () => {
   });
 
   it('a start-time-less record falls back to process aliveness', () => {
-    const dead = spawnSync('node', ['-e', '']);
     craftRecord(dir, 'discussion', 'alpha', { pid: process.pid, pid_start: null, session_id: 'a' });
-    craftRecord(dir, 'research', 'beta', { pid: dead.pid, pid_start: null, session_id: 'b' });
+    // No OS issues a pid this high; a dead pid the OS reused would read alive here.
+    craftRecord(dir, 'discussion', 'beta', { pid: 2147483646, pid_start: null, session_id: 'b' });
     const rows = engineWith(dir, ['presence', 'scan', 'pay']).sessions;
     assert.strictEqual(rows.find((r) => r.topic === 'alpha').held, true);
     assert.strictEqual(rows.find((r) => r.topic === 'beta').held, false);
+  });
+
+  it('a hold survives a `ps` that fails — a start time that cannot be read proves nothing — while a gone owner stays unheld', () => {
+    engineWith(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha']);
+    craftRecord(dir, 'discussion', 'beta', { pid: 2147483646, pid_start: EPOCH_START, session_id: 'b' });
+    const ps = harness.failingPs(dir);
+    const rows = engineWith(dir, ['presence', 'scan', 'pay'], { env: { PATH: ps.path } }).sessions;
+    assert.deepStrictEqual(rows.map((r) => [r.topic, r.held]).sort(), [['alpha', true], ['beta', false]]);
+    assert.deepStrictEqual(ps.runs(), [`-p ${process.pid} -o lstart=`], 'the live owner\'s start time asked for, and none read');
   });
 
   it('a beat with no CLAUDE_PID refuses — a record nothing can hold is never written', () => {
@@ -293,29 +246,28 @@ describe('engine presence', () => {
 
   it('an identity-less heartbeat is never held — a record that cannot be verified', () => {
     craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: null });
-    const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
+    const { res } = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(res.sessions[0].held, false, 'fresh mtime notwithstanding');
-    assert.strictEqual(res.held_sources, 0);
-    assert.strictEqual(sections, '', 'an unverifiable row defers nothing');
+    assert.strictEqual(res.held, 0);
   });
 
-  it('a legacy bare-pid heartbeat is never held', () => {
-    const p = presenceFile(dir, 'research', 'beta');
+  it('a heartbeat that is no record is never held', () => {
+    const p = presenceFile(dir, 'discussion', 'beta');
     fs.mkdirSync(path.dirname(p), { recursive: true });
     fs.writeFileSync(p, '12345\n');
     assert.strictEqual(engineWith(dir, ['presence', 'scan', 'pay']).sessions[0].held, false);
   });
 
   it('the code-slot read takes held implementation and review rows, never the caller\'s own', () => {
-    const { heldCodeSessions } = require('../../skills/workflow-engine/scripts/domain/presence.cjs');
-    fs.mkdirSync(path.join(dir, '.workflows', 'ship'), { recursive: true });
+    const { heldCodeSessions } = require('../../skills/ledger-engine/scripts/domain/presence.cjs');
+    fs.mkdirSync(path.join(dir, '.ledger', 'ship'), { recursive: true });
     // Every row is held by this (alive) process; ownership is decided by
     // session id alone, with the pid arm switched off below.
     craftRecord(dir, 'implementation', 'alpha', { pid: process.pid, pid_start: null, session_id: 'peer' });
     craftRecord(dir, 'discussion', 'beta', { pid: process.pid, pid_start: null, session_id: 'peer' });
-    const shipRow = path.join(dir, '.workflows/.cache/ship/review/gamma/presence');
+    const shipRow = path.join(dir, '.ledger/.cache/ship/review/gamma/presence');
     fs.mkdirSync(path.dirname(shipRow), { recursive: true });
-    fs.writeFileSync(shipRow, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'mine' }) + '\n');
+    fs.writeFileSync(shipRow, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'mine', checkout: dir }) + '\n');
 
     const beforeSession = process.env.CLAUDE_CODE_SESSION_ID;
     const beforePid = process.env.CLAUDE_PID;
@@ -335,11 +287,47 @@ describe('engine presence', () => {
     }
   });
 
+  it('the code-slot read is the caller\'s checkout\'s — a code session in another worktree never holds it', () => {
+    const { heldCodeSessions } = require('../../skills/ledger-engine/scripts/domain/presence.cjs');
+    const worktree = path.join(dir, '..', `${path.basename(dir)}-code`);
+    harness.git(dir, ['worktree', 'add', '-q', '-b', 'feature', worktree]);
+    try {
+      craftRecord(dir, 'implementation', 'alpha', { pid: 1, pid_start: null, session_id: 'peer', checkout: worktree });
+      const beforePid = process.env.CLAUDE_PID;
+      process.env.CLAUDE_PID = String(process.pid);
+      try {
+        assert.deepStrictEqual(heldCodeSessions(dir), [], 'the main checkout is free while the worktree codes');
+        assert.strictEqual(heldCodeSessions(worktree).length, 1, 'and the worktree\'s own slot is held');
+      } finally {
+        if (beforePid === undefined) delete process.env.CLAUDE_PID;
+        else process.env.CLAUDE_PID = beforePid;
+      }
+    } finally {
+      fs.rmSync(worktree, { recursive: true, force: true });
+    }
+  });
+
+  it('the code-slot read never takes a quick-fix\'s rows, its code built in a worktree of its own', () => {
+    const { heldCodeSessions } = require('../../skills/ledger-engine/scripts/domain/presence.cjs');
+    fs.writeFileSync(path.join(dir, '.ledger', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'quick-fix', status: 'in-progress', phases: {} }));
+    craftRecord(dir, 'implementation', 'pay', { pid: 1, pid_start: null, session_id: 'peer' });
+    const beforePid = process.env.CLAUDE_PID;
+    process.env.CLAUDE_PID = String(process.pid);
+    try {
+      const quickFix = heldCodeSessions(dir);
+      fs.writeFileSync(path.join(dir, '.ledger', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'feature', status: 'in-progress', phases: {} }));
+      assert.deepStrictEqual([quickFix, heldCodeSessions(dir).length], [[], 1], 'the same row of a feature holds the slot');
+    } finally {
+      if (beforePid === undefined) delete process.env.CLAUDE_PID;
+      else process.env.CLAUDE_PID = beforePid;
+    }
+  });
+
   it('the code-slot read excludes a row carrying the caller\'s pid under another session id', () => {
     // A resumed conversation keeps the process and takes a new session id, so
     // pid ownership is the second arm of the same question — without it the
     // session gates against a hold it is standing in.
-    const { heldCodeSessions } = require('../../skills/workflow-engine/scripts/domain/presence.cjs');
+    const { heldCodeSessions } = require('../../skills/ledger-engine/scripts/domain/presence.cjs');
     craftRecord(dir, 'implementation', 'alpha', { pid: process.pid, pid_start: null, session_id: 'an-earlier-conversation' });
 
     const beforeSession = process.env.CLAUDE_CODE_SESSION_ID;
@@ -359,9 +347,9 @@ describe('engine presence', () => {
   });
 
   it('cleanup sweeps only the named session, argv or stdin, across work units', () => {
-    fs.mkdirSync(path.join(dir, '.workflows', 'ship'), { recursive: true });
+    fs.mkdirSync(path.join(dir, '.ledger', 'ship'), { recursive: true });
     craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: 'sess-a' });
-    craftRecord(dir, 'research', 'beta', { pid: null, pid_start: null, session_id: 'sess-a' });
+    craftRecord(dir, 'discussion', 'beta', { pid: null, pid_start: null, session_id: 'sess-a' });
     craftRecord(dir, 'discussion', 'gamma', { pid: null, pid_start: null, session_id: 'sess-b' });
 
     const swept = engineWith(dir, ['presence', 'cleanup', 'sess-a']);
@@ -381,7 +369,7 @@ describe('engine presence', () => {
       assert.deepStrictEqual(swept.cleared, [{ work_unit: 'pay', phase: 'discussion', topic: 'alpha' }]);
       assert.ok(!fs.existsSync(presenceFile(dir, 'discussion', 'alpha')));
     } finally {
-      cleanup(outside);
+      fs.rmSync(outside, { recursive: true, force: true });
     }
   });
 
@@ -401,7 +389,7 @@ describe('engine presence', () => {
   });
 
   it('a mailbox read stamps nothing where no heartbeat exists — reads never manufacture a hold', () => {
-    const res = engineWith(dir, ['topic', 'mailbox', 'pay', 'discussion', 'alpha']);
+    const res = readMailbox(dir);
     assert.strictEqual(res.count, 0);
     assert.ok(!fs.existsSync(presenceFile(dir, 'discussion', 'alpha')),
       'a foreign topic\'s mailbox check leaves no presence behind');
@@ -413,7 +401,7 @@ describe('engine presence', () => {
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
-    engineWith(dir, ['topic', 'mailbox', 'pay', 'discussion', 'alpha']);
+    readMailbox(dir);
     const record = JSON.parse(fs.readFileSync(p, 'utf8'));
     assert.strictEqual(record.session_id, 'sess-one');
     assert.strictEqual(record.pid, process.pid, 'the refresh re-stamps the full identity');
@@ -428,7 +416,7 @@ describe('engine presence', () => {
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
-    engineWith(dir, ['topic', 'mailbox', 'pay', 'discussion', 'alpha']);
+    readMailbox(dir);
     const record = JSON.parse(fs.readFileSync(p, 'utf8'));
     assert.strictEqual(record.session_id, 'peer-sess', 'the peer\'s identity stands');
     assert.strictEqual(record.pid, null);
@@ -441,12 +429,12 @@ describe('engine presence', () => {
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
-    engineWith(dir, ['topic', 'mailbox', 'pay', 'discussion', 'alpha']);
+    readMailbox(dir);
     assert.ok(fs.statSync(p).mtimeMs < Date.now() - 15 * 60 * 1000, 'an unowned record is never claimed');
   });
 
   it('an agent-store scan stamps nothing where no heartbeat exists', () => {
-    fs.writeFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, '.ledger', 'pay', 'manifest.json'), JSON.stringify({
       name: 'pay', work_type: 'epic', status: 'in-progress', phases: {},
     }, null, 2));
     engineWith(dir, ['agent', 'scan', 'pay', 'discussion', 'alpha']);
@@ -456,7 +444,7 @@ describe('engine presence', () => {
 });
 
 describe('fmtAge', () => {
-  const { fmtAge } = require('../../skills/workflow-engine/scripts/domain/presence.cjs');
+  const { fmtAge } = require('../../skills/ledger-engine/scripts/domain/presence.cjs');
 
   it('rounds to the unit a reader weighs a hold in — seconds, minutes, hours, days', () => {
     assert.deepStrictEqual(

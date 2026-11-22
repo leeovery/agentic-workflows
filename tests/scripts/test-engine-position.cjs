@@ -5,15 +5,41 @@
 // arrival records in the conversation's folder, labels on or off — a phase,
 // a work unit's menu, the project-level places — a place this project lacks
 // refused, marking the conversation first where the call runs in a
-// workflows project, and nothing without a session id; the task `task
-// start` adds and its `task complete` takes off; the executor the gate mod's
-// `conversation executor` adds beside a task in flight, riding with that task
-// alone; the start menu's repair dropping it; and `conversation position`,
+// Ledger project, and nothing without a session id; the builder and
+// reviewers the gate mod's `conversation builder` records against the task
+// its brief was issued for, riding with that task alone, two recorded at
+// once both standing (24.2.4, 13.3.3, 12.S21) — the tracker's `task start`
+// and `task done` on the position are test-engine-task-verbs.cjs's; the
+// unit's tasks riding with every arrival in the unit and none at other
+// work; the start menu's repair dropping it, a record racing the last
+// task's close at the place left never bringing it back, and boot's leaving
+// it, the place it left kept until a position is recorded again — a
+// position holding tasks in flight kept for them at the place left, the
+// conversation at no place, until each closes, the build is entered again
+// or a task starts; and `conversation position`,
 // which answers what to re-read to carry on there: the skill that runs the
 // work, then the topic's documents this project has, each by its absolute
 // path under the project root, as the note a compaction hands up and one line
 // of JSON for the gate mod — nothing from a place no longer open, or one
-// whose skill the project lacks.
+// whose skill the project lacks. A discussion's note carries its recovery
+// whole (24.2.6): the topic's record and its log, the log caught up from the
+// conversation's transcript, and the line its next write opens with where
+// the log does not name the conversation yet, or another conversation has
+// written since (24.S10, 9.S67); so does
+// discovery's, at an epic its map, its open log, the sections of the
+// product's sessions its first log points at and its points from before,
+// at the product's conversation its open log, or once written its picture,
+// the log caught up alone (24.S19, 8.S67); and specification's, at the
+// unit, each live topic's record and log, the files linked canonical, then
+// the spec once written and its cut, and the review page while it is open,
+// a concluded spec carrying nothing on; the laboratory's, what its entry
+// reads of the experiment the position holds, and until its approval the
+// spawning topic's record and log, none where it holds no experiment;
+// every other phase's sends Claude to its skill's own steps, a build's
+// naming each task in flight with its builder and its pair (24.S12), and a
+// build not to be entered carries nothing on (P12).
+//
+// Layer: verb.
 //
 
 require('./hermetic-env.cjs');
@@ -24,16 +50,21 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { skillAt } = require('../../skills/workflow-engine/scripts/domain/position.cjs');
-const { OPENING_SKILLS } = require('../../skills/workflow-engine/scripts/domain/handoff.cjs');
-const { PROJECT_IDENTITIES, VALID_PHASES } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
+const { skillAt } = require('../../skills/ledger-engine/scripts/domain/position.cjs');
+const { ROLES } = require('../../skills/ledger-engine/scripts/domain/brief-names.cjs');
+const { storeBrief } = require('../../skills/ledger-engine/scripts/domain/brief.cjs');
+const { HANDOFF_TARGETS } = require('../../skills/ledger-engine/scripts/domain/handoff.cjs');
+const { PROJECT_IDENTITIES, VALID_PHASES } = require('../../skills/ledger-engine/scripts/kernel/manifest-schema.cjs');
 
-let dir; // a workflows project
+const POSITION_MODULE = path.join(__dirname, '../../skills/ledger-engine/scripts/domain/position.cjs');
+
+let dir; // a Ledger project
 let config; // this test's system config directory
+let claude; // this test's Claude Code config directory
 
 /** The engine as the conversation `sessionId` runs it — null runs it with no id. */
 function env(sessionId = 'sess-1') {
-  return { WORKFLOWS_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: sessionId ?? undefined, TMUX: undefined, TMUX_PANE: undefined };
+  return { LEDGER_CONFIG_DIR: config, CLAUDE_CONFIG_DIR: claude, CLAUDE_CODE_SESSION_ID: sessionId ?? undefined, TMUX: undefined, TMUX_PANE: undefined };
 }
 
 /** A call that must succeed, its response line parsed. */
@@ -51,11 +82,28 @@ function position(sessionId = 'sess-1') {
   try { return JSON.parse(fs.readFileSync(path.join(folder(sessionId), 'position.json'), 'utf8')); } catch { return null; }
 }
 
+/** The place a conversation left for the start menu, or null. */
+function left(sessionId = 'sess-1') {
+  try { return JSON.parse(fs.readFileSync(path.join(folder(sessionId), 'left.json'), 'utf8')); } catch { return null; }
+}
+
 /** Hand-write a position, its conversation marked. */
 function writePosition(record, sessionId = 'sess-1') {
   fs.mkdirSync(folder(sessionId), { recursive: true });
   fs.writeFileSync(path.join(folder(sessionId), 'workflow'), '');
   fs.writeFileSync(path.join(folder(sessionId), 'position.json'), JSON.stringify(record));
+}
+
+/** A task just put in flight: no builder or reviewer recorded yet. */
+const fresh = (task) => ({ task, builder: null, reviewers: [] });
+
+/**
+ * A brief the conversation issued for the `role`'s agent, stored as `brief`
+ * stores it — for the unit's task, or with no task, for its topic.
+ */
+function issue(id, role, task, unit = 'pay', sessionId = 'sess-1') {
+  const issued = { role, agent: ROLES[role].agent, unit, task, topic: task === null ? 'ledger' : null };
+  harness.withEnv({ LEDGER_CONFIG_DIR: config }, () => storeBrief(sessionId, id, `Brief ${id}\n`, issued));
 }
 
 /** Mark a conversation as the engine does: any call it makes in the project. */
@@ -70,11 +118,6 @@ function write(rel, content = '# content\n') {
   return rel;
 }
 
-/** Git in the project. */
-function git(args) {
-  return harness.git(dir, args);
-}
-
 /** A file of the project, by its absolute path. */
 function abs(rel) {
   return path.join(dir, rel);
@@ -87,7 +130,7 @@ function install(skill) {
 
 /** A work unit's manifest, its `phases` given. */
 function workUnit(name, workType, phases = {}, extra = {}) {
-  write(`.workflows/${name}/manifest.json`, JSON.stringify({ name, work_type: workType, status: 'in-progress', phases, ...extra }, null, 2));
+  write(`.ledger/${name}/manifest.json`, JSON.stringify({ name, work_type: workType, status: 'in-progress', phases, ...extra }, null, 2));
 }
 
 /** `conversation position`'s answer: the DATA text and the parsed POSITION line. */
@@ -106,15 +149,13 @@ function reads(args = [], sessionId = 'sess-1') {
 beforeEach(() => {
   dir = harness.setupGitFixture('engine-position-');
   config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-position-config-'));
-  workUnit('pay', 'epic', {
-    implementation: { items: { ledger: { status: 'in-progress', current_task: null, fix_attempts: 0 } } },
-    planning: { items: { ledger: { status: 'completed', format: 'flat-files' } } },
-  });
+  claude = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-position-claude-'));
+  workUnit('pay', 'epic', {}, { build: { position: 'auto' } });
   mark();
 });
 
 afterEach(() => {
-  for (const d of [dir, config]) fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  for (const d of [dir, config, claude]) fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 describe('the position every arrival records', () => {
@@ -123,7 +164,7 @@ describe('the position every arrival records', () => {
     assert.deepStrictEqual(position(), { name: 'pay', phase: 'discussion', topic: 'ledger' });
     ok(['session', 'label', 'pay']);
     assert.deepStrictEqual(position(), { name: 'pay' });
-    for (const name of ['roadmap', 'baseline']) {
+    for (const name of ['roadmap', 'product']) {
       ok(['session', 'label', name]);
       assert.deepStrictEqual(position(), { name });
     }
@@ -134,23 +175,19 @@ describe('the position every arrival records', () => {
     ok(['session', 'label', 'roadmap'], 'sess-new');
     assert.ok(fs.existsSync(path.join(folder('sess-new'), 'workflow')), 'the label marked the conversation');
     assert.deepStrictEqual(position('sess-new'), { name: 'roadmap' });
-    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3'], 'sess-task');
-    assert.ok(fs.existsSync(path.join(folder('sess-task'), 'workflow')), 'task start marked the conversation');
-    assert.deepStrictEqual(position('sess-task'), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' });
   });
 
   it('no session id records nothing', () => {
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
-    ok(['session', 'label', 'pay', 'review', 'ledger'], null);
-    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3'], null);
+    ok(['session', 'label', 'pay', 'review', 'pay'], null);
     assert.deepStrictEqual(position(), { name: 'pay', phase: 'discussion', topic: 'ledger' });
   });
 
-  it('a call run outside a workflows project records nothing and marks nothing', () => {
+  it('a call run outside a Ledger project records nothing and marks nothing', () => {
     const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-position-outside-'));
     try {
       harness.ok(outside, ['session', 'label', 'roadmap'], { env: env('sess-out') });
-      assert.ok(!fs.existsSync(folder('sess-out')), 'no folder for a conversation that never ran in a workflows project');
+      assert.ok(!fs.existsSync(folder('sess-out')), 'no folder for a conversation that never ran in a Ledger project');
     } finally {
       fs.rmSync(outside, { recursive: true, force: true });
     }
@@ -158,54 +195,20 @@ describe('the position every arrival records', () => {
 
   it('refuses a place this project lacks, labels off, keeping the last one — a missing work unit, an unknown phase, an identity with a phase, an illegal name', () => {
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
+    const missing = (name) => `no work unit directory: ${abs(`.ledger/${name}`)}`;
     for (const [args, error] of [
-      [['ghost'], /^no work unit directory: \.workflows\/ghost$/],
+      [['ghost'], missing('ghost')],
       [['pay', 'deploying', 'ledger'], /^unknown phase "deploying" — one of /],
-      [['ghost', 'discussion', 'ledger'], /^no work unit directory: \.workflows\/ghost$/],
-      [['roadmap', 'discovery', 'roadmap'], /^no work unit directory: \.workflows\/roadmap$/],
+      [['ghost', 'discussion', 'ledger'], missing('ghost')],
+      [['roadmap', 'discovery', 'roadmap'], missing('roadmap')],
       [['pay', 'discussion', 'led.ger'], /^"led\.ger" is not a legal topic name/],
       [['p.ay'], /^"p\.ay" is not a legal work unit name/],
     ]) {
-      assert.match(harness.refuses(dir, ['session', 'label', ...args], { env: env() }).error, error, args.join(' '));
+      const refused = harness.refuses(dir, ['session', 'label', ...args], { env: env() }).error;
+      if (typeof error === 'string') assert.strictEqual(refused, error, args.join(' '));
+      else assert.match(refused, error, args.join(' '));
     }
     assert.deepStrictEqual(position(), { name: 'pay', phase: 'discussion', topic: 'ledger' });
-  });
-
-  it('task start adds the task in flight; that task\'s complete takes it off, another\'s leaves it', () => {
-    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' });
-    ok(['task', 'complete', 'pay', 'ledger', 'ledger-1-1']);
-    assert.strictEqual(position().task, '2.3', 'an out-of-band completion of another task');
-    ok(['task', 'complete', 'pay', 'ledger', 'ledger-2-3', '--next-task', '~']);
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger' });
-  });
-
-  it('a task completed by its external id comes off as its internal id would', () => {
-    workUnit('pay', 'epic', {
-      implementation: { items: { ledger: { status: 'in-progress', current_task: null, fix_attempts: 0 } } },
-      planning: { items: { ledger: { status: 'completed', format: 'flat-files', task_map: { 'ledger-2-3': 'EXT-7' } } } },
-    });
-    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-    ok(['task', 'complete', 'pay', 'ledger', '--external', 'EXT-7', '--next-task', '~']);
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger' });
-  });
-
-  it('a re-label of the same implementation keeps the task; arriving anywhere else leaves none behind', () => {
-    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-    assert.strictEqual(position().task, '2.3');
-    ok(['session', 'label', 'pay']);
-    assert.deepStrictEqual(position(), { name: 'pay' });
-    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger' }, 'no task until task start');
-  });
-
-  it('task start writes the whole position — the conversation is in that implementation, on that task', () => {
-    ok(['session', 'label', 'pay', 'discussion', 'ledger']);
-    ok(['task', 'start', 'pay', 'ledger', 'ledger-1-4']);
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '1.4' });
   });
 
   it('the start menu is no position: repair takes the calling conversation\'s own off, labels off, and leaves another\'s', () => {
@@ -216,158 +219,271 @@ describe('the position every arrival records', () => {
     assert.deepStrictEqual(position('sess-2'), { name: 'pay' });
   });
 
+  it('boot leaves the position for the start menu, keeping the place it left where that names a phase until a position is recorded again; at a unit\'s menu it keeps none (D38)', () => {
+    ok(['session', 'label', 'pay', 'discussion', 'ledger']);
+    ok(['boot']);
+    const booted = [position(), left()];
+    ok(['session', 'label', 'pay']);
+    const arrived = [position(), left()];
+    ok(['boot']);
+
+    assert.deepStrictEqual([booted, arrived, [position(), left()]], [[null, { name: 'pay', phase: 'discussion' }], [{ name: 'pay' }, null], [null, null]]);
+  });
+
   it('a position that cannot be written never fails the verb', () => {
     fs.mkdirSync(path.join(folder(), 'position.json'));
     assert.deepStrictEqual(ok(['session', 'label', 'pay', 'discussion', 'ledger']), { ok: true, labelled: false, reason: 'disabled' });
-    assert.strictEqual(ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']).task, 'ledger-2-3');
   });
 });
 
-describe('the executor the gate mod records', () => {
+describe('the builders and reviewers the gate mod records (24.2.4, 13.3.3, 29.14.8)', () => {
   const AGENT = 'aa76bd7f82a2ef3e4';
+  /** The unit's build: the tracker's tasks are in flight at the unit's implementation. */
+  const BUILD = { name: 'pay', phase: 'implementation', topic: 'pay' };
 
-  /** The gate mod's call as it sees the executor dispatched, its answer parsed. */
-  function executor(agentId = AGENT, sessionId = 'sess-1') {
-    return ok(['conversation', 'executor', sessionId, agentId], null);
+  /** The gate mod's call as it sees a dispatch answered, its answer parsed — a builder's or a reviewer's naming its brief. */
+  function dispatched(agentId, brief, sessionId = 'sess-1') {
+    return ok(['conversation', 'builder', sessionId, agentId, '--brief', brief], null);
   }
 
-  /** The conversation in that implementation, on task 2.3, its executor recorded. */
+  /** Pay's phase 1 written with `count` tasks, as the tracker holds them. @param {number} count */
+  function tracked(count) {
+    ok(['task', 'phase', 'pay', '1', '--title', 'Ledger']);
+    const file = write('task.md', '# Keep the ledger\n\n## Type\nfeat\n\n## Problem\nA.\n\n## Solution\nB.\n\n## Outcome\nC.\n\n## Acceptance scenarios\n- Given a, when b, then c.\n\n## Spec reference\n§1\n');
+    for (let n = 1; n <= count; n += 1) ok(['task', 'create', 'pay', '1', '--file', abs(file)], `create-${n}`);
+    fs.rmSync(abs(file));
+  }
+
+  /** The conversation in the unit's build, on task 1.1, its builder recorded. */
   function onTask() {
-    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-    assert.deepStrictEqual(executor(), { ok: true, recorded: true });
+    writePosition({ ...BUILD, tasks: [fresh('1.1')] });
+    issue('B11', 'builder', '1.1');
+    assert.deepStrictEqual(dispatched(AGENT, 'B11'), { ok: true, recorded: true });
   }
 
-  it('records the agent id beside the task in flight', () => {
-    onTask();
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3', executor: AGENT });
+  it('a builder\'s dispatch is recorded against the task its brief was issued for — several in flight, each its own (12.S21)', () => {
+    writePosition({ ...BUILD, tasks: [fresh('1.1'), fresh('1.2')] });
+    issue('B11', 'builder', '1.1');
+    issue('B12', 'builder', '1.2');
+
+    assert.deepStrictEqual([dispatched('b12', 'B12'), dispatched('b11', 'B11')], [{ ok: true, recorded: true }, { ok: true, recorded: true }]);
+
+    assert.deepStrictEqual(position(), { ...BUILD, tasks: [{ task: '1.1', builder: 'b11', reviewers: [] }, { task: '1.2', builder: 'b12', reviewers: [] }] });
   });
 
-  it('records nothing without a task in flight — no position, another phase, an implementation between tasks', () => {
-    assert.deepStrictEqual(executor(AGENT, 'sess-none'), { ok: true, recorded: false });
+  it('the pair: each reviewer joins its task\'s reviewers, once; a later builder\'s dispatch, the fix round\'s brief among them, replaces the builder (13.3.3)', () => {
+    writePosition({ ...BUILD, tasks: [fresh('1.1'), fresh('1.2')] });
+    issue('B11', 'builder', '1.1');
+    issue('R1', 'reviewer', '1.1');
+    issue('R2', 'reviewer', '1.1');
+    issue('F11', 'fix', '1.1');
+
+    for (const [agentId, brief] of [['b11', 'B11'], ['r1', 'R1'], ['r2', 'R2'], ['r1', 'R1']]) dispatched(agentId, brief);
+    assert.deepStrictEqual(position().tasks, [{ task: '1.1', builder: 'b11', reviewers: ['r1', 'r2'] }, fresh('1.2')]);
+
+    dispatched('b9', 'F11');
+    assert.deepStrictEqual(position().tasks, [{ task: '1.1', builder: 'b9', reviewers: ['r1', 'r2'] }, fresh('1.2')]);
+  });
+
+  it('records nothing where its brief names no task in flight on the position — never issued here, another agent\'s, a task not in flight, another unit\'s, no position, and the conversation at other work', () => {
+    writePosition({ ...BUILD, tasks: [fresh('1.1')] });
+    issue('B12', 'builder', '1.2');
+    issue('REF', 'builder', '1.1', 'refunds');
+    issue('DIVE', 'deep-dive', null);
+    issue('B11', 'builder', '1.1');
+    const before = position();
+    for (const brief of ['NOPE', 'B12', 'REF', 'DIVE']) assert.deepStrictEqual(dispatched('a1', brief), { ok: true, recorded: false }, brief);
+    assert.deepStrictEqual(position(), before);
+
+    assert.deepStrictEqual(dispatched('a1', 'B11', 'sess-none'), { ok: true, recorded: false });
     assert.strictEqual(position('sess-none'), null);
-    for (const place of [['pay', 'discussion', 'ledger'], ['pay'], ['pay', 'implementation', 'ledger']]) {
-      ok(['session', 'label', ...place]);
-      const before = position();
-      assert.deepStrictEqual(executor(), { ok: true, recorded: false }, place.join(' '));
-      assert.deepStrictEqual(position(), before, place.join(' '));
-    }
+    ok(['session', 'label', 'roadmap']);
+    assert.deepStrictEqual([dispatched('a1', 'B11'), position()], [{ ok: true, recorded: false }, { name: 'roadmap' }]);
   });
 
   it('records on the conversation it names, never the calling one', () => {
     onTask();
-    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3'], 'sess-2');
+    writePosition({ ...BUILD, tasks: [fresh('1.1')] }, 'sess-2');
+    issue('B11', 'builder', '1.1', 'pay', 'sess-2');
     const calling = position();
-    assert.deepStrictEqual(ok(['conversation', 'executor', 'sess-2', 'ab12'], 'sess-1'), { ok: true, recorded: true });
-    assert.strictEqual(position('sess-2').executor, 'ab12');
+    assert.deepStrictEqual(ok(['conversation', 'builder', 'sess-2', 'ab12', '--brief', 'B11'], 'sess-1'), { ok: true, recorded: true });
+    assert.strictEqual(position('sess-2').tasks[0].builder, 'ab12');
     assert.deepStrictEqual(position(), calling, 'the calling conversation\'s position is untouched');
   });
 
-  it('a later dispatch for the same task replaces it', () => {
-    onTask();
-    executor('ab12');
-    assert.strictEqual(position().executor, 'ab12');
+  it('a task\'s agents ride with it: task start re-run keeps them, another task starts beside it with none, and its close takes them off with it', () => {
+    tracked(2);
+    writePosition({ ...BUILD, tasks: [{ task: '1.1', builder: AGENT, reviewers: ['r1', 'r2'] }] });
+    const [held] = position().tasks;
+    ok(['task', 'start', 'pay', '1.1']);
+    assert.deepStrictEqual(position().tasks, [held], 'the recovery steps re-run task start for the task in flight');
+    ok(['task', 'start', 'pay', '1.2']);
+    assert.deepStrictEqual(position().tasks, [held, fresh('1.2')]);
+    ok(['task', 'close', 'pay', '1.1', '--reason', 'The ledger keeps itself.']);
+    assert.deepStrictEqual(position().tasks, [fresh('1.2')]);
   });
 
-  it('task start re-run for the task in flight keeps it; another task starts without one', () => {
+  it('arriving anywhere in the unit keeps them, their agents with them — its build again, the epic\'s menu, a topic\'s discussion; arriving at other work leaves none behind — another unit, a project place', () => {
+    workUnit('refunds', 'feature');
     onTask();
-    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-    assert.strictEqual(position().executor, AGENT, 'the recovery steps re-run task start for the task in flight');
-    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-4']);
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.4' });
-  });
+    const { tasks } = position();
+    const arrived = (/** @type {string[]} */ place) => {
+      ok(['session', 'label', ...place]);
+      return position();
+    };
 
-  it('task start for the same step in another implementation starts without one', () => {
-    workUnit('pay', 'epic', {
-      implementation: { items: {
-        ledger: { status: 'in-progress', current_task: null, fix_attempts: 0 },
-        refunds: { status: 'in-progress', current_task: null, fix_attempts: 0 },
-      } },
+    const inUnit = [['pay', 'implementation', 'pay'], ['pay'], ['pay', 'discussion', 'ledger']].map(arrived);
+    const elsewhere = [['refunds', 'discussion', 'refunds'], ['roadmap']].map((place) => {
+      writePosition({ ...BUILD, tasks });
+      return arrived(place);
     });
-    onTask();
-    ok(['task', 'start', 'pay', 'refunds', 'refunds-2-3']);
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'refunds', task: '2.3' });
+
+    assert.strictEqual(tasks[0].builder, AGENT);
+    assert.deepStrictEqual(inUnit, [{ ...BUILD, tasks }, { name: 'pay', tasks }, { name: 'pay', phase: 'discussion', topic: 'ledger', tasks }]);
+    assert.deepStrictEqual(elsewhere, [{ name: 'refunds', phase: 'discussion', topic: 'refunds' }, { name: 'roadmap' }]);
   });
 
-  it('the task\'s completion takes it off with the task', () => {
-    onTask();
-    ok(['task', 'complete', 'pay', 'ledger', 'ledger-1-1']);
-    assert.strictEqual(position().executor, AGENT, 'another task\'s completion leaves it');
-    ok(['task', 'complete', 'pay', 'ledger', 'ledger-2-3', '--next-task', '~']);
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger' });
+  it('24.2.4: the bare command\'s boot leaves the build for the start menu keeping its tasks for their builders, at the place left — the conversation at no place, nothing carried on, a reviewer still recorded — and a re-label of the build carries them back with their agents; left again, the last task\'s close takes the position with it', () => {
+    tracked(1);
+    const built = { task: '1.1', builder: AGENT, reviewers: [] };
+    const atBuild = { name: 'pay', phase: 'implementation' };
+    writePosition({ ...BUILD, tasks: [built] });
+
+    const leaving = [ok(['boot']).go, position(), left(), reads().position];
+    issue('R1', 'reviewer', '1.1');
+    dispatched('r1', 'R1');
+    const reviewed = [position().tasks, left()];
+    ok(['session', 'label', 'pay', 'implementation', 'pay']);
+    const back = [position(), left()];
+    ok(['session', 'repair']);
+    ok(['task', 'close', 'pay', '1.1', '--reason', 'The ledger keeps itself.']);
+
+    assert.deepStrictEqual([leaving, reviewed, back, [position(), left()]], [
+      ['menu', { ...BUILD, tasks: [built] }, atBuild, null],
+      [[{ ...built, reviewers: ['r1'] }], atBuild],
+      [{ ...BUILD, tasks: [{ ...built, reviewers: ['r1'] }] }, null],
+      [null, atBuild],
+    ]);
   });
 
-  it('a re-label of the same implementation keeps it; arriving anywhere else leaves none behind', () => {
-    onTask();
-    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-    assert.strictEqual(position().executor, AGENT);
-    ok(['session', 'label', 'pay']);
-    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' });
+  it('a task start at the start menu — a builder\'s report handled there — is a position recorded again: the place left taken away, the conversation back in the build with its tasks', () => {
+    tracked(2);
+    const built = { task: '1.1', builder: AGENT, reviewers: [] };
+    writePosition({ ...BUILD, tasks: [built] });
+    ok(['boot']);
+    const atMenu = left();
+
+    ok(['task', 'start', 'pay', '1.2']);
+
+    assert.deepStrictEqual([atMenu, left(), position()], [{ name: 'pay', phase: 'implementation' }, null, { ...BUILD, tasks: [built, fresh('1.2')] }]);
   });
 
-  it('a stored executor that does not read as an agent id is ignored, never carried on', () => {
-    install('workflow-implementation-process');
-    for (const stored of ['a b', '../x', '`x`', '', 7, null, ['a1']]) {
-      writePosition({ name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3', executor: stored });
-      const answer = reads();
-      assert.deepStrictEqual(answer.position, { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' }, JSON.stringify(stored));
-      assert.doesNotMatch(answer.text, /executor/, JSON.stringify(stored));
-      ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-      assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' }, JSON.stringify(stored));
+  it('refuses an agent id that is not one, a brief id that is not one or none, a missing argument and an extra one, recording nothing', () => {
+    onTask();
+    const usage = /^Usage: engine conversation builder <session-id> <agent-id> --brief <id> — the agent id letters, digits, - and _ alone, the brief's id as `engine brief` answers it$/;
+    for (const args of [
+      ['sess-1', 'a b', '--brief', 'B11'], ['sess-1', '../x', '--brief', 'B11'], ['sess-1', 'a`b', '--brief', 'B11'], ['sess-1', '', '--brief', 'B11'],
+      ['sess-1'], [], ['', AGENT, '--brief', 'B11'], ['sess-1', AGENT], ['sess-1', AGENT, 'x'],
+      ['sess-1', AGENT, '--brief'], ['sess-1', AGENT, '--brief', '../B1'], ['sess-1', AGENT, '--brief', ''], ['sess-1', AGENT, '--brief=B1'],
+      ['sess-1', AGENT, '--brief', 'B1', 'x'], ['sess-1', AGENT, '--task', 'B1'],
+    ]) {
+      assert.match(harness.refuses(dir, ['conversation', 'builder', ...args], { env: env(null) }).error, usage, JSON.stringify(args));
     }
-  });
-
-  it('refuses an agent id that is not one, a missing argument, and an extra one, recording nothing', () => {
-    onTask();
-    const usage = /^Usage: engine conversation executor <session-id> <agent-id> — the agent id letters, digits, - and _ alone$/;
-    for (const args of [['sess-1', 'a b'], ['sess-1', '../x'], ['sess-1', 'a`b'], ['sess-1', ''], ['sess-1'], [], ['', AGENT], ['sess-1', AGENT, 'x']]) {
-      assert.match(harness.refuses(dir, ['conversation', 'executor', ...args], { env: env(null) }).error, usage, JSON.stringify(args));
-    }
-    assert.strictEqual(position().executor, AGENT);
+    assert.strictEqual(position().tasks[0].builder, AGENT);
   });
 
   it('a position that cannot be written records nothing, the file left as it was', () => {
-    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
+    writePosition({ ...BUILD, tasks: [fresh('1.1')] });
+    issue('B11', 'builder', '1.1');
     const file = path.join(folder(), 'position.json');
     const before = fs.readFileSync(file, 'utf8');
     fs.chmodSync(folder(), 0o555);
     try {
-      assert.deepStrictEqual(executor(), { ok: true, recorded: false });
+      assert.deepStrictEqual(dispatched(AGENT, 'B11'), { ok: true, recorded: false });
     } finally {
       fs.chmodSync(folder(), 0o755);
     }
     assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
   });
+
+  it('a pair dispatched side by side: two records at once on a barrier each stand, every reviewer kept in the order each recorded, and the lock found held', async () => {
+    writePosition({ ...BUILD, tasks: [fresh('1.1')] });
+    issue('R1', 'reviewer', '1.1');
+    issue('R2', 'reviewer', '1.1');
+    const lock = `${path.join(folder(), 'position.json')}.lock`;
+    const met = path.join(config, 'met');
+    const reports = await harness.contend(2, [
+      'const [brief, lock, met] = process.argv.slice(1);',
+      `const { recordBuilder } = require(${JSON.stringify(POSITION_MODULE)});`,
+      'const link = fs.linkSync;',
+      'let taken = 0;',
+      "fs.linkSync = (from, to) => { try { return link(from, to); } catch (err) { if (to === lock && err.code === 'EEXIST') { taken += 1; fs.writeFileSync(met, ''); } throw err; } };",
+      'atBarrier();',
+      // Each records ten at least, and goes on until one of them has found the lock held.
+      'const ids = [];',
+      "while (ids.length < 10 || (!fs.existsSync(met) && ids.length < 500)) { const id = `${brief}-${ids.length}`; if (recordBuilder('sess-1', id, brief).recorded) ids.push(id); }",
+      'report({ taken, ids });',
+    ].join('\n'), (i) => [`R${i + 1}`, lock, met], { ...process.env, LEDGER_CONFIG_DIR: config });
+
+    assert.ok(reports[0].taken + reports[1].taken > 0, 'neither found the lock held: the two never met');
+    const { reviewers } = position().tasks[0];
+    assert.strictEqual(reviewers.length, reports[0].ids.length + reports[1].ids.length);
+    for (const { ids } of reports) assert.deepStrictEqual(reviewers.filter((id) => ids.includes(id)), ids);
+  });
+
+  it('a close racing a record at the place left: the close waits on the lock the record holds, so the record\'s write never brings back the position its last task took with it', async () => {
+    writePosition({ ...BUILD, tasks: [fresh('1.1')] });
+    fs.writeFileSync(path.join(folder(), 'left.json'), JSON.stringify({ name: 'pay', phase: 'implementation' }));
+    issue('B11', 'builder', '1.1');
+    const file = path.join(folder(), 'position.json');
+    const met = path.join(config, 'met');
+    const reports = await harness.contend(2, [
+      'const [part, file, met] = process.argv.slice(1);',
+      `const { recordBuilder, clearTask } = require(${JSON.stringify(POSITION_MODULE)});`,
+      "if (part === 'record') {",
+      '  const rename = fs.renameSync;',
+      '  const pause = new Int32Array(new SharedArrayBuffer(4));',
+      // The record, its position read, holds its write until the close has found the lock held — or, with no lock, has deleted the file.
+      '  fs.renameSync = (from, to) => { if (to === file) { atBarrier(); while (!fs.existsSync(met) && fs.existsSync(file)) Atomics.wait(pause, 0, 0, 5); } return rename(from, to); };',
+      "  report(recordBuilder('sess-1', 'b1', 'B11'));",
+      '} else {',
+      '  const link = fs.linkSync;',
+      "  fs.linkSync = (from, to) => { try { return link(from, to); } catch (err) { if (to === `${file}.lock` && err.code === 'EEXIST') fs.writeFileSync(met, ''); throw err; } };",
+      '  atBarrier();',
+      "  clearTask('pay', 'pay-1-1');",
+      '  report({ closed: true });',
+      '}',
+    ].join('\n'), (i) => [i === 0 ? 'record' : 'close', file, met], { ...process.env, LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' });
+
+    assert.deepStrictEqual(reports, [{ recorded: true }, { closed: true }]);
+    assert.strictEqual(position(), null, 'the position its last task took with it came back');
+    assert.ok(fs.existsSync(met), 'the close never found the lock held: the two never met');
+  });
 });
 
 describe('conversation position', () => {
-  /** The note for a skill that runs the work and the files after it. */
+  /** The note for a place with no engine calls and no log: the skill, then the files after it. */
   function note(where, skill, files) {
-    const follow = `The conversation was just compacted. This conversation is working in ${where}. Follow the ${skill} skill's "Resuming After Context Refresh" steps now, before anything else: re-read ${abs(`.claude/skills/${skill}/SKILL.md`)} and its framework in full`;
-    return files.length > 0 ? [`${follow}, then re-read these in full:`, ...files.map((f) => `- ${abs(f)}`)].join('\n') : `${follow}.`;
+    return [
+      `The conversation was just compacted. This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
+      `- ${abs(`.claude/skills/${skill}/SKILL.md`)} and its framework`,
+      ...files.map((f) => `- ${abs(f)}`),
+      'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
+    ].join('\n');
   }
 
-  it('names only skills that carry the recovery steps and open a conversation — a phase\'s own, discovery\'s, a project place\'s; none at a work unit\'s menu', () => {
-    const skills = [...VALID_PHASES.map((phase) => skillAt('pay', phase)), ...PROJECT_IDENTITIES.map((name) => skillAt(name))];
-    assert.strictEqual(skills.length, 12);
-    for (const skill of skills) {
-      assert.ok(skill !== null && OPENING_SKILLS.includes(skill), `${skill} is a skill a conversation opens on`);
-      const file = path.join(__dirname, '../../skills', skill, 'SKILL.md');
-      assert.ok(fs.existsSync(file), `${skill} exists`);
-      const text = fs.readFileSync(file, 'utf8');
-      const at = text.indexOf('\n## Resuming After Context Refresh\n');
-      assert.ok(at !== -1, `${skill} carries the recovery steps`);
-      const recovery = text.slice(at, text.indexOf('\n---\n', at));
-      const steps = recovery.split('\n').filter((line) => /^\d+\. /.test(line));
-      assert.match(steps[steps.length - 1], /^\d+\. \*\*Carry on from where the conversation was\*\*, as if the break never happened — no recap and no announcement\. Where the person's message is waiting, take it at the (step|stage) it arrived at, unless it only asks to carry on\. /,
-        `${skill}'s recovery ends by carrying on`);
-      assert.doesNotMatch(recovery, /announce your position|wait for confirmation|position is confirmed/i, `${skill}'s recovery waits on nobody`);
-      assert.match(recovery, /\nDo not guess at progress or continue from memory\./, `${skill}'s recovery reads state from disk`);
+  it('names only skills that open a conversation — a phase\'s own, discovery\'s, a project place\'s, an epic\'s menu\'s; none at a linear unit\'s menu — and none of them carries a recovery section of its own, the note carrying it (24.2.6)', () => {
+    const quickFix = skillAt('fix', 'implementation', 'quick-fix');
+    const skills = [...VALID_PHASES.map((phase) => skillAt('pay', phase)), quickFix, ...PROJECT_IDENTITIES.map((name) => skillAt(name))];
+    assert.strictEqual(skills.length, 10);
+    for (const skill of skills) assert.ok(skill !== null && HANDOFF_TARGETS.includes(skill), `${skill} is a skill a conversation opens on`);
+    for (const skill of new Set([...skills, skillAt('pay', undefined, 'epic')])) {
+      const text = fs.readFileSync(path.join(__dirname, '../../skills', /** @type {string} */ (skill), 'SKILL.md'), 'utf8');
+      assert.doesNotMatch(text, /^## Resuming After Context Refresh$/m, `${skill} carries no recovery section`);
     }
-    assert.strictEqual(skillAt('pay'), null);
+    assert.strictEqual(quickFix, 'ledger-quick-fix-process', 'a quick-fix\'s implementation runs in its own skill');
+    assert.strictEqual(skillAt('pay', undefined, 'feature'), null, 'a linear unit\'s menu');
+    assert.strictEqual(skillAt('pay', undefined, 'epic'), 'ledger-continue-epic', 'an epic\'s menu carries on in its own skill');
   });
 
   it('a conversation with no position has nothing to carry on from', () => {
@@ -377,221 +493,399 @@ describe('conversation position', () => {
       place: null,
       skill: null,
       files: [],
-      text: 'This conversation holds no workflow position, so there is nothing to carry on from.',
+      text: 'This conversation holds no position in Ledger, so there is nothing to carry on from.',
     });
   });
 
-  it('a work unit\'s menu carries nothing on: nothing to carry on from, the position named', () => {
-    install('workflow-continue-epic');
+  it('a conversation carrying the migration on, at no position, carries on in the start skill, whose boot, run again, stops where the migration stands; another conversation\'s carrying it leaves this one nothing', () => {
+    write('.ledger/.cache/migrate/presence', JSON.stringify({ session_id: 'sess-1', pid: 1 }));
+    const skill = abs('.claude/skills/ledger/SKILL.md');
+
+    assert.deepStrictEqual(reads(), {
+      session_id: 'sess-1',
+      position: null,
+      place: null,
+      skill,
+      files: [],
+      text: [
+        'The conversation was just compacted. This conversation is working in the migration. Before anything else, re-read these in full, running each engine call:',
+        `- ${skill} and its framework`,
+        '- its boot, run again as it says: boot stops where the migration stands, and names what to carry on with',
+        'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
+      ].join('\n'),
+    });
+    assert.deepStrictEqual(reads([], 'sess-2').skill, null);
+  });
+
+  it('an epic\'s menu carries on in its skill, which draws the menu again', () => {
+    install('ledger-continue-epic');
     ok(['session', 'label', 'pay']);
     assert.deepStrictEqual(reads(), {
       session_id: 'sess-1',
       position: { name: 'pay' },
       place: 'pay',
-      skill: null,
+      skill: abs('.claude/skills/ledger-continue-epic/SKILL.md'),
       files: [],
-      text: 'This conversation is at the epic "pay", outside any phase, so there is nothing to carry on from.',
+      text: [
+        'The conversation was just compacted. This conversation is working in the epic "pay". Before anything else, re-read these in full, running each engine call:',
+        `- ${abs('.claude/skills/ledger-continue-epic/SKILL.md')} and its framework`,
+        'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
+      ].join('\n'),
     });
   });
 
-  it('a discussion: its phase skill\'s recovery steps, then the discussion', () => {
-    install('workflow-discussion-process');
-    write('.workflows/pay/discussion/ledger.md');
+  it('a unit that is no epic, at no phase, carries nothing on: it has no menu of its own, the position named', () => {
+    workUnit('ledger', 'feature');
+    ok(['session', 'label', 'ledger']);
+    assert.deepStrictEqual(reads(), {
+      session_id: 'sess-1',
+      position: { name: 'ledger' },
+      place: 'ledger',
+      skill: null,
+      files: [],
+      text: 'This conversation is at the feature "ledger", outside any phase, so there is nothing to carry on from.',
+    });
+  });
+
+  /** A topic's note, a discussion's or an investigation's: its log named where written, the transcript found or not, the log's header line owed or not — again where the conversation wrote there before another. */
+  function topicNote(where, unit, topic, { brief = false, log = false, transcript = null, header = null, again = false, phase = 'discussion' } = {}) {
+    const logFile = abs(`.ledger/${unit}/topics/${topic}/log.md`);
+    return [
+      `The conversation was just compacted. This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
+      `- ${abs(`.claude/skills/ledger-${phase}-process/SKILL.md`)} and its framework`,
+      `- \`node .claude/skills/ledger-engine/scripts/engine.cjs ledger record ${unit} ${topic}\``,
+      ...(brief ? [`- ${abs(`.ledger/${unit}/topics/${topic}/brief.md`)}`] : []),
+      ...(log ? [`- ${logFile}`] : []),
+      transcript === null
+        ? 'This conversation\'s transcript cannot be found: say so in one line, and carry on from the log.'
+        : `Catch the log, ${logFile}, up from this conversation's transcript, ${transcript}, from the log's last write onward.`,
+      ...(header === null ? [] : [again
+        ? `Another conversation has written to the log since this one did: its next write opens with this line again: \`${header}\``
+        : `This conversation has not written to the log yet: its first write opens with this line: \`${header}\``]),
+      'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
+    ].join('\n');
+  }
+
+  /** The conversation's transcript, where Claude Code keeps it. */
+  function transcript(sessionId = 'sess-1') {
+    const file = path.join(claude, 'projects', '-Users-person-pay', `${sessionId}.jsonl`);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, '');
+    return file;
+  }
+
+  it('a discussion carries its recovery whole: the skill, the topic\'s record, its brief and its log, the log caught up from the conversation\'s transcript (24.S10)', () => {
+    install('ledger-discussion-process');
+    write('.ledger/pay/topics/ledger/brief.md', '# Ledger\n');
+    write('.ledger/pay/topics/ledger/log.md', '## 2026-01-01 · session sess-1\n\nWhere it stands.\n');
+    const file = transcript();
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
     const answer = reads();
-    assert.deepStrictEqual(answer.position, { name: 'pay', phase: 'discussion', topic: 'ledger' });
-    assert.strictEqual(answer.place, 'pay › discussion › ledger');
-    assert.strictEqual(answer.skill, abs('.claude/skills/workflow-discussion-process/SKILL.md'));
-    assert.deepStrictEqual(answer.files, [abs('.workflows/pay/discussion/ledger.md')]);
-    assert.strictEqual(answer.text, [
-      `The conversation was just compacted. This conversation is working in the discussion of "ledger" in the epic "pay". Follow the workflow-discussion-process skill's "Resuming After Context Refresh" steps now, before anything else: re-read ${dir}/.claude/skills/workflow-discussion-process/SKILL.md and its framework in full, then re-read these in full:`,
-      `- ${dir}/.workflows/pay/discussion/ledger.md`,
-    ].join('\n'));
+    assert.deepStrictEqual([answer.position, answer.place, answer.skill, answer.files], [
+      { name: 'pay', phase: 'discussion', topic: 'ledger' }, 'pay › discussion › ledger',
+      abs('.claude/skills/ledger-discussion-process/SKILL.md'), [abs('.ledger/pay/topics/ledger/brief.md'), abs('.ledger/pay/topics/ledger/log.md')],
+    ]);
+    assert.strictEqual(answer.text, topicNote('the discussion of "ledger" in the epic "pay"', 'pay', 'ledger', { brief: true, log: true, transcript: file }));
+  });
+
+  it('a bugfix\'s investigation carries its recovery whole, as a discussion does — the topic\'s record and its log, the investigation itself, caught up from the transcript, and no document beside them (19.4.3)', () => {
+    install('ledger-investigation-process');
+    write('.ledger/pay/topics/ledger/log.md', '## 2026-01-01 · session sess-1\n\nThe hunt so far.\n');
+    write('.ledger/pay/investigation/ledger.md');
+    const file = transcript();
+    ok(['session', 'label', 'pay', 'investigation', 'ledger']);
+    const answer = reads();
+    assert.deepStrictEqual([answer.skill, answer.files], [
+      abs('.claude/skills/ledger-investigation-process/SKILL.md'), [abs('.ledger/pay/topics/ledger/log.md')],
+    ]);
+    assert.strictEqual(answer.text, topicNote('the investigation of "ledger" in the epic "pay"', 'pay', 'ledger', {
+      phase: 'investigation', log: true, transcript: file,
+    }));
+  });
+
+  it('a discussion whose log does not name the conversation yet: the line its first write opens with, and a transcript gone said in one line; and one another conversation has written since: the line again (9.S67)', () => {
+    install('ledger-discussion-process');
+    ok(['session', 'label', 'pay', 'discussion', 'ledger']);
+    const today = harness.FROZEN_AT.slice(0, 10);
+    const unwritten = harness.withFrozenClock(() => reads());
+    assert.deepStrictEqual(unwritten.files, []);
+    assert.strictEqual(unwritten.text, topicNote('the discussion of "ledger" in the epic "pay"', 'pay', 'ledger', { header: `## ${today} · session sess-1` }));
+    write('.ledger/pay/topics/ledger/log.md', '## 2026-01-01 · session sess-2\n');
+    const file = transcript();
+    assert.strictEqual(harness.withFrozenClock(() => reads()).text, topicNote('the discussion of "ledger" in the epic "pay"', 'pay', 'ledger', {
+      log: true, transcript: file, header: `## ${today} · session sess-1 · transcript ${file}`,
+    }), 'another conversation\'s write leaves this one\'s line owed');
+    write('.ledger/pay/topics/ledger/log.md', '## 2026-01-01 · session sess-1\n\nMine.\n\n## 2026-01-02 · session sess-2\n\nTheirs.\n');
+    assert.strictEqual(harness.withFrozenClock(() => reads()).text, topicNote('the discussion of "ledger" in the epic "pay"', 'pay', 'ledger', {
+      log: true, transcript: file, header: `## ${today} · session sess-1 · transcript ${file}`, again: true,
+    }), 'the log\'s last line naming another, this conversation\'s is owed again');
+  });
+
+  it('a specification carries its recovery whole, at the unit: each live topic\'s record and its log, the unit\'s own record, the files linked canonical, then the spec once written and the cut once cut, and the review page while it is open, and no log of its own (24.2.6)', () => {
+    install('ledger-specification-process');
+    const pay = (/** @type {string} */ ledger) => workUnit('pay', 'epic', {
+      discovery: { items: { ledger: { order: 1 }, refunds: { order: 2, cancelled: true } } },
+      discussion: { items: { ledger: { status: ledger }, refunds: { status: 'cancelled' } } },
+    });
+    pay('in-progress');
+    const log = write('.ledger/pay/topics/ledger/log.md');
+    const made = { by: 'claude', who_moved_whom: 'none' };
+    const asked = harness.ok(dir, ['ledger', 'ask', 'pay.discussion.ledger'], { env: env(), stdin: JSON.stringify({ ...made, text: 'What does the ledger hold?' }) }).id;
+    const decided = harness.ok(dir, ['ledger', 'decide', 'pay.discussion.ledger', '--answers', asked], { env: env(), stdin: JSON.stringify({ ...made, text: 'Entries.', why: 'Because.' }) }).id;
+    pay('completed');
+    const asset = write('.ledger/pay/assets/flow.png');
+    ok(['asset', 'add', 'pay', 'pay/assets/flow.png', '--entry', decided, '--status', 'canonical']);
+    ok(['session', 'label', 'pay', 'specification', 'pay']);
+    const engine = 'node .claude/skills/ledger-engine/scripts/engine.cjs';
+    const specNote = (/** @type {string[]} */ calls, /** @type {string[]} */ files, /** @type {string[]} */ lines = []) => [
+      'The conversation was just compacted. This conversation is working in the specification of the epic "pay". Before anything else, re-read these in full, running each engine call:',
+      `- ${abs('.claude/skills/ledger-specification-process/SKILL.md')} and its framework`,
+      ...calls.map((call) => `- \`${engine} ${call}\``),
+      ...files.map((file) => `- ${abs(file)}`),
+      ...lines,
+      'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
+    ].join('\n');
+    const unwritten = reads();
+    const spec = write('.ledger/pay/spec.md');
+    const manifest = JSON.parse(fs.readFileSync(abs('.ledger/pay/manifest.json'), 'utf8'));
+    workUnit('pay', 'epic', manifest.phases, { cut: { phases: [] } });
+    const written = reads();
+    const url = 'https://claude.ai/public/artifacts/pay';
+    write('.ledger/.cache/pay/specification/published.json', JSON.stringify({ url, at: '2026-11-01T00:00:00.000Z' }));
+    const open = reads();
+
+    assert.deepStrictEqual([unwritten.place, unwritten.files, unwritten.text], ['pay › specification', [abs(log), abs(asset)], specNote(['ledger record pay ledger', 'ledger record pay'], [log, asset])]);
+    assert.deepStrictEqual([written.files, written.text], [[abs(log), abs(asset), abs(spec)], specNote(['ledger record pay ledger', 'ledger record pay', 'manifest get pay cut'], [log, asset, spec])]);
+    assert.strictEqual(open.text, specNote(['ledger record pay ledger', 'ledger record pay', 'manifest get pay cut'], [log, asset, spec], [
+      `The review page is open at ${url}; its marks are read back into ${abs('.ledger/.cache/pay/specification/read-back.json')}.`,
+    ]), 'while the review page is open, the note names its address and the file its marks are read back to');
+  });
+
+  it('a spec concluded, its build begun, carries nothing on', () => {
+    install('ledger-specification-process');
+    workUnit('pay', 'epic', {}, { build: { position: 'auto' } });
+    ok(['session', 'label', 'pay', 'specification', 'pay']);
+    assert.deepStrictEqual([reads().skill, reads().text], [null, 'This conversation was working in the specification of the epic "pay", but its spec is concluded, so there is nothing to carry on from.']);
   });
 
   it('names the work unit by its work type, the topic collapsed where it is the work unit', () => {
     workUnit('auth', 'feature');
-    install('workflow-discussion-process');
-    write('.workflows/auth/discussion/auth.md');
+    install('ledger-discussion-process');
+    write('.ledger/auth/topics/auth/log.md', '## 2026-01-01 · session sess-1\n');
     ok(['session', 'label', 'auth', 'discussion', 'auth']);
     const answer = reads();
-    assert.strictEqual(answer.text, note('the discussion of the feature "auth"', 'workflow-discussion-process', ['.workflows/auth/discussion/auth.md']));
+    assert.strictEqual(answer.text, topicNote('the discussion of the feature "auth"', 'auth', 'auth', { log: true }));
     assert.strictEqual(answer.place, 'auth › discussion');
   });
 
-  it('an implementation task: the skill, the plan format\'s reading adapter, and the task\'s file where the plan keeps one', () => {
-    install('workflow-implementation-process');
-    write('.claude/skills/workflow-planning-process/references/output-formats/flat-files/reading.md');
-    write('.workflows/pay/planning/ledger/planning.md');
-    write('.workflows/pay/planning/ledger/tasks/ledger-2-3.md');
-    write('.workflows/pay/planning/ledger/tasks/ledger-2-4.md');
-    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-    const answer = reads();
-    assert.deepStrictEqual(answer.files, [
-      abs('.claude/skills/workflow-planning-process/references/output-formats/flat-files/reading.md'),
-      abs('.workflows/pay/planning/ledger/tasks/ledger-2-3.md'),
-    ]);
-    assert.strictEqual(answer.text, [
-      `The conversation was just compacted. This conversation is working in the implementation of "ledger" in the epic "pay", on task 2.3 (internal id \`ledger-2-3\`). Follow the workflow-implementation-process skill's "Resuming After Context Refresh" steps now, before anything else: re-read ${dir}/.claude/skills/workflow-implementation-process/SKILL.md and its framework in full, then re-read these in full:`,
-      `- ${dir}/.claude/skills/workflow-planning-process/references/output-formats/flat-files/reading.md`,
-      `- ${dir}/.workflows/pay/planning/ledger/tasks/ledger-2-3.md`,
-    ].join('\n'));
-    assert.strictEqual(answer.place, 'pay › implementation › ledger');
-  });
-
-  it('an implementation task with its executor recorded: the note names the agent its later rounds continue', () => {
-    install('workflow-implementation-process');
-    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-    ok(['conversation', 'executor', 'sess-1', 'aa76bd7f82a2ef3e4'], null);
-    const answer = reads();
-    assert.deepStrictEqual(answer.position, { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3', executor: 'aa76bd7f82a2ef3e4' });
-    assert.strictEqual(answer.place, 'pay › implementation › ledger');
-    assert.strictEqual(answer.text, note('the implementation of "ledger" in the epic "pay", on task 2.3 (internal id `ledger-2-3`), its executor agent `aa76bd7f82a2ef3e4`', 'workflow-implementation-process', []));
-  });
-
-  it('an implementation task whose plan names no format, or one no file can be named for, names no reading adapter', () => {
-    install('workflow-implementation-process');
-    write('.workflows/pay/planning/ledger/tasks/ledger-2-3.md');
-    for (const format of [undefined, '../flat-files', 7]) {
-      workUnit('pay', 'epic', {
-        implementation: { items: { ledger: { status: 'in-progress', current_task: null, fix_attempts: 0 } } },
-        planning: { items: { ledger: { status: 'completed', ...(format === undefined ? {} : { format }) } } },
-      });
-      ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-      ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-      assert.deepStrictEqual(reads().files, [abs('.workflows/pay/planning/ledger/tasks/ledger-2-3.md')], String(format));
+  it('24.S12: a build that compacts with three tasks in flight — the note names each with its builder and its pair, so a fix round on any goes back to that task\'s builder, a re-review to its pair', () => {
+    install('ledger-implementation-process');
+    const tasks = [fresh('1.1'), fresh('1.2'), fresh('2.1')];
+    writePosition({ name: 'pay', phase: 'implementation', topic: 'pay', tasks });
+    for (const [brief, role, task, agentId] of [
+      ['B11', 'builder', '1.1', 'b11'], ['B12', 'builder', '1.2', 'b12'], ['B21', 'builder', '2.1', 'b21'],
+      ['R1', 'reviewer', '1.1', 'r1'], ['R2', 'reviewer', '1.1', 'r2'], ['R3', 'reviewer', '1.2', 'r3'],
+    ]) {
+      issue(brief, role, task);
+      ok(['conversation', 'builder', 'sess-1', agentId, '--brief', brief], null);
     }
+    const answer = reads();
+    assert.deepStrictEqual(answer.position.tasks, [
+      { task: '1.1', builder: 'b11', reviewers: ['r1', 'r2'] }, { task: '1.2', builder: 'b12', reviewers: ['r3'] }, { task: '2.1', builder: 'b21', reviewers: [] },
+    ]);
+    assert.deepStrictEqual(answer.text.split('\n').filter((line) => line.startsWith('in flight: ')), [
+      'in flight: task 1.1, its builder agent `b11`, its reviewer agents `r1` and `r2`',
+      'in flight: task 1.2, its builder agent `b12`, its reviewer agent `r3`',
+      'in flight: task 2.1, its builder agent `b21`',
+    ]);
   });
 
-  it('an implementation with no task in flight: the skill alone', () => {
-    install('workflow-implementation-process');
-    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-    const answer = reads();
-    assert.deepStrictEqual([answer.skill, answer.files], [abs('.claude/skills/workflow-implementation-process/SKILL.md'), []]);
-    assert.strictEqual(answer.text, `The conversation was just compacted. This conversation is working in the implementation of "ledger" in the epic "pay". Follow the workflow-implementation-process skill's "Resuming After Context Refresh" steps now, before anything else: re-read ${dir}/.claude/skills/workflow-implementation-process/SKILL.md and its framework in full.`);
+  it('a build not to be entered carries nothing on, at either of its places — a build not begun, and a quick-fix\'s review, which the person has not asked for (11.8.3, 19.5.14)', () => {
+    install('ledger-implementation-process');
+    install('ledger-review-process');
+    workUnit('pay', 'epic');
+    workUnit('fix', 'quick-fix');
+    const notes = [['pay', 'implementation'], ['pay', 'review'], ['fix', 'review']].map(([unit, phase]) => {
+      writePosition({ name: unit, phase, topic: unit });
+      const { skill, files, text } = reads();
+      return [skill, files, text];
+    });
+
+    assert.deepStrictEqual(notes, [
+      [null, [], 'This conversation was working in the implementation of the epic "pay", but pay\'s build has not begun — ready to build\'s yes begins it: render ready-to-build pay, so there is nothing to carry on from.'],
+      [null, [], 'This conversation was working in the review of the epic "pay", but pay\'s build has not begun — ready to build\'s yes begins it: render ready-to-build pay, so there is nothing to carry on from.'],
+      [null, [], 'This conversation was working in the review of the quick-fix "fix", but fix is a quick-fix, whose review runs only once the person asks for one at its close — render finish fix draws it, so there is nothing to carry on from.'],
+    ]);
+  });
+
+  it('a quick-fix\'s implementation, which its own arm enters, carries on in its own skill as its entry reads it: the unit\'s record by its call, then its change and its fixes', () => {
+    install('ledger-implementation-process');
+    install('ledger-quick-fix-process');
+    workUnit('fix', 'quick-fix', {}, { description: 'Spell the flag --colour' });
+    writePosition({ name: 'fix', phase: 'implementation', topic: 'fix' });
+    const { skill, text } = reads();
+
+    assert.strictEqual(skill, abs('.claude/skills/ledger-quick-fix-process/SKILL.md'));
+    for (const line of ['ledger record fix`', 'change: Spell the flag --colour', 'tasks: none yet']) assert.ok(text.includes(line), `the note names ${line}\n${text}`);
   });
 
   it('names only what this project has — a missing document is left out', () => {
-    install('workflow-specification-process');
-    ok(['session', 'label', 'pay', 'specification', 'ledger']);
+    install('ledger-investigation-process');
+    ok(['session', 'label', 'pay', 'investigation', 'ledger']);
     assert.deepStrictEqual(reads().files, []);
-    assert.strictEqual(reads().text, note('the specification of "ledger" in the epic "pay"', 'workflow-specification-process', []));
-    write('.workflows/pay/specification/ledger/specification.md');
-    assert.deepStrictEqual(reads().files, [abs('.workflows/pay/specification/ledger/specification.md')]);
+    write('.ledger/pay/topics/ledger/log.md');
+    assert.deepStrictEqual(reads().files, [abs('.ledger/pay/topics/ledger/log.md')]);
   });
 
   it('a place whose skill this project lacks carries nothing on, whatever documents it has', () => {
-    write('.workflows/pay/specification/ledger/specification.md');
-    ok(['session', 'label', 'pay', 'specification', 'ledger']);
+    write('.ledger/pay/topics/ledger/log.md');
+    ok(['session', 'label', 'pay', 'investigation', 'ledger']);
     assert.deepStrictEqual(reads(), {
       session_id: 'sess-1',
-      position: { name: 'pay', phase: 'specification', topic: 'ledger' },
-      place: 'pay › specification › ledger',
+      position: { name: 'pay', phase: 'investigation', topic: 'ledger' },
+      place: 'pay › investigation › ledger',
       skill: null,
       files: [],
-      text: 'This conversation was working in the specification of "ledger" in the epic "pay", but this project has no workflow-specification-process skill, so there is nothing to carry on from.',
+      text: 'This conversation was working in the investigation of "ledger" in the epic "pay", but this project has no ledger-investigation-process skill, so there is nothing to carry on from.',
     });
   });
 
-  it('each phase names its own documents', () => {
-    workUnit('fix', 'quick-fix');
-    const cases = [
-      ['research', 'ledger', ['.workflows/pay/research/ledger.md']],
-      ['investigation', 'ledger', ['.workflows/pay/investigation/ledger.md']],
-      ['specification', 'ledger', ['.workflows/pay/specification/ledger/specification.md']],
-      ['planning', 'ledger', ['.workflows/pay/planning/ledger/planning.md', '.workflows/pay/planning/ledger/phase-2-tasks.md', '.workflows/pay/planning/ledger/phase-10-tasks.md']],
-      ['review', 'ledger', ['.workflows/pay/review/ledger/report.md']],
-    ];
-    for (const [phase, topic, files] of cases) {
-      install(`workflow-${phase}-process`);
-      for (const f of files) write(f);
-      ok(['session', 'label', 'pay', phase, topic]);
-      const answer = reads();
-      assert.strictEqual(answer.skill, abs(`.claude/skills/workflow-${phase}-process/SKILL.md`), phase);
-      assert.deepStrictEqual(answer.files, files.map(abs), phase);
-      assert.strictEqual(answer.text, note(`the ${phase} of "${topic}" in the epic "pay"`, `workflow-${phase}-process`, files), phase);
-    }
-    install('workflow-scoping-process');
-    write('.workflows/fix/specification/fix/specification.md');
-    write('.workflows/fix/planning/fix/planning.md');
-    ok(['session', 'label', 'fix', 'scoping', 'fix']);
-    const scoping = reads();
-    assert.deepStrictEqual(scoping.files, ['.workflows/fix/specification/fix/specification.md', '.workflows/fix/planning/fix/planning.md'].map(abs));
-    assert.strictEqual(scoping.text, note('the scoping of the quick-fix "fix"', 'workflow-scoping-process', [
-      '.workflows/fix/specification/fix/specification.md', '.workflows/fix/planning/fix/planning.md',
-    ]));
-  });
+  /** A discovery home's note: its calls and its documents, then its log caught up from the transcript, found or not. */
+  function discoveryNote(where, calls, log, transcript = null, documents = [log], picture = null) {
+    const caught = picture === null ? `the log, ${abs(log)},` : `the log, ${abs(log)}, and the picture, ${abs(picture)},`;
+    return [
+      `The conversation was just compacted. This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
+      `- ${abs('.claude/skills/ledger-discovery/SKILL.md')} and its framework`,
+      ...calls.map((call) => `- \`${call}\``),
+      ...documents.map((file) => (file.includes('#') ? `- ${abs(file.split('#')[0])}, its section \`#${file.split('#')[1]}\` alone` : `- ${abs(file)}`)),
+      transcript === null
+        ? `This conversation's transcript cannot be found: say so in one line, and carry on from ${picture === null ? 'the log' : caught.slice(0, -1)}.`
+        : `Catch ${caught} up from this conversation's transcript, ${transcript}, from the log's last write onward.`,
+      'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
+    ].join('\n');
+  }
 
-  it('discovery: the open session\'s log, else the latest on disk', () => {
-    install('workflow-discovery');
-    for (const n of ['001', '002', '010']) write(`.workflows/pay/discovery/sessions/session-${n}.md`);
+  it('an epic\'s discovery carries its recovery whole: the skill, the unit\'s map and the open log — the latest on disk where none is open — caught up from the log\'s transcript (24.S19, 8.S67)', () => {
+    install('ledger-discovery');
+    for (const n of ['001', '002', '010']) write(`.ledger/pay/discovery/session-${n}.md`, '## 2026-01-01 · session sess-1\n');
+    const file = transcript();
     ok(['session', 'label', 'pay', 'discovery', 'pay']);
+    const map = 'node .claude/skills/ledger-engine/scripts/engine.cjs render discovery-map pay';
     let answer = reads();
-    assert.strictEqual(answer.skill, abs('.claude/skills/workflow-discovery/SKILL.md'));
-    assert.deepStrictEqual(answer.files, [abs('.workflows/pay/discovery/sessions/session-010.md')]);
-    assert.strictEqual(answer.text, note('the discovery of the epic "pay"', 'workflow-discovery', ['.workflows/pay/discovery/sessions/session-010.md']));
+    assert.deepStrictEqual([answer.skill, answer.files], [abs('.claude/skills/ledger-discovery/SKILL.md'), [abs('.ledger/pay/discovery/session-010.md')]]);
+    assert.strictEqual(answer.text, discoveryNote('the discovery of the epic "pay"', [map], '.ledger/pay/discovery/session-010.md', file));
     workUnit('pay', 'epic', { discovery: { active_session: '002' } });
     answer = reads();
-    assert.deepStrictEqual(answer.files, [abs('.workflows/pay/discovery/sessions/session-002.md')]);
+    assert.deepStrictEqual(answer.files, [abs('.ledger/pay/discovery/session-002.md')]);
+    assert.strictEqual(answer.text, discoveryNote('the discovery of the epic "pay"', [map], '.ledger/pay/discovery/session-002.md', file));
   });
 
-  it('an experiment: each live record\'s files in register order, a concluded one\'s left out', () => {
-    install('workflow-experiment-process');
+  it('an epic\'s discovery re-reads, beside its open log, each section of the product\'s sessions its first log points at and the points from before it carries', () => {
+    install('ledger-discovery');
+    write('.ledger/.product/sessions/session-004.md', '## Payouts\n');
+    write('.ledger/pay/discovery/session-001.md', 'Shaped by: [.product/sessions/session-004.md#payouts](../../.product/sessions/session-004.md#payouts)\n\n## 2026-01-01 · session sess-1\n');
+    write('.ledger/pay/discovery/from-before.md', '# From before\n\n- D101: One gift shape (planning/decision-log.md)\n');
+    const file = transcript();
+    ok(['session', 'label', 'pay', 'discovery', 'pay']);
+    const map = 'node .claude/skills/ledger-engine/scripts/engine.cjs render discovery-map pay';
+    const answer = reads();
+    const documents = ['.ledger/pay/discovery/session-001.md', '.ledger/.product/sessions/session-004.md#payouts', '.ledger/pay/discovery/from-before.md'];
+    assert.deepStrictEqual([answer.files, answer.text], [documents.map(abs), discoveryNote('the discovery of the epic "pay"', [map], documents[0], file, documents)]);
+  });
+
+  it('the laboratory carries on what its entry reads of the experiment the position holds: its documents and its splits\', never another record\'s, the experiment named in a line; before the approval the spawning topic\'s record and its log as well (24.2.1)', () => {
+    install('ledger-experiment-process');
     workUnit('pay', 'epic', {
       experiment: { items: { ledger: { status: 'in-progress', experiments: {
         'E2.1': { slug: 'batch', status: 'designed' },
         E2: { slug: 'throughput', status: 'running' },
-        E1: { slug: 'latency', status: 'concluded' },
-        'E1.1': { slug: 'warm', status: 'running' },
+        E1: { slug: 'latency', status: 'designed' },
       } } } },
     });
     for (const f of [
-      'E1-latency/report.md', 'E1-latency/E1.1-warm/problem.md',
-      'E2-throughput/problem.md', 'E2-throughput/design.md', 'E2-throughput/report.md',
-      'E2-throughput/E2.1-batch/problem.md',
-    ]) write(`.workflows/pay/experiment/ledger/${f}`);
-    ok(['session', 'label', 'pay', 'experiment', 'ledger']);
-    assert.deepStrictEqual(reads().files, [
-      '.workflows/pay/experiment/ledger/E1-latency/E1.1-warm/problem.md',
-      '.workflows/pay/experiment/ledger/E2-throughput/problem.md',
-      '.workflows/pay/experiment/ledger/E2-throughput/design.md',
-      '.workflows/pay/experiment/ledger/E2-throughput/report.md',
-      '.workflows/pay/experiment/ledger/E2-throughput/E2.1-batch/problem.md',
-    ].map(abs));
+      'E1-latency/problem.md', 'E1-latency/design.md',
+      'E2-throughput/problem.md', 'E2-throughput/design.md', 'E2-throughput/report.md', 'E2-throughput/E2.1-batch/problem.md',
+    ]) write(`.ledger/pay/topics/ledger/experiments/${f}`);
+    write('.ledger/pay/topics/ledger/log.md');
+    writePosition({ name: 'pay', phase: 'experiment', topic: 'ledger', record: 'E2' });
+    const running = reads();
+    writePosition({ name: 'pay', phase: 'experiment', topic: 'ledger', record: 'E1' });
+    const designed = reads();
+    assert.deepStrictEqual([running.skill, running.files, designed.files], [abs('.claude/skills/ledger-experiment-process/SKILL.md'), [
+      'E2-throughput/problem.md', 'E2-throughput/design.md', 'E2-throughput/report.md', 'E2-throughput/E2.1-batch/problem.md',
+    ].map((f) => abs(`.ledger/pay/topics/ledger/experiments/${f}`)), [
+      abs('.ledger/pay/topics/ledger/experiments/E1-latency/problem.md'), abs('.ledger/pay/topics/ledger/experiments/E1-latency/design.md'), abs('.ledger/pay/topics/ledger/log.md'),
+    ]]);
+    const note = (/** @type {string[]} */ calls, /** @type {string[]} */ files, /** @type {string} */ line) => [
+      'The conversation was just compacted. This conversation is working in the experiment of "ledger" in the epic "pay". Before anything else, re-read these in full, running each engine call:',
+      `- ${abs('.claude/skills/ledger-experiment-process/SKILL.md')} and its framework`,
+      ...calls.map((call) => `- \`node .claude/skills/ledger-engine/scripts/engine.cjs ${call}\``),
+      ...files.map((file) => `- ${file}`),
+      line,
+      'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
+    ].join('\n');
+    assert.deepStrictEqual([running.text, designed.text], [
+      note([], running.files, 'The experiment worked here is E2, running; its splits E2.1 designed.'),
+      note(['ledger record pay ledger'], designed.files, 'The experiment worked here is E1, designed.'),
+    ]);
   });
 
-  it('an experiment series whose records name no directory contributes no files', () => {
-    install('workflow-experiment-process');
+  it('a position naming no experiment, or one the series no longer holds, carries the laboratory\'s skill alone', () => {
+    install('ledger-experiment-process');
     workUnit('pay', 'epic', {
-      experiment: { items: { ledger: { status: 'in-progress', experiments: { 'E3.1': { slug: 'orphan', status: 'running' } } } } },
+      experiment: { items: { ledger: { status: 'in-progress', experiments: { E1: { slug: 'latency', status: 'running' } } } } },
     });
-    ok(['session', 'label', 'pay', 'experiment', 'ledger']);
-    const answer = reads();
-    assert.deepStrictEqual([answer.skill, answer.files], [abs('.claude/skills/workflow-experiment-process/SKILL.md'), []]);
+    write('.ledger/pay/topics/ledger/experiments/E1-latency/problem.md');
+    const carried = [undefined, 'E9'].map((named) => {
+      writePosition({ name: 'pay', phase: 'experiment', topic: 'ledger', ...(named === undefined ? {} : { record: named }) });
+      const answer = reads();
+      return [answer.skill, answer.files];
+    });
+    const skill = abs('.claude/skills/ledger-experiment-process/SKILL.md');
+    assert.deepStrictEqual(carried, [[skill, []], [skill, []]]);
   });
 
-  it('the project-level places: the roadmap with its open session\'s log, the baseline its skill alone', () => {
-    install('workflow-roadmap');
-    install('workflow-baseline');
-    write('.workflows/.roadmap/sessions/session-003.md');
+  it('the project-level places: the product\'s conversation, carried whole in discovery\'s skill before any unit exists, its open log re-read and caught up from the transcript — once its picture is written, the picture re-read and caught up with the log (24.S19); the roadmap with its skill alone, holding no session', () => {
+    install('ledger-roadmap');
+    install('ledger-discovery');
+    write('.ledger/.product/sessions/session-003.md', '## 2026-01-01 · session sess-1\n');
     ok(['session', 'label', 'roadmap']);
-    assert.deepStrictEqual([reads().skill, reads().files], [abs('.claude/skills/workflow-roadmap/SKILL.md'), []], 'no session open');
-    write('.workflows/manifest.json', JSON.stringify({ roadmap: { active_session: '003' } }));
+    write('.ledger/manifest.json', JSON.stringify({ product_session: '003' }));
     const roadmap = reads();
-    assert.deepStrictEqual(roadmap.files, [abs('.workflows/.roadmap/sessions/session-003.md')]);
-    assert.strictEqual(roadmap.place, 'roadmap');
-    assert.strictEqual(roadmap.text, note('the project\'s roadmap', 'workflow-roadmap', ['.workflows/.roadmap/sessions/session-003.md']));
-    ok(['session', 'label', 'baseline']);
-    const baseline = reads();
-    assert.deepStrictEqual([baseline.skill, baseline.files, baseline.place], [abs('.claude/skills/workflow-baseline/SKILL.md'), [], 'baseline']);
-    assert.strictEqual(baseline.text, note('the project\'s baseline', 'workflow-baseline', []));
+    assert.deepStrictEqual([roadmap.skill, roadmap.files, roadmap.place], [abs('.claude/skills/ledger-roadmap/SKILL.md'), [], 'roadmap'], 'the product\'s session open');
+    assert.strictEqual(roadmap.text, note('the project\'s roadmap', 'ledger-roadmap', []));
+    ok(['session', 'label', 'product']);
+    const product = reads();
+    assert.deepStrictEqual([product.skill, product.files, product.place], [abs('.claude/skills/ledger-discovery/SKILL.md'), [abs('.ledger/.product/sessions/session-003.md')], 'product']);
+    assert.strictEqual(product.text, discoveryNote('the product\'s conversation', [], '.ledger/.product/sessions/session-003.md'), 'the transcript gone, said in one line');
+    const file = transcript();
+    assert.strictEqual(reads().text, discoveryNote('the product\'s conversation', [], '.ledger/.product/sessions/session-003.md', file));
+    write('.ledger/.product/picture.md', '# Where the product stands\n');
+    const pictured = reads();
+    const picture = '.ledger/.product/picture.md';
+    assert.deepStrictEqual([pictured.files, pictured.text], [
+      [abs(picture)],
+      discoveryNote('the product\'s conversation', [], '.ledger/.product/sessions/session-003.md', file, [picture], picture),
+    ], 'its picture, once written, re-read in the log\'s place, the log and the picture caught up');
+    fs.rmSync(file);
+    assert.strictEqual(reads().text, discoveryNote('the product\'s conversation', [], '.ledger/.product/sessions/session-003.md', null, [picture], picture), 'the transcript gone, naming both');
+  });
+
+  it('a position left at the baseline, a place the project no longer has, carries nothing on', () => {
+    writePosition({ name: 'baseline' });
+    assert.deepStrictEqual(reads(), {
+      session_id: 'sess-1',
+      position: { name: 'baseline' },
+      place: 'baseline',
+      skill: null,
+      files: [],
+      text: 'This conversation was working in "baseline", but this project has no work unit "baseline", so there is nothing to carry on from.',
+    });
   });
 
   it('a place no longer open carries nothing on — the work unit gone from this project or closed, the place\'s item closed', () => {
-    install('workflow-discussion-process');
-    write('.workflows/pay/discussion/ledger.md');
+    install('ledger-discussion-process');
+    write('.ledger/pay/topics/ledger/log.md');
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
     const closed = (text) => assert.deepStrictEqual(reads(), {
       session_id: 'sess-1',
@@ -601,30 +895,29 @@ describe('conversation position', () => {
       files: [],
       text,
     });
-    for (const status of ['cancelled', 'postponed', 'superseded', 'promoted']) {
+    for (const status of ['cancelled', 'postponed']) {
       workUnit('pay', 'epic', { discussion: { items: { ledger: { status } } } });
       closed(`This conversation was working in the discussion of "ledger" in the epic "pay", but the discussion is ${status}, so there is nothing to carry on from.`);
     }
     workUnit('pay', 'epic', { discussion: { items: { ledger: { status: 'in-progress' } } } }, { status: 'completed' });
     closed('This conversation was working in the discussion of "ledger" in the epic "pay", but "pay" is completed, so there is nothing to carry on from.');
-    fs.rmSync(path.join(dir, '.workflows', 'pay'), { recursive: true });
+    fs.rmSync(path.join(dir, '.ledger', 'pay'), { recursive: true });
     closed('This conversation was working in the discussion of "ledger" in "pay", but this project has no work unit "pay", so there is nothing to carry on from.');
   });
 
   it('an experiment under a topic cancelled from the epic menu carries nothing on — the series settles, the map row is cancelled', () => {
-    install('workflow-experiment-process');
+    install('ledger-experiment-process');
     workUnit('pay', 'epic', {
-      discovery: { items: { ledger: { routing: 'discussion', summary: 'The ledger.', source: 'discovery' } } },
+      discovery: { items: { ledger: { summary: 'The ledger.', source: 'discovery' } } },
       discussion: { items: { ledger: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
       experiment: { items: { ledger: { status: 'in-progress', experiments: { E1: { slug: 'latency', status: 'running' } } } } },
     });
-    git(['add', '-A']);
-    git(['commit', '-q', '-m', 'the epic']);
-    write('.workflows/pay/experiment/ledger/E1-latency/problem.md');
+    harness.commitAll(dir, 'the epic');
+    write('.ledger/pay/topics/ledger/experiments/E1-latency/problem.md');
     ok(['session', 'label', 'pay', 'experiment', 'ledger']);
     assert.notStrictEqual(reads().skill, null, 'the running laboratory carries on');
     ok(['topic', 'cancel', 'pay', 'discovery', 'ledger']);
-    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/pay/manifest.json'), 'utf8'));
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.ledger/pay/manifest.json'), 'utf8'));
     assert.notStrictEqual(manifest.phases.experiment.items.ledger.status, 'cancelled', 'the series item itself is not what closes');
     const answer = reads();
     assert.deepStrictEqual([answer.skill, answer.files], [null, []]);
@@ -633,12 +926,11 @@ describe('conversation position', () => {
 
   it('a concluded discussion whose topic was postponed to the roadmap carries nothing on', () => {
     workUnit('pay', 'epic', {
-      discovery: { items: { ledger: { routing: 'discussion', summary: 'The ledger.', source: 'discovery' } } },
+      discovery: { items: { ledger: { summary: 'The ledger.', source: 'discovery' } } },
       discussion: { items: { ledger: { status: 'completed' } } },
     });
-    git(['add', '-A']);
-    git(['commit', '-q', '-m', 'the epic']);
-    install('workflow-discussion-process');
+    harness.commitAll(dir, 'the epic');
+    install('ledger-discussion-process');
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
     assert.notStrictEqual(reads().skill, null, 'the concluded discussion carries on');
     ok(['topic', 'postpone', 'pay', 'ledger', '--horizon', 'later']);
@@ -648,33 +940,32 @@ describe('conversation position', () => {
   });
 
   it('a concluded experiment series whose topic was postponed to the roadmap carries nothing on — the series stays as it stands, the map row is postponed', () => {
-    install('workflow-experiment-process');
+    install('ledger-experiment-process');
     workUnit('pay', 'epic', {
-      discovery: { items: { ledger: { routing: 'discussion', summary: 'The ledger.', source: 'discovery' } } },
+      discovery: { items: { ledger: { summary: 'The ledger.', source: 'discovery' } } },
       discussion: { items: { ledger: { status: 'completed' } } },
       experiment: { items: { ledger: { status: 'completed', experiments: { E1: { slug: 'latency', status: 'concluded', verdict: 'Fast enough.' } } } } },
     });
-    git(['add', '-A']);
-    git(['commit', '-q', '-m', 'the epic']);
+    harness.commitAll(dir, 'the epic');
     ok(['session', 'label', 'pay', 'experiment', 'ledger']);
     assert.notStrictEqual(reads().skill, null, 'the concluded series carries on');
     ok(['topic', 'postpone', 'pay', 'ledger', '--horizon', 'later']);
-    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/pay/manifest.json'), 'utf8'));
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.ledger/pay/manifest.json'), 'utf8'));
     assert.strictEqual(manifest.phases.experiment.items.ledger.status, 'completed', 'the series item itself is not what closes');
     const answer = reads();
     assert.deepStrictEqual([answer.skill, answer.files], [null, []]);
     assert.strictEqual(answer.text, 'This conversation was working in the experiment of "ledger" in the epic "pay", but the topic is postponed, so there is nothing to carry on from.');
   });
 
-  it('research, an experiment and a discussion close with their topic on the map; a specification and a plan do not', () => {
+  it('an experiment and a discussion close with their topic on the map; the spec does not', () => {
     for (const marker of ['cancelled', 'postponed']) {
-      for (const [phase, closes] of [['research', true], ['experiment', true], ['discussion', true], ['specification', false], ['planning', false]]) {
-        install(`workflow-${phase}-process`);
+      for (const [phase, place, closes] of [['experiment', 'ledger', true], ['discussion', 'ledger', true], ['specification', 'pay', false]]) {
+        install(`ledger-${phase}-process`);
         workUnit('pay', 'epic', {
           discovery: { items: { ledger: { [marker]: true } } },
-          [phase]: { items: { ledger: { status: 'in-progress' } } },
+          ...(closes ? { [phase]: { items: { ledger: { status: 'in-progress' } } } } : {}),
         });
-        ok(['session', 'label', 'pay', phase, 'ledger']);
+        ok(['session', 'label', 'pay', phase, place]);
         const answer = reads();
         assert.strictEqual(answer.skill === null, closes, `${phase} under a ${marker} topic`);
         if (closes) assert.deepStrictEqual(answer.files, [], `${phase} under a ${marker} topic names no files`);
@@ -692,25 +983,25 @@ describe('conversation position', () => {
   });
 
   it('a conversation a handoff began carries on from the place its first call labelled', () => {
-    install('workflow-roadmap');
+    install('ledger-roadmap');
     ok(['session', 'label', 'roadmap'], 'sess-handed');
     const carried = reads([], 'sess-handed');
-    assert.deepStrictEqual([carried.position, carried.skill], [{ name: 'roadmap' }, abs('.claude/skills/workflow-roadmap/SKILL.md')]);
-    assert.strictEqual(carried.text, note('the project\'s roadmap', 'workflow-roadmap', []));
+    assert.deepStrictEqual([carried.position, carried.skill], [{ name: 'roadmap' }, abs('.claude/skills/ledger-roadmap/SKILL.md')]);
+    assert.strictEqual(carried.text, note('the project\'s roadmap', 'ledger-roadmap', []));
   });
 
   it('names each file under the root of the project the call runs in, a dashed or dotted root spelled as it is', () => {
-    const root = path.join(dir, 'code', 'my-repo.app');
-    fs.mkdirSync(path.join(root, '.claude', 'skills', 'workflow-discussion-process'), { recursive: true });
-    fs.writeFileSync(path.join(root, '.claude', 'skills', 'workflow-discussion-process', 'SKILL.md'), '# discussion\n');
-    fs.mkdirSync(path.join(root, '.workflows', 'pay', 'discussion'), { recursive: true });
-    fs.writeFileSync(path.join(root, '.workflows', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'epic', status: 'in-progress', phases: {} }));
-    fs.writeFileSync(path.join(root, '.workflows', 'pay', 'discussion', 'ledger.md'), '# ledger\n');
-    writePosition({ name: 'pay', phase: 'discussion', topic: 'ledger' });
+    const root = harness.setupFixtureAt(path.join(dir, 'code', 'my-repo.app'));
+    fs.mkdirSync(path.join(root, '.claude', 'skills', 'ledger-investigation-process'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.claude', 'skills', 'ledger-investigation-process', 'SKILL.md'), '# investigation\n');
+    fs.mkdirSync(path.join(root, '.ledger', 'pay', 'topics', 'ledger'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.ledger', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'epic', status: 'in-progress', phases: {} }));
+    fs.writeFileSync(path.join(root, '.ledger', 'pay', 'topics', 'ledger', 'log.md'), '# ledger\n');
+    writePosition({ name: 'pay', phase: 'investigation', topic: 'ledger' });
     const out = harness.output(root, ['conversation', 'position'], { env: env() });
     const answer = JSON.parse(out.slice(out.indexOf('=== POSITION')).split('\n')[1]);
-    assert.deepStrictEqual(answer.files, [path.join(root, '.workflows/pay/discussion/ledger.md')]);
-    assert.ok(answer.text.endsWith(`\n- ${root}/.workflows/pay/discussion/ledger.md`), answer.text);
+    assert.deepStrictEqual(answer.files, [path.join(root, '.ledger/pay/topics/ledger/log.md')]);
+    assert.ok(answer.text.includes(`\n- ${root}/.ledger/pay/topics/ledger/log.md\n`), answer.text);
   });
 
   it('reads another conversation by its id, from any project the call runs in; the calling one\'s by default', () => {

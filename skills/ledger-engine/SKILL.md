@@ -1,0 +1,36 @@
+---
+name: ledger-engine
+user-invocable: false
+allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
+---
+
+# Ledger Engine
+
+The platform behind Ledger's skills: deterministic state, derivation, and rendering. Anything fully determined by data is computed here, in code, and consumed by Claude — never re-derived in prose.
+
+This skill is a reference, not a flow. In normal use Ledger's prose prescribes exact engine calls at exact points; consult this documentation when you need to understand how the engine works — the library surface or the architecture — rather than which call to make next.
+
+## Architecture
+
+Two rings under `scripts/`:
+
+- **Kernel** (`kernel/`) — mechanism plus the manifest's on-disk contract: render primitives (the wrap budget `width − prefix` lives here once, so gutter-overflow bugs can exist in only one place), `manifest-io.cjs` (one read/parse, one atomic-write serialisation, one lock protocol — every manifest writer flows through it), `manifest-schema.cjs` (the single vocabulary of legal work types, phases, and statuses), `state-root.cjs` (where the state lives: `.ledger/` in the repository's main checkout, a worktree of its own branch, `ledger-state`), and the knowledge base's mechanism under `knowledge/` (the store's file format, word search, ranking, chunking, excerpts and outlines, the embedding providers, the config). Every engine load→mutate→save holds the state's writer lock; KB syncs run after release.
+- **Domain** (`domain/`) — Ledger's ontology: transitions, queries, projections, glyph and `[tag]` composition conventions, plus the shared read side: `reads.cjs` (generic manifest/file loads, no phase semantics) and `derivations.cjs` (lifecycle joins, next-phase computation), consumed by the domain ring. Derivations may require reads; never the reverse. The knowledge base's domain side lives under `knowledge/`: artifact identity against the manifests, indexing, the vector fill, query, status, and setup. The drivers live under `scripts/drivers/{task,landing}/{name}/`, the code behind the `task` verbs and the `land` verbs, loaded by `domain/drivers.cjs`.
+
+One door, the CLI (`engine.cjs`): transactions, lifecycle, and the `manifest` field surface; and the knowledge base's one door, `knowledge`, its searches included. Called from skill prose at prescribed points, and by the hooks boot installs — the guards before a tool call (`guards.cjs`) among them.
+
+Output sections are one-directional: `DATA` is for reasoning and is never displayed; `DISPLAY` and `MENU` are emitted to the user, each verbatim per its marker, and never parsed for decisions.
+
+`GATE` is for code alone: one line of JSON stating the gate the `MENU` directly below it draws, so a surface can draw that gate without reading the markdown. It is present only while `LEDGER_GATE_SURFACE=1` is in the environment, always sits immediately above the `MENU` it describes, and is never displayed.
+
+`POSITION` is for code alone too: `conversation position`'s one line of JSON, carrying the note its `DATA` section holds, for the gate mod to read. It is never displayed.
+
+`HANDOFF` is for code alone as well: one line of JSON closing `engine handoff`'s answer — the skill, its arguments, the continuation and the line naming where the work goes — for the gate mod to carry. It is present only while `LEDGER_HANDOFF=1` is in the environment and is never displayed.
+
+**Sessions run concurrently, so every write is confined.** A command's writes and its commit hold the state's one writer lock; cache state is partitioned per topic, bar a few stores of wider scope, each written atomically or under a lock of its own — per unit the last-looked mark (`.cache/.marks/{unit}.json`), and project-wide the session-label store, keyed per terminal session, and the late check's claim (`.cache/.late-check`); the conversation folders beside the system config are keyed per Claude session id, and each concern writes a file of its own there; and every engine commit — the `commit` helper and every transaction tail — commits the paths its action wrote and nothing else: a pathspec commit, never the shared index. A state commit is made on `ledger-state` from a private index and pushed, taking along the layout's logs changed since, and refused while a file the layout has no place for sits in the state. The migration commit (`commit --migrations`) takes the whole state on the state side; its code side, which records a removal a migration staged, is built from a scratch index holding HEAD with the owned paths as the index records them, so it too carries nothing it did not name. Session liveness rides the same principle: heartbeats are stamped by the engine as a side effect of the verbs a session runs on its own topic (`presence`), never by prose.
+
+**Anything parameterised or state-branching renders in code.** Static chrome lives as literal blocks in skill prose; shared runtime surfaces (gates, menus, parameterised displays) are served by the `render` surface catalogue in `engine.cjs`, which returns demarcated sections the flow emits verbatim per their markers. The engine never parses markdown artifacts to populate a render — address-backed values are JSON state, judgment content is a validated payload file.
+
+## Tests
+
+Engine suites are wired into `npm test` (with shell contract suites under `npm run test:cli`) — `package.json` is the authoritative list. Type contracts: `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.

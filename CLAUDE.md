@@ -4,19 +4,19 @@ Guidance for Claude Code working in this repo.
 
 ## Project Overview
 
-Agentic Engineering Workflows for Claude Code. Installed via `npx agntc add leeovery/agentic-workflows`.
+Ledger: agentic workflows for Claude Code. Installed via `npx agntc add leeovery/ledger`.
 
-**This project authors the workflow system — it does not use it.** Never invoke workflow skills (`/workflow-start`, `/workflow-continue-*`, etc.) for work on this project. Edit skill files, references, and scripts directly. This CLAUDE.md is development documentation that does not ship with the product — installed projects get their own. Skills and agents must be self-contained — never rely on this file for runtime behaviour.
+**This project authors Ledger — it does not use it.** Never invoke Ledger's skills (`/ledger`, `/ledger-continue-*`, etc.) for work on this project. Edit skill files, references, and scripts directly. This CLAUDE.md is development documentation that does not ship with the product — installed projects get their own. Skills and agents must be self-contained — never rely on this file for runtime behaviour.
 
 This file holds the rules for working on the repo and a map of the system. How the system behaves is stated by the document that owns each part:
 
 - **The skills** — each `SKILL.md` and its `references/` are the source of truth for their own flow.
 - **`CONVENTIONS.md`** — skill authoring rules.
-- **The engine** — `skills/workflow-engine/SKILL.md` (architecture), `skills/workflow-engine/references/commands.md` (every verb's contract, state and response), and each module's header comment.
-- **`docs/`** — the user-facing book: work types, every phase, lifecycle operations (`docs/lifecycle-operations.md`), reliability (`docs/reliability.md`), configuration, the knowledge base. `docs/contributing.md` covers setup, the gates, migrations, and the knowledge-base code.
-- **`skills/workflow-help/references/glossary.md`** — the canonical vocabulary.
-- **`skills/workflow-gates/README.md`** and **`skills/workflow-gates-rows/README.md`** — the Claude Code mods.
-- **`tests/prose/README.md`** — the prose-test harness.
+- **The engine** — `skills/ledger-engine/SKILL.md` (architecture), `docs/engine/commands.md` (every verb's contract for its caller: signature, response, refusals and the state it writes), and each module's header comment (how it works).
+- **`docs/`** — the user-facing book: work types, every phase, lifecycle operations (`docs/lifecycle-operations.md`), trust, verification, state and git, tracking, reliability (`docs/reliability.md`), configuration, the knowledge base. `docs/contributing.md` covers setup, the gates, migrations, the docs' checks, and the knowledge-base code.
+- **`skills/ledger-shared/references/glossary.md`** — the canonical vocabulary.
+- **`skills/ledger-gates/README.md`** and **`skills/ledger-gates-rows/README.md`** — the Claude Code mods.
+- **`tests/README.md`** — how a test is written: the layers, the fixture library, assertions, measuring.
 - **`design/`** — each programme's design record.
 
 ## Git Workflow
@@ -43,124 +43,118 @@ Improvement ideas live in `ideas/`, indexed by `ideas/INDEX.md`. The index holds
 
 ### Stages and phases
 
-The phases group into three **stages**, the top-level grouping of the epic dashboard: **Discovery** (discovery, research, experiment, discussion, investigation) — explore and decide; **Definition** (scoping, specification, planning) — specify and plan; **Delivery** (implementation, review) — build and verify.
+The phases group into three **stages**, the top-level grouping of the epic dashboard: **Discovery** (discovery, experiment, discussion, investigation) — explore and decide; **Definition** (specification) — specify and cut into phases; **Delivery** (implementation, review) — build and verify.
 
-1. **Discovery** (`workflow-discovery`) — the first phase of every work type: confirms the type, shapes the work, persists it at the work-type commit, and routes it on; for an epic it builds the discovery map of topics and writes each topic's brief.
-2. **Research** (`workflow-research-process`) — explore feasibility and options, with deep dives and a thread register.
-3. **Experiment** (`workflow-experiment-process`) — the laboratory a research or discussion conversation spawns to measure what a decision rests on; never a topic's first phase.
-4. **Discussion** (`workflow-discussion-process`) — decide, guided by a Discussion Map; topics send each other messages through mailboxes.
-5. **Investigation** (`workflow-investigation-process`) — bugfix: symptoms and code analysis to a root cause.
-6. **Scoping** (`workflow-scoping-process`) — quick-fix: context, spec and plan in one pass.
-7. **Specification** (`workflow-specification-process`) — turn concluded discussions (a bugfix's investigation) into a standalone spec; an epic groups its discussions into specifications at the epic menu.
-8. **Planning** (`workflow-planning-process`) — phases, tasks and acceptance criteria; the code's mechanism stays the implementer's.
-9. **Implementation** (`workflow-implementation-process`) — execute the plan by TDD (a verification workflow for a quick-fix).
-10. **Review** (`workflow-review-process`) — verify the delivered change-set against the plan and the specification.
+1. **Discovery** (`ledger-discovery`) — one conversation at two levels, where nothing is decided: the product's, which finds each piece of work's type and creates its unit at start this work, its other output the roadmap; and an epic's, whose map of topics lands with each topic's brief at approve the map.
+2. **Experiment** (`ledger-experiment-process`) — the laboratory a discussion spawns to measure what a decision rests on; never a topic's first phase.
+3. **Discussion** (`ledger-discussion-process`) — one conversation per topic, research one of its tools: every question, finding and decision on the ledger, the decided checklist closing it; topics send each other messages through mailboxes.
+4. **Investigation** (`ledger-investigation-process`) — bugfix: symptoms and code analysis to a root cause.
+5. **Specification** (`ledger-specification-process`) — turn a unit's decided topics (a bugfix's investigation) into its one spec, cut into phases and approved at ready to build, where the build's position is chosen.
+6. **Implementation** (`ledger-implementation-process`) — the build: one conversation through every phase of the spec's cut, each task built with the tests that prove it, held by the tests the commit door runs and its reviewers, the one or two Claude chooses (none for a one-line task); a quick-fix's is its own skill (`ledger-quick-fix-process`), each fix a task, from the first fix to its close in one conversation.
+7. **Review** (`ledger-review-process`) — verify the built change against the specification, its findings landing as fix tasks; a quick-fix's only when the person asks for one at its close.
 
 ### Work types and topics
 
-A *work type* is one of five pipeline shapes; a *work unit* is a named instance of one, with its own directory under `.workflows/` and its own `manifest.json`.
+A *work type* is one of four pipeline shapes; a *work unit* is a named instance of one, with its own directory under `.ledger/` and its own `manifest.json`.
 
-- **Epic**: multi-topic, multi-session — Discovery → Research (opt.) → Experiment (opt.) → Discussion → Specification → Planning → Implementation → Review
-- **Feature**: single-topic — Discovery → Research (opt.) → Experiment (opt.) → Discussion → Specification → Planning → Implementation → Review
-- **Bugfix**: Discovery → Investigation → Specification → Planning → Implementation → Review
-- **Quick-fix**: Discovery → Scoping → Implementation → Review
-- **Cross-cutting**: project-level — Discovery → Research (opt.) → Experiment (opt.) → Discussion → Specification (terminal)
+- **Epic**: multi-topic, multi-session — Discovery → Experiment (opt.) → Discussion → Specification → Implementation → Review
+- **Feature**: single-topic — Discovery → Experiment (opt.) → Discussion → Specification → Implementation → Review
+- **Bugfix**: Discovery → Investigation → Specification → Implementation → Review
+- **Quick-fix**: Discovery → Implementation → Review (on request)
 
-A *topic* is the item within a phase; every phase keeps per-topic items in the manifest. For the four single-topic types the topic is the work unit (a cross-cutting unit promoted from an epic specification keeps its moved discussions' epic names). An epic names its topics apart from the work unit. Lifecycle operations — work-unit status, pivot, absorb, topic cancel, postpone and reactivate, the soft gates and hard blocks, staleness — are in `docs/lifecycle-operations.md` and `docs/reliability.md`.
+A *topic* is the item within a phase; every phase keeps per-topic items in the manifest. For the three single-topic types the topic is the work unit. An epic names its topics apart from the work unit. Lifecycle operations — work-unit status, pivot, absorb, topic cancel, postpone and reactivate, the soft gates and hard blocks, staleness — are in `docs/lifecycle-operations.md` and `docs/reliability.md`.
 
 ### Skills and agents
 
-- **Start** (`workflow-start`) — the only user-invocable entry point: boot, the setup gates, the start menu, inbox triage.
-- **Discovery** (`workflow-discovery`) — new work, and re-shaping an epic's map.
-- **Navigation** (`workflow-continue-epic`, `workflow-continue-linear`) — a work unit's continue menu.
-- **Phase skills** (`workflow-{phase}-process`) — one per phase after discovery; their contract and Step 0 order are in CONVENTIONS.md.
-- **Bridge** (`workflow-bridge`) — where the work goes after a phase concludes, pauses, or leaves its topic.
-- **Capture** (`workflow-log-idea`, `workflow-log-bug`, `workflow-log-quickfix`) — write to the inbox; no steps, no gates.
-- **Project-level** — `workflow-roadmap` (the product roadmap), `workflow-baseline` (the brownfield assessment), `workflow-help` (the walkthrough and reference cards).
-- **Shared references** (`skills/workflow-shared/references/`) — protocols several skills load; `framework.md` is loaded once per conversation (CONVENTIONS.md, The Framework Load).
-- **Engine** (`workflow-engine`) — state, derivation and rendering; `workflow-migrate` holds the migrations; `workflow-legacy-research-split` converts pre-discovery epics.
-- **Gate mods** (`workflow-gates`, `workflow-gates-rows`) — Claude Code mods that draw menus as buttons and carry handoffs.
+- **Start** (`ledger`) — the only user-invocable entry point: boot, the setup gates, the start menu, inbox triage.
+- **Discovery** (`ledger-discovery`) — the product's conversation, where new work starts, and an epic's discovery, where its map is shaped and changed.
+- **Navigation** (`ledger-continue-epic`) — an epic's menu; any other unit is continued from the start menu, where it stands.
+- **Phase skills** (`ledger-{phase}-process`) — one per phase after discovery, and a quick-fix's own, `ledger-quick-fix-process`, from its first fix to its close; what each holds is in CONVENTIONS.md (The Phase Skill).
+- **Keep** (`ledger-keep`) — keeps anything of substance said in any conversation where Ledger keeps it: the inbox or the roadmap, the product's views, directions not taken and spikes, findings, shared files, the environment's setup, a line in CLAUDE.md, a message to a topic; no framework, no gates of its own.
+- **Project-level** — `ledger-roadmap` (the product roadmap, and starting work from it through discovery).
+- **Help** — the engine's: each menu's help beside the projection that draws it (`skills/ledger-engine/scripts/domain/projections/{menu}.help.md`), and the walkthrough and reference cards in `skills/ledger-engine/content/walkthrough/`.
+- **Shared references** (`skills/ledger-shared/references/`) — protocols several skills load; `framework.md` is loaded once per conversation (CONVENTIONS.md, The Framework Load).
+- **Engine** (`ledger-engine`) — state, derivation and rendering; `ledger-migrate` holds the migrations.
+- **Drivers** (`skills/ledger-engine/scripts/drivers/{task,landing}/{name}/`) — the code behind the `task` verbs (the tracker) and the `land` verbs (the code host); `domain/drivers.cjs` loads them, one of each kind picked by the project manifest's `drivers` setting. In code, only a driver names its tool; its test fixtures (`tests/drivers/{name}/`), the user docs and design notes may too.
+- **Gate mods** (`ledger-gates`, `ledger-gates-rows`) — Claude Code mods that draw menus as buttons and carry handoffs.
 - **Agents** — `agents/` are the subagents the product dispatches (`docs/agents.md`).
-- **Development only** — `.claude/agents/` and `.claude/skills/` (`create-output-format`, `prose-test`, `review-work`) serve work on this repo and never ship.
+- **Development only** — `.claude/agents/` and `.claude/skills/` (`review-work`) serve work on this repo and never ship.
 
 ### Paths
 
-`{topic}` is `{work_unit}` for the single-topic types.
+`{topic}` is `{work_unit}` for the single-topic types. `.ledger/` is the state, in the repository's main checkout: a worktree of its own branch, `ledger-state` (`kernel/state-root.cjs`).
 
-- `.workflows/manifest.json` — project manifest: work-unit registry, defaults, roadmap, baseline
-- `.workflows/{work_unit}/manifest.json` — work-unit manifest
-- `.workflows/{work_unit}/discovery/sessions/session-NNN.md`, `discovery/briefs/{topic}.md` — discovery session logs, an epic's topic briefs
-- `.workflows/{work_unit}/research/{topic}.md`
-- `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}/` — one experiment record
-- `.workflows/{work_unit}/discussion/{topic}.md`
-- `.workflows/{work_unit}/investigation/{topic}.md`
-- `.workflows/{work_unit}/specification/{topic}/specification.md`
-- `.workflows/{work_unit}/planning/{topic}/planning.md` — plus `phase-{N}-tasks.md` and the task files
-- `.workflows/{work_unit}/implementation/{topic}/`
-- `.workflows/{work_unit}/review/{topic}/report.md`
-- `.workflows/{work_unit}/{phase}/.mailbox/{topic}/` — messages waiting for a topic
-- `.workflows/{work_unit}/imports/` — files the user shared
-- `.workflows/{work_unit}/seeds/` — the inbox items the unit was started from
-- `.workflows/{work_unit}/.state/` — per-unit analysis files
-- `.workflows/.state/` — the migrations ledger, `environment-setup.md`
-- `.workflows/.cache/{work_unit}/{phase}/{topic}/` — gitignored session state, scratch and presence; `.cache/.session-labels/` the tmux label store
-- `.workflows/.inbox/{ideas,bugs,quickfixes}/` — undecided captures; `.archived/` the declined ones
-- `.workflows/.roadmap/` — roadmap sessions, imports, and notes
-- `.workflows/.baseline/{area}.md` — the brownfield assessment
-- `.workflows/.knowledge/` — the checkout-local knowledge store and config, gitignored
-- `~/.config/workflows/` (or `WORKFLOWS_CONFIG_DIR`) — system config, credentials, and `conversations/{session-id}/`, per-conversation state
+- `.ledger/manifest.json` — project manifest: work-unit registry, defaults, roadmap, the brownfield offer's answer
+- `.ledger/.ledger.jsonl` — the ledger: every question, finding and decision, one event a line
+- `.ledger/{work_unit}/manifest.json` — work-unit manifest
+- `.ledger/{work_unit}/discovery/session-NNN.md` — discovery session logs; `from-before.md` an epic's points from before and the shared files that bear on it, kept at its start and joined by each point its discovery meets
+- `.ledger/{work_unit}/topics/{topic}/` — a topic's own place: `brief.md` its brief, `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it, `earlier/` the files a unit moved to another type set aside from before
+- `.ledger/{work_unit}/spec.md` — the unit's one spec
+- `.ledger/{work_unit}/summary.md` — a quick-fix's short record after the work
+- `.ledger/{work_unit}/build/` — the build's `log.md` and `notes.md`; `notes-answered.json`, the notes for later a quick-fix's close answered; `tasks/{task}.md` with each task's round reports, `review.json` its reviewers chosen, `figures.json` and settlements; `phases/phase-{N}/` with the phase review's reports, the consolidation and `settlement.json`; `runs/{scenario}/run-NNN.json`, the verification runs
+- `.ledger/{work_unit}/review/` — the review phase's rounds: `round-{N}.json`, `round-{N}.md`, `round-{N}-checks.md`, `round-{N}-reads.json`, and `round-{N}/` holding the readers' reports
+- `.ledger/{work_unit}/seeds/` — the inbox items the unit was started from
+- `.ledger/{work_unit}/assets/` — the files the user shared; `assets/legacy/` the unit's files from before Ledger the migration had no other place for, each at its path from the unit's old folder
+- `.ledger/{work_unit}/spikes/{NNN}-{slug}/` — the unit's spikes
+- `.ledger/.state/` — the migrations ledger
+- `.ledger/.cache/{work_unit}/{phase}/{topic}/` — gitignored session state, scratch, presence and `entered.json`, when the place was last entered, and in `.showings/` the learned gates' showings held there; `.cache/.session-labels/` the session-label store, tmux's records at its top and Portal's in `portal/`
+- `.ledger/.cache/{work_unit}/earlier/` — the old cache's reports from before Ledger, and the files the old system's agents and trackers wrote in the unit's folder, copied by the migration, each at its path below the unit's folder in the old cache or the old state, purged with the unit's cache; `.cache/earlier/` those of no unit, each at its path below the old cache
+- `.ledger/.cache/.showings/` — the import reprompt's showing held, at no place
+- `.ledger/.cache/migrate/` — the migration's staging: the split's plans (`split/`), each topic's record as composed (`records/`) and as carried (`carried/`), each building unit's pieces and plan (`cut-and-merges/{unit}/`), the cut's and the closed plans' marks (`cut/`, `closed/`), and the finish's drops (`finish.json`)
+- `.ledger/.cache/.set-aside/{work_unit}/round-{N}/put-{k}/` — what the review's put back set aside; outlives the unit
+- `.ledger/.inbox/{ideas,bugs,quickfixes}/` — undecided captures; `.archived/` the declined ones
+- `.ledger/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `picture.md` its picture of where the product stands, rewritten in place, `notes/{YYYY-MM-DD}--{slug}.md` the roadmap items' notes, `assets/` the files shared and, as `assets/{unit}/`, each retired unit's folder kept whole as reference, `assets/legacy/` the files from before Ledger of no unit's the migration had no other place for, each at its path from `.workflows/`, and in `assets/legacy/{unit}/` a retired unit's legacy files, `spikes/{NNN}-{slug}/` its spikes
+- `.ledger/.knowledge/` — the checkout-local knowledge store and config, gitignored
+- `.claude/worktrees/ledger-{work_unit}` — in the main checkout, a quick-fix's worktree on `fix/{work_unit}`, where its fixes are built: laid out at its first fix's start, taken apart at its close, cancel or move
+- `.claude/worktrees/ledger-{work_unit}-{task}` — in the main checkout, a one-line task's layout of the whole project, every repository on the task's branch: laid out by `task worktree`, taken apart whole as the task ends
+- `refs/ledger/aside/{work_unit}/{task_id}` — in each code repository, the work a quick-fix's fix had not committed, set aside when a question parked it or the quick-fix moved
+- `~/.config/ledger/` (or `LEDGER_CONFIG_DIR`) — system config, credentials, `trust.jsonl` the trust log, `person.md` the record of the person, `decision-checks.jsonl` the one-decision check's log, and `conversations/{session-id}/`, per-conversation state: `booted.json` boot's stamp, which the verbs that touch work refuse without, `briefs/` the briefs the conversation issued, and `set-aside.json` the parks of the questions it set aside
 
 ### State
 
-Workflow state is engine-owned (CONVENTIONS.md, State Ownership). Never hand-write a manifest: outside a migration (see Migrations), field reads and writes go through `engine manifest`, and lifecycle changes through their own verbs (`workunit`, `topic`, `experiment`); every verb's reference is `skills/workflow-engine/references/commands.md`.
+Ledger's state is engine-owned (CONVENTIONS.md, What the Engine Owns). Never hand-write a manifest: outside a migration (see Migrations), field reads and writes go through `engine manifest`, and lifecycle changes through their own verbs (`workunit`, `topic`, `experiment`); every verb's reference is `docs/engine/commands.md`.
 
-## Adding New Output Formats
+## Tool Names (IMPORTANT)
 
-Use `/create-output-format` to scaffold a new plan output format: five files under `skills/workflow-planning-process/references/output-formats/{format}/` (`about.md`, `authoring.md`, `reading.md`, `updating.md`, `graph.md`). The contract and templates live in `.claude/skills/create-output-format/references/`.
+**NEVER name a tool a driver wraps (tick, linear, etc.) anywhere except:**
+- `skills/ledger-engine/scripts/drivers/**` - the drivers, the only engine code that names a tool
+- `tests/drivers/**` - a driver's test fixtures, which find and pin its real tool; a new suite generic over drivers names none
+- `README.md` and `docs/` - user-facing documentation where the tool options are presented
+- `design/` - the design notes
 
-## Output Format References (IMPORTANT)
-
-**NEVER list output format names (tick, linear, local-markdown, etc.) anywhere except:**
-- `skills/workflow-planning-process/references/output-formats.md` - the authoritative list
-- `skills/workflow-planning-process/references/output-formats/{format}/` - individual format directories
-- `README.md` - user-facing documentation where format options are presented
-- `skills/workflow-engine/content/walkthrough/fixtures/` - the one recorded exception: the walkthrough's sample surfaces render from these fixtures through the real projections, and a planning row carries its plan's format in its tag, so the fixture behind the epic-dashboard sample has to name one, and the test that pins that sample's render carries it too
-
-Other phases reference a format through the plan's `format` manifest field, and load only the per-concern file they need (e.g. `{format}/reading.md`).
+Everything else reaches a tool through the driver the project manifest's `drivers` setting picks.
 
 ## Migrations
 
-Migrations keep existing projects' `.workflows/` in step with the current design, run by `engine boot` at `/workflow-start`. Writing one: `docs/contributing.md`; the module contract: the header of `skills/workflow-migrate/scripts/migrate.cjs`.
+Migrations keep existing projects' `.ledger/` in step with the current design, run by `engine boot` at `/ledger`. Writing one: `docs/contributing.md`; the module contract: the header of `skills/ledger-migrate/scripts/migrate.cjs`.
+
+The migration into Ledger runs from a project's `.workflows/` at 072: the guard (074) first, then what the chain still owes (073), the split (075–077, its directive 076), the move (078), the records (directive 079), the cut and the merges (directive 080), and the finish (081). Boot stops at each directive for the session to carry it out, then at the finish for the review, whose yes makes the migration's commit. `tests/scripts/migration-audit.cjs` checks a migrated project migrated cleanly.
 
 - **Upgrades live in migrations, never in code.** Converting, renaming, deleting or tolerating a shape an older version left behind is a migration. Runtime code may keep the current version's own requirements in place, but never recognises what an earlier version did — runtime code handling old leftovers can never be deleted.
 - **A released migration is never touched** — not edited, not deleted; a correction is a new migration.
 - **A migration may stage in git and never commits** — the migration commit, on the user's yes at the migration gate, records it.
 - **Migrations must not use `engine manifest`** — they read and write `manifest.json` directly; the field surface validates against today's schema, and a migration is a point-in-time snapshot.
-- **The paths the workflows own are `OWNED_PATHS`** (`skills/workflow-engine/scripts/domain/commit.cjs`); a path a migration writes that the list does not hold joins it in the same change.
+- **The paths Ledger owns are `OWNED_PATHS`** (`skills/ledger-engine/scripts/domain/commit.cjs`); a path a migration writes that the list does not hold joins it in the same change.
 - **Every migration has a test suite.**
 
 ## Tests
 
-The gates, run locally before every commit (`docs/contributing.md` lists what each covers): `npm test`, `npm run test:cli`, `npm run test:migrations`, `npm run typecheck`, and for any change under `skills/workflow-gates*/`, `npm run test:mod`.
+The gates, run locally before every commit (`docs/contributing.md` lists what each covers): `npm test`, `npm run test:cli`, `npm run test:migrations`, `npm run typecheck`, and for any change under `skills/ledger-gates*/`, `npm run test:mod`.
 
 - **Add or update a test alongside any change** to engine scripts (the knowledge base's among them), adapters, migrations, or the gate mods.
-- **Node suites** require `tests/scripts/hermetic-env.cjs` first and drive the engine through `tests/scripts/engine-harness.cjs`; their headers carry the rules.
-- **The Claude Code floor** is one value written three times — the engine's `MIN_VERSION` (`skills/workflow-engine/scripts/domain/gate-surface.cjs`), the mod's `OLDEST`, and the `outdated` stop's text — held equal by `tests/scripts/test-claude-code-floor.cjs`. A change that relies on a newer Claude Code raises all three, and the docs that name the floor, in the same PR.
-- **Any change to the workflows updates the pipeline simulation** (`tests/scripts/test-pipeline-simulation.cjs`) — a new engine verb, a changed prose call sequence, a new phase ordering, a new manifest field. A red simulation is the design speaking: decide deliberately whether the flow or the scenario is wrong, never paper over it.
+- **Node suites** require `tests/scripts/hermetic-env.cjs` first and drive the engine through `tests/scripts/engine-harness.cjs`.
+- **How a test is written** — its layer, its fixtures, its assertions, its cost — is `tests/README.md`; read it before writing a suite.
+- **The Claude Code floor** is one value written three times — the engine's `MIN_VERSION` (`skills/ledger-engine/scripts/domain/gate-surface.cjs`), the mod's `OLDEST`, and the `outdated` stop's text — held equal by `tests/scripts/test-claude-code-floor.cjs`. A change that relies on a newer Claude Code raises all three, and the docs that name the floor, in the same PR.
+- **The git floor** is one value — the engine's `GIT_FLOOR` (`skills/ledger-engine/scripts/domain/git-floor.cjs`), behind boot's stop on an older git or none — and the docs that name it, held equal by `tests/scripts/test-git-floor.cjs`. A change that runs a git command or option a newer git brought raises it, and those docs, in the same PR.
+- **Any change to Ledger updates the pipeline simulation** (`tests/scripts/test-pipeline-simulation-*.cjs`, its oracle `pipeline-oracle.cjs`) — a new engine verb, a changed prose call sequence, a new phase ordering, a new manifest field. A red simulation is the design speaking: decide deliberately whether the flow or the scenario is wrong, never paper over it.
 - **A change that moves retrieval re-pins the knowledge eval baseline** in the same PR (`node tests/scripts/knowledge-eval.cjs --pin`).
-
-### Prose tests
-
-`tests/prose/` walks the skill prose end to end (`tests/prose/README.md`).
-
-- Walks cost tokens: run them on command through `/prose-test`, never as part of a routine gate.
-- When an engine change moves a world, regenerate with `node tests/prose/run.cjs snap {case-id}` and land the snapshot diff in the same PR; never hand-edit a snapshot.
-- Every review finding lands twice: the fix, and the case that would have caught it.
-- At the end of a PR that touches skill prose, run `node tests/prose/run.cjs select --diff main` and suggest running the intersecting cases.
+- **Where a tool may be named** is held by `tests/scripts/test-tool-names.cjs`: a driver's tool, in the forms only it takes, nowhere outside the places Tool Names allows, and in help and the glossary not even as a word.
+- **The glossary** is held by `tests/scripts/test-glossary.cjs`: no retired term, every term the design adds, and no entry speaking in an engine verb, a path or a skill name.
+- **The docs** are held by `tests/scripts/test-docs.cjs`: the book's chapters, the effort line, the README's pipeline table, none of the author's own products named, the product called Ledger in the docs, help and the glossary, and never workflows in the skills, the agents, the book, the README and the tests — but in the glossary's avoid line, `history.md`, released migrations and their suites, fixtures, `.cache` folders, and the suite itself.
 
 ## Skill Authoring
 
-Skill authoring rules — prose economy, display/output conventions, structural conventions, skill file structure, the phase skill contract, navigation patterns, reference file naming — live in [CONVENTIONS.md](CONVENTIONS.md).
+Skill authoring rules — where a rule goes, the phase skill, what the engine owns, writing for the model pass, prose, agents and briefs, handoffs and recovery, display, files — live in [CONVENTIONS.md](CONVENTIONS.md).
 
 **MANDATORY**: Read [CONVENTIONS.md](CONVENTIONS.md) in full **before** creating or editing any file matching `skills/**/SKILL.md`, `skills/**/references/**/*.md`, or any new skill scaffold. Do not rely on memory or pattern-matching from sibling files — the conventions are dense, exact, and frequently updated. Skipping this step has produced silently non-compliant skills in the past.
 

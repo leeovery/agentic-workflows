@@ -9,6 +9,8 @@
 // `{ file, line, message }`. The same function backs both the corpus test
 // (must find zero violations) and a negative test (must catch deliberately
 // broken temp fixtures). No repo files are mutated.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 
@@ -17,8 +19,9 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { RENDER_FORMS: FORMS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
-const { OPENING_SKILLS } = require('../../skills/workflow-engine/scripts/domain/handoff.cjs');
+const { RENDER_FORMS: FORMS } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+const { HANDOFF_TARGETS } = require('../../skills/ledger-engine/scripts/domain/handoff.cjs');
+const { STOPS } = require('../../skills/ledger-engine/scripts/domain/boot.cjs');
 
 const REPO = path.resolve(__dirname, '..', '..');
 const DOT = '·'; // MIDDLE DOT (U+00B7)
@@ -28,8 +31,6 @@ const FENCE_RUN = /^\s*(?:\d+\.\s+)?(`{3,})(.*)$/; // its backtick run and what 
 // A rendering instruction's opening, a numbered list item's included — checks
 // 13 and 24 recognise the instruction by this one prefix.
 const RENDER_INSTRUCTION_HEAD = /^\s*(?:\d+\.\s+)?> \*Output the next fenced block as /;
-const ZERO_OUTPUT_RULE =
-  '> **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.';
 
 // ---------------------------------------------------------------------------
 // Corpus discovery
@@ -56,7 +57,6 @@ function corpusFiles() {
       }
     }
   }
-  walkMd(path.join(REPO, '.claude', 'skills', 'create-output-format'), files);
   return files.sort();
 }
 
@@ -104,13 +104,6 @@ function parseFences(lines) {
   return { blocks, inFence };
 }
 
-// A fence is the workflow-start banner iff it contains an ASCII-art line
-// (pure slashes / underscores / pipes / spaces, 10+ chars). The corpus
-// contains exactly one such fence; no other display uses these glyphs alone.
-function isBannerFence(block) {
-  return block.lines.some((l) => l.text.trim() !== '' && /^[\s/\\_|]{10,}$/.test(l.text));
-}
-
 // First non-blank content line index after any YAML frontmatter.
 function firstContentIndex(lines) {
   let i = 0;
@@ -124,77 +117,29 @@ function firstContentIndex(lines) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 1 — Drawn phase-title borders are retired (banner excepted); the
-// markdown H1 chrome pins the ■ glyph
-// (● + 47 ─ + ●). The workflow-start banner block is the one documented
-// exception and is skipped.
+// Check 1 — chrome keeps its glyphs: a markdown phase title (`# **`…`**`)
+// takes ■, and a marker — the sole content line of a fence, `**`… …`**` —
+// takes □ for a step or ▪ for a sub-step, never the title's ■. A title on
+// any other glyph CONVENTIONS lists (Glyphs) is caught.
 // ---------------------------------------------------------------------------
 
-function checkBorders(files) {
+const OTHER_GLYPHS = '□▪○◐●◌→✓⊙⊘⊖◆⚑⏺';
+
+function checkChromeGlyphs(files) {
   const out = [];
   for (const file of files) {
     const lines = readLines(file);
-    const { blocks } = parseFences(lines);
-    const bannerLines = new Set();
-    for (const b of blocks) {
-      if (isBannerFence(b)) b.lines.forEach((l) => bannerLines.add(l.n));
-    }
     lines.forEach((line, i) => {
-      const t = line.trim();
-      // Drawn borders are retired from prose — the phase title is markdown
-      // chrome (`# **`■ Title`**`). Only the workflow-start banner keeps its
-      // bordered art (documented exception).
-      if (/^●─+●$/.test(t) && !bannerLines.has(i)) {
-        out.push({
-          file,
-          line: i + 1,
-          message: 'drawn phase-title borders are retired — use `# **`■ Title`**` markdown chrome (banner excepted)',
-        });
-        return;
-      }
-      // The markdown phase title must pair H1 with the filled square.
-      const h1 = /^# \*\*`(.)/.exec(t);
-      if (h1 && '■□▪○◐✓⊙⊘◆'.includes(h1[1]) && h1[1] !== '■') {
+      const h1 = /^# \*\*`(.)/.exec(line.trim());
+      if (h1 && OTHER_GLYPHS.includes(h1[1])) {
         out.push({ file, line: i + 1, message: `phase-title chrome uses ■ — found ${h1[1]}` });
       }
     });
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// Check 2 — Drawn step / sub-step markers are retired. A marker is
-// positively identified as the SOLE content line of a fenced block whose text
-// begins with "── " or "·· ". Centered "── {Title} ──" content dividers live
-// embedded inside multi-line DISPLAY blocks and are therefore never matched.
-// ---------------------------------------------------------------------------
-
-function checkMarkers(files) {
-  const out = [];
-  for (const file of files) {
-    const lines = readLines(file);
-    const { blocks } = parseFences(lines);
-    for (const b of blocks) {
-      if (b.lines.length !== 1) continue; // sole-line fence only — engine
-      // stage dividers live inside multi-line DISPLAY templates and are
-      // a different object (drawn, sized to their content).
+    for (const b of parseFences(lines).blocks) {
+      if (b.lines.length !== 1) continue;
       const { n, text } = b.lines[0];
-      // Drawn markers are retired — the chrome family is markdown.
-      if (/^── .+ ─+$/.test(text) || /^·· .+ ·+$/.test(text)) {
-        const kind = text.startsWith('── ') ? 'step marker' : 'sub-step marker';
-        out.push({
-          file,
-          line: n + 1,
-          message: `drawn ${kind}s are retired — use **\`□ Name\`** / **\`▪ Name\`** markdown chrome`,
-        });
-        continue;
-      }
-      // New-chrome shape: a sole-line marker fence must be exact, and the
-      // glyph must match its register (□ step, ▪ sub-step; ■ is the H1's).
       const m = /^\*\*`(.) (.+)`\*\*$/.exec(text);
-      if (m && '■□▪'.includes(m[1]) && !'□▪'.includes(m[1])) {
-        out.push({ file, line: n + 1, message: `marker chrome uses □ or ▪ — ■ belongs to the phase title` });
-      }
+      if (m && m[1] === '■') out.push({ file, line: n + 1, message: 'marker chrome uses □ or ▪ — ■ belongs to the phase title' });
     }
   }
   return out;
@@ -232,29 +177,8 @@ function checkNoProseMenus(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 4 — Banned STOP variants must not appear, a bare "STOP for the …"
-// folded into a sentence included.
-// ---------------------------------------------------------------------------
-
-const BANNED_STOP = ['Stop here.', 'Command ends.', 'Wait for user to acknowledge before ending.', 'STOP for the'];
-
-function checkBannedStop(files) {
-  const out = [];
-  for (const file of files) {
-    const lines = readLines(file);
-    lines.forEach((line, i) => {
-      for (const phrase of BANNED_STOP) {
-        if (line.includes(phrase)) {
-          out.push({ file, line: i + 1, message: `banned STOP variant "${phrase}"` });
-        }
-      }
-    });
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// Check 5 — Banned navigation verbs after an arrow.
+// Check 5 — Banned navigation verbs after an arrow: a route proceeds or
+// returns, so check 6 reads every one. It serves the step model.
 // ---------------------------------------------------------------------------
 
 const BANNED_NAV = /→\s*(Go to|Jump to|Skip to|Continue to|Enter |Proceed directly)/;
@@ -327,7 +251,7 @@ function checkRouting(files) {
 // Check 6b/15 — Cross-file section references: a bold lettered-section token
 // sharing a line with a reference-file link must name a heading that exists —
 // in the linked file (the cross-file read, e.g. "follow **E. Mid-Session
-// Check** in **[reading-the-mailbox.md](…)**") or locally (a same-line unrelated
+// Check** in **[other-file.md](…)**") or locally (a same-line unrelated
 // link beside an intra-file route must never false-positive). A restructure
 // that shifts a target file's letters now fails here instead of rotting
 // silently; missing linked files are check 7's finding, not this one's.
@@ -391,17 +315,13 @@ function checkCrossFileSections(files) {
 // Check 7 — Markdown link resolution: every relative [text](path) link
 // resolves to an existing file (anchor fragment stripped). External URLs and
 // template-placeholder ({…}) paths are skipped. Links inside fenced code
-// blocks (illustrative templates) and create-output-format scaffolding
-// templates (whose links are destination-relative) are exempt.
+// blocks (illustrative templates) are exempt.
 // ---------------------------------------------------------------------------
 
 function checkLinks(files) {
   const out = [];
   const linkRe = /\[[^\]]*\]\(([^)]+)\)/g;
   for (const file of files) {
-    if (file.includes(`${path.sep}create-output-format${path.sep}references${path.sep}scaffolding${path.sep}`)) {
-      continue; // destination-relative scaffolding templates
-    }
     const dir = path.dirname(file);
     const lines = readLines(file);
     const { inFence } = parseFences(lines);
@@ -425,12 +345,42 @@ function checkLinks(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 8 — H1 category rule (scoped to workflow-* SKILL.md backbones).
-// Processing backbones (workflow-*-process, plus the engine and the
-// project-level skills — baseline, roadmap, help) open with a title H1;
-// every other workflow backbone — workflow-start, the navigation skills,
-// discovery, the bridge — carries none.
+// Check 7b — a load is its own line (CONVENTIONS: The Reference File, loaded
+// by one line): a `Load **[…](…)**` directive opens its line — bare, after an
+// arrow or a list marker — or follows a sentence's end on it, never carried
+// mid-sentence ("…, else Load …"). Loads inside fences are exempt.
 // ---------------------------------------------------------------------------
+
+/** What may stand before a load on its line: nothing, an arrow or a list marker, or a sentence's end. */
+const LOAD_OPENS = /^\s*(?:(?:→|[-*]|\d+\.)\s+)?$|[.:?!]\**\s+$/;
+
+function checkLoadLines(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    lines.forEach((line, i) => {
+      if (inFence[i]) return;
+      for (const at of [...line.matchAll(/Load \*\*\[/g)].map(({ index }) => index)) {
+        if (!LOAD_OPENS.test(line.slice(0, at))) out.push({ file, line: i + 1, message: 'a load carried mid-sentence — end the sentence and give the load its own line' });
+      }
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 8 — H1 category rule (scoped to the `ledger` and `ledger-*` SKILL.md backbones).
+// Processing backbones (ledger-*-process, plus discovery — a phase that
+// talks — and the engine) open with a title H1; every other backbone of
+// Ledger's — the start skill and the menus of the epic and the roadmap —
+// carries none.
+// ---------------------------------------------------------------------------
+
+/** Whether a skill is one of Ledger's own — `ledger` or `ledger-*`. @param {string} name */
+function isOurs(name) {
+  return name === 'ledger' || name.startsWith('ledger-');
+}
 
 function skillNameOf(file) {
   // .../skills/<name>/SKILL.md
@@ -442,11 +392,11 @@ function skillNameOf(file) {
 
 function checkH1Category(files) {
   const out = [];
-  const H1_KNOWN = new Set(['workflow-engine', 'workflow-baseline', 'workflow-roadmap', 'workflow-help']);
+  const H1_KNOWN = new Set(['ledger-discovery', 'ledger-engine']);
   for (const file of files) {
     const name = skillNameOf(file);
-    if (!name || !name.startsWith('workflow-')) continue; // only workflow backbones
-    const mustHaveH1 = /^workflow-.+-process$/.test(name) || H1_KNOWN.has(name);
+    if (!name || !isOurs(name)) continue; // only Ledger's backbones
+    const mustHaveH1 = /^ledger-.+-process$/.test(name) || H1_KNOWN.has(name);
     const lines = readLines(file);
     const first = lines[firstContentIndex(lines)] || '';
     const isH1 = /^# /.test(first);
@@ -460,29 +410,10 @@ function checkH1Category(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 9 — Zero Output Rule blockquote is byte-identical to the canonical
-// form wherever it appears.
-// ---------------------------------------------------------------------------
-
-function checkZeroOutput(files) {
-  const out = [];
-  for (const file of files) {
-    const lines = readLines(file);
-    lines.forEach((line, i) => {
-      if (line.includes('ZERO OUTPUT RULE') && line !== ZERO_OUTPUT_RULE) {
-        out.push({ file, line: i + 1, message: 'Zero Output Rule blockquote is not byte-identical to the canonical form' });
-      }
-    });
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
 // Check 10 — Reference-file attribution: files under skills/*/references/ open
 // (after the H1) with an italic attribution line in a sanctioned form —
 // parent/sub-reference link ("*Reference for **[link](path)**…*") or shared
-// ("*Shared reference…*"). Multi-consumer output-format adapter files are
-// exempt (a single-parent attribution would be inaccurate).
+// ("*Shared reference…*").
 // ---------------------------------------------------------------------------
 
 const ATTR_REFERENCE = /^\*Reference for \*\*\[[^\]]+\]\([^)]+\)\*\*.*\*$/;
@@ -492,23 +423,18 @@ function posix(file) {
   return file.split(path.sep).join('/');
 }
 
-// In scope: reference files under a workflow skill (skills/*/references/…) or
-// under the create-output-format tooling skill. Matched on path suffix (not
-// repo-anchored) so the same logic drives corpus and temp-fixture tests.
+// In scope: reference files under a Ledger skill (skills/*/references/…).
+// Matched on path suffix (not repo-anchored) so the same logic drives corpus
+// and temp-fixture tests.
 function isReferenceFile(file) {
   const p = posix(file);
-  const workflowRef = /\/skills\/[^/]+\/references\//.test(p) && !/\.claude\/skills\//.test(p);
-  const cofRef = /\/create-output-format\/references\//.test(p);
-  return workflowRef || cofRef;
+  return /\/skills\/[^/]+\/references\//.test(p) && !/\.claude\/skills\//.test(p);
 }
 
 function checkAttribution(files) {
   const out = [];
   for (const file of files) {
     if (!isReferenceFile(file)) continue;
-    const p = posix(file);
-    if (p.includes('/output-formats/')) continue; // multi-consumer adapter exemption
-    if (p.includes('/create-output-format/references/scaffolding/')) continue; // template scaffolding exemption
     const lines = readLines(file);
     const h1Idx = lines.findIndex((l) => /^# /.test(l));
     if (h1Idx === -1) {
@@ -564,110 +490,13 @@ function checkLoadFooters(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 12 — earned chrome, decidable slice. A backbone step whose only
-// substance is a single Load directive must not carry a step marker when the
-// loaded reference is inert (no STOP gate, no rendering instruction) — pure
-// plumbing earns no chrome. Steps with conditional structure (H4), extra
-// substance, interactive references, or unresolvable/parameterised targets
-// are out of scope: those are the judgment tier.
-// ---------------------------------------------------------------------------
-
-// A reference is inert iff it shows the user nothing and does nothing
-// watchable: no STOP gate, no rendering instruction, no bash fence — and
-// every reference it Loads (resolvable, non-parameterised) is inert too.
-// Anything unresolvable is conservatively treated as not inert.
-function isInertRef(p, visited) {
-  if (visited.has(p)) return true; // cycle: no new activity on this path
-  visited.add(p);
-  if (!fs.existsSync(p)) return false;
-  const text = fs.readFileSync(p, 'utf8');
-  // A reference is inert only if it produces nothing the user can watch.
-  // Interaction, rendered output, a command, and sub-agent dispatch all count
-  // as activity — CONVENTIONS.md names agent dispatch among the shapes that
-  // earn a marker, and a fan-out is often the longest wait in a phase.
-  if (
-    /\*\*STOP\.\*\*/.test(text) ||
-    /Output the next fenced block/.test(text) ||
-    /^```bash/m.test(text) ||
-    /\*\*Agent path\*\*/.test(text)
-  ) return false;
-  const loadRe = /Load \*\*\[[^\]]+\]\(([^)]+)\)\*\*/g;
-  let m;
-  while ((m = loadRe.exec(text))) {
-    const target = m[1].split('#')[0];
-    if (target.includes('{')) return false;
-    if (!isInertRef(path.resolve(path.dirname(p), target), visited)) return false;
-  }
-  return true;
-}
-
-function checkInertLoadChrome(files) {
-  const out = [];
-  for (const file of files) {
-    if (!file.endsWith('SKILL.md')) continue;
-    const dir = path.dirname(file);
-    const lines = readLines(file);
-    const { inFence } = parseFences(lines);
-    const starts = [];
-    lines.forEach((line, i) => {
-      if (!inFence[i] && /^## Step /.test(line)) starts.push(i);
-    });
-    for (const start of starts) {
-      let end = lines.length;
-      for (let j = start + 1; j < lines.length; j++) {
-        if (!inFence[j] && /^## /.test(lines[j])) { end = j; break; }
-      }
-      let markerLine = -1;
-      for (let j = start; j < end; j++) {
-        if (inFence[j] && /^\*\*`[□▪] .+`\*\*$/.test(lines[j])) markerLine = j;
-      }
-      if (markerLine === -1) continue;
-      const substance = [];
-      let structured = false;
-      for (let j = start + 1; j < end; j++) {
-        if (inFence[j] || FENCE.test(lines[j])) continue;
-        const t = lines[j].trim();
-        if (t === '' || t === '---') continue;
-        if (/^> \*Output the next fenced block/.test(t)) continue;
-        if (/^→ /.test(t)) continue;
-        if (/^#{3,4} /.test(t)) { structured = true; break; }
-        substance.push(t);
-      }
-      if (structured || substance.length !== 1) continue;
-      const lm = substance[0].match(/^Load \*\*\[[^\]]+\]\(([^)]+)\)\*\*/);
-      if (!lm) continue;
-      const target = lm[1].split('#')[0];
-      if (target.includes('{')) continue;
-      const p = path.resolve(dir, target);
-      if (!fs.existsSync(p)) continue;
-      if (!isInertRef(p, new Set())) continue;
-      out.push({
-        file,
-        line: markerLine + 1,
-        message: `marker on a load-only step whose reference (${target}) renders nothing — chrome is earned, not automatic`,
-      });
-    }
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// Check 13 — a fenced block prose authors is static (CONVENTIONS' Engine
-// Output Sections). A fence headed by a rendering instruction — a display, a
+// Check 13 — a fenced block prose authors is static (CONVENTIONS →
+// Display). A fence headed by a rendering instruction — a display, a
 // marker, a signpost, an ask — carrying anything that varies (a braced token
 // or an @if/@foreach directive) is refused: what has a shape of its own or
 // reads state renders from the engine, and a plain line naming values the
-// conversation holds is Claude's own, said inline, never fenced. The capture
-// skills (`workflow-log-*`) are exempt: they are not workflow skills, and
-// deliberately structureless.
+// conversation holds is Claude's own, said inline, never fenced.
 // ---------------------------------------------------------------------------
-
-// The capture skills, read from the folder directly under the corpus root's
-// `skills/`.
-function isCaptureSkill(file, root) {
-  const [top, skill = ''] = path.relative(root, file).split(path.sep);
-  return top === 'skills' && skill.startsWith('workflow-log-');
-}
 
 /** @param {string[]} content */
 function isTemplated(content) {
@@ -694,20 +523,19 @@ function templatedRenderSites(file) {
   return sites;
 }
 
-function checkNoTemplatedRenders(files, root = REPO) {
+function checkNoTemplatedRenders(files) {
   return files
-    .filter((file) => !isCaptureSkill(file, root))
     .flatMap((file) => templatedRenderSites(file).map((line) => ({
       file,
       line,
-      message: "a templated fence rendered from prose — render it from the engine, or say it inline as Claude's own line (CONVENTIONS → What the engine renders)",
+      message: "a templated fence rendered from prose — render it from the engine, or say it inline as Claude's own line (CONVENTIONS → Display)",
     })));
 }
 
 // ---------------------------------------------------------------------------
 // Check 14 — No buried invocation imperatives. A skill invocation is an
 // imperative outside any fence (Loading, Invoking, and Handing Off); a line
-// inside a fence starting "Invoke `/workflow-" is payload text the model
+// inside a fence invoking `/ledger` or `/ledger-*` is payload text the model
 // prints instead of executing — the Portal stall class.
 // ---------------------------------------------------------------------------
 
@@ -718,7 +546,7 @@ function checkBuriedInvoke(files) {
     const { blocks } = parseFences(lines);
     for (const b of blocks) {
       for (const { n, text } of b.lines) {
-        if (/^\s*Invoke `\/workflow-/.test(text)) {
+        if (/^\s*Invoke `\/ledger(?![a-z])/.test(text)) {
           out.push({ file, line: n + 1, message: 'invocation imperative inside a fence — payload is never instruction; put the imperative outside the fence' });
         }
       }
@@ -728,56 +556,27 @@ function checkBuriedInvoke(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 18 — no skill frontmatter declares a SessionEnd hook. Claude Code
-// never fires one from skill frontmatter (other events do fire there), so a
-// declaration is dead plumbing that reads as cleanup nobody runs. Session-end
-// cleanup is the settings-level hook the engine installs in the project's
-// `.claude/settings.json`.
-// ---------------------------------------------------------------------------
-
-function checkNoFrontmatterSessionEndHooks(files) {
-  const out = [];
-  for (const file of files) {
-    if (path.basename(file) !== 'SKILL.md') continue;
-    const lines = readLines(file);
-    if (lines[0] === undefined || lines[0].trim() !== '---') continue;
-    let inHooks = false;
-    for (let i = 1; i < lines.length && lines[i].trim() !== '---'; i++) {
-      const line = lines[i];
-      if (/^\S/.test(line)) inHooks = line === 'hooks:';
-      else if (inHooks && /^\s+SessionEnd:/.test(line)) {
-        out.push({ file, line: i + 1, message: 'SessionEnd hook in skill frontmatter — Claude Code never fires it; session-end cleanup is the settings-level hook the engine installs in .claude/settings.json' });
-      }
-    }
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// Check 21 — an engine-section call site defers to its marker. The section
+// Check 21 — an engine section's form is its marker's alone. The section
 // marker (`=== TITLE …`, `=== DISPLAY[: label] …`, `=== MENU[: label] …`)
-// carries the section's handling instruction, so a sentence that emits a
-// section — an active emit verb ("emit", "emits", "emitting", "re-emit…")
-// beside a section named by its kind or as a "section" — says so in the one
-// phrasing, "verbatim per its marker" / "verbatim per their markers"; and a
-// sentence that names a section kind or emits a section never states a form
-// of its own ("as markdown", "(not a code block)", "(markdown)", a text,
-// properties or diff code block or its fence, a bare "as a code block" or
-// "in a code block" — after the deferral too — emphasis ignored) — that is a
-// second instruction for it. The sentence is the unit, so a neighbouring
-// sentence's content and form are never the section's; a bullet whose
-// subject is a section is one unit, its later sentences included. A passive
-// "emitted" describes rather than instructs and is out of scope, as is fenced
-// content — the engine's API reference describes the markers there — and the
-// rendering instruction of a prose-authored block ("Output the next fenced
-// block as …"), which names no engine section.
+// carries the section's handling instruction, and the framework says to
+// follow it, so a sentence that names a section kind or emits a section —
+// an active emit verb ("emit", "emits", "emitting", "re-emit…") beside a
+// section named by its kind or as a "section" — never states a form of its
+// own ("as markdown", "(not a code block)", "(markdown)", a text, properties
+// or diff code block or its fence, a bare "as a code block" or "in a code
+// block", emphasis ignored): that is a second instruction for it. The
+// sentence is the unit, so a neighbouring sentence's form is never the
+// section's; a bullet whose subject is a section is one unit, its later
+// sentences included. Fenced content is out of scope — the engine's API
+// reference describes the markers there — as is the rendering instruction of
+// a prose-authored block ("Output the next fenced block as …"), which names
+// no engine section.
 // ---------------------------------------------------------------------------
 
 const SECTION_KIND = /\b(?:TITLE|DISPLAY|MENU)\b/;
 const SECTION_NAMED = /\b(?:TITLE|DISPLAY|MENU|[Ss]ections?)\b/;
 const SECTION_BULLET = /^\s*[-*] .*\*\*`?(?:TITLE|DISPLAY|MENU)\b/;
 const EMITS = /\b(?:re-)?emit(?:s|ting)?\b/i;
-const DEFERS = /\bverbatim per (?:its marker|their markers)\b/;
 const RESTATED_FORM = /\bas markdown\b|\b(?:as|in) an? (?:[\w-]+ )?code block\b|\b(?:text|properties|diff) code block\b|\(not a code block\)|\(markdown\)|```(?:text|properties|diff)\b/;
 const PROSE_BLOCK_INSTRUCTION = /Output the next fenced block as/;
 
@@ -785,15 +584,12 @@ function sectionCallSiteFault(unit) {
   if (PROSE_BLOCK_INSTRUCTION.test(unit)) return null;
   const emits = EMITS.test(unit) && SECTION_NAMED.test(unit);
   if ((emits || SECTION_KIND.test(unit)) && RESTATED_FORM.test(unit.replace(/\*\*/g, ''))) {
-    return 'an engine-section call site restates its marker\'s form — defer to it ("…section verbatim per its marker")';
-  }
-  if (emits && !DEFERS.test(unit)) {
-    return 'an engine-section call site emits without deferring to its marker — say so ("…section verbatim per its marker")';
+    return 'an engine section\'s form is stated in prose — its marker is the one instruction';
   }
   return null;
 }
 
-function checkSectionsDeferToMarker(files) {
+function checkSectionFormsAreTheMarkers(files) {
   const out = [];
   for (const file of files) {
     const lines = readLines(file);
@@ -822,67 +618,6 @@ function checkQuotedFreeTextFlags(files) {
     readLines(file).forEach((line, i) => {
       const hit = line.match(UNQUOTED_FREE_TEXT_FLAG);
       if (hit) out.push({ file, line: i + 1, message: `unquoted free-text flag value "${hit[0]}…" — quote the placeholder ("{…}")` });
-    });
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// Check 23 — a question at a gate defers to the set-aside rule. What a reply
-// at a gate is lives once, in the framework (instructions.md): a question
-// sets the gate aside, and once the exchange looks settled Claude asks in
-// conversation whether the person is ready to move on, putting the gate back
-// on yes — never straight after the answer. So a branch keyed on a question
-// arriving at a gate — `If ask`, `If the user asks a question`, `If user
-// asked a question`, `If the user asks about a number`, `If the comment is a
-// question …`, as an H4 or a bold conditional, or a route list's `- **Ask** —`
-// item — says so before whatever puts the gate back ("sets the gate aside",
-// then "ask … ready to move on" in one clause), or delegates the answer to
-// the shared answering-how-it-works.md, whose put-back carries the same rule.
-// A heading branch runs to the next heading, bold conditional, or rule; a
-// list item runs to the next item or blank line. A standing section's return
-// into the flow it interrupted (`→ On return, resume the interrupted flow`)
-// leaves a pending gate set aside the same way, so that line carries the same
-// ask ("set aside", then "ask … ready to move on" in one clause).
-// ---------------------------------------------------------------------------
-
-const QUESTION_BRANCH = /^(?:#### If |\*\*If )(?:ask\b|the user asks (?:a question|about a number)|user asked a question|the comment is a question)/;
-const QUESTION_ROUTE = /^\s*[-*] \*\*Ask\*\* —/;
-const BRANCH_END = /^(?:#{1,4}\s|\*\*(?:If |Otherwise)|---\s*$)/;
-const ROUTE_END = /^\s*(?:[-*] |$)/;
-const SETS_ASIDE = /sets the gate aside\b[\s\S]*?\b[Aa]sk\b[^.:;]*\bready to move on\b/;
-const DELEGATES_ANSWER = /\((?:\.\.\/)+workflow-shared\/references\/answering-how-it-works\.md\)|\(answering-how-it-works\.md\)/;
-const INTERRUPTED_RETURN = /^→ On return, resume the interrupted flow\b/;
-const RETURN_ASKS = /\bset aside\b[\s\S]*?\b[Aa]sk\b[^.:;]*\bready to move on\b/;
-
-function checkQuestionsSetGatesAside(files) {
-  const out = [];
-  for (const file of files) {
-    const lines = readLines(file);
-    const { inFence } = parseFences(lines);
-    lines.forEach((line, i) => {
-      if (!inFence[i] && INTERRUPTED_RETURN.test(line)) {
-        if (!RETURN_ASKS.test(line)) {
-          out.push({
-            file,
-            line: i + 1,
-            message: 'a return into the interrupted flow leaves its pending gate aside without the ask — say "a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back"',
-          });
-        }
-        return;
-      }
-      const route = QUESTION_ROUTE.test(line);
-      if (inFence[i] || !(route || QUESTION_BRANCH.test(line))) return;
-      const ends = route ? ROUTE_END : BRANCH_END;
-      let end = i + 1;
-      while (end < lines.length && (inFence[end] || !ends.test(lines[end]))) end++;
-      const body = lines.slice(route ? i : i + 1, end).filter((_, k) => !inFence[(route ? i : i + 1) + k]).join('\n');
-      if (SETS_ASIDE.test(body) || DELEGATES_ANSWER.test(body)) return;
-      out.push({
-        file,
-        line: i + 1,
-        message: 'a question branch puts its gate back without the set-aside rule — say "The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back:" before the route or fetch',
-      });
     });
   }
   return out;
@@ -931,152 +666,17 @@ function checkRenderForms(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 25 — a dispatch names its mode, and a waited-on background dispatch
-// names its turn's closing sentence (CONVENTIONS' Dispatch Lines). Claude
-// Code runs an agent in the background unless told otherwise, so every
-// dispatch — of a workflow-* agent, or of ad-hoc sub-agents through the
-// Agent tool — states `run_in_background: true` or `false`. A foreground
-// dispatch carries no sentence, and nor does a
-// background dispatch the conversation carries on past (the agents below);
-// every other background dispatch ends the turn on exactly one sentence of
-// the canonical shape — "The … agent has been dispatched for …." or "The …
-// agents have been dispatched for …." — naming no topic, work unit, or
-// internal id. A dispatch is the section (H1–H2) that names the agent — its
-// Agent path or file, an Invoke / Dispatch of the agent by name, or
-// `sub-agents (Agent tool)` for ad-hoc ones; a file
-// holding one answers as a whole, a file holding several is split at each
-// dispatch's section heading.
-// ---------------------------------------------------------------------------
-
-const CARRIED_PAST_AGENTS = new Set([
-  'workflow-discussion-review',
-  'workflow-discussion-perspective',
-  'workflow-discussion-synthesis',
-  'workflow-research-deep-dive',
-]);
-const DISPATCH_NAMES = [
-  /^\s*[-*]?\s*\*\*Agent (?:path|file)\*\*: `(?:\.claude\/|[./]*)agents\/(workflow-[a-z-]+)\.md`/,
-  /\b(?:Invoke|Dispatch) (?:a \*\*fresh\*\* |the )?`(workflow-[a-z-]+)`/,
-  /\b((?:ad-hoc )?sub-agents?) \(Agent tool\)/,
-];
-const CLOSING_SENTENCE = /\bends? the turn on exactly `([^`]+)`/g;
-const CANONICAL_SENTENCE = /^The [a-z][a-z ,-]* (?:agent has|agents have) been dispatched for [^`]+\.$/;
-const FORBIDDEN_PLACEHOLDER = /\{(?:topic|work_unit|internal_id)\}/;
-
-function dispatchUnits(lines, inFence) {
-  const sections = [];
-  let current = 0;
-  const found = new Map();
-  lines.forEach((line, i) => {
-    if (inFence[i]) return;
-    if (/^#{1,2}\s/.test(line)) current = i;
-    for (const re of DISPATCH_NAMES) {
-      const m = line.match(re);
-      if (!m) continue;
-      if (!found.has(current)) {
-        found.set(current, { start: current, line: i, agents: new Set() });
-        sections.push(current);
-      }
-      found.get(current).agents.add(m[1]);
-    }
-  });
-  return sections.map((start, k) => {
-    const unit = found.get(start);
-    const from = k === 0 ? 0 : start;
-    const to = k + 1 < sections.length ? sections[k + 1] : lines.length;
-    return { ...unit, from, to };
-  });
-}
-
-function checkDispatchLines(files) {
-  const out = [];
-  for (const file of files) {
-    const lines = readLines(file);
-    const { inFence } = parseFences(lines);
-    for (const unit of dispatchUnits(lines, inFence)) {
-      const body = lines.slice(unit.from, unit.to).filter((_, k) => !inFence[unit.from + k]).join('\n');
-      const sentences = [...body.matchAll(CLOSING_SENTENCE)].map((m) => m[1]);
-      const agents = [...unit.agents].join(', ');
-      const fault = (message) => out.push({ file, line: unit.line + 1, message: `${agents}: ${message}` });
-      if (/run_in_background: false/.test(body)) {
-        if (sentences.length) fault('a foreground dispatch (`run_in_background: false`) carries no closing sentence');
-        continue;
-      }
-      if (!/run_in_background: true/.test(body)) {
-        fault('a dispatch names its mode — `run_in_background: true`, or `false` for the foreground');
-        continue;
-      }
-      if ([...unit.agents].every((a) => CARRIED_PAST_AGENTS.has(a))) {
-        if (sentences.length) fault('a background dispatch the conversation carries on past carries no closing sentence');
-        continue;
-      }
-      if (sentences.length !== 1) {
-        fault(`a waited-on background dispatch ends the turn on exactly one sentence ("The dispatch runs in the background (\`run_in_background: true\`) and ends the turn on exactly \`The … agent has been dispatched for ….\`"), found ${sentences.length}`);
-        continue;
-      }
-      if (!CANONICAL_SENTENCE.test(sentences[0])) {
-        fault(`the closing sentence takes the shape "The … agent has been dispatched for …." (or "agents have"), got "${sentences[0]}"`);
-      } else if (FORBIDDEN_PLACEHOLDER.test(sentences[0])) {
-        fault(`the closing sentence names what the agent works on, never a topic, work unit, or internal id — got "${sentences[0]}"`);
-      }
-    }
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// Check 26 — a path a dispatch hands an agent is written as installed, from
-// the project root (CONVENTIONS' Dispatch Lines): `.claude/skills/…`,
-// `.claude/agents/…`, or a work artifact under `.workflows/…` — never
-// relative to the instruction file, which the session composes wrong. In a
-// file holding a dispatch (check 25's units), two shapes are decidable: an
-// input line — a bold label naming a path or a file (`… path`, `… file`, or
-// a `.md` file name) whose value opens on a backticked path or a markdown
-// link — and a backticked agent file anywhere outside a fence. A value that
-// is a bare placeholder (`{…}`) is a path the flow resolved, and passes.
-// ---------------------------------------------------------------------------
-
-const PATH_INPUT = /^\s*(?:[-*]\s+|\d+\.\s+)?\*\*([^*]+)\*\*\s*(?::|—)\s*(?:`([^`]+)`|\*{0,2}\[[^\]]*\]\(([^)]+)\))/;
-const PATH_LABEL = /(?:\bpath|\bfile|\.md)$/i;
-const AGENT_FILE = /`(?!\.claude\/)([^`\s]*agents\/[a-z0-9-]+\.md)`/g;
-const INSTALLED = /^(?:\.claude\/|\.workflows\/)|^\{[^{}]+\}$/;
-const INSTALLED_FORMS = '`.claude/skills/…`, `.claude/agents/…`, or `.workflows/…`';
-
-function checkInstalledDispatchPaths(files) {
-  const out = [];
-  for (const file of files) {
-    const lines = readLines(file);
-    const { inFence } = parseFences(lines);
-    if (!dispatchUnits(lines, inFence).length) continue;
-    lines.forEach((line, i) => {
-      if (inFence[i] || FENCE.test(line)) return;
-      const input = line.match(PATH_INPUT);
-      if (input && PATH_LABEL.test(input[1].trim())) {
-        const value = input[2] !== undefined ? input[2] : input[3];
-        if (!INSTALLED.test(value)) {
-          out.push({ file, line: i + 1, message: `**${input[1]}** names \`${value}\` — write it as installed, from the project root (${INSTALLED_FORMS})` });
-        }
-        return;
-      }
-      for (const m of line.matchAll(AGENT_FILE)) {
-        out.push({ file, line: i + 1, message: `agent file \`${m[1]}\` — write it as installed, \`.claude/agents/…\`` });
-      }
-    });
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
 // Check 27 — the framework loads once per conversation, at the head of the
 // skill the conversation opens on (CONVENTIONS' The Framework Load): each of
-// the engine's OPENING_SKILLS — workflow-start, the user's way in, and every
-// skill a handoff lands on — opens its `## Instructions` section on the
-// framework load. Every other workflow backbone carries neither the section
+// the engine's HANDOFF_TARGETS — every skill a handoff lands on, the start skill,
+// the user's way in, among them — opens its `## Instructions` section on the
+// framework load. Every other backbone of Ledger's carries neither the section
 // nor the load: a skill only ever opened in place runs in a conversation that
-// already holds the framework, and the capture skills are exempt.
+// already holds the framework, and the keep skill runs in any conversation,
+// Ledger's or not.
 // ---------------------------------------------------------------------------
 
-const FRAMEWORK_LOAD = 'Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written';
+const FRAMEWORK_LOAD = 'Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written';
 const INSTRUCTIONS = /^##\s+Instructions\s*$/;
 const HEAD_LOAD = /^(?:→\s+)?Load \*\*\[framework\.md\]\(/;
 
@@ -1094,10 +694,10 @@ function checkFrameworkLoad(files) {
   const out = [];
   for (const file of files) {
     const name = skillNameOf(file);
-    if (!name || !name.startsWith('workflow-')) continue;
+    if (!name || !isOurs(name)) continue;
     const lines = readLines(file);
     const { inFence } = parseFences(lines);
-    if (OPENING_SKILLS.includes(name)) {
+    if (HANDOFF_TARGETS.includes(name)) {
       const opening = instructionsOpening(lines, inFence);
       if (!opening || !opening.first.startsWith(FRAMEWORK_LOAD)) {
         const line = (opening ? opening.heading : firstContentIndex(lines)) + 1;
@@ -1125,28 +725,416 @@ function checkFrameworkLoad(files) {
 const BASH_GRANT = /Bash\(([^)]*)\)/g;
 const SCRIPT_GRANT = /^node\s/;
 
+/** Each Bash grant in a file's frontmatter `allowed-tools`, with its line. */
+function* bashGrants(file) {
+  const lines = readLines(file);
+  if (lines[0] === undefined || lines[0].trim() !== '---') return;
+  let inGrants = false;
+  for (let i = 1; i < lines.length && lines[i].trim() !== '---'; i++) {
+    if (/^\S/.test(lines[i])) inGrants = lines[i].startsWith('allowed-tools:');
+    if (!inGrants) continue;
+    for (const [, grant] of lines[i].matchAll(BASH_GRANT)) yield { line: i + 1, grant };
+  }
+}
+
 function checkBashGrantsCarryWildcard(files) {
   const out = [];
   for (const file of files) {
-    const lines = readLines(file);
-    if (lines[0] === undefined || lines[0].trim() !== '---') continue;
-    let inGrants = false;
-    for (let i = 1; i < lines.length && lines[i].trim() !== '---'; i++) {
-      const line = lines[i];
-      if (/^\S/.test(line)) inGrants = line.startsWith('allowed-tools:');
-      if (!inGrants) continue;
-      for (const [, grant] of line.matchAll(BASH_GRANT)) {
-        if (SCRIPT_GRANT.test(grant)) {
-          if (grant.endsWith(' *') || grant.endsWith(':*')) continue;
-          out.push({ file, line: i + 1, message: `Bash(${grant}) is a script grant that does not end in \` *\` or \`:*\` — it matches no call with arguments` });
-          continue;
-        }
-        if (grant.includes('*')) continue;
-        out.push({ file, line: i + 1, message: `Bash(${grant}) has no \`*\` — it matches only that exact command, never a call with arguments; a script grant ends in \` *\`` });
+    for (const { line, grant } of bashGrants(file)) {
+      if (SCRIPT_GRANT.test(grant)) {
+        if (grant.endsWith(' *') || grant.endsWith(':*')) continue;
+        out.push({ file, line, message: `Bash(${grant}) is a script grant that does not end in \` *\` or \`:*\` — it matches no call with arguments` });
+        continue;
       }
+      if (grant.includes('*')) continue;
+      out.push({ file, line, message: `Bash(${grant}) has no \`*\` — it matches only that exact command, never a call with arguments; a script grant ends in \` *\`` });
     }
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 29 — the framework's references load once per conversation (The
+// Framework Load; 2.10.9): framework.md loads each file it composes once, and
+// no other file loads one, so voice, altitude and the rest come into a
+// conversation through the framework's load alone.
+// ---------------------------------------------------------------------------
+
+const FRAMEWORK_FILE = /\/skills\/ledger-shared\/references\/framework\.md$/;
+const LOAD_TARGET = /[Ll]oad \*\*\[[^\]]+\]\(([^)]+)\)\*\*/g;
+
+// Each file a Load directive outside a fence names, resolved, with its line.
+function loadsOf(file) {
+  const lines = readLines(file);
+  const { inFence } = parseFences(lines);
+  return lines.flatMap((line, i) => (inFence[i] ? [] : [...line.matchAll(LOAD_TARGET)].map(([, target]) => ({ target: path.resolve(path.dirname(file), target), line: i + 1 }))));
+}
+
+function checkFrameworkLoadsOnce(files) {
+  const framework = files.find((file) => FRAMEWORK_FILE.test(posix(file)));
+  if (!framework) return [];
+  const out = [];
+  const composed = new Set();
+  for (const { target, line } of loadsOf(framework)) {
+    if (composed.has(target)) out.push({ file: framework, line, message: `${path.basename(target)} is loaded twice — the framework loads each file it composes once` });
+    composed.add(target);
+  }
+  for (const file of files) {
+    if (file === framework) continue;
+    for (const { target, line } of loadsOf(file)) {
+      if (composed.has(target)) out.push({ file, line, message: `${path.basename(target)} is the framework's — it loads once per conversation, from framework.md alone` });
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 30 — no design tool is named in Ledger's prose (9.10.19). A
+// design lives in the unit as a file and its live link, whatever drew it, so
+// the prose names the artifact and never the tool. The list is the tools a
+// spike is likeliest to come from, each a proper noun no plain word shares —
+// a tool whose name is a common word (Sketch) stays off it, since a sentence
+// opening on the word would read as the tool.
+// ---------------------------------------------------------------------------
+
+const DESIGN_TOOLS = ['Figma', 'FigJam', 'Penpot', 'Framer', 'Adobe XD', 'Zeplin', 'InVision', 'Canva', 'Balsamiq', 'Whimsical', 'Miro', 'Excalidraw', 'tldraw', 'Lucidchart', 'Uizard', 'Google Stitch', 'v0.dev'];
+const DESIGN_TOOL = new RegExp(`(?<![\\w.])(${DESIGN_TOOLS.map((name) => name.replace(/\./g, '\\.')).join('|')})(?![\\w])`, 'i');
+
+function checkNoDesignTools(files) {
+  const out = [];
+  for (const file of files) {
+    readLines(file).forEach((line, i) => {
+      const hit = line.match(DESIGN_TOOL);
+      if (hit) out.push({ file, line: i + 1, message: `"${hit[1]}" names a design tool — Ledger names the design, its file and its live link, never the tool that drew it` });
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 33 — nothing Ledger ships writes the project's CLAUDE.md but the
+// keep, on the person's yes (8.9.5, 8.S27). It loads into every session and
+// subagent and is the person's: a line goes in only as theirs, agreed. No
+// prose sentence outside the keep speaks of writing, adding to, changing,
+// committing, recording, saving or keeping something in it, whether it tells
+// a session to or tells of someone doing it — a clause naming it with a verb
+// of writing no negation governs, one before the verb in that clause — and
+// the keep's own such sentence sits on an entry that waits for the person's
+// yes; no engine or mod code names it outside a comment.
+// ---------------------------------------------------------------------------
+
+const WRITE_VERB = /\b(writ(e|es|ing|ten)|wrote|append(s|ed|ing)?|add(s|ed|ing)?|insert(s|ed|ing)?|put(s|ting)?|edit(s|ed|ing)?|updat(e|es|ed|ing)|modif(y|ies|ied|ying)|chang(e|es|ed|ing)|overwrit(e|es|ing|ten)|rewrit(e|es|ing|ten)|commit(s|ted|ting)?|record(s|ed|ing)|sav(e|es|ed|ing)|keeps|keeping|kept)\b/gi;
+/** Record and keep, which are nouns too — the product record, the keep — as verbs where a clause opens on one or "to" comes before it. */
+const BARE_VERB = /(?:^\s*|\bto\s+)(record|keep)\b/gi;
+const NEGATED = /\b(never|not|no|nothing|nor)\b|n't\b/i;
+const KEEP_SKILL = `${path.sep}skills${path.sep}ledger-keep${path.sep}`;
+const ON_THEIR_YES = /\bon the person's yes\b/i;
+
+/** What ends a clause within a sentence: a comma, a colon, a dash, a bracket, an arrow, or a word opening a clause of its own. */
+const CLAUSE_BREAK = /[,:—–()→]|\s-\s|\b(?:before|after|while|until|unless|where|when|once|because|so|which)\b/i;
+
+/** Whether a clause writes the project's CLAUDE.md: it names it, with a write verb no negation before it governs. @param {string} clause */
+function clauseWrites(clause) {
+  if (!/CLAUDE\.md/.test(clause)) return false;
+  const verbs = [...clause.matchAll(WRITE_VERB), ...clause.matchAll(BARE_VERB)];
+  return verbs.some((verb) => !NEGATED.test(clause.slice(0, /** @type {number} */ (verb.index) + verb[0].length - verb[1].length)));
+}
+
+/** Whether a sentence writes the project's CLAUDE.md, or tells of it written, in any of its clauses. @param {string} sentence */
+const writesClaudeMd = (sentence) => sentence.split(CLAUSE_BREAK).some(clauseWrites);
+
+/** The shipped code: the engine's and the mods', comments left out. */
+function codeFiles(root = REPO) {
+  const out = [];
+  const walk = (dir) => {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, entry.name);
+      if (entry.isDirectory()) { if (entry.name !== 'node_modules' && entry.name !== 'tests') walk(p); }
+      else if (/\.(cjs|js|mjs|ts)$/.test(entry.name)) out.push(p);
+    }
+  };
+  walk(path.join(root, 'skills'));
+  return out.sort();
+}
+
+/** A code line with any comment it carries taken off. @param {string} line */
+const uncommented = (line) => (/^\s*(\/\/|\*|\/\*)/.test(line) ? '' : line.replace(/\s\/\/.*$/, ''));
+
+function checkNoClaudeMdWrites(files, code = []) {
+  const out = [];
+  for (const file of files) {
+    const keeps = file.includes(KEEP_SKILL);
+    readLines(file).forEach((line, i) => {
+      if (!line.split(/(?<=[.!?;])\s+/).some(writesClaudeMd)) return;
+      if (!keeps) out.push({ file, line: i + 1, message: 'writes the project\'s CLAUDE.md — only the keep writes it, on the person\'s yes' });
+      else if (!ON_THEIR_YES.test(line)) out.push({ file, line: i + 1, message: 'writes the project\'s CLAUDE.md without the person\'s yes — the keep writes it only on their yes' });
+    });
+  }
+  for (const file of code) {
+    readLines(file).forEach((line, i) => {
+      if (/CLAUDE\.md/.test(uncommented(line))) out.push({ file, line: i + 1, message: 'names CLAUDE.md in code — Ledger never writes the project\'s CLAUDE.md' });
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 34 — 12.S46: the build's prose names no personal skill, prescribes
+// no red-green loop, and never tells the builder to break a task down, keep
+// a to-do list, check its own work, or finish rather than leave stubs
+// (12.1.7, 12.3.8, 12.8.1). The build's prose is its skill, each reference
+// in its folder the skill loads, at any depth, and the definitions of the
+// agents it dispatches; a reference it no longer loads is no part of it.
+// The agents' templates are test-engine-brief-build.cjs's.
+// ---------------------------------------------------------------------------
+
+const BUILD_SKILL = 'ledger-implementation-process';
+const BUILD_AGENTS = ['ledger-builder', 'ledger-reviewer', 'ledger-task-writer', 'ledger-consolidation'];
+const BUILD_PROSE_RULES = [
+  [/~\/\.claude\b|\.claude\/skills\/(?!ledger)|Invoke `\/(?!ledger)/, 'names a personal skill — the build carries its shape in its own prose (12.1.7)'],
+  [/red[- ]green|\bTDD\b|\btests? first\b/i, 'prescribes a red-green loop — tests are written from the criteria in any order (12.8.1)'],
+  [/break (?:it|the task|this task|tasks?) down|to-?do list|(?:check|verify) (?:your|its) (?:own )?work|\bstubs?\b/i, 'tells the builder to break a task down, keep a to-do list, check its own work or leave no stubs (12.3.8)'],
+];
+const LINKED_MD = /\]\(([^)#\s]+\.md)\)/g;
+
+/** The build's skill, each reference in its folder it loads at any depth, and its agents' definitions, among `files`. */
+function buildProse(files) {
+  const skill = files.find((file) => skillNameOf(file) === BUILD_SKILL);
+  const agents = files.filter((file) => BUILD_AGENTS.some((agent) => file.endsWith(`${path.sep}agents${path.sep}${agent}.md`)));
+  if (skill === undefined) return agents;
+  const folder = path.dirname(skill) + path.sep;
+  const loaded = [skill];
+  for (let at = 0; at < loaded.length; at++) {
+    for (const [, link] of fs.readFileSync(loaded[at], 'utf8').matchAll(LINKED_MD)) {
+      const target = path.resolve(path.dirname(loaded[at]), link);
+      if (target.startsWith(folder) && files.includes(target) && !loaded.includes(target)) loaded.push(target);
+    }
+  }
+  return [...loaded, ...agents];
+}
+
+function checkBuildProse(files) {
+  const out = [];
+  for (const file of buildProse(files)) {
+    readLines(file).forEach((line, i) => {
+      for (const [rule, message] of BUILD_PROSE_RULES) if (rule.test(line)) out.push({ file, line: i + 1, message });
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 35 — the start skill follows boot's stops as data. Boot runs from
+// the start skill's own reference, `references/boot.md`, which the start
+// skill loads and the keep skill loads to run a migration owed — so the
+// start skill loads it by that name. Boot names each stop's marker, screen
+// and what follows it (`STOPS`), and one rule in the reference follows
+// whatever it names: it surfaces boot's warnings before it follows any
+// stop, runs every boot again with the person's words as the first, names
+// the boot call's description — so the tool's label reads `Start Ledger`,
+// never the stdin it is given — says the marker where a stop names one,
+// fetches the screen boot names, carries a bullet for each kind of next a
+// stop has — none, or the next's kind — and a load for each reference a
+// stop's next names, and neither file gives a stop a heading of its own — a
+// stop joins without a word of prose. Ahead of boot, on the bare command
+// alone, it fetches the banner, once (18.2.15). The start skill's
+// `$ARGUMENTS` are the request itself, never the go-ahead that followed it:
+// a bare go-ahead names no work, so boot would carry it on into the one
+// unit in progress (8.2.14).
+// ---------------------------------------------------------------------------
+
+const START_SKILL = 'ledger';
+const STOP_SCREEN = /engine\.cjs render \{surface\} \{args\}/;
+const STOP_MARKER = /\*\*`▪ \{marker\}`\*\*/;
+const BOOT_WARNINGS = /Surface the answer's `warnings` first/;
+const BOOT_AGAIN = /Every boot the start runs again is this one, words and all\./;
+const BOOT_DESCRIBED = /the call described as `Start Ledger`/;
+const ARGUMENTS_REQUEST = /^- `\$ARGUMENTS` — .*the request itself, never the go-ahead that followed it/;
+const BANNER_BARE = /^On the bare command, with no words, fetch the banner first:$/;
+const BANNER_FETCH = /engine\.cjs render banner$/;
+const BOOT_CALL = /engine\.cjs boot\b/;
+const BOOT_REFERENCE = 'boot.md';
+const BOOT_LOAD = `Load **[${BOOT_REFERENCE}](references/${BOOT_REFERENCE})**`;
+
+/** Whether `file` is the start skill's boot reference. @param {string} file */
+const isBootReference = (file) => file.endsWith(path.join('skills', START_SKILL, 'references', BOOT_REFERENCE));
+
+/** @typedef {Record<string, {marker?: string, next: {kind: string, reference?: string}|null}>} Stops */
+
+/** Each reference a stop's next loads. @param {Stops} stops */
+const stopLoads = (stops) => Object.values(stops).flatMap(({ next }) => (next?.kind === 'load' ? [String(next.reference)] : []));
+
+/** Each kind of next the stops have, as the start skill's bullet names it: `None`, or the kind in a code span. @param {Stops} stops */
+const nextKinds = (stops) => [...new Set(Object.values(stops).map(({ next }) => (next === null ? 'None' : `\`${next.kind}\``)))];
+
+/** A file's lines, and whether a line outside its fences passes `test`. @param {string} file */
+function proseOf(file) {
+  const lines = readLines(file);
+  const { inFence } = parseFences(lines);
+  return { lines, inFence, prose: (/** @type {(line: string) => boolean} */ test) => lines.some((line, i) => !inFence[i] && test(line)) };
+}
+
+/** The boot reference's rule for the stops (the header's). @param {string} file @param {Stops} stops */
+function checkBootRule(file, stops) {
+  const out = [];
+  const { lines, inFence, prose } = proseOf(file);
+  const screen = lines.findIndex((line, i) => inFence[i] && STOP_SCREEN.test(line));
+  const warned = lines.findIndex((line, i) => !inFence[i] && BOOT_WARNINGS.test(line));
+  if (screen === -1) out.push({ file, line: 1, message: 'the boot reference fetches no stop\'s screen as boot names it — `render {surface} {args}`' });
+  if (warned === -1 || (screen !== -1 && warned > screen)) out.push({ file, line: 1, message: 'the boot reference surfaces boot\'s `warnings` before it follows any stop' });
+  if (!prose((line) => BOOT_AGAIN.test(line))) out.push({ file, line: 1, message: 'the boot reference never says a boot it runs again carries the words — "Every boot the start runs again is this one, words and all."' });
+  if (!prose((line) => BOOT_DESCRIBED.test(line))) out.push({ file, line: 1, message: 'the boot reference never names the boot call\'s description — "the call described as `Start Ledger`"' });
+  const bare = lines.findIndex((line, i) => !inFence[i] && BANNER_BARE.test(line));
+  const banners = lines.flatMap((line, i) => (inFence[i] && BANNER_FETCH.test(line) ? [i] : []));
+  const boot = lines.findIndex((line, i) => inFence[i] && BOOT_CALL.test(line));
+  if (bare === -1 || banners.length !== 1 || banners[0] < bare || boot === -1 || banners[0] > boot) out.push({ file, line: 1, message: 'the boot reference fetches the banner once, ahead of boot, on the bare command alone — "On the bare command, with no words, fetch the banner first:", then `render banner`' });
+  if (Object.values(stops).some(({ marker }) => marker !== undefined) && !prose((line) => STOP_MARKER.test(line))) out.push({ file, line: 1, message: 'a stop names a marker, and the boot reference never says it — **`▪ {marker}`**' });
+  for (const kind of nextKinds(stops)) {
+    if (!prose((line) => line.startsWith(`- **${kind}** — `))) out.push({ file, line: 1, message: `a stop's next is ${kind}, and the boot reference has no bullet following it — \`- **${kind}** —\`` });
+  }
+  for (const reference of stopLoads(stops)) {
+    if (!prose((line) => line.includes(`Load **[${reference}.md](${reference}.md)**`))) out.push({ file, line: 1, message: `a stop loads \`${reference}\`, and the boot reference has no load of ${reference}.md` });
+  }
+  return out;
+}
+
+/** @param {string[]} files @param {Stops} [stops] */
+function checkBootStops(files, stops = STOPS) {
+  const out = [];
+  const named = new RegExp(`^#{1,6}\\s.*\`(${Object.keys(stops).join('|')})\``);
+  const skills = files.filter((f) => skillNameOf(f) === START_SKILL);
+  for (const file of skills) {
+    const { prose } = proseOf(file);
+    if (!prose((line) => ARGUMENTS_REQUEST.test(line))) out.push({ file, line: 1, message: 'the start skill\'s `$ARGUMENTS` never says they are the request itself — "the request itself, never the go-ahead that followed it"' });
+    if (!prose((line) => line.includes(BOOT_LOAD))) out.push({ file, line: 1, message: `the start skill never loads its boot reference by its name — ${BOOT_LOAD}` });
+  }
+  const references = files.filter(isBootReference);
+  for (const file of references) out.push(...checkBootRule(file, stops));
+  for (const file of [...skills, ...references]) {
+    const { lines, inFence } = proseOf(file);
+    lines.forEach((line, i) => {
+      const heading = inFence[i] ? null : named.exec(line);
+      if (heading !== null) out.push({ file, line: i + 1, message: `a heading of its own for boot's \`${heading[1]}\` stop — boot names the stop, and one rule follows it` });
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 37 — a skill's description is all Claude sees of it until it is
+// invoked (18.2.16, 18.2.17). The start skill's opens with its trigger, and
+// names both things it is reached for: any change to what the code does,
+// and talk that turns to the product itself at length, a remark in passing
+// the keep's (8.2.15, 8.2.17); every other
+// skill a handoff lands on (`HANDOFF_TARGETS`) says it is reached only
+// through a Ledger handoff, never invoked directly.
+// ---------------------------------------------------------------------------
+
+const TRIGGER = /^Use (?:for|when)\b/;
+const REACHED_FOR = [/\bany change to what this project's code does\b/, /\btalk that turns to the product itself at length\b/];
+const HANDOFF_ONLY = /Reached only through a Ledger handoff, never invoked directly\b/;
+
+/** The frontmatter's `description`, and its line; null where it has none. @param {string[]} lines */
+function descriptionOf(lines) {
+  if (lines[0] !== '---') return null;
+  for (let i = 1; i < lines.length && lines[i] !== '---'; i++) {
+    const field = /^description:\s*(.*)$/.exec(lines[i]);
+    if (field !== null) return { text: field[1], line: i + 1 };
+  }
+  return null;
+}
+
+function checkDescriptions(files, targets = HANDOFF_TARGETS) {
+  const out = [];
+  for (const file of files.filter((f) => f.endsWith('SKILL.md') && targets.includes(skillNameOf(f)))) {
+    const description = descriptionOf(readLines(file));
+    const line = description?.line ?? 1;
+    if (skillNameOf(file) === START_SKILL) {
+      if (!TRIGGER.test(description?.text ?? '')) out.push({ file, line, message: 'the start skill\'s description opens with its trigger — "Use for …"' });
+      if (!REACHED_FOR.every((said) => said.test(description?.text ?? ''))) out.push({ file, line, message: 'the start skill\'s description names what it is reached for — "any change to what this project\'s code does" and "talk that turns to the product itself at length"' });
+    } else if (!HANDOFF_ONLY.test(description?.text ?? '')) {
+      out.push({ file, line, message: 'a skill a handoff lands on says in its description it is reached only through a Ledger handoff, never invoked directly' });
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 38 — no skill keeps a section of its own on resuming after a
+// refresh (24.2.6): the engine's note carries the recovery whole.
+// ---------------------------------------------------------------------------
+
+const RESUME_HEADING = /^#{1,6}\s.*\b(?:refresh\w*|compaction|resum\w* after)\b/i;
+
+function checkNoResumeSections(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    lines.forEach((line, i) => {
+      if (!inFence[i] && RESUME_HEADING.test(line)) out.push({ file, line: i + 1, message: 'a section of its own on resuming — the engine\'s note carries the recovery whole' });
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 39 — no skill paces the person out of the work (CONVENTIONS.md, Who
+// Holds What): nothing runs the work without them or keeps them out of it,
+// and no question waits until they say they are ready for it.
+// ---------------------------------------------------------------------------
+
+const PACING = /\bkeep (?:the person|them) out\b|\bruns?(?: start to finish)? without the person\b|\b(?:once|until|when) (?:the person|they) (?:says? (?:they are|they're) |(?:is|are) )ready to (?:discuss|talk)\b/i;
+
+function checkNoPacing(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    lines.forEach((line, i) => {
+      if (!inFence[i] && PACING.test(line)) out.push({ file, line: i + 1, message: 'paces the person out of the work — a skill says where things go, how they are recorded and what is guarded, never how Claude paces itself' });
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 36 — a skill that draws a menu whose back draws the start menu loads
+// the start menu's reference, so the start menu's rows have their prose when
+// that `next` draws it in the skill's conversation. The start skill owns the
+// reference. Which menus' backs draw the start menu is the engine's, read
+// from no prose: the list below is theirs, held by hand.
+// ---------------------------------------------------------------------------
+
+const BACK_TO_START_MENUS = ['epic-menu', 'roadmap', 'manage', 'closed'];
+const START_MENU_LOAD = /Load \*\*\[start-menu\.md\]\((?:\.\.\/)+ledger\/references\/start-menu\.md\)\*\*/;
+
+/** The skill a file under `skills/` belongs to, by its folder. @param {string} file */
+function skillFolderOf(file) {
+  const parts = file.split(path.sep);
+  const idx = parts.lastIndexOf('skills');
+  return idx === -1 ? null : parts[idx + 1] ?? null;
+}
+
+function checkBackToStartLoads(files, menus = BACK_TO_START_MENUS) {
+  const draws = new RegExp(`engine\\.cjs render (${menus.join('|')})(?=\\s|$)`);
+  /** @type {Map<string, {loads: boolean, draws: {file: string, line: number, menu: string}[]}>} */
+  const skills = new Map();
+  for (const file of files) {
+    const skill = skillFolderOf(file);
+    if (skill === null || skill === START_SKILL) continue;
+    const seen = skills.get(skill) ?? { loads: false, draws: [] };
+    readLines(file).forEach((line, i) => {
+      if (START_MENU_LOAD.test(line)) seen.loads = true;
+      const drawn = draws.exec(line);
+      if (drawn !== null) seen.draws.push({ file, line: i + 1, menu: drawn[1] });
+    });
+    skills.set(skill, seen);
+  }
+  return [...skills.entries()].flatMap(([skill, { loads, draws: drawn }]) => (loads ? [] : drawn.map(({ file, line, menu }) => ({
+    file, line, message: `${skill} draws the ${menu}, whose back draws the start menu, and loads no start-menu.md`,
+  }))));
 }
 
 // ---------------------------------------------------------------------------
@@ -1154,96 +1142,33 @@ function checkBashGrantsCarryWildcard(files) {
 // ---------------------------------------------------------------------------
 
 const CHECKS = [
-  ['1: phase-title chrome (drawn borders retired)', checkBorders],
-  ['2: step / sub-step chrome (drawn markers retired)', checkMarkers],
+  ['1: chrome keeps its glyphs', checkChromeGlyphs],
   ['3: no menus in prose', checkNoProseMenus],
-  ['4: banned STOP variants', checkBannedStop],
   ['5: banned navigation verbs', checkBannedNav],
   ['6: internal routing-target existence', checkRouting],
   ['7: markdown link resolution', checkLinks],
+  ['7b: a load is its own line, never carried mid-sentence', checkLoadLines],
   ['8: H1 category rule', checkH1Category],
-  ['9: Zero Output Rule byte-identity', checkZeroOutput],
   ['10: reference-file attribution', checkAttribution],
   ['11: load-directive footers (On return)', checkLoadFooters],
-  ['12: earned chrome (inert load-only steps)', checkInertLoadChrome],
   ['13: nothing rendered from prose varies', checkNoTemplatedRenders],
   ['14: buried invocation imperatives', checkBuriedInvoke],
   ['15: cross-file section references', checkCrossFileSections],
-  ['18: no skill-frontmatter SessionEnd hooks', checkNoFrontmatterSessionEndHooks],
-  ['20: footerless load directives', checkFooterlessLoads],
-  ['21: engine-section call sites defer to the marker', checkSectionsDeferToMarker],
+  ['21: an engine section\'s form is its marker\'s alone', checkSectionFormsAreTheMarkers],
   ['22: free-text flag values are quoted', checkQuotedFreeTextFlags],
-  ['23: a question at a gate sets it aside', checkQuestionsSetGatesAside],
   ['24: rendering instructions name one of four forms over a fence carrying its tag', checkRenderForms],
-  ['25: a dispatch names its mode, and a waited-on one its closing sentence', checkDispatchLines],
-  ['26: a path a dispatch hands an agent is written as installed', checkInstalledDispatchPaths],
   ['27: the framework loads at the head of the skills a conversation opens on', checkFrameworkLoad],
   ['28: every allowed-tools Bash grant carries a wildcard', checkBashGrantsCarryWildcard],
+  ['29: the framework\'s references load once, from framework.md alone', checkFrameworkLoadsOnce],
+  ['30: no design tool is named', checkNoDesignTools],
+  ['33: nothing writes the project\'s CLAUDE.md but the keep, on the person\'s yes', (files) => checkNoClaudeMdWrites(files, codeFiles())],
+  ['34: the build\'s prose prescribes nothing the builder does unprompted', checkBuildProse],
+  ['35: the start skill follows boot\'s stops as data', checkBootStops],
+  ['36: a skill drawing a menu whose back is the start menu loads start-menu.md', checkBackToStartLoads],
+  ['37: the start skill\'s description opens with its trigger, and every other skill a handoff lands on says it is reached only through one', checkDescriptions],
+  ['38: no skill keeps a section of its own on resuming', checkNoResumeSections],
+  ['39: no skill paces the person out of the work', checkNoPacing],
 ];
-
-// ---------------------------------------------------------------------------
-// Check 20 — a Load directive is never the last word of a step. CONVENTIONS
-// (Load Directive Format): a step is never left with no footer at all —
-// silence reads as the end of the step, and the next heading gets treated as
-// the fall-through. Within a SKILL.md, a Load **[...]** directive must be
-// followed, before the next heading, by a routing line (→ On return / →
-// Proceed / → Return), a **STOP.** gate, or a bold conditional — inline or
-// as an H4 `#### If`/`#### Otherwise` branch heading — that re-keys the
-// routing to its branches. Only an H2/H3 heading is a fall-through target.
-// The `## Instructions` framework load composes the whole skill and carries
-// no footer by design; the file's final `## ` step is terminal and exempt, as
-// is any segment that declares itself Terminal; a trailing `## Notes` is
-// documentation, not a step, and never counts as the last step.
-// ---------------------------------------------------------------------------
-
-function checkFooterlessLoads(files) {
-  const out = [];
-  for (const file of files) {
-    if (!file.endsWith('SKILL.md')) continue;
-    const lines = readLines(file);
-    const { inFence } = parseFences(lines);
-    const lastH2 = lines.reduce((acc, l, i) => (/^##\s/.test(l) && !/^##\s+Notes\b/.test(l) ? i : acc), -1);
-    let pending = -1;
-    let segmentStart = 0;
-    let instructions = false;
-    const flush = (end) => {
-      if (pending < 0) return;
-      const segment = lines.slice(segmentStart, end).join('\n');
-      const terminal = segmentStart >= lastH2 || /\bTerminal\b/.test(segment);
-      if (!terminal) {
-        out.push({
-          file,
-          line: pending + 1,
-          message: 'Load directive with no footer before the next heading — add "→ On return, …" (or the deferring "→ On return, proceed as the reference directed.")',
-        });
-      }
-      pending = -1;
-    };
-    lines.forEach((line, i) => {
-      if (inFence[i] || FENCE.test(line)) return;
-      if (/^#{2,3}\s/.test(line)) {
-        flush(i);
-        segmentStart = i;
-        instructions = /^##\s+Instructions\b/.test(line);
-        return;
-      }
-      if (instructions) return;
-      if (/^####\s+(If |Otherwise)/.test(line)) {
-        pending = -1;
-        return;
-      }
-      if (/Load \*\*\[/.test(line)) {
-        pending = i;
-        return;
-      }
-      if (pending >= 0 && (/^\s*→/.test(line) || /\*\*STOP\.\*\*/.test(line) || /^\*\*(If |Otherwise)/.test(line))) {
-        pending = -1;
-      }
-    });
-    flush(lines.length);
-  }
-  return out;
-}
 
 function report(violations) {
   return violations.map((v) => `  ${rel(v.file)}:${v.line} — ${v.message}`).join('\n');
@@ -1275,10 +1200,10 @@ function write(dir, relPath, content) {
 
 const CORPUS = corpusFiles();
 
-test('corpus is non-empty and covers all three scan roots', () => {
-  assert.ok(CORPUS.length > 250, `expected a large corpus, found ${CORPUS.length}`);
+test('corpus is non-empty and covers both scan roots', () => {
+  assert.ok(CORPUS.length > 150, `expected a large corpus, found ${CORPUS.length}`);
+  assert.ok(CORPUS.some((f) => f.includes(`${path.sep}skills${path.sep}`)), 'skills/**/*.md not scanned');
   assert.ok(CORPUS.some((f) => f.includes(`${path.sep}agents${path.sep}`)), 'agents/*.md not scanned');
-  assert.ok(CORPUS.some((f) => f.includes('create-output-format')), 'create-output-format not scanned');
 });
 
 for (const [label, fn] of CHECKS) {
@@ -1293,56 +1218,23 @@ for (const [label, fn] of CHECKS) {
 // must NOT flag the sanctioned edge cases it is designed to permit.
 // ---------------------------------------------------------------------------
 
-test('check 1 (borders) — bans drawn borders, skips the banner, pins the H1 glyph', () => {
+test('check 1 (chrome glyphs) — catches a phase title on any listed glyph but ■ and a marker on ■, permits ■ titles, □ and ▪ markers and a fence of more than one line', () => {
   withTemp((dir) => {
-    // any drawn border in prose is retired — width no longer matters
-    const bad = write(
-      dir,
-      'skills/x/SKILL.md',
-      '```\n●' + '─'.repeat(47) + '●\n  Overview\n●' + '─'.repeat(47) + '●\n```\n'
-    );
-    const v1 = checkBorders([bad]);
-    assert.strictEqual(v1.length, 2, `expected 2 border violations, got ${v1.length}`);
+    const good = write(dir, 'skills/x/good.md', [
+      '```', '# **`■ Overview`**', '```', '',
+      '```', '**`□ Construct Specification`**', '```', '',
+      '```', '**`▪ Extract Sources`**', '```', '',
+      '```', '**`■ Not a marker`**', 'a second line', '```', '',
+    ].join('\n'));
+    assert.strictEqual(checkChromeGlyphs([good]).length, 0, `the chrome's own glyphs pass, got ${report(checkChromeGlyphs([good]))}`);
 
-    // banner: ascii art + a 67-wide ● border → must be skipped
-    const banner = write(
-      dir,
-      'skills/workflow-start/SKILL.md',
-      '```\n●' + '─'.repeat(65) + '●\n    ___   ____________\n   /   | / ____/ ___/\n●' + '─'.repeat(65) + '●\n```\n'
-    );
-    assert.strictEqual(checkBorders([banner]).length, 0, 'banner border must be exempt');
-
-    // markdown phase title: ■ passes, any other family glyph is caught
-    const good = write(dir, 'skills/y/SKILL.md', '```\n# **`■ Overview`**\n```\n');
-    assert.strictEqual(checkBorders([good]).length, 0, 'markdown phase title must pass');
-    const wrongGlyph = write(dir, 'skills/z/SKILL.md', '```\n# **`□ Overview`**\n```\n');
-    assert.strictEqual(checkBorders([wrongGlyph]).length, 1, 'an H1 with a non-■ chrome glyph must be caught');
-  });
-});
-
-test('check 2 (markers) — bans drawn markers, skips embedded dividers, pins marker glyphs', () => {
-  withTemp((dir) => {
-    const drawnStep = write(dir, 'skills/x/a.md', '```\n── Construct Specification ────────\n```\n');
-    assert.strictEqual(checkMarkers([drawnStep]).length, 1, 'drawn step marker must be caught');
-
-    const drawnSub = write(dir, 'skills/x/b.md', '```\n·· Sub ' + '·'.repeat(60) + '\n```\n');
-    assert.strictEqual(checkMarkers([drawnSub]).length, 1, 'drawn sub-step marker must be caught');
-
-    // centered content divider embedded in a multi-line display fence → not a marker
-    const divider = write(
-      dir,
-      'skills/x/c.md',
-      '```\n  Some Display\n  ── Section Title ──\n  more content\n```\n'
-    );
-    assert.strictEqual(checkMarkers([divider]).length, 0, 'embedded content divider must not be flagged');
-
-    // markdown chrome: □ and ▪ pass; ■ in a marker fence belongs to the H1
-    const good = write(dir, 'skills/x/d.md', '```\n**`□ Construct Specification`**\n```\n');
-    assert.strictEqual(checkMarkers([good]).length, 0, 'markdown step marker must pass');
-    const goodSub = write(dir, 'skills/x/e.md', '```\n**`▪ Extract Sources`**\n```\n');
-    assert.strictEqual(checkMarkers([goodSub]).length, 0, 'markdown sub-step marker must pass');
-    const wrongGlyph = write(dir, 'skills/x/f.md', '```\n**`■ Construct Specification`**\n```\n');
-    assert.strictEqual(checkMarkers([wrongGlyph]).length, 1, 'a marker carrying the phase-title glyph must be caught');
+    const bad = write(dir, 'skills/x/bad.md', [
+      '```', '# **`□ Overview`**', '```', '',
+      '```', '**`■ Construct Specification`**', '```', '',
+      '```', '# **`● Overview`**', '```', '',
+      '```', '# **`⚑ Overview`**', '```', '',
+    ].join('\n'));
+    assert.deepStrictEqual(checkChromeGlyphs([bad]).map((v) => v.line).sort((a, b) => a - b), [2, 6, 10, 14], `a title off ■ — on □, ● or ⚑ — and a marker on ■ are caught, got ${report(checkChromeGlyphs([bad]))}`);
   });
 });
 
@@ -1389,17 +1281,6 @@ test('check 3 (no menus in prose) — catches dot rules and option rows anywhere
       '',
     ].join('\n'));
     assert.strictEqual(checkNoProseMenus([prose]).length, 0, 'chrome markers, definitions, inline key references, and a bullet dot are not menus');
-  });
-});
-
-test('check 4 (banned STOP) — catches each banned variant', () => {
-  withTemp((dir) => {
-    for (const phrase of BANNED_STOP) {
-      const f = write(dir, `skills/x/${phrase.length}.md`, `Text. ${phrase} More.\n`);
-      assert.strictEqual(checkBannedStop([f]).length, 1, `must catch "${phrase}"`);
-    }
-    const good = write(dir, 'skills/x/ok.md', '**STOP.** Wait for user response.\n');
-    assert.strictEqual(checkBannedStop([good]).length, 0, 'sanctioned STOP must pass');
   });
 });
 
@@ -1481,41 +1362,44 @@ test('check 7 (links) — catches broken links, skips fenced/external/placeholde
       '```\n[fenced](nope.md)\n```\n[ext](https://example.com/x.md)\n[tmpl]({work_unit}/f.md)\n[anchor](#section)\n'
     );
     assert.strictEqual(checkLinks([exempt]).length, 0, 'fenced/external/placeholder/anchor links must be skipped');
+  });
+});
 
-    const scaffold = write(dir, '.claude/skills/create-output-format/references/scaffolding/about.md', '[p](../../../SKILL.md)\n');
-    assert.strictEqual(checkLinks([scaffold]).length, 0, 'scaffolding templates must be exempt');
+test('check 7b (load lines) — catches a load carried mid-sentence, permits one opening its line, after an arrow or a list marker, or after a sentence\'s end, and skips fences', () => {
+  withTemp((dir) => {
+    const load = 'Load **[choosing-a-horizon.md](choosing-a-horizon.md)** with names = `{name}` and follow its instructions as written.';
+    const bad = write(dir, 'skills/x/a.md', `The horizon is the one they named, else ${load}\nFor each they gave none, ${load}\n`);
+    assert.deepStrictEqual(checkLoadLines([bad]).map(({ line }) => line), [1, 2]);
+
+    const good = write(dir, 'skills/x/b.md', `${load}\n→ ${load}\n- ${load}\n2. ${load}\nThe person shares a file. ${load}\nOnce it is drawn: ${load}\n**If the answer is yes.** ${load}\n\`\`\`\nsay so, then ${load}\n\`\`\`\n`);
+    assert.strictEqual(checkLoadLines([good]).length, 0, 'a load opening its line, after an arrow, a list marker or a sentence\'s end, or in a fence, must pass');
   });
 });
 
 test('check 8 (H1 category) — enforces the processing/backbone split', () => {
   withTemp((dir) => {
-    const procNoH1 = write(dir, 'skills/workflow-foo-process/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
+    const procNoH1 = write(dir, 'skills/ledger-foo-process/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
     assert.strictEqual(checkH1Category([procNoH1]).length, 1, 'processing backbone without H1 must be caught');
 
-    const startWithH1 = write(dir, 'skills/workflow-start/SKILL.md', '# Workflow Start\n\nOne-liner.\n');
+    const startWithH1 = write(dir, 'skills/ledger/SKILL.md', '# Ledger Start\n\nOne-liner.\n');
     assert.strictEqual(checkH1Category([startWithH1]).length, 1, 'start backbone with H1 must be caught');
 
-    const navWithH1 = write(dir, 'skills/workflow-continue-foo/SKILL.md', '# Continue Foo\n\nOne-liner.\n');
+    const navWithH1 = write(dir, 'skills/ledger-continue-foo/SKILL.md', '# Continue Foo\n\nOne-liner.\n');
     assert.strictEqual(checkH1Category([navWithH1]).length, 1, 'navigation backbone with H1 must be caught');
 
-    const procGood = write(dir, 'skills/workflow-bar-process/SKILL.md', '# Bar Process\n\nOne-liner.\n');
-    const bridgeGood = write(dir, 'skills/workflow-bridge/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
-    const engineGood = write(dir, 'skills/workflow-engine/SKILL.md', '# Workflow Engine\n\nOne-liner.\n');
-    assert.strictEqual(checkH1Category([procGood, bridgeGood, engineGood]).length, 0, 'correctly-categorised backbones must pass');
+    const procGood = write(dir, 'skills/ledger-bar-process/SKILL.md', '# Bar Process\n\nOne-liner.\n');
+    const menuGood = write(dir, 'skills/ledger-continue-epic/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
+    const roadmapGood = write(dir, 'skills/ledger-roadmap/SKILL.md', 'One-liner purpose.\n\n## The Menu\n');
+    const engineGood = write(dir, 'skills/ledger-engine/SKILL.md', '# Ledger Engine\n\nOne-liner.\n');
+    const discoveryGood = write(dir, 'skills/ledger-discovery/SKILL.md', '---\nname: ledger-discovery\n---\n\n# Discovery\n\nOne-liner.\n');
+    assert.strictEqual(checkH1Category([procGood, menuGood, roadmapGood, engineGood, discoveryGood]).length, 0, 'correctly-categorised backbones must pass');
+
+    const discoveryNoH1 = write(dir, 'skills/ledger-discovery/SKILL.md', 'One-liner purpose.\n\n## Entering\n');
+    assert.strictEqual(checkH1Category([discoveryNoH1]).length, 1, 'discovery is a phase that talks: without an H1 it must be caught');
   });
 });
 
-test('check 9 (Zero Output Rule) — catches drift from the canonical form', () => {
-  withTemp((dir) => {
-    const mangled = write(dir, 'skills/x/a.md', '> **⚠️ ZERO OUTPUT RULE**: Do not narrate.\n');
-    assert.strictEqual(checkZeroOutput([mangled]).length, 1, 'drifted Zero Output Rule must be caught');
-
-    const good = write(dir, 'skills/x/b.md', ZERO_OUTPUT_RULE + '\n');
-    assert.strictEqual(checkZeroOutput([good]).length, 0, 'canonical Zero Output Rule must pass');
-  });
-});
-
-test('check 10 (attribution) — catches missing/wrong attribution, skips output-formats', () => {
+test('check 10 (attribution) — catches missing/wrong attribution', () => {
   withTemp((dir) => {
     const missing = write(dir, 'skills/x/references/a.md', '# Some Reference\n\nStraight into content with no attribution.\n');
     assert.strictEqual(checkAttribution([missing]).length, 1, 'missing attribution must be caught');
@@ -1524,46 +1408,8 @@ test('check 10 (attribution) — catches missing/wrong attribution, skips output
     assert.strictEqual(checkAttribution([wrong]).length, 1, 'non-sanctioned attribution must be caught');
 
     const refForm = write(dir, 'skills/x/references/c.md', '# C\n\n*Reference for **[skill-name](../SKILL.md)***\n\n---\n');
-    const sharedForm = write(dir, 'skills/x/references/d.md', '# D\n\n*Shared reference for all workflow skills.*\n');
+    const sharedForm = write(dir, 'skills/x/references/d.md', '# D\n\n*Shared reference for all Ledger skills.*\n');
     assert.strictEqual(checkAttribution([refForm, sharedForm]).length, 0, 'sanctioned forms must pass');
-
-    const of = write(dir, 'skills/workflow-planning-process/references/output-formats/tick/reading.md', '# Reading\n\n## Listing Tasks\n');
-    assert.strictEqual(checkAttribution([of]).length, 0, 'output-format adapters must be exempt');
-  });
-});
-
-test('check 20 (footerless loads) — catches a load that ends its step, permits footers, gates, branches, and the terminal step', () => {
-  withTemp((dir) => {
-    const bad = write(
-      dir,
-      'skills/x/SKILL.md',
-      '## Step 0: A\n\n#### Otherwise\n\nLoad **[a.md](references/a.md)** with x = `1`.\n\n---\n\n## Step 1: B\n\nLoad **[b.md](references/b.md)** and follow its instructions as written.\n\n→ On return, proceed to **Step 2**.\n\n## Step 2: C\n\nDone.\n'
-    );
-    assert.strictEqual(checkFooterlessLoads([bad]).length, 1, 'a load left as the last word of a non-terminal step must be caught');
-
-    const deferred = write(
-      dir,
-      'skills/y/SKILL.md',
-      '## Step 0: A\n\n#### Otherwise\n\nLoad **[a.md](references/a.md)** with x = `1`.\n\n→ On return, proceed as the reference directed.\n\n---\n\n## Step 1: B\n\nDone.\n'
-    );
-    assert.strictEqual(checkFooterlessLoads([deferred]).length, 0, 'the deferring footer must pass');
-
-    const gated = write(
-      dir,
-      'skills/z/SKILL.md',
-      '## Step 0: A\n\nLoad **[a.md](references/a.md)** and follow its instructions as written.\n\n**STOP.** Wait for user response.\n\n**If `yes`:**\n\n→ Proceed to **Step 1**.\n\n## Step 1: B\n\nLoad **[b.md](references/b.md)** and follow its instructions as written.\n\n**If ready:**\n\n→ Proceed to **Step 2**.\n\n## Step 2: C\n\nLoad **[c.md](references/c.md)** and follow its instructions as written.\n\n## Notes\n\nDocumentation.\n'
-    );
-    assert.strictEqual(checkFooterlessLoads([gated]).length, 0, 'a STOP or bold conditional re-keys the routing, and the final step before a trailing Notes section is terminal');
-
-    const instr = write(
-      dir,
-      'skills/w/SKILL.md',
-      '## Instructions\n\nLoad **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.\n\n---\n\n## Step 0: A\n\nLoad **[a.md](references/a.md)** with x = `1`.\n\n#### If x is `1`\n\n→ Proceed to **Step 1**.\n\n#### Otherwise\n\nLoad **[b.md](references/b.md)** with x = `2`.\n\n## Step 1: B\n\nDone.\n'
-    );
-    assert.strictEqual(checkFooterlessLoads([instr]).length, 1, 'the Instructions load and an H4-branched load pass; the Otherwise branch that ends in a load before the next step is caught');
-
-    const ref = write(dir, 'skills/x/references/r.md', '## A. One\n\nLoad **[a.md](a.md)** and follow its instructions as written.\n\n## B. Two\n');
-    assert.strictEqual(checkFooterlessLoads([ref]).length, 0, 'references are out of scope');
   });
 });
 
@@ -1613,58 +1459,17 @@ test('check 11 (load footers) — catches bare proceed after a load, permits gat
   });
 });
 
-test('check 12 (inert load chrome) — catches unearned markers, skips interactive/structured shapes', () => {
+test('check 13 (nothing rendered from prose varies) — catches a templated fence of any kind outside any fence, skips static fences (6.S21)', () => {
   withTemp((dir) => {
-    const marker = '**`□ Load Things`**';
-    const step = (body) =>
-      '## Step 1: Load Things\n\n> *Output the next fenced block as markdown (not a code block):*\n\n```\n' +
-      marker +
-      '\n```\n\n> *Output the next fenced block as markdown (not a code block):*\n\n```\n> Loading things.\n```\n\n' +
-      body +
-      '\n→ On return, proceed to **Step 2**.\n\n## Step 2: Next\n';
-
-    write(dir, 'skills/x/references/inert.md', '# Inert\n\nRead the file. Hold values in memory.\n');
-    write(dir, 'skills/x/references/interactive.md', '# Interactive\n\n**STOP.** Wait for user response.\n');
-
-    const bad = write(dir, 'skills/x/SKILL.md', step('Load **[inert.md](references/inert.md)** and follow its instructions as written.\n'));
-    const v = checkInertLoadChrome([bad]);
-    assert.strictEqual(v.length, 1, 'marker on inert load-only step must be caught');
-    assert.match(v[0].message, /inert\.md/);
-
-    const good = write(dir, 'skills/y/SKILL.md', step('Load **[interactive.md](../x/references/interactive.md)** and follow its instructions as written.\n'));
-    assert.strictEqual(checkInertLoadChrome([good]).length, 0, 'interactive reference keeps its marker');
-
-    write(dir, 'skills/x/references/dispatching.md', '# Dispatching\n\n- **Agent path**: `.claude/agents/some-agent.md`\n');
-    const dispatches = write(dir, 'skills/v/SKILL.md', step('Load **[dispatching.md](../x/references/dispatching.md)** and follow its instructions as written.\n'));
-    assert.strictEqual(checkInertLoadChrome([dispatches]).length, 0, 'a step dispatching sub-agents keeps its marker — the fan-out is the wait');
-
-    const silent = write(
-      dir,
-      'skills/z/SKILL.md',
-      '## Step 1: Load Things\n\nLoad **[inert.md](../x/references/inert.md)** and follow its instructions as written.\n\n→ On return, proceed to **Step 2**.\n\n## Step 2: Next\n'
-    );
-    assert.strictEqual(checkInertLoadChrome([silent]).length, 0, 'silent load-only step must pass');
-
-    const structured = write(dir, 'skills/w/SKILL.md', step('#### If ready\n\nLoad **[inert.md](../x/references/inert.md)** and follow its instructions as written.\n'));
-    assert.strictEqual(checkInertLoadChrome([structured]).length, 0, 'H4-structured step is judgment tier — skipped');
-
-    const unresolvable = write(dir, 'skills/v/SKILL.md', step('Load **[gone.md](references/gone.md)** and follow its instructions as written.\n'));
-    assert.strictEqual(checkInertLoadChrome([unresolvable]).length, 0, 'unresolvable target must be skipped');
-  });
-});
-
-test('check 13 (nothing rendered from prose varies) — catches a templated fence of any kind outside any fence, skips static fences and the capture skills', () => {
-  withTemp((dir) => {
-    const sites = (file) => checkNoTemplatedRenders([file], dir).map((v) => v.line);
+    const sites = (file) => checkNoTemplatedRenders([file]).map((v) => v.line);
     const instr = '> *Output the next fenced block as markdown (not a code block):*\n\n';
     const templatedMenu = instr + '```\n· · · · · · · · · · · ·\nContinue "{topic}"?\n\n- **`y/yes`**\n· · · · · · · · · · · ·\n```\n';
     const textInstr = '> *Output the next fenced block as a text code block (```text fence):*';
-    const capture = `${textInstr}\n\n\`\`\`text\nLogged idea: {slug}\n\`\`\`\n`;
 
     const fresh = write(dir, 'skills/x/a.md', templatedMenu + '\n' + templatedMenu);
-    const v1 = checkNoTemplatedRenders([fresh], dir);
+    const v1 = checkNoTemplatedRenders([fresh]);
     assert.deepStrictEqual(v1.map((v) => v.line), [1, 11], 'every templated fence is caught, at its instruction');
-    assert.match(v1[0].message, /a templated fence rendered from prose — render it from the engine, or say it inline as Claude's own line \(CONVENTIONS → What the engine renders\)/);
+    assert.match(v1[0].message, /a templated fence rendered from prose — render it from the engine, or say it inline as Claude's own line \(CONVENTIONS → Display\)/);
 
     const numbered = write(dir, 'skills/x/f.md', `1. Do the thing.\n4. ${textInstr}\n\n   \`\`\`text\n   Task {id} authored.\n   \`\`\`\n`);
     assert.deepStrictEqual(sites(numbered), [2], 'an instruction after a numbered marker is caught');
@@ -1674,11 +1479,6 @@ test('check 13 (nothing rendered from prose varies) — catches a templated fenc
 
     const outer = write(dir, 'skills/x/i.md', `${instr}\`\`\`\`markdown\n\`\`\`text\nStatic.\n\`\`\`\nTask {id} authored.\n\`\`\`\`\n`);
     assert.deepStrictEqual(sites(outer), [1], 'a four-backtick fence runs past the inner fence it holds');
-
-    assert.deepStrictEqual(sites(write(dir, 'skills/workflow-log-idea/SKILL.md', capture)), [], 'the capture skills are exempt');
-    assert.deepStrictEqual(sites(write(dir, 'skills/workflow-log-idea/references/r.md', capture)), [], "the exemption covers the capture skill's whole folder");
-    assert.deepStrictEqual(sites(write(dir, 'skills/x/references/skills/workflow-log-idea/SKILL.md', capture)), [1], 'a capture-named folder nested inside another skill is not exempt');
-    assert.deepStrictEqual(sites(write(dir, 'skills/workflow-login/SKILL.md', capture)), [1], 'the exemption is the capture skills alone');
 
     const statik = write(dir, 'skills/x/c.md', instr + '```\n· · · · · · · · · · · ·\nProceed?\n- **`y/yes`**\n· · · · · · · · · · · ·\n```\n');
     assert.deepStrictEqual(sites(statik), [], 'static menu is always fine');
@@ -1707,75 +1507,48 @@ test('check 13 (nothing rendered from prose varies) — catches a templated fenc
 
 test('check 14 (buried invoke) — catches an in-fence imperative, permits one outside a fence', () => {
   withTemp((dir) => {
-    const bad = write(dir, 'skills/x/a.md', '```\nInvoke `/workflow-bridge pay specification`.\n```\n');
+    const bad = write(dir, 'skills/x/a.md', '```\nInvoke `/ledger-continue-epic pay`.\n```\n');
     const v = checkBuriedInvoke([bad]);
     assert.strictEqual(v.length, 1, 'in-fence imperative must be caught');
-    const good = write(dir, 'skills/x/b.md', 'Invoke `/workflow-bridge pay specification`.\n');
+    const start = write(dir, 'skills/x/c.md', '```\nInvoke `/ledger`.\n```\n');
+    assert.strictEqual(checkBuriedInvoke([start]).length, 1, 'the way in, `/ledger`, is caught as a skill invocation too');
+    const good = write(dir, 'skills/x/b.md', 'Invoke `/ledger-continue-epic pay`.\n');
     assert.strictEqual(checkBuriedInvoke([good]).length, 0, 'the imperative outside a fence is the invocation form');
   });
 });
 
-test('check 18 (frontmatter SessionEnd hooks) — catches a SessionEnd declaration, permits other events', () => {
+test('check 21 (a section\'s form is its marker\'s) — catches a form stated in a section\'s sentence or bullet, permits a section named or emitted with no form, other content\'s forms, fenced content and prose-block instructions', () => {
   withTemp((dir) => {
-    const cleanup = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup';
-    const hookBlock = (event) => `hooks:\n  ${event}:\n    - hooks:\n        - type: command\n          command: '${cleanup}'\n`;
-
-    const plain = write(dir, 'skills/workflow-a-process/SKILL.md',
-      '---\nname: workflow-a-process\nuser-invocable: false\n---\n\nBody.\n');
-    // Other events do fire from skill frontmatter and stay allowed.
-    const preToolUse = write(dir, 'skills/workflow-b-process/SKILL.md',
-      `---\nname: workflow-b-process\n${hookBlock('PreToolUse')}---\n`);
-    // The event name in the body is prose, not a declaration.
-    const bodyMention = write(dir, 'skills/workflow-c-process/SKILL.md',
-      '---\nname: workflow-c-process\n---\n\n```\nSessionEnd:\n```\n');
-    assert.strictEqual(checkNoFrontmatterSessionEndHooks([plain, preToolUse, bodyMention]).length, 0, 'no SessionEnd declared — clean');
-
-    // A SessionEnd hook declared in frontmatter never fires.
-    const sessionEnd = write(dir, 'skills/workflow-d-process/SKILL.md',
-      `---\nname: workflow-d-process\n${hookBlock('SessionEnd')}---\n`);
-    const v = checkNoFrontmatterSessionEndHooks([plain, preToolUse, sessionEnd]);
-    assert.strictEqual(v.length, 1, `expected the SessionEnd declaration to be caught, got ${report(v)}`);
-    assert.strictEqual(v[0].file, sessionEnd);
-    assert.strictEqual(v[0].line, 4);
-    assert.match(v[0].message, /SessionEnd hook in skill frontmatter/);
-  });
-});
-
-test('check 21 (engine-section call sites defer to the marker) — catches a section emitted without deferring and a restated form in a section\'s sentence or bullet, permits the deferring form, other content\'s forms and emissions, passive descriptions, fenced content and prose-block instructions', () => {
-  withTemp((dir) => {
-    const deferring = write(dir, 'skills/x/deferring.md', [
+    const formless = write(dir, 'skills/x/formless.md', [
+      'Fetch the gate:',
+      '',
       'Emit the call\'s MENU section verbatim per its marker.',
-      'Fetch the gate and emit its `MENU: add gate` section verbatim per its marker:',
-      'Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker.',
-      '- **TITLE** — the view\'s chrome heading. Emit verbatim per its marker, directly above the display.',
-      '- **DISPLAY** — the status block. Emit verbatim per its marker. Never redraw, reflow, or trim it.',
-      'Emit the `DISPLAY: proposed task` section verbatim per its marker; then the raise, as conversational markdown; then the `MENU: task decision` section verbatim per its marker.',
-      'Render and emit each section verbatim per its marker:',
-      'Re-fetch with `--view full` and emit its sections verbatim per their markers — the full updated section with the menu minus the view option.',
-      'Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response\'s `warnings` is non-empty.',
+      '',
+      'Emit the TITLE section, then the DISPLAY section, then the MENU section.',
+      '',
+      '- **DISPLAY** — the rendered map. Emit verbatim. Never redraw, reflow, or trim it.',
+      '',
+      'Then re-emit the `MENU: phase structure gate` section.',
+      '',
+      'Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response\'s `warnings` is non-empty.',
       '',
     ].join('\n'));
-    assert.strictEqual(checkSectionsDeferToMarker([deferring]).length, 0, 'the deferring form is clean, alone or across several sections');
+    assert.strictEqual(checkSectionFormsAreTheMarkers([formless]).length, 0, `a section named or emitted with no form of its own is clean, got ${report(checkSectionFormsAreTheMarkers([formless]))}`);
 
-    // Not a section's form or emission: a neighbouring sentence on the
-    // section's line, a passive description, an emit of prose-authored
-    // content, the API reference's fenced description of a marker, and the
-    // rendering instruction of a prose-authored block.
+    // Not a section's form: a neighbouring sentence on the section's line,
+    // a passive description, the API reference's fenced description of a
+    // marker, and the rendering instruction of a prose-authored block.
     const others = write(dir, 'skills/x/others.md', [
-      'Present the full phase structure from the planning file as rendered markdown (not a code block) — goals, ordering rationale, acceptance criteria as the designer wrote them. Emit its `MENU: phase structure gate` section verbatim per its marker.',
+      'Present the full phase structure from the planning file as rendered markdown (not a code block) — goals, ordering rationale, acceptance criteria as the designer wrote them. Emit its `MENU: phase structure gate` section.',
       '',
-      'Render the doc file verbatim as markdown. Then re-fetch the gate and emit its `MENU: baseline doc gate` section verbatim per its marker.',
+      'Render the doc file verbatim as markdown. Then re-fetch the gate and emit its `MENU: baseline doc gate` section.',
       '',
-      'Draw each diagram in a text code block (```text fence). Then emit the `MENU: task gate` section verbatim per its marker.',
-      '',
-      'Read the `sessions` rows only — the response\'s deferral section is the analysis dispatch\'s and is not emitted here.',
+      'Draw each diagram in a text code block (```text fence). Then emit the `MENU: task gate` section.',
       '',
       'Read `all_decided` and `unresolved` from its DATA section; nothing from this call is emitted.',
       '',
-      'Emit the lane marker on this drain\'s first screen only — later screens and re-renders skip it:',
-      '',
       '```bash',
-      'engine render walkthrough-topic --name <slug> [--menu-only]  # one reference card: TITLE, then the content file\'s prose (markdown) and diagrams (fenced) in file order — no menu, so a card shown mid-conversation carries no gate',
+      'engine render walkthrough-topic --name <slug> [--content-only]  # one reference card: TITLE, then the content file\'s prose (markdown) and diagrams (fenced) in file order — no menu, so a card shown mid-conversation carries no gate',
       '```',
       '',
       '> *Output the next fenced block as markdown (not a code block):*',
@@ -1785,33 +1558,7 @@ test('check 21 (engine-section call sites defer to the marker) — catches a sec
       '```',
       '',
     ].join('\n'));
-    assert.strictEqual(checkSectionsDeferToMarker([others]).length, 0, `nothing outside a section's own emitting sentence is flagged, got ${report(checkSectionsDeferToMarker([others]))}`);
-
-    const silent = write(dir, 'skills/x/silent.md', [
-      'Fetch and emit the `MENU: revisit phases` section (its numbering follows `revisitable_phases` order):',
-      '',
-      'Emit the section verbatim.',
-      '',
-      'Render and emit each section verbatim at its marked instruction:',
-      '',
-      'Emit the MENU section.',
-      '',
-      '- **DISPLAY** — the rendered map. Emit verbatim. Never redraw, reflow, or trim it.',
-      '',
-      'When the person takes it, fetch the card and emit its sections in the order they arrive, each per its own marker:',
-      '',
-      'The calling flow emits each section verbatim beneath the call that fetched it.',
-      '',
-      'Then re-emit the `MENU: phase structure gate` section.',
-      '',
-      'Emit the `DISPLAY: selection` and `MENU: selection` sections verbatim, each per its marker.',
-      '',
-      'Emit the section per its marker.',
-      '',
-    ].join('\n'));
-    const s = checkSectionsDeferToMarker([silent]);
-    assert.deepStrictEqual(s.map((x) => x.line), [1, 3, 5, 7, 9, 11, 13, 15, 17, 19], `each section emitted without deferring in the one phrasing is caught, got ${report(s)}`);
-    assert.ok(s.every((x) => /emits without deferring/.test(x.message)), `the non-deferring message names the fault, got ${report(s)}`);
+    assert.strictEqual(checkSectionFormsAreTheMarkers([others]).length, 0, `nothing outside a section's own sentence is flagged, got ${report(checkSectionFormsAreTheMarkers([others]))}`);
 
     const restated = write(dir, 'skills/x/restated.md', [
       'Fetch the gate and emit its `MENU: add gate` section verbatim as markdown (not a code block):',
@@ -1845,9 +1592,9 @@ test('check 21 (engine-section call sites defer to the marker) — catches a sec
       'Emit the MENU section verbatim per its marker, rendered as markdown.',
       '',
     ].join('\n'));
-    const v = checkSectionsDeferToMarker([restated]);
+    const v = checkSectionFormsAreTheMarkers([restated]);
     assert.deepStrictEqual(v.map((x) => x.line), [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29], `each restating sentence is caught, got ${report(v)}`);
-    assert.ok(v.every((x) => /restates its marker's form/.test(x.message)), `a restated form is reported as one, got ${report(v)}`);
+    assert.ok(v.every((x) => /form is stated in prose/.test(x.message)), `a restated form is reported as one, got ${report(v)}`);
   });
 });
 
@@ -1870,141 +1617,6 @@ test('check 22 (quoted free-text flags) — catches a bare horizon or summary pl
       '',
     ].join('\n'));
     assert.deepStrictEqual(checkQuotedFreeTextFlags([bare]).map((v) => v.line), [2, 4]);
-  });
-});
-
-test('check 23 (a question at a gate sets it aside) — catches a question branch that puts its gate straight back or sets it aside without asking whether the person is ready to move on, permits the set-aside form with the ask, a delegated answer from a reference or a backbone, an Ask item in a route list, and branches that carry no question', () => {
-  withTemp((dir) => {
-    const deferring = write(dir, 'skills/x/deferring.md', [
-      '#### If ask',
-      '',
-      'Answer from the record. The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back:',
-      '',
-      '→ Return to **A. Conclude Gate**.',
-      '',
-      '**If the comment is a question back or feedback:**',
-      '',
-      'Answer it. The exchange sets the gate aside; once it looks settled, ask in conversation whether they are ready to move on, and on yes put it back — re-fetch the gate and emit its MENU section verbatim per its marker:',
-      '',
-      '```bash',
-      'engine render executor-block-gate x.implementation.x',
-      '```',
-      '',
-      '#### If the user asks a question',
-      '',
-      'Answer it per **[answering-how-it-works.md](../../workflow-shared/references/answering-how-it-works.md)** — the menu it puts back is the home\'s.',
-      '',
-      '→ Return to **B. Handle Selection**.',
-      '',
-      '**If ask:**',
-      '',
-      'Answer it per **[answering-how-it-works.md](../workflow-shared/references/answering-how-it-works.md)** — the menu it puts back is the offer\'s alone.',
-      '',
-      '**STOP.** Wait for user response.',
-      '',
-      '#### If the user asks for the interactive page',
-      '',
-      '→ Return to **G. Task Gate**.',
-      '',
-      '**If the user asks about a number:**',
-      '',
-      'Answer it. A kept note changed the screen, which re-renders now; a question that changed nothing sets the gate aside — once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back. To re-render or put it back:',
-      '',
-      '→ Return to **C. Route Misdirected Knowledge**.',
-      '',
-      'Route the answer:',
-      '  - **Waiting** (`w/waiting`) — a plain `roadmap add`.',
-      '  - **Ask** — answer it. The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back — render the gate again.',
-      '',
-    ].join('\n'));
-    assert.strictEqual(checkQuestionsSetGatesAside([deferring]).length, 0, `the set-aside form, a delegated answer, and a non-question branch are clean, got ${report(checkQuestionsSetGatesAside([deferring]))}`);
-
-    const blind = write(dir, 'skills/x/blind.md', [
-      '#### If ask',
-      '',
-      'Answer the user\'s questions about the review.',
-      '',
-      '→ Return to **F. Fix Approval Gate**.',
-      '',
-      '**If ask:**',
-      '',
-      'Answer the user\'s question, then fetch the confirm gate again and emit it as above.',
-      '',
-      '**STOP.** Wait for user response.',
-      '',
-      '#### If user asked a question',
-      '',
-      'Answer the question.',
-      '',
-      '→ Return to **B. Action Menu**.',
-      '',
-      '**If the user asks about a number:**',
-      '',
-      'Answer it. Expanding is not objecting; the screen stands.',
-      '',
-      '**If the comment is a question or steers the attempt:**',
-      '',
-      'Answer it. Then re-fetch the gate and emit its MENU section verbatim per its marker — the reply takes these branches again.',
-      '',
-      '#### If the user asks a question',
-      '',
-      'Answer it, then put the gate back — the phrase below is fenced content, not the branch\'s own words:',
-      '',
-      '```',
-      'sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on',
-      '```',
-      '',
-      '#### If ask',
-      '',
-      'Answer from the record. The question sets the gate aside until the person is ready to move on; to put it back:',
-      '',
-      '→ Return to **A. Conclude Gate**.',
-      '',
-      '**If the comment is a question back or feedback:**',
-      '',
-      'Answer it. The exchange sets the gate aside; ask what they meant where the feedback is unclear. Once the person is ready to move on, re-fetch the gate:',
-      '',
-      '## B. Routes',
-      '',
-      'Route the answer:',
-      '  - **Ask** — answer it and talk it through, then render the gate again.',
-      '  - **Waiting** (`w/waiting`) — the gate sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on — the next item\'s words, never the Ask\'s.',
-      '  - **Ask** — answer it. The question sets the gate aside until the person is ready to move on; to put it back, render the gate again.',
-      '',
-    ].join('\n'));
-    const v = checkQuestionsSetGatesAside([blind]);
-    assert.deepStrictEqual(v.map((x) => x.line), [1, 7, 13, 19, 23, 27, 35, 41, 48, 50], `each question branch that puts its gate straight back is caught, got ${report(v)}`);
-    assert.ok(v.every((x) => /without the set-aside rule/.test(x.message)), `the fault is named, got ${report(v)}`);
-  });
-});
-
-test('check 23 (a return into the interrupted flow asks) — catches a return that leaves its pending gate aside without asking whether the person is ready to move on, permits the return with the ask and a fenced example', () => {
-  withTemp((dir) => {
-    const asking = write(dir, 'skills/x/asking.md', [
-      '## Backlogging',
-      '',
-      'Load **[backlogging.md](../workflow-shared/references/backlogging.md)** from any point in the phase.',
-      '',
-      '→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.',
-      '',
-      '```',
-      '→ On return, resume the interrupted flow — a gate that was pending was set aside until the person is ready to move on — never fall through to Step 0.',
-      '```',
-      '',
-    ].join('\n'));
-    assert.strictEqual(checkQuestionsSetGatesAside([asking]).length, 0, `the return with the ask and a fenced example are clean, got ${report(checkQuestionsSetGatesAside([asking]))}`);
-
-    const silent = write(dir, 'skills/x/silent.md', [
-      '→ On return, resume the interrupted flow — a gate that was pending was set aside until the person is ready to move on — never fall through to Step 0.',
-      '',
-      '→ On return, resume the interrupted flow — a gate that was pending was set aside; ask what they meant. Once the person is ready to move on, put it back — never fall through to Step 0.',
-      '',
-      '→ On return, resume the interrupted flow — never fall through to Step 0.',
-      '',
-    ].join('\n'));
-    const v = checkQuestionsSetGatesAside([silent]);
-    assert.deepStrictEqual(v.map((x) => x.line), [1, 3, 5], `each return without the ask is caught, got ${report(v)}`);
-    assert.ok(v.every((x) => /without the ask/.test(x.message)), `the fault is named, got ${report(v)}`);
   });
 });
 
@@ -2098,268 +1710,327 @@ test('check 24 (render forms) — catches a bare code block, a legacy or reworde
   });
 });
 
-test('check 25 (dispatch lines) — catches a dispatch with no mode, an ad-hoc sub-agent dispatch included, a waited-on background dispatch with no sentence, two sentences, an off-shape sentence or one naming a topic, work unit or internal id, and a sentence on a foreground or carried-past dispatch; permits each mode in its own shape, per dispatch section', () => {
+test('check 27 (framework load) — catches a skill a conversation opens on whose Instructions section is missing or opens on anything else, and an Instructions section or framework load on a skill only ever opened in place; permits the opening load with a trailing clause, a recovery protocol\'s re-load, fenced content, the keep skill, and a skill outside Ledger', () => {
   withTemp((dir) => {
-    const clean = write(dir, 'skills/x/clean.md', [
-      '# Clean',
-      '',
-      '## A. Dispatch the Worker',
-      '',
-      '- **Agent path**: `.claude/agents/workflow-x-worker.md`',
-      '',
-      'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The worker agent has been dispatched for phase {N}.`',
-      '',
-      '## B. Dispatch Two in Parallel',
-      '',
-      '### Agent 1',
-      '',
-      '- **Agent path**: `.claude/agents/workflow-x-left.md`',
-      '',
-      '### Agent 2',
-      '',
-      '- **Agent path**: `.claude/agents/workflow-x-right.md`',
-      '',
-      'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The left and right agents have been dispatched for review cycle {N}.`',
-      '',
-      '## C. Check in the Foreground',
-      '',
-      '**Agent path**: `.claude/agents/workflow-x-checker.md`',
-      '',
-      'Dispatch **one agent** via the Task tool (**synchronous** — pass `run_in_background: false`).',
-      '',
-      '## D. Dive',
-      '',
-      '**Agent path**: `.claude/agents/workflow-research-deep-dive.md`',
-      '',
-      'Dispatch **one agent** via the Task tool with `run_in_background: true`.',
-      '',
-      '```',
-      'Invoke `workflow-x-fenced` — fenced content is never a dispatch.',
-      '```',
-      '',
-      '## E. Measure',
-      '',
-      'Run it directly, or use ad-hoc sub-agents (Agent tool) for independent legs, in the foreground (`run_in_background: false`).',
-      '',
-    ].join('\n'));
-    const single = write(dir, 'skills/x/single.md', [
-      '# Single',
-      '',
-      'Invoke `workflow-x-designer` with these file paths:',
-      '',
-      '## Wait for Completion',
-      '',
-      'This dispatch and every re-invocation of the designer below run in the background (`run_in_background: true`) and end the turn on exactly `The designer agent has been dispatched for the plan\'s phases.`',
-      '',
-      'Re-invoke `workflow-x-designer` with the feedback.',
-      '',
-    ].join('\n'));
-    assert.strictEqual(checkDispatchLines([clean, single]).length, 0, `each mode in its own shape is clean, got ${report(checkDispatchLines([clean, single]))}`);
-
-    const broken = write(dir, 'skills/x/broken.md', [
-      '# Broken',
-      '',
-      '## A. No Mode',
-      '',
-      'Dispatch the `workflow-x-a` agent via the Task tool.',
-      '',
-      '## B. No Sentence',
-      '',
-      'Dispatch the `workflow-x-b` agent via the Task tool with `run_in_background: true`.',
-      '',
-      '## C. Two Sentences',
-      '',
-      'Invoke `workflow-x-c` with:',
-      '',
-      'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The c agent has been dispatched for phase {N}.`',
-      'The dispatch ends the turn on exactly `The c agent has been dispatched for phase {N} again.`',
-      '',
-      '## D. Off Shape',
-      '',
-      '- **Agent path**: `.claude/agents/workflow-x-d.md`',
-      '',
-      'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `Dispatched the d agent.`',
-      '',
-      '## E. Names the Topic',
-      '',
-      '- **Agent path**: `.claude/agents/workflow-x-e.md`',
-      '',
-      'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The e agent has been dispatched for {topic}.`',
-      '',
-      '## F. Names the Internal Id',
-      '',
-      '- **Agent path**: `.claude/agents/workflow-x-f.md`',
-      '',
-      'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The f agents have been dispatched for {internal_id}.`',
-      '',
-      '## G. Foreground With a Sentence',
-      '',
-      '**Agent path**: `.claude/agents/workflow-x-g.md`',
-      '',
-      'Dispatch **one agent** (pass `run_in_background: false`) — the dispatch ends the turn on exactly `The g agent has been dispatched for the record.`',
-      '',
-      '## H. Carried Past With a Sentence',
-      '',
-      '**Agent path**: `.claude/agents/workflow-discussion-review.md`',
-      '',
-      'Dispatch **one agent** via the Task tool with `run_in_background: true` — the dispatch ends the turn on exactly `The review agent has been dispatched for the discussion.`',
-      '',
-      '## I. Ad-Hoc With No Mode',
-      '',
-      'Run it directly, or use ad-hoc sub-agents (Agent tool) for independent legs.',
-      '',
-    ].join('\n'));
-    const v = checkDispatchLines([broken]);
-    assert.deepStrictEqual(v.map((x) => x.line), [5, 9, 13, 20, 26, 32, 38, 44, 50], `each broken dispatch is caught once, at its naming line, got ${report(v)}`);
-    const messages = v.map((x) => x.message);
-    assert.match(messages[0], /names its mode/);
-    assert.match(messages[1], /exactly one sentence .*found 0/);
-    assert.match(messages[2], /exactly one sentence .*found 2/);
-    assert.match(messages[3], /takes the shape/);
-    assert.match(messages[4], /never a topic, work unit, or internal id/);
-    assert.match(messages[5], /never a topic, work unit, or internal id/);
-    assert.match(messages[6], /foreground dispatch .* carries no closing sentence/);
-    assert.match(messages[7], /carries on past carries no closing sentence/);
-    assert.match(messages[8], /^ad-hoc sub-agents: a dispatch names its mode/);
-  });
-});
-
-test('check 26 (installed dispatch paths) — catches an agent file or a labelled input path written relative to the instruction file, a bare repo path, or a markdown link; permits the installed forms, a work artifact, a bare placeholder, a value that opens on prose, the session\'s own load, fenced content, and a file holding no dispatch', () => {
-  withTemp((dir) => {
-    const clean = write(dir, 'skills/x/references/clean.md', [
-      '# Clean',
-      '',
-      'This step invokes the `workflow-x-worker` agent (`.claude/agents/workflow-x-worker.md`).',
-      '',
-      '## A. Dispatch the Worker',
-      '',
-      '- **Agent path**: `.claude/agents/workflow-x-worker.md`',
-      '',
-      '1. **Review criteria path**: `.claude/skills/workflow-x/references/criteria.md`',
-      '2. **read-specification.md**: `.claude/skills/workflow-x/references/read-specification.md`',
-      '3. **Format reading.md path**: `.claude/skills/workflow-x/references/output-formats/{format}/reading.md` — `format` is in session context',
-      '4. **Output path** — `.workflows/{work_unit}/x/{topic}/out.md`',
-      '5. **Output file path** — the `file` from the dispatch response',
-      '6. **Resolved path**: `{resolved_path}`',
-      '7. **Work type**: `work_type` from session context',
-      '',
-      'Load **[criteria.md](criteria.md)** and follow its instructions as written.',
-      '',
-      '```',
-      '- **Agent path**: `../../../agents/workflow-x-fenced.md`',
-      '```',
-      '',
-      'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The worker agent has been dispatched for phase {N}.`',
-      '',
-    ].join('\n'));
-    const agentDefinition = write(dir, 'agents/workflow-x-worker.md', [
-      '# Worker',
-      '',
-      '## Your Input',
-      '',
-      '1. **Review criteria path** — `criteria.md` with the review criteria',
-      '',
-    ].join('\n'));
-    const ok = checkInstalledDispatchPaths([clean, agentDefinition]);
-    assert.strictEqual(ok.length, 0, `installed paths, work artifacts, placeholders, prose values and a file holding no dispatch are clean, got ${report(ok)}`);
-
-    const broken = write(dir, 'skills/x/references/broken.md', [
-      '# Broken',
-      '',
-      'This step invokes the `workflow-x-worker` agent (`../../../agents/workflow-x-worker.md`).',
-      '',
-      '## A. Dispatch the Worker',
-      '',
-      '- **Agent path**: `../../../agents/workflow-x-worker.md`',
-      '- **Agent file**: `agents/workflow-x-worker.md`',
-      '',
-      '1. **Review tracking format path**: `review-tracking-format.md` (in this references directory)',
-      '2. **task-design.md**: `task-design.md`',
-      '3. **Format reading.md path**: **[output-formats/{format}/reading.md](output-formats/{format}/reading.md)** — `format` is in session context',
-      '4. **Plan format reading adapter path** — `../../workflow-y/references/output-formats/{format}/reading.md`',
-      '5. **Findings path** — `findings.txt`',
-      '6. **Criteria path**: `skills/workflow-x/references/criteria.md`',
-      '',
-      'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The worker agent has been dispatched for phase {N}.`',
-      '',
-    ].join('\n'));
-    const v = checkInstalledDispatchPaths([broken]);
-    assert.deepStrictEqual(v.map((x) => x.line), [3, 7, 8, 10, 11, 12, 13, 14, 15], `each relative path is caught once, at its line, got ${report(v)}`);
-    assert.match(v[0].message, /^agent file `\.\.\/\.\.\/\.\.\/agents\/workflow-x-worker\.md` — write it as installed, `\.claude\/agents\/…`$/);
-    assert.match(v[1].message, /^\*\*Agent path\*\* names `\.\.\/\.\.\/\.\.\/agents\/workflow-x-worker\.md` — write it as installed, from the project root/);
-    assert.match(v[2].message, /^\*\*Agent file\*\* names `agents\/workflow-x-worker\.md`/);
-    assert.match(v[5].message, /names `output-formats\/\{format\}\/reading\.md`/);
-    assert.match(v[8].message, /names `skills\/workflow-x\/references\/criteria\.md`/);
-  });
-});
-
-test('check 27 (framework load) — catches a skill a conversation opens on whose Instructions section is missing or opens on anything else, and an Instructions section or framework load on a skill only ever opened in place; permits the opening load with a trailing clause, a recovery protocol\'s re-load, fenced content, a capture skill, and a skill outside the workflows', () => {
-  withTemp((dir) => {
-    const LOAD = 'Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.';
-    const start = write(dir, 'skills/workflow-start/SKILL.md', [
-      '---', 'name: workflow-start', '---', '', 'Entry.', '', '## Instructions', '',
-      'Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written — after the banner.',
+    const LOAD = 'Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.';
+    const start = write(dir, 'skills/ledger/SKILL.md', [
+      '---', 'name: ledger', '---', '', 'Entry.', '', '## Instructions', '',
+      'Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written — after the banner.',
       '', '---', '', '## Step 0: Boot', '', 'Boot.', '',
     ].join('\n'));
-    const RELOAD = '1. **Re-read this skill file completely, then re-load [framework.md](../workflow-shared/references/framework.md).**';
-    const phase = write(dir, 'skills/workflow-review-process/SKILL.md', [
+    const RELOAD = '1. **Re-read this skill file completely, then re-load [framework.md](../ledger-shared/references/framework.md).**';
+    const phase = write(dir, 'skills/ledger-review-process/SKILL.md', [
       '# Review', '', '## Instructions', '', LOAD, '', '---', '', '## Resuming After Context Refresh', '', RELOAD, '',
     ].join('\n'));
-    const bridge = write(dir, 'skills/workflow-bridge/SKILL.md', ['Decide where the work goes.', '', '## Step 1: Route', '', RELOAD, ''].join('\n'));
-    const capture = write(dir, 'skills/workflow-log-idea/SKILL.md', 'Capture an idea.\n');
-    const fenced = write(dir, 'skills/workflow-help/SKILL.md', ['# Help', '', '```markdown', '## Instructions', '', LOAD, '```', ''].join('\n'));
-    const tooling = write(dir, '.claude/skills/create-output-format/SKILL.md', `## Instructions\n\n${LOAD}\n`);
-    const ok = checkFrameworkLoad([start, phase, bridge, capture, fenced, tooling]);
+    const recovering = write(dir, 'skills/ledger-in-place/SKILL.md', ['Work in the conversation already open.', '', '## Step 1: Work', '', RELOAD, ''].join('\n'));
+    const keep = write(dir, 'skills/ledger-keep/SKILL.md', 'Keep it where it goes.\n');
+    const fenced = write(dir, 'skills/ledger-help/SKILL.md', ['# Help', '', '```markdown', '## Instructions', '', LOAD, '```', ''].join('\n'));
+    const tooling = write(dir, '.claude/skills/review-work/SKILL.md', `## Instructions\n\n${LOAD}\n`);
+    const ok = checkFrameworkLoad([start, phase, recovering, keep, fenced, tooling]);
     assert.strictEqual(ok.length, 0, `the opening loads, the recovery re-load, fenced content and the tooling skill are clean, got ${report(ok)}`);
 
-    const missing = write(dir, 'skills/workflow-discovery/SKILL.md', ['---', 'name: workflow-discovery', '---', '', 'Discover.', '', '## Step 0: Boot', ''].join('\n'));
-    const late = write(dir, 'skills/workflow-roadmap/SKILL.md', ['# Roadmap', '', '## Instructions', '', 'Read the map first.', '', LOAD, ''].join('\n'));
-    const inPlace = write(dir, 'skills/workflow-continue-linear/SKILL.md', ['Continue.', '', '## Instructions', '', LOAD, '', '---', '', '## Step 1: Menu', '', `→ ${LOAD}`, ''].join('\n'));
-    const v = checkFrameworkLoad([missing, late, inPlace]);
+    const missing = write(dir, 'skills/ledger-discovery/SKILL.md', ['---', 'name: ledger-discovery', '---', '', 'Discover.', '', '## Step 0: Boot', ''].join('\n'));
+    const late = write(dir, 'skills/ledger-roadmap/SKILL.md', ['The roadmap.', '', '## Instructions', '', 'Read the map first.', '', LOAD, ''].join('\n'));
+    const inPlace = write(dir, 'skills/ledger-continue-linear/SKILL.md', ['Continue.', '', '## Instructions', '', LOAD, '', '---', '', '## Step 1: Menu', '', `→ ${LOAD}`, ''].join('\n'));
+    const keeping = write(dir, 'skills/ledger-keep/SKILL.md', ['Keep it where it goes.', '', LOAD, ''].join('\n'));
+    const v = checkFrameworkLoad([missing, late, inPlace, keeping]);
     assert.deepStrictEqual(v.map((x) => [skillNameOf(x.file), x.line]), [
-      ['workflow-discovery', 5],
-      ['workflow-roadmap', 3],
-      ['workflow-continue-linear', 3],
-      ['workflow-continue-linear', 5],
-      ['workflow-continue-linear', 11],
+      ['ledger-discovery', 5],
+      ['ledger-roadmap', 3],
+      ['ledger-continue-linear', 3],
+      ['ledger-continue-linear', 5],
+      ['ledger-continue-linear', 11],
+      ['ledger-keep', 3],
     ], `each miss is caught once, at its line, got ${report(v)}`);
-    assert.match(v[0].message, /^workflow-discovery is a skill a conversation opens on — its `## Instructions` section opens with the framework load$/);
-    assert.match(v[2].message, /^workflow-continue-linear is not a skill a conversation opens on — it carries no framework load and no `## Instructions` section$/);
+    assert.match(v[0].message, /^ledger-discovery is a skill a conversation opens on — its `## Instructions` section opens with the framework load$/);
+    assert.match(v[2].message, /^ledger-continue-linear is not a skill a conversation opens on — it carries no framework load and no `## Instructions` section$/);
+  });
+});
+
+test('2.S17 — the framework load holds voice and altitude, once each', () => {
+  const framework = path.join(REPO, 'skills', 'ledger-shared', 'references', 'framework.md');
+  const loaded = loadsOf(framework).map(({ target }) => path.relative(path.dirname(framework), target));
+  for (const name of ['voice.md', 'altitude.md']) {
+    assert.strictEqual(loaded.filter((n) => n === name).length, 1, `framework.md loads ${name} once, got ${JSON.stringify(loaded)}`);
+  }
+});
+
+test('check 30 (no design tool) — 9.S53: catches each listed tool named in a skill, a reference or an agent, fenced or not, in any case; permits the plain words beside them and a name inside another word', () => {
+  withTemp((dir) => {
+    const named = DESIGN_TOOLS.map((name, i) => write(dir, `skills/x/references/r${i}.md`, `# R\n\nThe board is in ${name}, exported.\n`));
+    assert.deepStrictEqual(checkNoDesignTools(named).map((v) => v.message.split('"')[1]), DESIGN_TOOLS);
+    const fenced = write(dir, 'agents/ledger-x.md', '```text\nopen it in Figma\n```\n');
+    assert.strictEqual(checkNoDesignTools([fenced]).length, 1, 'a fenced name is still named');
+    const lower = write(dir, 'skills/x/references/lower.md', '# L\n\nthe figma file, the miro board\n');
+    assert.deepStrictEqual(checkNoDesignTools([lower]).map((v) => v.message.split('"')[1]), ['figma'], 'a name in lower case is still named, the first on the line');
+    const plain = write(dir, 'skills/x/SKILL.md', 'Sketch the outline, frame the question, canvas the options, stitch the parts; a Framework load; v0.3 of the format.\n');
+    assert.strictEqual(checkNoDesignTools([plain]).length, 0, 'plain words and longer words are no tool');
+  });
+});
+
+test('check 33 (no CLAUDE.md writes but the keep\'s, on the person\'s yes) — 8.S27: catches a clause outside the keep that writes, adds to, changes, commits, records, saves or keeps something in the project\'s CLAUDE.md, telling a session to or telling of it, whoever it names as the writer, a keep entry writing it without the person\'s yes, and code naming it outside a comment; permits prose that reads it or names its path, a write verb a negation governs in its own clause, one in a clause not naming it, record and keep as nouns, the keep\'s entry on the person\'s yes, and a comment', () => {
+  withTemp((dir) => {
+    const writes = write(dir, 'skills/x/references/w.md', [
+      '# W', '',
+      'Append the pointer to the project\'s `CLAUDE.md`.',
+      'Add a line naming the record into CLAUDE.md.',
+      'Update CLAUDE.md with the rule.',
+      'Write the rule in the project\'s CLAUDE.md so every session reads it.',
+      'Use the Edit tool on CLAUDE.md to add the rule.',
+      'Nothing is decided here. Then append the pointer to CLAUDE.md.',
+      'The engine renders the record so a line the person adds to CLAUDE.md can point at it.',
+      'Commit the person\'s line on its own, `git commit -- CLAUDE.md`, on the person\'s yes.',
+      'Write the rule to CLAUDE.md where no skill holds it.',
+      'Add the gotcha to CLAUDE.md so nothing trips on it again.',
+      'Add the rule to CLAUDE.md, not to the spec.',
+      'Write the gotcha into CLAUDE.md where no line holds it yet.',
+      'Record the rule in CLAUDE.md.',
+      'Save the gotcha to CLAUDE.md.',
+      'Keep the rule in CLAUDE.md.',
+      'The keep adds the person\'s line to CLAUDE.md on their yes.',
+      '',
+    ].join('\n'));
+    assert.deepStrictEqual(checkNoClaudeMdWrites([writes]).map((v) => v.line), [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18], 'outside the keep, neither the person as writer nor their yes clears a write, nor a negation in another clause, and a sentence telling of the write is one');
+    const keep = write(dir, 'skills/ledger-keep/SKILL.md', [
+      '# K', '',
+      '- **An instruction for working in this project**, on the person\'s yes → a line in its `CLAUDE.md`; commit the person\'s line on its own, `git commit -- CLAUDE.md`.',
+      '- **An instruction for working in this project** → a line in its `CLAUDE.md`; commit it on its own, `git commit -- CLAUDE.md`.',
+      '- **An instruction for working in this project** → a line in its `CLAUDE.md`; else commit the line on its own, no task needed, `git commit -- CLAUDE.md`.',
+      '- **An instruction**, never padded → commit a line to `CLAUDE.md` at once.',
+      '- **An instruction** → commit it, never waiting, `git commit -- CLAUDE.md`.',
+      '',
+    ].join('\n'));
+    assert.deepStrictEqual(checkNoClaudeMdWrites([keep]).map((v) => v.line), [4, 5, 6, 7], 'the keep writes it only on an entry that waits for the person\'s yes, a negation in another clause clearing nothing');
+    const reads = write(dir, 'agents/ledger-y.md', [
+      'Read `CLAUDE.md` and the project skills before running anything.',
+      '4. **Project conventions**: the `CLAUDE.md` path, the project skill paths.',
+      'Do NOT modify commands based on other project documentation (CLAUDE.md, etc.).',
+      'Ledger never writes CLAUDE.md.',
+      'The product record is not CLAUDE.md, which is the person\'s to write.',
+      'Read CLAUDE.md before writing any code.',
+      'The product record names CLAUDE.md as the person\'s.',
+      'Never change CLAUDE.md.',
+      'Recorded in the product record, never in CLAUDE.md.',
+      'The project\'s `CLAUDE.md` when one exists at the project root, and its address.',
+    ].join('\n'));
+    assert.strictEqual(checkNoClaudeMdWrites([reads]).length, 0, `reading it and naming it are clean, got ${report(checkNoClaudeMdWrites([reads]))}`);
+    const code = write(dir, 'skills/ledger-engine/scripts/domain/z.cjs', [
+      '// The record\'s file is for a CLAUDE.md line to point at.',
+      ' * CLAUDE.md reaches the agent without the brief.',
+      'const target = path.join(root, \'CLAUDE.md\');',
+      'fs.appendFileSync(target, line); // not CLAUDE.md itself',
+      '',
+    ].join('\n'));
+    assert.deepStrictEqual(checkNoClaudeMdWrites([], [code]).map((v) => v.line), [3]);
+  });
+});
+
+test('check 34 (the build\'s prose) — 12.S46: catches a personal skill, a red-green loop and an instruction the builder needs no telling in the build\'s skill, a reference it loads at any depth and a build agent\'s definition; permits a reference it no longer loads, another skill and another agent', () => {
+  withTemp((dir) => {
+    const skill = write(dir, `skills/${BUILD_SKILL}/SKILL.md`, '# The Build\n\nLoad **[loop.md](references/loop.md)** and follow its instructions as written.\n\nInvoke `/my-review` first.\n');
+    const loop = write(dir, `skills/${BUILD_SKILL}/references/loop.md`, '# Loop\n\nSee **[deeper.md](deeper.md)**.\n\nWrite the tests first, red-green.\n');
+    const deeper = write(dir, `skills/${BUILD_SKILL}/references/deeper.md`, '# Deeper\n\nTell the builder to keep a to-do list.\n');
+    const builder = write(dir, 'agents/ledger-builder.md', '# Builder\n\nCheck your own work, and leave no stubs.\nRead ~/.claude/skills/house/SKILL.md.\n');
+    const unloaded = write(dir, `skills/${BUILD_SKILL}/references/tdd.md`, '# TDD\n\nRed-green, tests first.\n');
+    const other = write(dir, 'skills/ledger-experiment-process/SKILL.md', '# Experiment\n\nBreak the task down; TDD.\n');
+    const agent = write(dir, 'agents/ledger-plain-search.md', '# Search\n\nKeep a to-do list.\n');
+    const v = checkBuildProse([skill, loop, deeper, builder, unloaded, other, agent]);
+    assert.deepStrictEqual(v.map((x) => [posix(path.relative(dir, x.file)), x.line, x.message.split(' — ')[0]]), [
+      [`skills/${BUILD_SKILL}/SKILL.md`, 5, 'names a personal skill'],
+      [`skills/${BUILD_SKILL}/references/loop.md`, 5, 'prescribes a red-green loop'],
+      [`skills/${BUILD_SKILL}/references/deeper.md`, 3, 'tells the builder to break a task down, keep a to-do list, check its own work or leave no stubs (12.3.8)'],
+      ['agents/ledger-builder.md', 3, 'tells the builder to break a task down, keep a to-do list, check its own work or leave no stubs (12.3.8)'],
+      ['agents/ledger-builder.md', 4, 'names a personal skill'],
+    ], `each line is caught once, at its line, got ${report(v)}`);
+    const clean = write(dir, `skills/${BUILD_SKILL}/references/loop.md`, '# Loop\n\nThe checklist holds it; Invoke `/ledger-review-process epic x`; run `.claude/skills/ledger-engine/scripts/engine.cjs`.\n');
+    assert.strictEqual(checkBuildProse([skill, clean]).filter((x) => x.file === clean).length, 0, 'Ledger\'s own skills and checklists are no personal skill and no instruction');
+  });
+});
+
+test('check 35 (boot\'s stops as data) — catches a start skill that never loads its boot reference by its name or never says its arguments are the request itself, never the go-ahead; a boot reference that fetches no screen boot names, surfaces no warnings ahead of the stops or only after them, never says a boot run again carries the words, never names the boot call\'s description, fetches the banner anywhere but once, ahead of boot, on the bare command alone, never says a stop\'s marker, or lacks the bullet for a kind of next a stop has or a stop\'s load; either giving a stop a heading of its own; and passes every other skill and the start skill\'s other references by', () => {
+  withTemp((dir) => {
+    const stops = {
+      git: { next: null }, lost: { next: { kind: 'gate' } },
+      checks: { marker: 'Migration', next: { kind: 'load', reference: 'migration-checks' } }, finish: { next: { kind: 'load', reference: 'migration-review' } },
+    };
+    const BOOT_FILE = 'skills/ledger/references/boot.md';
+    const SKILL_FILE = 'skills/ledger/SKILL.md';
+    const FETCH = ['```bash', 'node .claude/skills/ledger-engine/scripts/engine.cjs render {surface} {args}', '```'];
+    const BANNER = ['On the bare command, with no words, fetch the banner first:', '', '```bash', 'node .claude/skills/ledger-engine/scripts/engine.cjs render banner', '```', ''];
+    const BOOT = ['```bash', 'node .claude/skills/ledger-engine/scripts/engine.cjs boot <<\'WORDS\'', '{words}', 'WORDS', '```', ''];
+    const ARGUMENTS = '- `$ARGUMENTS` — **words**: what they asked for — the request itself, never the go-ahead that followed it.';
+    const LOAD = 'Load **[boot.md](references/boot.md)** and follow its instructions as written.';
+    const skill = write(dir, SKILL_FILE, ['## Arguments', '', ARGUMENTS, '', '## Boot', '', LOAD, ''].join('\n'));
+    const clean = write(dir, BOOT_FILE, [
+      '# Boot', '', ...BANNER, ...BOOT, 'Run it, the call described as `Start Ledger`.', 'Every boot the start runs again is this one, words and all.', '', 'Surface the answer\'s `warnings` first, whatever else it says.', '', '## Boot\'s Stops', '',
+      'Boot names the stop it made in `stop`. Where it names a `marker`, say it on a line of its own, **`▪ {marker}`**.', '', ...FETCH, '',
+      '- **None** — the start ends there.', '- **`gate`** — the screen asks the person.', '- **`load`** — load the reference it names:',
+      '  - `migration-checks`: Load **[migration-checks.md](migration-checks.md)** and follow its instructions as written.',
+      '  - `migration-review`: Load **[migration-review.md](migration-review.md)** and follow its instructions as written.', '',
+    ].join('\n'));
+    const cleanText = fs.readFileSync(clean, 'utf8');
+    const reference = write(dir, 'skills/ledger/references/migration-review.md', '#### If `finish` answers\n');
+    const other = write(dir, 'skills/ledger-roadmap/SKILL.md', '#### If `state` is `lost`\n');
+    assert.deepStrictEqual(checkBootStops([skill, clean, reference, other], stops), [], `the load, the rule, its bullets and loads, and headings outside the start skill and its boot are clean, got ${report(checkBootStops([skill, clean, reference, other], stops))}`);
+    const late = write(dir, BOOT_FILE, cleanText.replace('Surface the answer\'s `warnings` first, whatever else it says.\n', '') + '\nSurface the answer\'s `warnings` first.\n');
+    assert.deepStrictEqual(checkBootStops([late], stops).map((x) => x.message), ['the boot reference surfaces boot\'s `warnings` before it follows any stop'], 'warnings surfaced only after the stops are followed');
+    const BANNER_RULE = 'the boot reference fetches the banner once, ahead of boot, on the bare command alone — "On the bare command, with no words, fetch the banner first:", then `render banner`';
+    const misplaced = {
+      'fetched after boot': cleanText.replace([...BANNER, ...BOOT].join('\n'), [...BOOT, ...BANNER].join('\n')),
+      'fetched again at the opening': `${cleanText}\n${BANNER.slice(2).join('\n')}`,
+      'fetched with no bare command named': cleanText.replace(BANNER[0], 'Fetch the banner first:'),
+    };
+    for (const [fault, text] of Object.entries(misplaced)) {
+      assert.deepStrictEqual(checkBootStops([write(dir, BOOT_FILE, text)], stops).map((x) => x.message), [BANNER_RULE], `the banner ${fault}`);
+    }
+    const skillText = fs.readFileSync(skill, 'utf8');
+    const goAhead = write(dir, SKILL_FILE, skillText.replace(ARGUMENTS, '- `$ARGUMENTS` — what they asked for.'));
+    assert.deepStrictEqual(checkBootStops([goAhead], stops).map((x) => x.message), ['the start skill\'s `$ARGUMENTS` never says they are the request itself — "the request itself, never the go-ahead that followed it"'], 'the arguments\' line saying nothing of the go-ahead');
+    const renamed = write(dir, SKILL_FILE, skillText.replace(LOAD, 'Load **[booting.md](references/booting.md)** and follow its instructions as written.'));
+    assert.deepStrictEqual(checkBootStops([renamed], stops).map((x) => x.message), ['the start skill never loads its boot reference by its name — Load **[boot.md](references/boot.md)**'], 'the boot reference loaded by another name');
+    const gateOnly = write(dir, BOOT_FILE, [...BANNER, ...BOOT, '## Boot', '', 'Run it, the call described as `Start Ledger`.', 'Every boot the start runs again is this one, words and all.', 'Surface the answer\'s `warnings` first.', '', ...FETCH, '', '- **`gate`** — the screen asks the person.', ''].join('\n'));
+    assert.deepStrictEqual(checkBootStops([gateOnly], { lost: stops.lost }), [], 'the kinds of next come from the stops: with no marker, no load and no ending among them, neither the marker\'s line nor their bullets is asked for');
+
+    const branched = write(dir, BOOT_FILE, [
+      '# Boot', '', '#### If `state` is `lost`', '', '```bash', 'node .claude/skills/ledger-engine/scripts/engine.cjs render state-lost-gate', '```', '',
+      '### At `finish`', '', 'Load **[migration-review.md](migration-review.md)** and follow its instructions as written.', '',
+      '```markdown', '#### If `state` is `checks`', '- **None** — the start ends there.', '**`▪ {marker}`**', '```', '', '**`gate`** — the screen asks the person.', '',
+    ].join('\n'));
+    const headed = write(dir, SKILL_FILE, [...skillText.split('\n'), '### If `state` is `git`', ''].join('\n'));
+    assert.deepStrictEqual(checkBootStops([headed, branched], stops).map((x) => [path.basename(x.file), x.line, x.message]), [
+      ['boot.md', 1, 'the boot reference fetches no stop\'s screen as boot names it — `render {surface} {args}`'],
+      ['boot.md', 1, 'the boot reference surfaces boot\'s `warnings` before it follows any stop'],
+      ['boot.md', 1, 'the boot reference never says a boot it runs again carries the words — "Every boot the start runs again is this one, words and all."'],
+      ['boot.md', 1, 'the boot reference never names the boot call\'s description — "the call described as `Start Ledger`"'],
+      ['boot.md', 1, 'the boot reference fetches the banner once, ahead of boot, on the bare command alone — "On the bare command, with no words, fetch the banner first:", then `render banner`'],
+      ['boot.md', 1, 'a stop names a marker, and the boot reference never says it — **`▪ {marker}`**'],
+      ['boot.md', 1, 'a stop\'s next is None, and the boot reference has no bullet following it — `- **None** —`'],
+      ['boot.md', 1, 'a stop\'s next is `gate`, and the boot reference has no bullet following it — `- **`gate`** —`'],
+      ['boot.md', 1, 'a stop\'s next is `load`, and the boot reference has no bullet following it — `- **`load`** —`'],
+      ['boot.md', 1, 'a stop loads `migration-checks`, and the boot reference has no load of migration-checks.md'],
+      ['SKILL.md', 9, 'a heading of its own for boot\'s `git` stop — boot names the stop, and one rule follows it'],
+      ['boot.md', 3, 'a heading of its own for boot\'s `lost` stop — boot names the stop, and one rule follows it'],
+      ['boot.md', 9, 'a heading of its own for boot\'s `finish` stop — boot names the stop, and one rule follows it'],
+    ], `got ${report(checkBootStops([headed, branched], stops))}`);
+  });
+});
+
+test('check 37 (descriptions) — 18.S73: catches a start skill whose description opens on anything but its trigger or that has none, or leaves out a change to the code or talk of the product, and a skill a handoff lands on whose description does not say it is reached only through one; passes every other skill by', () => {
+  withTemp((dir) => {
+    const skill = (name, description) => write(dir, `skills/${name}/SKILL.md`, ['---', `name: ${name}`, ...(description === null ? [] : [`description: ${description}`]), 'user-invocable: false', '---', '', 'Body.', ''].join('\n'));
+    const HANDED = 'Ledger\'s review phase. Reached only through a Ledger handoff, never invoked directly; work comes into Ledger through /ledger.';
+    const BOTH = 'any change to what this project\'s code does, and for talk that turns to the product itself at length.';
+    const targets = ['ledger', 'ledger-review-process', 'ledger-roadmap'];
+    const clean = [skill('ledger', `Use for ${BOTH}`), skill('ledger-review-process', HANDED), skill('ledger-roadmap', HANDED), skill('ledger-keep', 'Use whenever something of substance comes up.')];
+    assert.deepStrictEqual(checkDescriptions(clean, targets), [], `got ${report(checkDescriptions(clean, targets))}`);
+
+    const broken = [skill('ledger', `Ledger's entry. Use for ${BOTH}`), skill('ledger-review-process', 'Ledger\'s review phase.'), skill('ledger-roadmap', null)];
+    assert.deepStrictEqual(checkDescriptions(broken, targets).map((x) => [skillNameOf(x.file), x.line]), [
+      ['ledger', 3],
+      ['ledger-review-process', 3],
+      ['ledger-roadmap', 1],
+    ], `got ${report(checkDescriptions(broken, targets))}`);
+
+    const reachedFor = (description) => checkDescriptions([skill('ledger', description)], targets).map((x) => x.message);
+    const unnamed = ['the start skill\'s description names what it is reached for — "any change to what this project\'s code does" and "talk that turns to the product itself at length"'];
+    assert.deepStrictEqual(reachedFor('Use for any change to what this project\'s code does, however small.'), unnamed, 'talk of the product left out');
+    assert.deepStrictEqual(reachedFor('Use for talk that turns to the product itself at length.'), unnamed, 'a change to the code left out');
+    assert.deepStrictEqual(reachedFor('Use for any change to what this project\'s code does, and for talk that turns to the product itself.'), unnamed, 'a remark in passing taken for talk at length');
+  });
+});
+
+test('check 38 (no resume section) — 24.S14: catches a heading on resuming after a refresh or a compaction in a skill or a reference, at any level; passes a fenced example, a heading on resuming something else and prose that names resuming', () => {
+  withTemp((dir) => {
+    const skill = write(dir, 'skills/ledger-x/SKILL.md', ['# X', '', '## Resuming After Context Refresh', '', 'Re-read.', '', '### After a Compaction', '', '```markdown', '## Resuming after a refresh', '```', '', '## Resuming an Experiment', '', 'A topic resumes where it was.', ''].join('\n'));
+    const reference = write(dir, 'skills/ledger-x/references/work.md', '#### If the session refreshed\n');
+    assert.deepStrictEqual(checkNoResumeSections([skill, reference]).map((x) => [posix(path.relative(dir, x.file)), x.line]), [
+      ['skills/ledger-x/SKILL.md', 3],
+      ['skills/ledger-x/SKILL.md', 7],
+      ['skills/ledger-x/references/work.md', 1],
+    ], `got ${report(checkNoResumeSections([skill, reference]))}`);
+  });
+});
+
+test('check 39 (no pacing) — catches a line keeping the person out of the work, running it without them, or holding a question until they say they are ready to discuss it; passes the person turning to the questions themselves, a note Claude follows without the person typing, and a fenced example', () => {
+  withTemp((dir) => {
+    const skill = write(dir, 'skills/ledger-x/SKILL.md', ['# X', '', 'You land what the agents find, and keep the person out of it except where the engine stops for them.', '', 'The build runs start to finish without the person.', '', 'A question is drawn only once the person says they are ready to discuss it.', '', 'The person says they are ready to talk about a waiting question.', '', 'Claude follows the note without the person typing anything.', '', '```markdown', 'Hold it until they are ready to talk.', '```', ''].join('\n'));
+    assert.deepStrictEqual(checkNoPacing([skill]).map((x) => x.line), [3, 5, 7], `got ${report(checkNoPacing([skill]))}`);
+  });
+});
+
+test('check 36 (the start menu\'s load) — catches a skill drawing a menu whose back is the start menu with no load of start-menu.md in any of its files; passes a skill that loads it from a reference, the start skill, and a menu whose back is another', () => {
+  withTemp((dir) => {
+    const fetch = (menu) => `\`\`\`bash\nnode .claude/skills/ledger-engine/scripts/engine.cjs render ${menu} {work_unit}\n\`\`\`\n`;
+    const bare = write(dir, 'skills/ledger-continue-epic/SKILL.md', `## The Menu\n\n${fetch('epic-menu')}`);
+    const v = checkBackToStartLoads([bare]);
+    assert.deepStrictEqual(v.map((x) => [posix(path.relative(dir, x.file)), x.line, x.message]), [
+      ['skills/ledger-continue-epic/SKILL.md', 4, 'ledger-continue-epic draws the epic-menu, whose back draws the start menu, and loads no start-menu.md'],
+    ], `got ${report(v)}`);
+    const loaded = write(dir, 'skills/ledger-continue-epic/references/back.md', 'Load **[start-menu.md](../../ledger/references/start-menu.md)** and follow its instructions as written.\n');
+    const own = write(dir, 'skills/ledger/references/manage-work-unit.md', fetch('manage'));
+    const other = write(dir, 'skills/ledger-x/SKILL.md', fetch('manage-unit'));
+    assert.deepStrictEqual(checkBackToStartLoads([bare, loaded, own, other]), [], 'a reference\'s load serves its skill, and the start skill owns the reference');
+  });
+});
+
+test('check 29 (the framework loads once) — catches a file the framework loads twice and a framework file loaded from anywhere else; permits the framework load itself, another shared reference, fenced content, and a corpus without the framework', () => {
+  withTemp((dir) => {
+    const shared = 'skills/ledger-shared/references';
+    const framework = write(dir, `${shared}/framework.md`, [
+      '# Framework', '', 'Load **[voice.md](voice.md)** and follow its instructions as written.', '',
+      'Load **[altitude.md](altitude.md)** and follow its instructions as written.', '',
+    ].join('\n'));
+    const opening = write(dir, 'skills/ledger-x/SKILL.md', '## Instructions\n\nLoad **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.\n');
+    const other = write(dir, 'skills/ledger-x/references/a.md', 'Load **[devils-advocate.md](../../ledger-shared/references/devils-advocate.md)** and follow its instructions as written.\n');
+    const fenced = write(dir, 'skills/ledger-y/SKILL.md', '```markdown\nLoad **[voice.md](../ledger-shared/references/voice.md)** and follow its instructions as written.\n```\n');
+    const ok = checkFrameworkLoadsOnce([framework, opening, other, fenced]);
+    assert.strictEqual(ok.length, 0, `the framework's own loads, another reference and fenced content are clean, got ${report(ok)}`);
+    assert.strictEqual(checkFrameworkLoadsOnce([opening, other]).length, 0, 'a corpus without the framework has nothing to hold');
+
+    fs.appendFileSync(framework, 'Load **[voice.md](voice.md)** and follow its instructions as written.\n');
+    const phase = write(dir, 'skills/ledger-z/SKILL.md', '# Z\n\nThen load **[altitude.md](../ledger-shared/references/altitude.md)** and follow its instructions as written.\n');
+    const v = checkFrameworkLoadsOnce([framework, opening, phase]);
+    assert.deepStrictEqual(v.map((x) => [posix(path.relative(dir, x.file)), x.line]), [
+      [`${shared}/framework.md`, 6],
+      ['skills/ledger-z/SKILL.md', 3],
+    ], `each miss is caught once, at its line, got ${report(v)}`);
+    assert.match(v[0].message, /^voice\.md is loaded twice — the framework loads each file it composes once$/);
+    assert.match(v[1].message, /^altitude\.md is the framework's — it loads once per conversation, from framework\.md alone$/);
   });
 });
 
 test('check 28 (Bash grants carry a wildcard) — catches a bare grant inline or listed and a script grant whose `*` is not a trailing ` *`, permits a script grant ending in ` *`, a wildcard mid-path on another command, other tools, and a grant outside the frontmatter', () => {
   withTemp((dir) => {
-    const ENGINE = 'node .claude/skills/workflow-engine/scripts/engine.cjs';
-    const starred = write(dir, 'skills/workflow-a-process/SKILL.md', [
-      '---', 'name: workflow-a-process',
-      `allowed-tools: Bash(${ENGINE} *), Bash(${ENGINE} render *), Bash(${ENGINE} manifest:*), Bash(mkdir -p .workflows/*/.state), Read`,
+    const ENGINE = 'node .claude/skills/ledger-engine/scripts/engine.cjs';
+    const starred = write(dir, 'skills/ledger-a-process/SKILL.md', [
+      '---', 'name: ledger-a-process',
+      `allowed-tools: Bash(${ENGINE} *), Bash(${ENGINE} render *), Bash(${ENGINE} manifest:*), Bash(mkdir -p .ledger/*/.state), Read`,
       '---', '', `Run \`Bash(${ENGINE})\` from the body.`, '',
     ].join('\n'));
-    const agent = write(dir, 'agents/workflow-b.md', '---\nname: workflow-b\ntools: Read, Bash\n---\n\nBody.\n');
+    const agent = write(dir, 'agents/ledger-b.md', '---\nname: ledger-b\ntools: Read, Bash\n---\n\nBody.\n');
     const ok = checkBashGrantsCarryWildcard([starred, agent]);
     assert.strictEqual(ok.length, 0, `wildcarded grants, other tools and body text are clean, got ${report(ok)}`);
 
-    const inline = write(dir, 'skills/workflow-c-process/SKILL.md', [
-      '---', 'name: workflow-c-process', `allowed-tools: Bash(${ENGINE}), Bash(${ENGINE} *), Bash(git log)`, '---', '',
+    const inline = write(dir, 'skills/ledger-c-process/SKILL.md', [
+      '---', 'name: ledger-c-process', `allowed-tools: Bash(${ENGINE}), Bash(${ENGINE} *), Bash(git log)`, '---', '',
     ].join('\n'));
-    const listed = write(dir, 'skills/workflow-d-process/SKILL.md', [
-      '---', 'name: workflow-d-process', 'allowed-tools:', `  - Bash(${ENGINE} manifest)`, '  - Read', 'user-invocable: false', '---', '',
+    const listed = write(dir, 'skills/ledger-d-process/SKILL.md', [
+      '---', 'name: ledger-d-process', 'allowed-tools:', `  - Bash(${ENGINE} manifest)`, '  - Read', 'user-invocable: false', '---', '',
     ].join('\n'));
-    const misplaced = write(dir, 'skills/workflow-e-process/SKILL.md', [
-      '---', 'name: workflow-e-process',
+    const misplaced = write(dir, 'skills/ledger-e-process/SKILL.md', [
+      '---', 'name: ledger-e-process',
       `allowed-tools: Bash(node .claude/skills/*/scripts/engine.cjs), Bash(${ENGINE}*), Bash(node --no-warnings tools/run.mjs*)`, '---', '',
     ].join('\n'));
     const v = checkBashGrantsCarryWildcard([inline, listed, misplaced]);
     assert.deepStrictEqual(v.map((x) => [skillNameOf(x.file), x.line]), [
-      ['workflow-c-process', 3],
-      ['workflow-c-process', 3],
-      ['workflow-d-process', 4],
-      ['workflow-e-process', 3],
-      ['workflow-e-process', 3],
-      ['workflow-e-process', 3],
+      ['ledger-c-process', 3],
+      ['ledger-c-process', 3],
+      ['ledger-d-process', 4],
+      ['ledger-e-process', 3],
+      ['ledger-e-process', 3],
+      ['ledger-e-process', 3],
     ], `each bare grant, and each script grant whose \`*\` is not a trailing \` *\` or \`:*\`, is caught at its line, got ${report(v)}`);
-    assert.match(v[0].message, /^Bash\(node \.claude\/skills\/workflow-engine\/scripts\/engine\.cjs\) is a script grant that does not end in ` \*`/);
+    assert.match(v[0].message, /^Bash\(node \.claude\/skills\/ledger-engine\/scripts\/engine\.cjs\) is a script grant that does not end in ` \*`/);
     assert.match(v[1].message, /^Bash\(git log\) has no `\*`/);
     assert.match(v[3].message, /^Bash\(node \.claude\/skills\/\*\/scripts\/engine\.cjs\) is a script grant/);
     assert.match(v[4].message, /engine\.cjs\*\) is a script grant/);

@@ -1,0 +1,26 @@
+# Technical-Lens Presentation
+
+*Shared reference. Loaded by the build's `the-task-loop.md` when the user asks for the technical perspective.*
+
+---
+
+The record retold from the code's side: a perspective shift, not a dump — never raw file contents, never a jargon chain.
+
+Engine-emitted sections sit outside it entirely, and a gate re-emitted after a retell is not part of the retelling. The register stops at the section boundary.
+
+This file composes with [voice.md](voice.md) rather than competing: this governs the record's shape and fidelity, voice governs how the sentences sound.
+
+## Audience
+
+The same engineer — knows the product, and is now asking how the code produces what they saw. Full engineering fluency; codebase structures are introduced as the story needs them, then called by their real names.
+
+## Register
+
+- **Lead with the mechanism.** The code path, state, or interaction that produces the behaviour — what runs, in what order, and where it goes wrong.
+- **Narrative prose, as markdown (not a code block)** — never fixed-width fragments. Bold section leads are fine.
+- **Real names, woven in.** Files, functions, and flags with `file:line` form the spine here — carried in sentences, not bare lists.
+- **Behaviour stays attached.** Each mechanism ties back to what it produces in the product; the manifestation anchors the story it no longer leads.
+
+## Fidelity
+
+A retelling, not a summary — every substantive point in the underlying record appears; nothing softened, nothing dropped. This is the detail path the account the person saw first defers to. The record file stays authoritative.

@@ -1,5 +1,7 @@
 'use strict';
 
+// Layer: unit.
+
 require('./hermetic-env.cjs');
 
 const crypto = require('crypto');
@@ -9,9 +11,9 @@ const path = require('path');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { tokenize, TOKENIZER_VERSION, FIELDS } = require('../../skills/workflow-engine/scripts/kernel/knowledge/keyword.cjs');
-const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
+const { tokenize, TOKENIZER_VERSION, FIELDS } = require('../../skills/ledger-engine/scripts/kernel/knowledge/keyword.cjs');
+const { StubProvider } = require('../../skills/ledger-engine/scripts/kernel/knowledge/embeddings.cjs');
 
 const STUB_DIMS = 16;
 const stub = new StubProvider({ dimensions: STUB_DIMS });
@@ -106,14 +108,25 @@ describe('knowledge store — chunks', () => {
     assert.throws(() => store.removeByIdentity(db, { work_unit: 'x', phase: 'y' }), /all required/);
   });
 
+  it('removes by the whole identity: a sibling topic under the same work unit and phase stays, and the same topic in another work unit', () => {
+    const session = { phase: 'discovery', work_unit: 'payments', topic: 'session-001' };
+    const db = storeOf(
+      ['one', 'offline mode surface', session],
+      ['sibling', 'analytics dashboard tempo', { ...session, topic: 'session-002' }],
+      ['elsewhere', 'offline mode surface', { ...session, work_unit: 'billing' }],
+    );
+    assert.strictEqual(store.removeByIdentity(db, session), 1);
+    assert.deepStrictEqual(store.allChunks(db).map((c) => c.id), ['sibling', 'elsewhere']);
+  });
+
   it('counts and removes by a filter of values or lists of values', () => {
     const db = storeOf(
       ['s', 'shared', { phase: 'specification' }],
       ['d', 'shared', { phase: 'discussion' }],
-      ['r', 'shared', { phase: 'research' }],
+      ['r', 'shared', { phase: 'record' }],
     );
     assert.strictEqual(store.countByFilter(db, { phase: { in: ['specification', 'discussion'] } }), 2);
-    assert.strictEqual(store.removeByFilter(db, { phase: { eq: 'research' } }), 1);
+    assert.strictEqual(store.removeByFilter(db, { phase: { eq: 'record' } }), 1);
     assert.deepStrictEqual(store.allChunks(db).map((c) => c.id), ['s', 'd']);
     assert.throws(() => store.countByFilter(db, {}), /where clause is required/);
   });
@@ -181,14 +194,25 @@ describe('knowledge store — keyword search', () => {
     assert.strictEqual(scores(store.searchKeyword(db, { term: 'queue' })).a, bm25({ count: 1, matching: 2, size: 2, length: 2, average: 2 }));
   });
 
-  it('searches the content, the heading path, the source path and the chunk id', () => {
+  it('searches the content, the heading path, and the unit and topic naming its source — never its path or id', () => {
     const db = storeOf(
       ['content', 'alpha'],
       ['headings', 'delta', { heading_path: 'Auth › Alpha' }],
-      ['path', 'beta', { source_file: 'x/alpha.md' }],
-      ['alpha', 'gamma', { source_file: 'x/id.md' }],
+      ['unit', 'beta', { work_unit: 'alpha' }],
+      ['topic', 'gamma', { topic: 'alpha' }],
+      ['path', 'epsilon', { source_file: '.knowledge/records/auth-flow/alpha.md' }],
+      ['alpha', 'zeta'],
     );
-    assert.deepStrictEqual(store.searchKeyword(db, { term: 'alpha' }).map((h) => h.id).sort(), ['alpha', 'content', 'headings', 'path']);
+    assert.deepStrictEqual(store.searchKeyword(db, { term: 'alpha' }).map((h) => h.id).sort(), ['content', 'headings', 'topic', 'unit']);
+  });
+
+  it('never matches a word only the folders every chunk of a kind shares hold, nor a unit\'s own level\'s dotted topic', () => {
+    const db = storeOf(
+      ['record', 'alpha', { source_file: '.knowledge/records/auth-flow/auth-flow.md', phase: 'record' }],
+      ['summary', 'beta', { source_file: 'auth-flow/summary.md', phase: 'summary', topic: '.unit' }],
+    );
+    assert.deepStrictEqual(store.searchKeyword(db, { term: 'knowledge records record summary md unit' }), []);
+    assert.deepStrictEqual(store.searchKeyword(db, { term: 'auth-flow' }).map((h) => h.id).sort(), ['record', 'summary']);
   });
 
   it('returns hits in the chunk\'s shape, with a score', () => {
@@ -254,11 +278,11 @@ describe('knowledge store — keyword search', () => {
   });
 
   it('scores each field on its own, with its own average length, and sums the fields', () => {
-    const db = storeOf(['both', 'alpha beta', { source_file: 'alpha/notes.md' }], ['content', 'alpha gamma delta']);
+    const db = storeOf(['both', 'alpha beta', { work_unit: 'alpha' }], ['content', 'alpha gamma delta']);
     const scored = scores(store.searchKeyword(db, { term: 'alpha' }));
     const content = (length) => bm25({ count: 1, matching: 2, size: 2, length, average: 2.5 });
-    const sourceFile = bm25({ count: 1, matching: 1, size: 2, length: 3, average: 3 });
-    assert.strictEqual(scored.both, content(2) + sourceFile);
+    const source = bm25({ count: 1, matching: 1, size: 2, length: 2, average: 2 });
+    assert.strictEqual(scored.both, content(2) + source);
     assert.strictEqual(scored.content, content(3));
   });
 
@@ -278,14 +302,14 @@ describe('knowledge store — keyword search', () => {
   it('a filter selects chunks and never changes how one scores', () => {
     const db = storeOf(
       ['disc', 'alpha beta', { phase: 'discussion' }],
-      ['res', 'alpha gamma delta', { phase: 'research' }],
-      ['other', 'zeta', { phase: 'research' }],
+      ['res', 'alpha gamma delta', { phase: 'record' }],
+      ['other', 'zeta', { phase: 'record' }],
     );
     const unfiltered = scores(store.searchKeyword(db, { term: 'alpha' }));
     const filtered = store.searchKeyword(db, { term: 'alpha', where: { phase: { eq: 'discussion' } } });
     assert.deepStrictEqual(filtered.map((h) => h.id), ['disc']);
     assert.strictEqual(filtered[0].score, unfiltered.disc);
-    assert.deepStrictEqual(store.searchKeyword(db, { term: 'alpha', where: { phase: { in: ['research'] }, topic: { eq: 'auth-flow' } } }).map((h) => h.id), ['res']);
+    assert.deepStrictEqual(store.searchKeyword(db, { term: 'alpha', where: { phase: { in: ['record'] }, topic: { eq: 'auth-flow' } } }).map((h) => h.id), ['res']);
   });
 
   it('scores the store as it stands after a removal', () => {
@@ -303,7 +327,7 @@ describe('knowledge store — keyword search', () => {
     assert.strictEqual(rarity('delta'), idf(1));
     assert.ok(rarity('delta') > rarity('alpha'));
     assert.strictEqual(rarity('absent'), 0);
-    assert.strictEqual(rarity(tokenize('x/a.md')[0]), 0, 'the source path is no content');
+    assert.strictEqual(rarity(tokenize('auth-flow')[0]), 0, 'the unit naming the source is no content');
   });
 });
 
@@ -324,11 +348,11 @@ describe('knowledge store — tokenizer', () => {
     assert.deepStrictEqual(
       { version: TOKENIZER_VERSION, fields: FIELDS, tokens: tokenize(text) },
       {
-        version: 3,
-        fields: ['content', 'heading_path', 'source_file', 'id'],
+        version: 4,
+        fields: ['content', 'heading_path', 'source'],
         tokens: ['rate-limit', 'queue', 'drain', 'na', 've', 'cafe', 'refresh', 'it', 'tokens_v2', '2026', 'generous', 'organis'],
       },
-      'the tokenizer\'s output or its fields changed: bump TOKENIZER_VERSION in skills/workflow-engine/scripts/kernel/knowledge/keyword.cjs, then update this golden to the new version, fields and tokens',
+      'the tokenizer\'s output or its fields changed: bump TOKENIZER_VERSION in skills/ledger-engine/scripts/kernel/knowledge/keyword.cjs, then update this golden to the new version, fields and tokens',
     );
   });
 });
@@ -424,7 +448,7 @@ describe('knowledge store — the file', () => {
     store.insertDocument(loaded, makeDoc({ id: 'c', content: 'alpha gamma', embedding: stub.embed('alpha gamma') }));
     store.saveStore(loaded, file);
     const again = store.loadStore(file);
-    assert.deepStrictEqual(again.vocabulary.words.sort(), ['alpha', 'c', 'gamma', 'md', 'x']);
+    assert.deepStrictEqual(again.vocabulary.words.sort(), ['alpha', 'auth-flow', 'gamma']);
     assert.deepStrictEqual(store.searchKeyword(again, { term: 'alpha' }).map((h) => h.id), ['c']);
     assert.deepStrictEqual(store.searchKeyword(again, { term: 'unique-to-a' }), []);
   });
@@ -640,7 +664,7 @@ describe('knowledge store — metadata', () => {
       model: 'text-embedding-3-small',
       dimensions: 1536,
       last_indexed: '2026-04-10T12:34:56.789Z',
-      fill_failure: '.workflows/a/discussion/a.md: quota',
+      fill_failure: '.ledger/.knowledge/records/a/a.md: quota',
     };
     store.writeMetadata(metaPath, metadata);
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(metaPath, 'utf8')), metadata);

@@ -3,13 +3,15 @@
 // Unit tests for the progress clock: the pure
 // buildProgressClock() — the watermark that advances on completed work, not
 // wall-clock time — and compact's prune test built on it.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { buildProgressClock } = require('../../skills/workflow-engine/scripts/domain/knowledge/decay.cjs');
+const { buildProgressClock } = require('../../skills/ledger-engine/scripts/domain/knowledge/decay.cjs');
 
 describe('buildProgressClock', () => {
   it('returns an empty map for empty / non-array input', () => {
@@ -97,7 +99,7 @@ describe('buildProgressClock', () => {
 });
 
 describe('buildProgressClock — significance weighting', () => {
-  const W = { 'quick-fix': 0.25, 'bugfix': 0.5, 'feature': 1.0, 'cross-cutting': 0, 'epic': 1.0 };
+  const W = { 'quick-fix': 0.25, 'bugfix': 0.5, 'feature': 1.0, 'epic': 1.0 };
   const epic = (name, date, topics) => ({
     name,
     completed_at: date,
@@ -144,15 +146,15 @@ describe('buildProgressClock — significance weighting', () => {
     assert.strictEqual(buildProgressClock(units).get('target'), 4); // 1 + 3
   });
 
-  it('excludes cross-cutting work (weight 0 — terminal, never implemented)', () => {
+  it('excludes work of a type weighed 0', () => {
     const units = [
       { name: 'target', completed_at: '2024-01-01', work_type: 'feature' },
-      { name: 'cc1', completed_at: '2024-02-01', work_type: 'cross-cutting' },
-      { name: 'cc2', completed_at: '2024-03-01', work_type: 'cross-cutting' },
+      { name: 'q1', completed_at: '2024-02-01', work_type: 'quick-fix' },
+      { name: 'q2', completed_at: '2024-03-01', work_type: 'quick-fix' },
       { name: 'f', completed_at: '2024-04-01', work_type: 'feature' },
     ];
-    // Only the feature counts; the two cross-cutting units add nothing.
-    assert.strictEqual(buildProgressClock(units, W).get('target'), 1.0);
+    // Only the feature counts; the two quick-fixes add nothing.
+    assert.strictEqual(buildProgressClock(units, { ...W, 'quick-fix': 0 }).get('target'), 1.0);
   });
 
   it('treats an unknown work type as factor 1.0', () => {
@@ -165,24 +167,23 @@ describe('buildProgressClock — significance weighting', () => {
 });
 
 describe('progressElapsed', () => {
-  const { progressElapsed } = require('../../skills/workflow-engine/scripts/domain/knowledge/decay.cjs');
+  const { progressElapsed } = require('../../skills/ledger-engine/scripts/domain/knowledge/decay.cjs');
   const units = [
     { name: 'buried', status: 'completed', completed_at: '2024-01-01', work_type: 'feature' },
     { name: 'frontier', status: 'completed', completed_at: '2024-12-01', work_type: 'feature' },
   ];
 
-  it('is the unit\'s place on the clock, and 0 for a specification however far behind', () => {
+  it('is the unit\'s place on the clock, 0 for the frontier and a unit it does not hold', () => {
     const elapsedOf = progressElapsed(units, { feature: 1.0 });
-    assert.strictEqual(elapsedOf('buried', 'discussion'), 1);
-    assert.strictEqual(elapsedOf('buried', 'specification'), 0);
-    assert.strictEqual(elapsedOf('frontier', 'discussion'), 0);
-    assert.strictEqual(elapsedOf('unlisted', 'discussion'), 0);
+    assert.strictEqual(elapsedOf('buried'), 1);
+    assert.strictEqual(elapsedOf('frontier'), 0);
+    assert.strictEqual(elapsedOf('unlisted'), 0);
   });
 });
 
 // The one prune rule compact removes by and the bulk index skips by.
 describe('pruneTest', () => {
-  const { pruneTest } = require('../../skills/workflow-engine/scripts/domain/knowledge/decay.cjs');
+  const { pruneTest } = require('../../skills/ledger-engine/scripts/domain/knowledge/decay.cjs');
   // S0 3 and a 0.95 floor: a unit two completions behind has R(2,3) ≈ 0.931 —
   // below the floor; one behind has R(1,3) ≈ 0.965 — above it.
   const cfg = { decay_prune_below: 0.95, decay_base_stability: 3 };
@@ -193,19 +194,16 @@ describe('pruneTest', () => {
     { name: 'active', status: 'in-progress', work_type: 'feature' },
   ];
 
-  it('prunes a unit below the floor, non-spec phases only', () => {
+  it('prunes a unit below the floor', () => {
     const { floor, prunes } = pruneTest(cfg, units);
     assert.strictEqual(floor, 0.95);
-    for (const phase of ['research', 'discussion', 'investigation', 'imports', 'seeds', 'discovery', 'analysis']) {
-      assert.strictEqual(prunes('buried', phase), true, phase);
-    }
-    assert.strictEqual(prunes('buried', 'specification'), false, 'specifications never decay');
+    assert.strictEqual(prunes('buried'), true);
   });
 
   it('keeps a unit above the floor, the frontier, an in-progress unit, and an unknown one', () => {
     const { prunes } = pruneTest(cfg, units);
     for (const unit of ['recent', 'frontier', 'active', 'unlisted']) {
-      assert.strictEqual(prunes(unit, 'discussion'), false, unit);
+      assert.strictEqual(prunes(unit), false, unit);
     }
   });
 
@@ -221,7 +219,7 @@ describe('pruneTest', () => {
     // A unit one completion behind: R(1,5) ≈ 0.979 clears a 0.97 floor,
     // where R(1,3) ≈ 0.965 would not.
     const { prunes } = pruneTest({ decay_prune_below: 0.97 }, units);
-    assert.strictEqual(prunes('recent', 'discussion'), false);
-    assert.strictEqual(prunes('buried', 'discussion'), true);
+    assert.strictEqual(prunes('recent'), false);
+    assert.strictEqual(prunes('buried'), true);
   });
 });

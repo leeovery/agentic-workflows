@@ -1,0 +1,59 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: the oldest git the engine runs on. The landing replays a
+// task's commits with `git merge-tree --merge-base`, which git 2.40 brought;
+// nothing else the engine runs, or prints for the person to run, needs a
+// newer one. Boot reads the version once, before anything runs git, and a
+// git below the floor, or none on the PATH, stops it there.
+// `render git-floor-stop` draws the stop, reading the version again.
+// ---------------------------------------------------------------------------
+
+const { gitFloorStop } = require('./projections/boot.cjs');
+const { releaseOf, atLeast } = require('../kernel/version.cjs');
+const { tryGit } = require('../kernel/git.cjs');
+
+/** The oldest git the engine runs on. */
+const GIT_FLOOR = [2, 40, 0];
+
+/** What `git --version` answers before its version. */
+const SAID = 'git version ';
+
+/**
+ * How the git on the PATH falls short of the floor: null where it meets it,
+ * or answers a version that does not read, which is not judged; else the
+ * version it answers, `found` null where no git runs or `git --version`
+ * fails, as Apple's stand-in does on a Mac without its command-line tools.
+ * @typedef {{found: string|null}|null} GitShortfall
+ */
+
+/**
+ * The version `git --version` answers, as git prints it — `2.39.5 (Apple
+ * Git-154)` reads 2.39.5, `2.40.0.windows.1` reads 2.40.0, and a release
+ * without its third part reads it as 0.
+ * @param {string} answer
+ * @returns {number[]|null}
+ */
+function versionOf(answer) {
+  return answer.startsWith(SAID) ? releaseOf(answer.slice(SAID.length)) : null;
+}
+
+/** @returns {GitShortfall} */
+function gitShortfall() {
+  const answer = tryGit(process.cwd(), ['--version']);
+  if (answer === null) return { found: null };
+  const version = versionOf(answer.trim());
+  return version === null || atLeast(version, GIT_FLOOR) ? null : { found: version.join('.') };
+}
+
+/**
+ * `render git-floor-stop`: the screen of boot's stop on the git it found.
+ * @returns {string}
+ */
+function gitFloorStopSurface() {
+  const shortfall = gitShortfall();
+  if (shortfall === null) throw new Error(`render git-floor-stop: this git meets the floor, ${GIT_FLOOR.join('.')} — nothing stopped boot`);
+  return gitFloorStop(GIT_FLOOR.join('.'), shortfall.found);
+}
+
+module.exports = { GIT_FLOOR, versionOf, gitShortfall, gitFloorStopSurface };

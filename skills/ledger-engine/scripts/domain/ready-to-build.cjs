@@ -1,0 +1,384 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: ready to build (11.8), the spec's gate — the screen, `render
+// ready-to-build <unit> [--page] [--calls]`; the person's pick, `ready-to-build
+// yes <unit> --position auto|step [--marks <file>]`, which concludes the spec
+// and begins the build; and the build's position switched after it,
+// `workunit position <unit> auto|step` (3.3.6). Its screen is drawn by
+// projections/ready-to-build.cjs.
+//
+// - The screen stands on the landed spec alone (spec-landed.cjs), refused
+//   while `spec.md` holds changes that have not landed. It shows once ready
+//   to build's checklist is closed and nothing has landed or been cut since,
+//   every engine item holding still (checklist.cjs, E12) — the project's
+//   environment setup recorded among them, so at the project's first ready
+//   to build its screen, `render environment-setup`, is asked before this
+//   one, and at no later one (22.5.3, environment-verbs.cjs). Then the
+//   drivers are checked against the tools they need: where a tool is not
+//   fine, the stop is drawn in the screen's place, and the yes, checking
+//   them again, is refused with it (22.4.5–22.4.9, drivers-verbs.cjs). Where
+//   the project lands through GitHub and the squash default's offer was
+//   never answered, the offer is drawn in the screen's place, at the
+//   project's first ready to build and at no later one (4.4.6,
+//   github-setup.cjs), its answer leading back to the screen. It refuses a unit
+//   `enter specification` refuses (spec-entry.cjs) — one the project lacks,
+//   one not in progress, a quick-fix, topics not settled; and a unit whose
+//   build has begun, the gate raised once per spec
+//   (11.8.1).
+// - It shows the short outline, the landed spec's areas; the phase cut, read
+//   from the manifest (11.S31); Claude's calls at the spec — the current
+//   decisions of Claude's made there — counted by kind; and every checklist
+//   item skipped. Each departure the person made among the spec's gap
+//   answers that this machine logged is asked its verdict there, one at a
+//   time, until each has one (16.10.11).
+// - A feature's is one screen with its topic's decided (9.7.6, 11.8.5): it
+//   stands on decided's close too, as the decided gate stands on it, and on
+//   the payload staged for it (decided.cjs); it shows the topic's close
+//   beside the spec's — what the person decided, the product-record lines,
+//   the candidates and their strike — Claude's calls on the topic counted
+//   with those at the spec, and decided's skips before ready to build's;
+//   and it asks decided's verdicts, at decided, before the spec's. A
+//   bugfix's is one screen with its investigation's conclude alike
+//   (investigation-conclude.cjs): it stands on the investigation's close
+//   into its spec and the recap staged for it, shows the recap before the
+//   spec's parts, and asks the investigation's verdicts, at the conclusion,
+//   before the spec's. Then the gate offers the build's
+//   position, auto first and recommended, nothing preselected (3.3.9), the
+//   review page where the session can publish one (`--page`, 11.11.11), the
+//   calls, and a comment. While the review page is open (spec-review.cjs)
+//   its foot counts, by the marks last stored, the lines the person ticked,
+//   those carrying Claude's tick they let stand, and those passing without
+//   review (11.11.7); its review row reads the comments, and its picks take
+//   the marks read back into `.cache/{unit}/specification/read-back.json`.
+// - The yes stands on the screen as drawn: the close it shows and no
+//   verdict still to ask. While the page is open it takes the page's marks,
+//   read back fresh — nothing on the page reaches Claude by itself (11.11.5)
+//   — and settles the review on them in one call (`settleReview`), storing
+//   them first: a comment waiting for Claude refuses the yes, listing each,
+//   the marks staying stored (11.11.8); else the review's record is written.
+//   With no page open it takes no marks and writes no record (11.S22). A
+//   feature's yes takes its topic's close as the decided gate's yes does,
+//   every line and candidate checked before the review is settled, and
+//   lands them after: the product-record lines through the ledger, then, in
+//   the manifest's one save, the candidates parked on the roadmap, the topic
+//   decided and its close recorded as taken, which dates the discussion. A
+//   bugfix's concludes its investigation in that save, what the bug is in
+//   checked before anything is written. Then it writes each driver's setting the project lacks, as the first
+//   verb needing it would, so the build records its drivers (22.4.3); then
+//   `build: {position}` on the unit's manifest — the first
+//   pick of the position, its record the gate's answer (E14) — concluding
+//   the spec (P7), and commits the manifest with the project's, the record,
+//   if any, and the roadmap the candidates parked on, a failed commit retried by the unit's
+//   `commit --state`, which takes each: files only the engine writes. Its
+//   `next` hands off into the build, whatever the unit's type (24.1.2).
+// - A switch of position is stated intent (3.3.7): `workunit position`
+//   writes the build's new position and logs a `position-switch` event in
+//   the trust log, and commits the manifest. It refuses a quick-fix, which
+//   has no position (19.5.23); a unit whose build has not begun — its
+//   position is chosen at ready to build — and a switch to the position the
+//   build is in.
+// ---------------------------------------------------------------------------
+
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
+const { BUILD_POSITIONS, DRIVER_KINDS } = require('../kernel/manifest-schema.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
+const { carrying } = require('./ledger.cjs');
+const { claudesCall } = require('./ledger-events.cjs');
+const { isCurrent, factsOf, decidedNow } = require('./ledger-fold.cjs');
+/** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
+const { readShown } = require('./ledger-read.cjs');
+const { verdictAsked } = require('./ledger-verdicts.cjs');
+const { buildBegun, itemTitle, cutPhases, quickFixBuild } = require('./derivations.cjs');
+const { manifestOf } = require('./ledger-units.cjs');
+const { knownUnit, noUnit, unitClosure } = require('./topic-standing.cjs');
+const { specEntryRefusal } = require('./spec-entry.cjs');
+const { specReading } = require('./spec-sections.cjs');
+const { readyClose, decidedClose } = require('./checklist.cjs');
+const { closesIntoSpec, featureClose, closingYes } = require('./decided.cjs');
+const { concludedClose, concludingYes } = require('./investigation-conclude.cjs');
+const { pageOpen, readBackFile, reviewStates, settleReview } = require('./spec-review.cjs');
+const { handedTag } = require('./topic-map.cjs');
+const { record } = require('./trust-log.cjs');
+const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+const { refusing, stands } = require('./staged-payload.cjs');
+const { resolveDriver } = require('./drivers.cjs');
+const { driversStop } = require('./drivers-verbs.cjs');
+const { githubSquashOffered, githubSquashNested } = require('./github-setup.cjs');
+const { githubSquashGate } = require('./projections/boot.cjs');
+const { projectName } = require('./state-checks.cjs');
+const { phaseSkill } = require('./handoff.cjs');
+const { readyToBuildScreen } = require('./projections/ready-to-build.cjs');
+
+/** @typedef {import('./ledger-read.cjs').Shower} Shower */
+/** @typedef {import('./projections/ready-to-build.cjs').ReadyView} ReadyView */
+/** @typedef {import('./spec-review.cjs').Waiting} Waiting */
+/** @typedef {(typeof BUILD_POSITIONS)[number]} Position */
+
+const PHASE = 'specification';
+
+const READY_TO_BUILD_USAGE = 'ready-to-build yes <work-unit> --position auto|step [--marks <file>]';
+const POSITION_USAGE = 'workunit position <work-unit> auto|step';
+
+/**
+ * Why ready to build cannot show for the unit before its checklist is read,
+ * or null: a unit its spec's entry refuses, or one whose build has begun.
+ * @param {string} cwd @param {string} unit @returns {string|null}
+ */
+function unitRefusal(cwd, unit) {
+  const entry = specEntryRefusal(cwd, unit);
+  if (entry !== null) return entry;
+  const manifest = /** @type {Record<string, any>} */ (manifestOf(stateRoot(cwd), unit));
+  return buildBegun(manifest)
+    ? `ready to build has passed for ${unit} — its build began in ${manifest.build.position}, and its position switches through workunit position ${unit} auto|step`
+    : null;
+}
+
+/**
+ * Claude's calls at the spec: the current decisions made there that stand
+ * Claude's (ledger-fold.cjs, `decidedNow`), each with the question it
+ * answers.
+ * @param {Shower} shower @param {string} unit
+ * @returns {import('./projections/closing.cjs').ShownCall[]}
+ */
+function callsAtSpec(shower, unit) {
+  const { folded } = shower;
+  return [...folded.facts].flatMap(([id, facts]) => {
+    if (facts.kind !== 'decision' || facts.unit !== unit || facts.phase !== PHASE || !isCurrent(folded, id)) return [];
+    const stands = decidedNow(folded, id);
+    if (!claudesCall(stands)) return [];
+    const shown = shower.show(id);
+    return [{
+      question: facts.answers === null ? null : /** @type {string} */ (shower.show(facts.answers).text),
+      answer: /** @type {string} */ (shown.text),
+      kind: /** @type {string|null} */ (shown.kind ?? null),
+      handed: handedTag({ given: stands.given ?? undefined }),
+    }];
+  });
+}
+
+/**
+ * The close the screen stands on, refused where ready to build cannot show:
+ * the unit's own refusals; a feature's topic's close, as the decided gate
+ * stands on it (`decidedClose`); then its checklist's close (`readyClose`);
+ * then a bugfix's investigation's close (`concludedClose`).
+ * @param {string} cwd @param {string} unit
+ */
+function readyStanding(cwd, unit) {
+  const refused = unitRefusal(cwd, unit);
+  if (refused !== null) throw new Error(refused);
+  const manifest = /** @type {Record<string, any>} */ (manifestOf(stateRoot(cwd), unit));
+  const decided = closesIntoSpec(manifest) ? decidedClose(cwd, unit, unit) : null;
+  const ready = readyClose(cwd, unit);
+  return { ...ready, decided, concluded: concludedClose(cwd, manifest, ready.warnings) };
+}
+
+/** Whether ready to build's screen draws, as `render ready-to-build` stands on it: what the board lists waiting on the person's yes. @param {string} cwd @param {string} unit */
+const readyDraws = (cwd, unit) => stands(() => readyStanding(cwd, unit));
+
+/**
+ * What the screen and the yes stand on, refused where ready to build
+ * cannot show: the unit's manifest, the skips its checklists show, the
+ * landed spec the close seals, a bugfix's investigation's close, and, read
+ * in one pass of the ledger, a feature's topic's close, Claude's calls, and
+ * the verdict asked — counted across a feature's topic's departures, or a
+ * bugfix's investigation's, and the spec's, the topic's or the
+ * investigation's first — with the point it is given at.
+ * @param {string} cwd @param {string} unit
+ */
+function standing(cwd, unit) {
+  const { closed, skips, warnings, landed, decided, concluded } = readyStanding(cwd, unit);
+  const root = stateRoot(cwd);
+  try {
+    const manifest = loadWorkUnitManifest(cwd, unit);
+    /** The verdict point a departure is asked at on this screen, and the close it is asked under, or null. @param {IdFacts} facts */
+    const pointOf = (facts) => {
+      if (facts.unit !== unit) return null;
+      if (decided !== null && facts.topic === unit) return { point: 'decided', closed: decided.closed };
+      if (concluded !== null && facts.phase === 'investigation') return { point: 'conclusion', closed: concluded.closed };
+      return facts.phase === PHASE ? { point: 'ready-to-build', closed } : null;
+    };
+    const read = readShown(root, warnings, (shower) => {
+      const topic = decided === null ? null : featureClose(shower, root, cwd, manifest, decided.closed, warnings);
+      const verdict = verdictAsked(shower, root, (facts) => pointOf(facts)?.closed ?? null);
+      return {
+        topic,
+        calls: [...(topic?.calls ?? []), ...callsAtSpec(shower, unit)],
+        verdict,
+        point: verdict === null ? 'ready-to-build' : /** @type {{point: string}} */ (pointOf(factsOf(shower.folded, verdict.entry))).point,
+      };
+    });
+    return { manifest, skips: [...(decided?.skips ?? []), ...skips], warnings: [...(decided?.warnings ?? []), ...warnings], landed, concluded, ...read };
+  } catch (err) {
+    throw carrying(err, warnings);
+  }
+}
+
+/**
+ * The open review page's counts by the marks last stored: the lines ticked,
+ * those carrying Claude's tick let stand, and the rest of the spec's.
+ * @param {string} cwd @param {string} unit @returns {ReadyView['review']}
+ */
+function reviewCounts(cwd, unit) {
+  const held = reviewStates(cwd, unit).filter(({ state }) => state !== 'removed');
+  const ticked = held.filter(({ state }) => state === 'approved' || state === 'approved-after-comment').length;
+  const claudes = held.filter(({ state }) => state === 'claudes-tick').length;
+  return { ticked, claudes, other: held.length - ticked - claudes };
+}
+
+/**
+ * `render ready-to-build <unit> [--page] [--calls] [--alone]`: the screen,
+ * the review row offered with `--page`, Claude's calls listed with
+ * `--calls`, drawn after a verdict with `--alone`.
+ * @param {string} cwd @param {{dotpath?: string, page?: string, calls?: string, alone?: string}} args
+ * @returns {string}
+ */
+function readyToBuildSurface(cwd, { dotpath: unit = '', page, calls, alone }) {
+  return refusing('render ready-to-build', () => {
+    const ready = standing(cwd, unit);
+    const stop = driversStop(cwd);
+    if (stop !== null) return stop.screen();
+    if (githubSquashOffered(cwd)) return githubSquashGate(projectName(cwd), githubSquashNested(cwd));
+    const { headings } = specReading(ready.landed);
+    const open = pageOpen(cwd, unit);
+    return readyToBuildScreen({
+      unit,
+      title: itemTitle(ready.manifest, 'specification', unit),
+      calls: ready.calls,
+      listed: calls !== undefined,
+      outline: headings.filter(({ kind }) => kind === 'area').map(({ number, title }) => ({ number: /** @type {string} */ (number), title })),
+      phases: cutPhases(ready.manifest).map((/** @type {any} */ { name, scenarios, sections }) => ({ name, scenarios: scenarios.length, sections })),
+      skips: ready.skips.map(({ text, reason }) => ({ text, reason })),
+      verdict: ready.verdict,
+      point: ready.point,
+      close: ready.topic?.close ?? null,
+      recap: ready.concluded?.recap ?? null,
+      page: page !== undefined,
+      review: open ? reviewCounts(cwd, unit) : null,
+      readBack: readBackFile(cwd, unit),
+      alone: alone !== undefined,
+    });
+  });
+}
+
+/** A comment waiting for Claude as the yes's refusal lists it: its line, and the person's last word. @param {Waiting} waiting */
+function waitingLine({ number, conversation }) {
+  return `  ${number}: "${/** @type {{text: string}} */ (conversation.at(-1)).text}"`;
+}
+
+/**
+ * Where the work goes once the build has begun: into the build (24.1.2).
+ * @param {Record<string, any>} manifest @returns {import('./projections/surfaces.cjs').Next}
+ */
+function nextAfterYes(manifest) {
+  return { kind: 'handoff', skill: phaseSkill('implementation'), args: [manifest.work_type, manifest.name] };
+}
+
+/**
+ * `ready-to-build yes <unit> --position auto|step [--marks <file>]`: the
+ * person's pick, concluding the spec and beginning the build in the
+ * position picked — a feature's taking its topic's close too, every line
+ * and candidate checked before anything is written, and a bugfix's
+ * concluding its investigation.
+ * @param {string} cwd @param {string} unit @param {string} position @param {string} [marks] absolute or from cwd
+ */
+function readyToBuildYes(cwd, unit, position, marks) {
+  const ready = standing(cwd, unit);
+  const { warnings, topic } = ready;
+  const stop = driversStop(cwd);
+  if (stop !== null) throw new Error(stop.reason);
+  if (ready.verdict !== null) throw new Error('a verdict is still to ask — render ready-to-build asks each before the yes');
+  if (topic !== null && topic.unreplaced !== null) throw new Error(topic.unreplaced);
+  if (marks !== undefined && !pageOpen(cwd, unit)) throw new Error(`${unit}'s review page is not open, so the yes takes no marks — the build starts with no review recorded`);
+  const yes = topic === null ? null : closingYes(cwd, unit, unit, topic.staged, warnings);
+  const concluding = ready.concluded === null ? null : concludingYes(cwd, unit, ready.concluded.staged);
+  const settled = settleReview(cwd, unit, marks);
+  if (settled.waiting.length > 0) {
+    throw new Error(`a comment on the review page waits for Claude, so the build does not start — Claude answers each beneath its line, then shows ready to build again:\n${settled.waiting.map(waitingLine).join('\n')}`);
+  }
+  const landed = yes === null ? {} : yes.land();
+  for (const kind of DRIVER_KINDS) resolveDriver(cwd, kind);
+  const at = new Date().toISOString();
+  const { manifest, beside, parked } = withWorkUnitLock(cwd, unit, () => {
+    const fresh = loadWorkUnitManifest(cwd, unit);
+    const taken = yes === null ? null : yes.take(fresh, at);
+    concluding?.take(fresh, at);
+    fresh.build = { position };
+    saveWorkUnitManifest(cwd, unit, fresh);
+    return { manifest: fresh, beside: yes === null || taken === null ? [] : yes.paths(taken), parked: taken?.parked ?? [] };
+  });
+  const paths = [...new Set([`${unit}/manifest.json`, PROJECT_MANIFEST_SPEC, ...beside, ...(settled.record === null ? [] : [settled.record])])];
+  const outcome = commitStateTail(cwd, paths, `ready-to-build(${unit}): ${position}`, warnings);
+  yes?.done();
+  const closing = {
+    ...(yes === null ? {} : { decided: at, ...landed, candidates: yes.candidates, struck: yes.struck, parked }),
+    ...(concluding === null ? {} : { concluded: at }),
+  };
+  /** @type {Record<string, unknown>} */
+  const result = { unit, position, record: settled.record, ...closing, committed: outcome.committed, next: nextAfterYes(manifest) };
+  if (warnings.length > 0) result.warnings = warnings;
+  noteCommitOutcome(result, outcome, `${unit} --state`);
+  return result;
+}
+
+/**
+ * `workunit position <unit> auto|step`: the build's position switched, as
+ * the person stated it.
+ * @param {string} cwd @param {string} unit @param {Position} to
+ */
+function switchPosition(cwd, unit, to) {
+  const known = knownUnit(cwd, unit);
+  if (known === null) throw new Error(noUnit(unit));
+  const closure = unitClosure(known);
+  if (closure !== null) throw new Error(closure);
+  if (quickFixBuild(known)) throw new Error(`${unit} is a quick-fix, which has no position: its fixes and its review's fix tasks run as in auto, its close its one gate (19.5.23)`);
+  if (!buildBegun(known)) throw new Error(`${unit}'s build has not begun — its position is chosen at ready to build`);
+  if (known.build.position === to) throw new Error(`${unit}'s build is in ${to} already`);
+  withWorkUnitLock(cwd, unit, () => {
+    const fresh = loadWorkUnitManifest(cwd, unit);
+    fresh.build.position = to;
+    saveWorkUnitManifest(cwd, unit, fresh);
+  });
+  /** @type {string[]} */
+  const warnings = [];
+  record('position-switch', { unit, to }, { cwd, warnings });
+  const outcome = commitStateTail(cwd, `${unit}/manifest.json`, `build(${unit}): position ${to}`, warnings);
+  /** @type {Record<string, unknown>} */
+  const result = { unit, position: to, committed: outcome.committed };
+  if (warnings.length > 0) result.warnings = warnings;
+  noteCommitOutcome(result, outcome, `${unit} --state`);
+  return result;
+}
+
+/** The position named, refused where it is none of the build's. @param {string|undefined} given @param {string} usage @returns {Position} */
+function positionOf(given, usage) {
+  if (!BUILD_POSITIONS.includes(/** @type {Position} */ (given))) throw new Error(`Usage: engine ${usage} — the position is ${BUILD_POSITIONS.join(' or ')}`);
+  return /** @type {Position} */ (given);
+}
+
+/**
+ * `ready-to-build yes …`: the verb's answer, its refusal opening on its
+ * command.
+ * @param {string} cwd @param {string[]} positional @param {Record<string, string>} opts
+ * @returns {Record<string, unknown>}
+ */
+function runReadyToBuildVerb(cwd, [verb, ...args], opts) {
+  const flags = Object.keys(opts).filter((flag) => flag !== 'marks').join();
+  if (verb !== 'yes' || args.length !== 1 || flags !== 'position') throw new Error(`Usage: engine ${READY_TO_BUILD_USAGE}`);
+  const position = positionOf(opts.position, READY_TO_BUILD_USAGE);
+  return refusing('ready-to-build yes', () => readyToBuildYes(cwd, args[0], position, opts.marks));
+}
+
+/**
+ * `workunit position <unit> auto|step`: the verb's answer, its refusal
+ * opening on its command.
+ * @param {string} cwd @param {string[]} args
+ * @returns {Record<string, unknown>}
+ */
+function runPositionVerb(cwd, args) {
+  if (args.length !== 2) throw new Error(`Usage: engine ${POSITION_USAGE}`);
+  const to = positionOf(args[1], POSITION_USAGE);
+  return refusing('workunit position', () => switchPosition(cwd, args[0], to));
+}
+
+module.exports = { READY_TO_BUILD_USAGE, POSITION_USAGE, readyToBuildSurface, readyDraws, runReadyToBuildVerb, runPositionVerb };

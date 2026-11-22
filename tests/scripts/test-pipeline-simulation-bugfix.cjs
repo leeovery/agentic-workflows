@@ -1,0 +1,289 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// The pipeline simulation's bugfix scenarios, each replaying the calls the
+// investigation's skill makes, in its order, from start this work: the
+// investigation entered at its one topic, the hunt logged on its entries,
+// the plan gate and the check-in, the live server's permission asked at the
+// investigation's own level, both validations briefed and taken in — the
+// root cause's finding asked of the person as what the product should do,
+// the fix's raised replacing the fix, each surfaced as what it was raised
+// as and its report closed, the board saying which validation raised it,
+// the fix validated again — the fix direction raised and logged once
+// decided, and the investigation closed into its spec with no gate, its
+// recap staged — its close voided by a gap routed back before the spec,
+// entered again with its resume's reads and closed again, its recap naming
+// this time the unit whose code the bug is in; then the specification,
+// where a Comment at ready to build changes the fix direction — replaced at
+// the spec, the writer, its review and the cut again, the recap staged
+// again over it with the investigation frozen — its verdict asked, into the
+// build. And a bugfix moved to a feature from its investigation, its
+// cause in the design: the root cause's validation taken in, the fix
+// direction reworking the area as a feature with no validation of its own,
+// start this work's screen and its yes, the feature's discussion reading
+// the investigation as its earlier log at its first opening. And a bugfix
+// whose investigation's plan the person has always said yes at, the
+// decision point stepping it: the plan run as a learned step, logged as
+// one; on a remote on GitHub, the squash default offered in ready to
+// build's place at its first showing, then ready to build, one screen with
+// the investigation's conclude, asking the verdict of the fix the person
+// changed at the conclusion, then drawn alone at its gate, which, its count
+// as long, stops before any code; then the replay of a lower threshold,
+// which would have stopped at that step.
+//
+// Layer: simulation. World: the project every scenario starts from
+// (pipeline-world.cjs), a copy per scenario; each replays the engine calls
+// the skill prose makes, in prose order, and the oracle
+// (pipeline-oracle.cjs) audits the whole state after every mutation.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+const ROOT = path.join(__dirname, '../..');
+const {
+  Sim, startUnit, enterEntry, handoff, answerGate, typeAtGate, gatesAnswered, continueUnit, startRow, startNew, specWritten, specLanded, specReviewed, cutTheSpec, readyClosed, readyToBuild, intoTheBuild,
+  investigationCache, rootCaused, reported, validated, fixDirected, concluded,
+} = require('./pipeline-world.cjs');
+const { history, lines, DAY } = require('./trust-world.cjs');
+const { trustLines } = require('./pipeline-oracle.cjs');
+const { FROZEN_AT, git, githubOffline } = require('./engine-harness.cjs');
+const { statePath } = require('./discovery-test-utils.cjs');
+const decisionPoint = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/decision-point.cjs'));
+const { gateStep } = decisionPoint;
+const { TRUST_LOG } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/trust-log.cjs'));
+
+const CLAUDES = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
+const CUT = Object.freeze([{ name: 'The work', goal: 'The work holds as decided.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }]);
+
+/** A call raised to the person, a row for each key, the first its lean, sorted `sort`. @param {string} question @param {string[]} keys @param {'one'|'several'} sort */
+const callOf = (question, keys, sort) => JSON.stringify({
+  question,
+  rows: keys.map((key) => ({ key, name: `Option ${key}`, text: `The save does ${key}`, notice: `a save does ${key}` })),
+  lean: keys[0], why: 'It stops the crash at its cause.', sort, mechanism: 'The save checks the field.', product_wide: false,
+});
+
+/**
+ * Every place `sim` enters stamped as entered at the frozen instant, so a
+ * learned gate's showing there, which hashes that time, draws alike on
+ * every run. @param {import('node:test').TestContext} t @param {Sim} sim
+ */
+function enteredFrozen(t, sim) {
+  const engine = sim.engine.bind(sim);
+  t.mock.method(sim, 'engine', (/** @type {string[]} */ args, /** @type {any} */ identity, /** @type {string} */ stdin) => {
+    const res = engine(args, identity, stdin);
+    const { entered, unit, phase, topic = unit } = args[0] === 'enter' && res.code === 0 ? JSON.parse(res.stdout.split('\n')[0]) : {};
+    if (entered === true) fs.writeFileSync(statePath(sim.dir, '.cache', unit, phase, topic, 'entered.json'), JSON.stringify({ at: FROZEN_AT }));
+    return res;
+  });
+}
+
+/** What raised each wait on the conversation's board. @param {Sim} sim */
+const raisersOn = (sim) => sim.run(['board', sim.env.CLAUDE_CODE_SESSION_ID]).view.waiting.map((/** @type {{raised_by: string|null}} */ { raised_by: by }) => by);
+
+/**
+ * The hunt with each validation finding what reaches the person (19.4.7,
+ * 19.4.10, 20.S18): the root cause's finding landed, asked as a question
+ * of what the product should do and surfaced as it, its report closed; the
+ * fix direction; the fix's finding landed, raised replacing the fix and
+ * surfaced as that replacement, its report closed; the fix validated
+ * again. Each answered with Claude's lean. Answers what the board said
+ * raised each, while it waited.
+ * @param {Sim} sim @param {string} wu
+ */
+async function huntedAsking(sim, wu) {
+  const at = `${wu}.investigation.${wu}`;
+  const landed = (/** @type {string} */ text) => sim.run(['ledger', 'find', at], null, JSON.stringify({ ...CLAUDES, text, how: 'Read the save path.', known: 'read' })).id;
+  await rootCaused(sim, wu, { live: true });
+  const rootCheck = reported(sim, wu, 'root-cause', ['F1']);
+  landed('A crash mid-save leaves a half-written file.');
+  const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...CLAUDES, text: 'Should a crashed save keep the half-written file?' })).id;
+  const kept = (await sim.runAsync(['raise', at, '--answers', asked], null, callOf('Should a crashed save keep the half-written file?', ['hold', 'drop'], 'several'))).raise;
+  sim.run(['agent', 'surface', wu, 'investigation', wu, rootCheck, 'F1', '--question', asked]);
+  sim.run(['agent', 'incorporate', wu, 'investigation', wu, rootCheck]);
+  const byRoot = raisersOn(sim);
+  sim.run(['raise', 'answer', kept, '--pick', 'hold'], null, JSON.stringify({ why: 'A half file shows what was lost.' }));
+  sim.run(['investigation-log', 'validation', wu, 'root-cause', '--found', 'A crash mid-save leaves a half file', '--did', 'Asked you']);
+
+  await fixDirected(sim, wu);
+  const fix = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions.find((/** @type {{text: string}} */ d) => d.text === 'Check the field before the save writes it').id;
+  const fixCheck = reported(sim, wu, 'fix', ['F1']);
+  const cause = landed('Checking the field leaves the half-written file a crash makes.');
+  const replaced = (await sim.runAsync(['raise', at, '--replaces', fix, '--reason', 'new-fact', '--cause', cause], null, callOf('Should the fix also write the save atomically?', ['atomic', 'check'], 'one'))).raise;
+  sim.run(['agent', 'surface', wu, 'investigation', wu, fixCheck, 'F1', '--replaces', fix, '--reason', 'new-fact']);
+  sim.run(['agent', 'incorporate', wu, 'investigation', wu, fixCheck]);
+  const byFix = raisersOn(sim);
+  sim.run(['raise', 'answer', replaced, '--pick', 'atomic'], null, JSON.stringify({ why: 'No half file at all.' }));
+  sim.run(['investigation-log', 'validation', wu, 'fix', '--found', 'Checking alone leaves a half file', '--did', 'Asked you']);
+  validated(sim, wu, 'fix');
+  return [byRoot, byFix];
+}
+
+describe('pipeline simulation: bugfix', () => {
+  let sim;
+  beforeEach(() => { sim = new Sim(); });
+  afterEach(() => { sim.destroy(); });
+
+  it('bugfix (19.S8, 22.S21, 24.S17, 11.S19): the investigation through its own verbs to its close into the spec → a gap answered before the spec, closed again → the spec, entered at the unit, to ready to build', async () => {
+    const wu = 'crash-fix';
+    startUnit(sim, 'feature', 'saving', 'Saving the file');
+    startNew(sim);
+    const started = startUnit(sim, 'bugfix', wu, 'Fix the crash');
+    assert.deepStrictEqual(started.next, { kind: 'handoff', skill: 'ledger-investigation-process', args: ['bugfix', wu] });
+
+    handoff(sim, `/ledger-investigation-process bugfix ${wu}`);
+    assert.deepStrictEqual(await huntedAsking(sim, wu), [['root-cause'], ['fix']], 'the board says which validation raised each');
+    const { decisions, findings } = JSON.parse(sim.read(['ledger', 'record', wu, wu]));
+    assert.deepStrictEqual([findings.map((f) => f.text), decisions.map((d) => d.text)], [
+      ['The save writes a null field on every crash.', 'A crash mid-save leaves a half-written file.', 'Checking the field leaves the half-written file a crash makes.'],
+      ['The save writes a null that nothing checks.', 'The save does hold', 'The save does atomic'],
+    ], 'the hunt\'s findings, its root cause, the person\'s answer and the fix as replaced stand on the topic\'s record (19.S8), and the live server\'s permission never does');
+    concluded(sim, wu);
+    // A session that stops here carries on from the start menu, the bugfix's
+    // row saying where it stands, and its Continue hands off where the
+    // close does.
+    assert.strictEqual(startRow(sim, wu), 'Continue bugfix: Crash Fix — *specification*');
+    assert.strictEqual(continueUnit(sim, wu).line, `→ Specification · ${wu}`);
+    // The knowledge base reaches the root cause through the topic's record
+    // (22.6.8).
+    const query = async (/** @type {string} */ terms) => (await sim.engineAsync(['knowledge', 'query', terms])).stdout;
+    assert.match(await query('null nothing checks'), /^\[record \| crash-fix\/crash-fix \| /m);
+
+    // A gap routed back before the spec lands in the topic's mailbox, waiting
+    // for its investigation: the delivery voids its close, and the start
+    // menu's row has the bugfix back in its investigation, mail waiting.
+    sim.write('.ledger/.cache/scratch/gap-message.md', 'Gap — retry semantics\n\nWhat the spec needs decided.\n');
+    sim.run(['topic', 'send', wu, wu, '--from', wu, '--content', '.ledger/.cache/scratch/gap-message.md', '--slug', 'retry-semantics']);
+    assert.strictEqual(typeof sim.manifest(wu).checklists.conclusion[wu].voided, 'string');
+    assert.strictEqual(startRow(sim, wu), 'Continue bugfix: Crash Fix — *investigation* · mail waiting');
+
+    // The investigation entered again raises the message first, and makes
+    // its resume's reads; the message's question goes on the map and the
+    // message comes off the mailbox; the person's answer decides it, and the
+    // investigation closes again.
+    enterEntry(sim, wu, 'investigation');
+    assert.match(sim.sections, /^=== DISPLAY: waiting mail /m);
+    for (const view of ['product', 'record', 'map']) sim.read(['ledger', view, wu, wu]);
+    await query('save crash');
+    const gapMailbox = sim.run(['topic', 'mailbox', wu, wu]);
+    assert.deepStrictEqual(gapMailbox.files, [path.join(sim.dir, `.ledger/${wu}/topics/${wu}/mail/001-retry-semantics.md`)]);
+    const gapQuestion = sim.run(['ledger', 'ask', `${wu}.investigation.${wu}`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What are the retry semantics?' }));
+    sim.run(['topic', 'answered', wu, wu, '001-retry-semantics', '--entry', gapQuestion.id]);
+    assert.strictEqual(sim.run(['topic', 'mailbox', wu, wu]).files.length, 0);
+    sim.run(['ledger', 'decide', `${wu}.investigation.${wu}`, '--answers', gapQuestion.id], null,
+      JSON.stringify({ by: 'person', who_moved_whom: 'none', text: 'Retry twice, then fail.', why: 'The spec needs a bound.' }));
+    const record = JSON.parse(sim.read(['ledger', 'record', wu, wu]));
+    assert.deepStrictEqual(record.decisions.filter((d) => d.answers === gapQuestion.id).map((d) => d.text), ['Retry twice, then fail.'],
+      'the question the message raised stands decided on the topic\'s record');
+    concluded(sim, wu, { fixes: 'saving' });
+
+    // The spec, entered at the unit — its route naming no topic — through its
+    // corridor to ready to build; the spec is never indexed (11.1.2).
+    assert.strictEqual(continueUnit(sim, wu).line, `→ Specification · ${wu}`);
+    specWritten(sim, wu, [wu]);
+    specReviewed(sim, wu);
+    cutTheSpec(sim, wu, CUT);
+    assert.match(readyToBuild(sim, wu), /^FIX DIRECTION\n {2}The save does atomic$/m);
+    assert.doesNotMatch(await query('holds as decided'), /^\[specification \|/m);
+
+    // A Comment there changing the fix direction is the person's replacement
+    // at the spec (ready-to-build.md, A Change Asked For): the writer goes
+    // again, its land reviewed, the cut made again and the checklist closed
+    // again, and the recap is staged again over the replacement, the
+    // investigation frozen, carrying on at the spec; the screen draws the
+    // new fix and asks its verdict, and its pick begins the build.
+    assert.strictEqual(typeAtGate(sim, 'ready to build', 'Write it to a temporary file and rename it instead').next, null);
+    const atomic = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions.find((/** @type {{text: string}} */ d) => d.text === 'The save does atomic').id;
+    const renamed = sim.run(['ledger', 'replace', `${wu}.specification`, '--replaces', atomic, '--reason', 'changed-mind'], null,
+      JSON.stringify({ drops: ['atomically'], text: 'Write the save to a temporary file, then rename it', why: 'A rename is atomic where it ships.', by: 'person' })).id;
+    specLanded(sim, wu, [wu], [renamed]);
+    specReviewed(sim, wu);
+    cutTheSpec(sim, wu, CUT);
+    readyClosed(sim, wu);
+    const recap = sim.write(investigationCache(wu, 'recap.json'), { hunt: 'Two hypotheses; the save wrote a null on every crash, and a rename keeps it whole.', fixes: 'saving' });
+    assert.deepStrictEqual(sim.run(['investigation', 'stage', wu, '--file', recap]).next, { kind: 'continue' });
+    assert.match(sim.render(['ready-to-build', wu], { expect: 'content' }), /^FIX DIRECTION\n {2}Write the save to a temporary file, then rename it$/m);
+    sim.run(answerGate(sim, 'verdict', '--pick', 'n').next.argv);
+    sim.render(['ready-to-build', wu, '--alone'], { expect: 'content' });
+    intoTheBuild(sim, wu, sim.run(answerGate(sim, 'ready to build', '--pick', 's').next.argv));
+    assert.strictEqual(sim.manifest(wu).phases.investigation.items[wu].status, 'completed');
+  });
+
+  it('bugfix moved to a feature from its investigation (19.S14, 19.S30, 19.4.22): the fix direction reworking the area as a feature, logged as it is picked → start this work\'s screen and its yes re-typing the unit → its discussion, at its first opening, reading the investigation\'s log and record as its earlier ones', async () => {
+    const wu = 'save-crash';
+    startNew(sim);
+    startUnit(sim, 'bugfix', wu, 'Fix the crash');
+    handoff(sim, `/ledger-investigation-process bugfix ${wu}`);
+    await rootCaused(sim, wu);
+    validated(sim, wu, 'root-cause');
+    await fixDirected(sim, wu, { pick: 'rework', design: true });
+    const hunt = fs.readFileSync(path.join(sim.dir, `.ledger/${wu}/topics/${wu}/log.md`), 'utf8');
+    assert.match(hunt, /^## Fix direction\n\n- How should the save stop crashing\? \[\w+\]\n {4}The save was right for the fields it knew/m,
+      'the fix direction is logged once it is decided, carrying what the step back found');
+
+    // The move, as the skill stages it once the root cause's validation is
+    // taken in and with none of the fix's: the feature's brief drafted from
+    // the investigation, start this work's screen, the person's yes.
+    const brief = sim.write(investigationCache(wu, 'brief.md'), '# Saving\n\nThe save meets a null it was never built for.\n');
+    sim.run(['workunit', 'move', wu, '--to', 'feature', '--file', sim.write(investigationCache(wu, 'move.json'), {
+      description: 'Rework saving', reason: 'The crash is the design\'s: saving meets fields it was never built for.', brief,
+    })]);
+    const { next } = sim.run(answerGate(sim, 'start this work', '--pick', 'y').next.argv);
+    const route = `/ledger-discussion-process feature ${wu}`;
+    assert.strictEqual([`/${next.skill}`, ...next.args].join(' '), route, 'the move hands off into the feature\'s discussion');
+    handoff(sim, route);
+
+    // Its first opening reads the investigation as its earlier log, and the
+    // root cause on its earlier record, never changed.
+    enterEntry(sim, wu, 'discussion', wu);
+    const earlier = Object.fromEntries([...sim.sections.matchAll(/^(earlier [a-z]+): (.*)$/gm)].map(([, key, value]) => [key, value]));
+    assert.deepStrictEqual(Object.keys(earlier), ['earlier record', 'earlier log']);
+    assert.strictEqual(fs.readFileSync(earlier['earlier log'], 'utf8'), hunt);
+    assert.deepStrictEqual(JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions.map((d) => d.text), ['The save writes a null that nothing checks.', 'Rework saving as a feature']);
+  });
+
+  it('a bugfix whose investigation\'s plan the person always says yes at (19.S17, 16.10.5, 3.S4): the plan runs as a learned step, nothing answered at it, logged as a step; ready to build, after the squash default\'s offer on a remote on GitHub, one screen with the conclude, asks the verdict of the fix the person changed at the conclusion, then is drawn alone at its gate, which, as long answered alike, still stops before any code; and a lower threshold\'s replay would have stopped at that step', async (t) => {
+    // Each showing told by its place and the frozen instant it was entered
+    // at alone, no key: none blind here.
+    const wu = 'save-null';
+    const { project_id: project } = JSON.parse(fs.readFileSync(path.join(sim.dir, '.ledger/manifest.json'), 'utf8'));
+    const seeded = history({ project, start: Date.now() - DAY });
+    for (let i = 0; i < 13; i += 1) seeded.gate('plan gate', { picked: 'y' });
+    for (let i = 0; i < 13; i += 1) seeded.gate('ready to build', { picked: 's' });
+    fs.writeFileSync(path.join(sim.configDir, TRUST_LOG), lines(...seeded.events));
+    t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ at) => gateStep(name, { ...at, key: null }));
+    enteredFrozen(t, sim);
+
+    startNew(sim);
+    startUnit(sim, 'bugfix', wu, 'Fix the crash');
+    handoff(sim, `/ledger-investigation-process bugfix ${wu}`);
+    await rootCaused(sim, wu);
+    validated(sim, wu, 'root-cause');
+    await fixDirected(sim, wu, { pick: '2' });
+    validated(sim, wu, 'fix');
+    concluded(sim, wu);
+
+    specWritten(sim, wu, [wu]);
+    specReviewed(sim, wu);
+    cutTheSpec(sim, wu, [{ name: 'The work', goal: 'The work holds as decided.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }]);
+    git(sim.dir, ['remote', 'add', 'origin', 'git@github.com:acme/portal.git']);
+    sim.env = { ...sim.env, ...githubOffline(sim.configDir), GIT_SSH_COMMAND: 'false' };
+    assert.match(readyToBuild(sim, wu), /^=== MENU: github squash gate /m, 'the squash default offered in the screen\'s place');
+    assert.strictEqual(sim.run(answerGate(sim, 'github squash gate', '--pick', 'n').next.argv).github_squash, 'declined');
+    assert.match(sim.render(['ready-to-build', wu], { expect: 'content' }), /^THE HUNT$/m, 'the screen drawn whole once, the recap on it');
+    const verdict = answerGate(sim, 'verdict', '--pick', 'n').next.argv;
+    assert.deepStrictEqual(verdict.slice(-2), ['--at', 'conclusion'], 'the changed fix is asked at the conclusion');
+    sim.run(verdict);
+    const alone = sim.render(['ready-to-build', wu, '--alone'], { expect: 'content' });
+    assert.doesNotMatch(alone, /THE HUNT|THE OUTLINE/, 'after the verdict, the gate is drawn alone');
+    intoTheBuild(sim, wu, sim.run(answerGate(sim, 'ready to build', '--pick', 's').next.argv));
+    assert.deepStrictEqual(gatesAnswered(sim).slice(seeded.events.length), ['start menu', 'start this work', 'environment setup', 'github squash gate', 'verdict', 'ready to build']);
+    const steps = [...new Map(trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'step').map((step) => [step.id, [step.gate, step.row]])).values()];
+    assert.deepStrictEqual(steps, [['plan gate', 'y']]);
+    const replayed = sim.render(['matrix-replay', '--threshold', '15'], { expect: 'content' }).replace(/\s+/g, ' ');
+    assert.ok(replayed.includes('at the gates that learn from your answers, 15% would have stopped at 1 of the 1 stop I went on past.'), replayed);
+  });
+});

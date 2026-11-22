@@ -1,0 +1,55 @@
+{
+  "name": "saved-filters",
+  "work_type": "feature",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Let a user save a filter set and come back to it",
+  "phases": {
+    "discussion": {
+      "items": {
+        "saved-filters": {
+          "status": "completed"
+        }
+      }
+    }
+  },
+  "checklists": {
+    "phase-1-start": {
+      "items": {
+        "design-settled": {
+          "state": "done",
+          "at": "2026-01-05T09:00:00.000Z"
+        }
+      },
+      "closed": "2026-01-05T09:00:00.000Z"
+    }
+  },
+  "cut": {
+    "phases": [
+      {
+        "name": "Saving a filter",
+        "goal": "A filter set is saved under a name.",
+        "scenarios": ["1.S1"],
+        "sections": ["1"],
+        "relies_on": []
+      },
+      {
+        "name": "Coming back to one",
+        "goal": "A saved filter set opens as it was saved.",
+        "scenarios": ["2.S1"],
+        "sections": ["2"],
+        "relies_on": [1]
+      },
+      {
+        "name": "Sharing a filter",
+        "goal": "A saved filter set is shared with a teammate.",
+        "scenarios": ["3.S1"],
+        "sections": ["3"],
+        "relies_on": [1]
+      }
+    ]
+  },
+  "build": {
+    "position": "auto"
+  }
+}

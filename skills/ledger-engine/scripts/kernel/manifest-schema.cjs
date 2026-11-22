@@ -1,0 +1,289 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Manifest schema vocabulary — the single source of the legal work types,
+// phases, and per-phase status sets.
+//
+// Consumed by BOTH write paths (the field commands' validators and the
+// engine's transitions), so the two enforcers can never drift: a status the
+// field surface refuses is refused by the transitions identically. Pure
+// constants and grammar helpers — no IO.
+// ---------------------------------------------------------------------------
+
+const VALID_WORK_TYPES = ['epic', 'feature', 'bugfix', 'quick-fix'];
+
+// The engine's phase table: each phase, in pipeline order, with the stage
+// it sits in (3.1.1–3.1.4).
+const PHASE_STAGES = Object.freeze({
+  discovery: 'Discovery',
+  experiment: 'Discovery',
+  discussion: 'Discovery',
+  investigation: 'Discovery',
+  specification: 'Definition',
+  implementation: 'Delivery',
+  review: 'Delivery',
+});
+
+const VALID_PHASES = Object.keys(PHASE_STAGES);
+
+// Per-work-type pipeline order — the phases a unit of that type moves through
+// after discovery (the universal first phase; a map, not a pipeline phase, so
+// it never appears here). The one home for pipeline order: detail builders,
+// dashboards and the simulation all read these arrays, never a local copy.
+// A quick-fix's review runs only once the person asks for one at its close
+// (19.5.14).
+const WORK_TYPE_PIPELINES = {
+  epic:            ['experiment', 'discussion', 'specification', 'implementation', 'review'],
+  feature:         ['experiment', 'discussion', 'specification', 'implementation', 'review'],
+  bugfix:          ['investigation', 'specification', 'implementation', 'review'],
+  'quick-fix':     ['implementation', 'review'],
+};
+
+// Derived-bookkeeping phases: the item is computed over its own records — no
+// hand lifecycle, no resume or reactivate; the phase's own verbs maintain the
+// item. Every generic surface keys on this list, never on a phase name.
+const DERIVED_PHASES = ['experiment'];
+
+const TOPIC_PHASE_NAMES = /** @type {const} */ (['discovery', 'experiment', 'discussion', 'investigation']);
+
+/** A phase a topic exists in, the only kind whose items a manifest keeps. @typedef {typeof TOPIC_PHASE_NAMES[number]} TopicPhase */
+
+/** The phases a topic exists in: those before the spec (4.11.2). */
+const TOPIC_PHASES = /** @type {readonly string[]} */ (Object.freeze(TOPIC_PHASE_NAMES));
+
+/** Whether `phase` is a topic's. @param {unknown} phase @returns {phase is TopicPhase} */
+const isTopicPhase = (phase) => TOPIC_PHASES.includes(/** @type {string} */ (phase));
+
+/** The build's places: its phases, where a question parks its task (12.13.2). */
+const BUILD_PHASES = Object.freeze(['implementation', 'review']);
+
+const VALID_PHASE_STATUSES = {
+  // Empty on purpose, never removed: discovery items are map items with NO
+  // status field (lifecycle is computed at render time), and an empty
+  // vocabulary makes every status write refusable. Deleting the key instead
+  // would turn validators' `VALID_PHASE_STATUSES[phase]` lookups into
+  // undefined — the silent permissive path this table exists to prevent.
+  discovery:      /** @type {string[]} */ ([]),
+  // Derived bookkeeping over the topic's experiment records: the spawn opens
+  // the item, the last record's terminal transition closes it — the user
+  // never starts or completes it by hand.
+  experiment:     ['in-progress', 'completed'],
+  // `postponed` is the Discovery unit's second terminal-for-now state: the
+  // topic left the epic for the roadmap whole, its status stashed, and the
+  // pull is the way back. Only the conversation postpones — a topic past
+  // specification is past "not yet".
+  discussion:     ['unstarted', 'in-progress', 'completed', 'cancelled', 'postponed'],
+  investigation:  ['unstarted', 'in-progress', 'completed', 'cancelled'],
+  // The one spec keeps no items (P7).
+  specification:  ['in-progress', 'completed', 'cancelled'],
+  implementation: ['in-progress', 'completed', 'cancelled'],
+  review:         ['in-progress', 'completed', 'cancelled'],
+};
+
+// One experiment record in a topic's series
+// (`phases.experiment.items.{topic}.experiments.{id}.status`): the
+// design-before-data lifecycle. `approved` is the freeze — the user-confirmed
+// briefing; `concluded` and `abandoned` are terminal (verdict and reason
+// recorded beside the status). Consumed by the field surface's validators and
+// the experiment domain ops, so the two enforcers can never drift.
+const VALID_EXPERIMENT_STATUSES = ['conceived', 'designed', 'approved', 'running', 'concluded', 'abandoned'];
+
+// The record statuses that end an experiment's life: nothing advances past
+// them, and a top-level record reaching either releases the evidence wait
+// pointing at it.
+const EXPERIMENT_TERMINAL_STATUSES = ['concluded', 'abandoned'];
+
+// The record statuses whose design the person approved: frozen, changed
+// only by a recorded amendment.
+const EXPERIMENT_FROZEN_STATUSES = ['approved', 'running'];
+
+// The one home for the experiment id shape: `E{n}` for a series record,
+// `E{n}.{m}` for a sub-experiment under it. An evidence wait
+// (`awaiting_experiments`) only ever holds the parent form — a split is the
+// laboratory's internal method and never leaks into the spawning phase's
+// state.
+const EXPERIMENT_ID_PATTERN = /^E[1-9][0-9]*(\.[1-9][0-9]*)?$/;
+
+/** A top-level series id — never a sub-experiment's. @param {string} id */
+function isParentExperimentId(id) {
+  return !id.includes('.');
+}
+
+/**
+ * Series order over legal ids: parents by number, each parent's
+ * sub-experiments beneath it in their own order — the register's reading
+ * order, shared by every surface that sorts a series.
+ * @param {string} a @param {string} b
+ */
+function compareExperimentIds(a, b) {
+  const [an, am] = a.slice(1).split('.').map(Number);
+  const [bn, bm] = b.slice(1).split('.').map(Number);
+  if (an !== bn) return an - bn;
+  return (am ?? 0) - (bm ?? 0);
+}
+
+// A kebab-case slug — a work unit's name, a message's or a spike's — and its
+// pattern unanchored, for a pattern that holds one.
+const KEBAB_SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
+const KEBAB_SLUG_PATTERN = new RegExp(`^${KEBAB_SLUG}$`);
+
+/**
+ * Why a manifest key or label is illegal, or null when it is fine: dots break
+ * the field surface's dot-path addressing, slashes break paths. One sentence,
+ * two readers — `assertLegalName` throws it, the postpone's plan carries it as
+ * a lock, so a refusal at the gate and a refusal at the write say the same
+ * thing.
+ * @param {string} kind @param {*} name
+ * @returns {string|null}
+ */
+function illegalNameReason(kind, name) {
+  return typeof name !== 'string' || name === '' || /[./]/.test(name)
+    ? `"${name}" is not a legal ${kind} name — dots and slashes break manifest addressing`
+    : null;
+}
+
+/** Refuses a name `illegalNameReason` refuses, with its reason. @param {string} kind @param {*} name */
+function assertLegalName(kind, name) {
+  const illegal = illegalNameReason(kind, name);
+  if (illegal !== null) throw new Error(illegal);
+}
+
+// The phase whose sessions spawn experiments (9.1.4): each spawn locks the
+// spawning discussion's own item, `awaiting_experiments`.
+const EXPERIMENT_SPAWN_PHASES = /** @type {readonly TopicPhase[]} */ (['discussion']);
+
+const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
+
+// The build's positions (3.3.1), auto first, the default. The unit's
+// manifest holds where its build stands as `build`, written by ready to
+// build's yes, which concludes the spec (P7), or by the migration's cut
+// (cut-migrating.cjs): `{position, done_before?, cites?}`, the position
+// picked there and switched since through `workunit position`; the cut
+// adds the tasks done before the migration and the areas its old tasks
+// cite (21.8.8); and, for a unit with a branch of its own, `branch`, its
+// name, `feat/{unit}`, written by the engine alone as the build's first
+// phase start closes and kept for good (unit-branch.cjs, 7.2.35).
+const BUILD_POSITIONS = /** @type {const} */ (['auto', 'step']);
+
+// The landing record (landing-record.cjs, 7.2.22): the unit's manifest holds
+// each task's landing as `landings`, by the task's internal id, then the
+// repository's folder in the project, `.` for its own — `{commit, tip,
+// first, by, at}`, `by` one of `LANDING_BY` — written by the engine alone.
+const LANDINGS = 'landings';
+const LANDING_RECORD_FIELDS = Object.freeze(['commit', 'tip', 'first', 'by', 'at']);
+const LANDING_BY = Object.freeze(['engine', 'read']);
+
+// The pull requests a unit's cancels closed (18.3.9, cancel-closed.cjs):
+// the unit's manifest holds them as `closed_by_cancel`, an entry for each
+// cancel, the latest last, each the host's own names for them by the
+// repository's folder in the project, `.` for its own — written by the
+// engine alone and kept for good, so every landing after a reactivate
+// reads them as none while they stay closed and opens what it needs anew.
+const CLOSED_BY_CANCEL = 'closed_by_cancel';
+
+// Phase-item statuses that end a topic's life in its phase — excluded from
+// aggregation. One vocabulary for every consumer (derivations, the position,
+// the engine's topic reads).
+const TERMINAL_STATUSES = ['cancelled', 'postponed'];
+
+// The product as a whole: its conversation, the project-level discovery
+// place (8.2.7), its logs in `.product/sessions/` and its session marker on
+// the project manifest; and the unit the ledger's place for the product is
+// tagged with (8.12.9).
+const PRODUCT = 'product';
+
+// The project-level places with no work unit, named by identity alone:
+// `roadmap` is the product-roadmap layer's (the project manifest's `roadmap`
+// node); `product` the product's conversation.
+const PROJECT_IDENTITIES = ['roadmap', PRODUCT];
+
+// The literal a skill takes in an argument's place where it has nothing to
+// name there — no work type, no work unit, no inbox seeds.
+const NO_ARGUMENT = 'none';
+
+// Names a work unit can never take: `project` routes dot-path commands to the
+// project manifest, the project identities are places of their own, and the
+// placeholder must never name a unit.
+const RESERVED_WORK_UNIT_NAMES = ['project', ...PROJECT_IDENTITIES, NO_ARGUMENT];
+
+/**
+ * Why a name can't be a work unit's, or null when it can: a unit's name is a
+ * kebab-case slug, since it goes into paths, commit subjects, branch names
+ * and task ids, and it is neither a phase's name, which would collide with a
+ * dot-path segment, nor a reserved one. One rule for every verb that mints a
+ * unit and for the task id.
+ * @param {unknown} name
+ * @returns {string|null}
+ */
+function workUnitNameRefusal(name) {
+  if (typeof name !== 'string' || !KEBAB_SLUG_PATTERN.test(name)) {
+    return `Work unit name "${String(name)}" must be a kebab-case slug — lowercase letters and digits, joined by single hyphens`;
+  }
+  if (VALID_PHASES.includes(name)) return `Work unit name "${name}" conflicts with a phase name`;
+  if (RESERVED_WORK_UNIT_NAMES.includes(name)) return `Work unit name "${name}" is reserved`;
+  return null;
+}
+
+// The kinds of driver, each picked by the project manifest's
+// `drivers.{kind}` setting: the tracker behind the `task` verbs and the code
+// host behind the `land` verbs.
+const DRIVER_KINDS = /** @type {const} */ (['task', 'landing']);
+
+// The environment setup's parts, `environment.{part}` on the project
+// manifest (22.5.12, domain/environment.cjs), in the order its screen shows
+// them: how to run the product, the steps that prepare the environment,
+// what cannot run at once, the verify setup, the linters, and the person's
+// yes.
+const ENVIRONMENT_PARTS = Object.freeze(/** @type {const} */ (['run', 'prepare', 'concurrency', 'verify', 'linters', 'confirmed']));
+
+// How to run the product: the commands the setup's `run` holds.
+const RUN_COMMANDS = Object.freeze(/** @type {const} */ (['build', 'tests', 'run']));
+
+// When a step that prepares the environment runs (22.5.1): before the
+// build's first task, in each worktree a task runs in, or both.
+const PREPARE_WHEN = Object.freeze(/** @type {const} */ (['first', 'worktree', 'both']));
+
+// The setup's parts that are lists, each by the field naming its entries
+// once: two clones merge each as a set keyed so (4.7.5), keeping both
+// sides' entries, never one side's list over the other's.
+const ENVIRONMENT_SETS = Object.freeze({ prepare: 'name', concurrency: 'what', linters: 'name' });
+
+module.exports = {
+  VALID_WORK_TYPES,
+  PHASE_STAGES,
+  VALID_PHASES,
+  WORK_TYPE_PIPELINES,
+  DERIVED_PHASES,
+  TOPIC_PHASES,
+  isTopicPhase,
+  VALID_PHASE_STATUSES,
+  VALID_EXPERIMENT_STATUSES,
+  EXPERIMENT_TERMINAL_STATUSES,
+  EXPERIMENT_FROZEN_STATUSES,
+  EXPERIMENT_ID_PATTERN,
+  isParentExperimentId,
+  compareExperimentIds,
+  KEBAB_SLUG,
+  KEBAB_SLUG_PATTERN,
+  illegalNameReason,
+  assertLegalName,
+  EXPERIMENT_SPAWN_PHASES,
+  VALID_WORK_UNIT_STATUSES,
+  BUILD_POSITIONS,
+  LANDINGS,
+  LANDING_RECORD_FIELDS,
+  LANDING_BY,
+  CLOSED_BY_CANCEL,
+  TERMINAL_STATUSES,
+  PRODUCT,
+  PROJECT_IDENTITIES,
+  NO_ARGUMENT,
+  RESERVED_WORK_UNIT_NAMES,
+  workUnitNameRefusal,
+  DRIVER_KINDS,
+  BUILD_PHASES,
+  ENVIRONMENT_PARTS,
+  RUN_COMMANDS,
+  PREPARE_WHEN,
+  ENVIRONMENT_SETS,
+};

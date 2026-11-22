@@ -1,0 +1,361 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Boot's stamp and the refusal until boot has run (22.1.7, 22.1.8, 18.6.8,
+// 18.S74; ledger-engine/scripts/domain/boot-stamp.cjs, boot.cjs, and
+// `BOOT_EXEMPT` in engine.cjs): boot stamps the calling conversation for the
+// project's main checkout at the highest migration installed, beside every
+// other project's entry; a command called with a session id refuses,
+// writing nothing, until the stamp names its project at that version,
+// wherever in the project it is called from — but what the one table lets
+// through, every hook boot installs among it, and a call with no session
+// id; a capture made from another project's conversation lands, and its
+// commit's retry goes through; the keep's doors go through while the
+// checkout owes no migration on this version — one waiting on its review
+// owed too, in a conversation boot stamped as in one it did not, whose boot
+// names the review again and commits nothing — marking no conversation and
+// committing their own paths alone, and refuse naming the migration while
+// it owes one (`KEEP_FORMS`, 18.11.7); a boot killed as it stamps leaves
+// the conversation refused, and the next boot stamps it.
+//
+// Layer: verb, with one process test, the boot killed as it stamps. World:
+// the project fixture, a git repository with its state worktree and
+// Ledger's hooks in its settings, made once per run and copied for
+// each test, beside it a second project where a test needs one; each test
+// under a system config of its own, every call made in a conversation the
+// harness stamps nothing for (`unbooted`); boot runs the repo's real
+// scripts.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+
+const {
+  call, callAsync, ok, refusedPristine, fixtureFrom, git, commitAll, createFile, stateGit, stampBooted, killedAt, commitOnState, statePath,
+  failingStateCommits, engineHook, LEDGER_HOOKS, GUARD_GROUPS, hooked,
+} = require('./engine-harness.cjs');
+const { useTempFolder, createManifest, writeState, readState } = require('./discovery-test-utils.cjs');
+const { COMMANDS, BOOT_EXEMPT } = require('../../skills/ledger-engine/scripts/engine.cjs');
+const { highestMigration } = require('../../skills/ledger-migrate/scripts/migration-ids.cjs');
+
+const SESSION = 'stamp-session';
+
+/** The refusal, for the project whose main checkout is `main`. @param {string} command @param {string} main */
+const refusal = (command, main) => `${command}: this conversation has not booted Ledger for ${main} on this version — invoke the start skill, /ledger, which runs engine boot before anything else`;
+
+/** Whether an answer is the refusal until boot has run. @param {{code: number, stderr: string}} res */
+const refusedUnbooted = (res) => res.code === 1 && /has not booted Ledger/.test(res.stderr);
+
+/** A verb that touches work: the brownfield offer's answer, written to the project manifest and committed. */
+const WORK = Object.freeze(['brownfield', 'record', 'native']);
+
+/**
+ * A project: its state worktree, Ledger's hooks committed in its
+ * settings, so boot writes nothing of its own there. Made once per run.
+ */
+const projectWorld = fixtureFrom('engine-boot-stamp-', (dir) => {
+  createFile(dir, '.claude/settings.json', hooked(LEDGER_HOOKS));
+  createFile(dir, 'src/app.js', '// the code\n');
+  commitAll(dir, 'init');
+});
+
+const folder = useTempFolder('engine-boot-stamp-');
+
+/** @type {string} */ let dir;
+/** @type {string} */ let config;
+/** @type {Record<string, string>} */ let env;
+beforeEach(() => {
+  dir = projectWorld(path.join(folder(), 'project'));
+  config = fs.mkdtempSync(path.join(folder(), 'config-'));
+  env = { LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: SESSION };
+});
+
+/** The conversation `session`'s folder under this test's config. @param {string} [session] */
+const conversation = (session = SESSION) => path.join(config, 'conversations', session);
+
+/** What the conversation `session`'s stamp holds; null where it has none. @param {string} [session] */
+function stamps(session = SESSION) {
+  const file = path.join(conversation(session), 'booted.json');
+  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
+}
+
+/** A second project beside the first, its own main checkout. */
+const another = () => projectWorld(path.join(folder(), 'another'));
+
+describe('boot\'s stamp (22.1.7)', () => {
+  it('boot stamps the calling conversation for the project\'s main checkout at the highest migration installed, keeping every other project\'s entry', () => {
+    createFile(conversation(), 'booted.json', `${JSON.stringify({ '/elsewhere': { migration: '070', at: '2026-01-01T00:00:00.000Z' } })}\n`);
+    const before = Date.now();
+
+    const answer = ok(dir, ['boot'], { env, unbooted: true });
+
+    const at = stamps()?.[dir]?.at;
+    assert.strictEqual(answer.state, 'ready');
+    assert.deepStrictEqual(stamps(), {
+      '/elsewhere': { migration: '070', at: '2026-01-01T00:00:00.000Z' },
+      [dir]: { migration: highestMigration(), at },
+    });
+    assert.ok(Date.parse(at) >= before && Date.parse(at) <= Date.now() && new Date(at).toISOString() === at, `stamped at the instant boot ran, as an ISO instant: ${at}`);
+  });
+
+  it('boot stamps Claude\'s entry as it does the bare command, whatever the words answer — routed, or a pick among the work they could mean — and a command that touches work goes on under it', () => {
+    createManifest(dir, 'search', { status: 'completed' });
+    commitAll(dir, 'a closed unit');
+
+    const entries = [['routed', 'make the header blue'], ['picked', 'search']].map(([session, words]) => {
+      const as = { ...env, CLAUDE_CODE_SESSION_ID: session };
+      return [ok(dir, ['boot'], { env: as, stdin: words, unbooted: true }).go, refusedUnbooted(call(dir, WORK, { env: as, unbooted: true }))];
+    });
+
+    assert.deepStrictEqual(entries, [['route', false], ['pick', false]]);
+  });
+
+  it('boot from a linked worktree stamps the main checkout\'s entry, and a command from the main checkout, a folder inside it and the worktree goes on under it', () => {
+    const linked = path.join(folder(), 'linked');
+    git(dir, ['worktree', 'add', '-q', '-b', 'side', linked]);
+
+    ok(linked, ['boot'], { env, unbooted: true });
+
+    assert.deepStrictEqual(Object.keys(stamps() ?? {}), [dir]);
+    for (const at of [dir, path.join(dir, 'src'), linked]) assert.strictEqual(refusedUnbooted(call(at, WORK, { env, unbooted: true })), false, at);
+  });
+
+  it('a stamp from before the installed migration is stale: the command refuses until boot stamps it again', () => {
+    stampBooted(dir, SESSION, config);
+    const stale = { ...stamps(), [dir]: { ...stamps()[dir], migration: String(Number(highestMigration()) - 1).padStart(3, '0') } };
+    createFile(conversation(), 'booted.json', `${JSON.stringify(stale)}\n`);
+
+    assert.strictEqual(refusedPristine(dir, WORK, { env, unbooted: true }).error, refusal('brownfield', dir));
+
+    stampBooted(dir, SESSION, config);
+    ok(dir, WORK, { env, unbooted: true });
+  });
+});
+
+describe('the refusal until boot has run (18.S74)', () => {
+  it('a command that touches work refuses in a conversation boot has not run in, naming the start skill and engine boot, writing nothing — the conversation unmarked — and once boot has run, it goes on', () => {
+    assert.strictEqual(refusedPristine(dir, WORK, { env, unbooted: true }).error, refusal('brownfield', dir));
+    assert.strictEqual(fs.existsSync(conversation()), false, 'the refusal made no folder for the conversation');
+
+    ok(dir, ['boot'], { env, unbooted: true });
+    ok(dir, WORK, { env, unbooted: true });
+  });
+
+  it('a call with no session id is no conversation\'s, and nothing refuses it', () => {
+    ok(dir, WORK, { env: { LEDGER_CONFIG_DIR: config }, unbooted: true });
+  });
+
+  it('a call from a folder in no repository is in no project, with no work to touch and no boot that could stamp it, and nothing refuses it', () => {
+    const outside = fs.mkdtempSync(path.join(folder(), 'outside-'));
+
+    assert.strictEqual(ok(outside, ['session', 'label', 'roadmap'], { env, unbooted: true }).ok, true);
+  });
+
+  it('one project\'s entry lets nothing through in another: each is refused until its own boot, and both stand once both have booted', () => {
+    const other = another();
+    stampBooted(other, SESSION, config);
+
+    assert.strictEqual(refusedPristine(dir, WORK, { env, unbooted: true }).error, refusal('brownfield', dir));
+
+    stampBooted(dir, SESSION, config);
+    ok(dir, WORK, { env, unbooted: true });
+    ok(other, WORK, { env, unbooted: true });
+    assert.deepStrictEqual(Object.keys(stamps() ?? {}).sort(), [dir, other].sort());
+  });
+});
+
+describe('what goes through before boot has run (BOOT_EXEMPT)', () => {
+  it('the table names boot and what its stops run, the hooks\' and the gate mod\'s targets, the capture line and its retry, the banner the bare command opens on, and the walkthrough\'s and help\'s screens — nothing else', () => {
+    assert.deepStrictEqual(BOOT_EXEMPT, {
+      boot: '*',
+      'state-merge': ['pick'],
+      render: [
+        'git-floor-stop', 'repo-stop', 'state-lost-gate', 'migration-guard-stop', 'migration-checks-stop', 'state-merge-gate', 'migration-taken-stop', 'directive-arrival', 'directive-carry-on', 'migrations-applied', 'migration-gate', 'banner',
+        'walkthrough-offer', 'walkthrough-screen', 'walkthrough-topic', 'help', 'help-topics',
+      ],
+      gate: ['state lost gate', 'state merge gate', 'migration gate'],
+      commit: ['--migrations', '--inbox'],
+      migrate: ['review', 'checked'],
+      presence: ['cleanup'],
+      session: ['cleanup', 'resume'],
+      conversation: '*',
+      layout: ['guard'],
+      brief: ['guard'],
+      shell: ['guard'],
+      board: '*',
+      inbox: ['capture'],
+    });
+  });
+
+  it('every command the engine dispatches is refused before boot has run, but each form the table names, which goes through — a commit\'s scope flag wherever it stands, a gate\'s name quoted or not, any other name only as the sub-verb — and a command it does not dispatch is told so', async () => {
+    let fresh = 0;
+    /** Whether `argv` is refused in a conversation never booted, fresh for each call. @param {string[]} argv */
+    const unbooted = async (argv) => refusedUnbooted(await callAsync(dir, argv, { env: { ...env, CLAUDE_CODE_SESSION_ID: `never-booted-${fresh++}` }, stdin: '{}', unbooted: true }));
+    /** The calls of `argvs` whose refusal `unbooted` answers as `refused`, each as its words. @param {string[][]} argvs @param {boolean} refused */
+    const answering = async (argvs, refused) => {
+      /** @type {string[]} */
+      const found = [];
+      for (const argv of argvs) if ((await unbooted(argv)) === refused) found.push(argv.join(' '));
+      return found;
+    };
+    /** Each call of a form the table lets through. @type {string[][]} */
+    const through = Object.entries(BOOT_EXEMPT).flatMap(([command, exempt]) => {
+      if (exempt === '*') return [command === 'board' ? [command, SESSION] : command === 'conversation' ? [command, 'position'] : [command]];
+      if (command === 'gate') return exempt.flatMap((name) => [[command, name, '--pick', 'y'], [command, ...name.split(' '), '--pick', 'y']]);
+      if (command === 'commit') return exempt.flatMap((flag) => [[command, flag, '-m', 'x'], [command, '-m', 'x', flag]]);
+      return exempt.map((sub) => [command, sub]);
+    });
+    /** For each command the table lets through in part, a form it refuses: a sub-verb it does not name, the names it does after it; a commit with no scope flag. */
+    const named = Object.entries(BOOT_EXEMPT).filter(([, exempt]) => exempt !== '*')
+      .map(([command, exempt]) => (command === 'commit' ? [command, 'work', '-m', 'x'] : [command, 'work', ...exempt]));
+    const refused = Object.keys(COMMANDS).filter((command) => BOOT_EXEMPT[command] !== '*').map((command) => [command]);
+
+    assert.deepStrictEqual(await answering([...refused, ...named], false), [], 'every command not wholly let through refuses its other forms');
+    assert.deepStrictEqual(await answering(through, true), [], 'each form the table names goes through');
+    assert.deepStrictEqual(await answering([['no-such-verb']], true), [], 'an unknown command answers as unknown');
+  });
+
+  it('every hook boot installs runs in a conversation boot has not run in, so a fresh conversation\'s first tool call meets no refusal', () => {
+    const hooks = [...LEDGER_HOOKS, ...GUARD_GROUPS.flatMap((group) => group.hooks), engineHook('session cleanup'), engineHook('session resume')];
+    const argvs = hooks.map(({ command }) => command.slice(command.indexOf('engine.cjs" ') + 'engine.cjs" '.length).split(' '));
+
+    assert.deepStrictEqual(argvs.filter((argv) => refusedUnbooted(call(dir, argv, { env, stdin: JSON.stringify({ session_id: SESSION, cwd: dir }), unbooted: true }))).map((argv) => argv.join(' ')), []);
+  });
+});
+
+describe('a capture from another project\'s conversation (22.1.8, 18.6.8)', () => {
+  it('the capture line lands the item in the project it concerns, from a conversation booted in neither', () => {
+    const other = another();
+
+    const res = ok(dir, ['inbox', 'capture', 'idea', '--project', other], { env, stdin: '# Retry the sync\n', unbooted: true });
+
+    assert.strictEqual(res.captured, path.join(other, '.ledger', '.inbox/ideas', path.basename(res.captured)));
+    assert.strictEqual(fs.readFileSync(res.captured, 'utf8'), '# Retry the sync\n');
+    assert.ok(res.committed, 'committed in the project it concerns');
+    assert.strictEqual(stamps(), null, 'no boot ran');
+  });
+
+  it('a capture whose commit failed is retried by commit --inbox from the project it concerns, in a conversation never booted there', () => {
+    const other = another();
+    const captured = failingStateCommits(other, () => ok(dir, ['inbox', 'capture', 'idea', '--project', other], { env, stdin: '# Retry the sync\n', unbooted: true }));
+    assert.match(String(captured.note), /retry with: engine commit --inbox -m "<message>", run from /);
+
+    const retried = ok(other, ['commit', '--inbox', '-m', 'the retry'], { env, unbooted: true });
+
+    assert.ok(retried.committed, 'the retry committed the capture');
+    assert.strictEqual(stateGit(other, ['status', '--porcelain', '--untracked-files=all']), '');
+  });
+});
+
+describe('the keep\'s doors before boot has run (22.1.8, 18.11.7)', () => {
+  /** The migrations record holding `ids`, one a line. @param {...string} ids */
+  const record = (...ids) => ids.map((id) => `${id}\n`).join('');
+  /** The record committed holding `ids`, as boot leaves it once its migrations are through. @param {...string} ids */
+  const recorded = (...ids) => commitOnState(statePath(dir), { '.state/migrations': record(...ids) }, 'chore: record Ledger\'s migrations');
+  const VIEW = Object.freeze(['discovery-log', 'view', 'product', '--text', 'Notes are furniture.']);
+  const KEPT = [
+    VIEW,
+    ['discovery-log', 'not-taken', 'product', '--direction', 'A web client', '--why', 'the Mac is the product'],
+    ['ledger', 'find', 'product.discovery'],
+    ['asset', 'spike', 'product', 'frame'], ['asset', 'import', 'product', 'brand.png'],
+    ['asset', 'add', 'product', '.product/assets/brand.png', '--entry', 'x'], ['asset', 'status', 'product', '.product/assets/brand.png', 'reference'],
+    ['topic', 'send', 'fumi', 'licence', '--from', 'product', '--content', 'm.md', '--slug', 'm'],
+    ['render', 'send-report', 'fumi.licence', '--sent', 'm.md'],
+    ['roadmap', 'state'], ['roadmap', 'add', 'sync', '--horizon', 'v2', '--summary', 'Sync', '--origin', 'park:product'], ['roadmap', 'archive', 'sync'],
+    ['inbox', 'archive', '.ledger/.inbox/ideas/2026-01-01--sync.md'], ['environment', 'show'], ['environment', 'set', 'run'],
+  ];
+  const OTHERS = [
+    ['discovery-log', 'view', 'fumi', '--text', 'x'], ['ledger', 'find', 'fumi.discovery'], ['ledger', 'decide', 'product.discovery'],
+    ['asset', 'spike', 'fumi', 'frame'], ['asset', 'lift', 'product', 'a', '--into', 'b', '--entry', 'x'],
+    ['topic', 'send', 'fumi', 'licence', '--from', 'fumi.discovery', '--content', 'm.md', '--slug', 'm'],
+    ['render', 'start-menu'], ['roadmap', 'add', 'sync', '--horizon', 'v2', '--summary', 'Sync', '--origin', 'roadmap'], ['roadmap', 'move', 'sync', '--horizon', 'v3'],
+    ['inbox', 'restore', 'x'], ['inbox', 'delete', 'x'], ['environment', 'confirm'], ['roadmap', 'archive', 'later'], ['roadmap', 'archive', 'ghost'],
+  ];
+  let fresh = 0;
+  /** Each call of `argvs` the stamp refuses, in a conversation never booted, fresh for each call. @param {string[][]} argvs */
+  const refusedOf = (argvs) => argvs.filter((argv) => refusedUnbooted(call(dir, argv, { env: { ...env, CLAUDE_CODE_SESSION_ID: `keeping-${fresh++}` }, stdin: '{}', unbooted: true }))).map((argv) => argv.join(' '));
+
+  it('each form the keep skill uses goes through while the checkout owes no migration on this version, and every other form of those commands is refused — the drop of a roadmap item only where no unit stands behind it', () => {
+    recorded('001', highestMigration());
+    const project = JSON.parse(readState(dir, 'manifest.json'));
+    const later = { horizon: 'v2', summary: 'Later', kind: 'idea', origin: 'postpone:fumi', postponed_from: { work_unit: 'fumi', topic: 'later' } };
+    writeState(dir, 'manifest.json', `${JSON.stringify({ ...project, roadmap: { horizons: ['v2'], items: { later } } }, null, 2)}\n`);
+
+    assert.deepStrictEqual(refusedOf(KEPT), []);
+    assert.deepStrictEqual(refusedOf(OTHERS), OTHERS.map((argv) => argv.join(' ')));
+    assert.match(ok(dir, VIEW, { env, unbooted: true }).line, /^- Notes are furniture\.$/);
+    assert.strictEqual(stamps(), null, 'no boot ran');
+  });
+
+  it('marks no conversation as one that runs Ledger, as the capture line marks none, nor does boot, which a keep\'s way into a migration runs; a real start is marked by its next verb', () => {
+    recorded('001', highestMigration());
+    const marked = () => fs.existsSync(path.join(conversation(), 'workflow'));
+
+    ok(dir, VIEW, { env, unbooted: true });
+    const kept = marked();
+    ok(dir, ['boot'], { env, unbooted: true });
+    const booted = marked();
+    assert.strictEqual(call(dir, ['render', 'start-menu'], { env, unbooted: true }).code, 0);
+
+    assert.deepStrictEqual([kept, booted, marked()], [false, false, true]);
+  });
+
+  it('refuses, writing nothing and naming the migration, while the record lacks the installed migrations\' highest id, holds it uncommitted as a migration waiting on its review leaves it, or the reshape waits on its commit — the last two in a conversation boot stamped too; once the commit is made and boot has run, the door goes through', () => {
+    const owed = 'discovery-log: this checkout owes Ledger\'s migration on this version — on the person\'s yes, run boot\'s migration, then this again';
+    const unrecorded = refusedPristine(dir, VIEW, { env, unbooted: true }).error;
+    recorded('001');
+    const behind = refusedPristine(dir, VIEW, { env, unbooted: true }).error;
+    writeState(dir, '.state/migrations', record('001', highestMigration()));
+    const reviewing = refusedPristine(dir, VIEW, { env, unbooted: true }).error;
+    recorded('001', highestMigration());
+    writeState(dir, '.cache/migrate/finish.json', '{"drops": []}\n');
+    const finishing = refusedPristine(dir, VIEW, { env, unbooted: true }).error;
+
+    stampBooted(dir, SESSION, config);
+    const stamped = refusedPristine(dir, VIEW, { env, unbooted: true }).error;
+
+    assert.deepStrictEqual([unrecorded, behind, reviewing, finishing, stamped], [owed, owed, owed, owed, owed]);
+    fs.rmSync(statePath(dir, '.cache/migrate/finish.json'));
+    ok(dir, VIEW, { env, unbooted: true });
+  });
+});
+
+describe('a migration waiting on its review, in two windows (18.11.7)', () => {
+  it('owes the migration in both: the keep refused in the window that ran it and in one never booted, the second\'s boot naming the review and committing nothing; once the review\'s yes commits it, the keep goes through, committing its own paths alone', () => {
+    ok(dir, ['boot'], { env, unbooted: true });
+    const ran = readState(dir, '.state/migrations');
+    commitOnState(statePath(dir), { '.state/migrations': ran.split('\n').filter(Boolean).slice(0, -1).map((id) => `${id}\n`).join('') }, 'chore: record Ledger\'s migrations');
+    writeState(dir, '.state/migrations', ran);
+    const PARK = ['roadmap', 'add', 'sync', '--horizon', 'v2', '--summary', 'Sync', '--origin', 'park:product'];
+    const other = { ...env, CLAUDE_CODE_SESSION_ID: 'other-window' };
+    const owed = 'roadmap: this checkout owes Ledger\'s migration on this version — on the person\'s yes, run boot\'s migration, then this again';
+
+    const refusals = [refusedPristine(dir, PARK, { env, unbooted: true }).error, refusedPristine(dir, PARK, { env: other, unbooted: true }).error];
+    const second = ok(dir, ['boot'], { env: other, unbooted: true });
+    const waiting = [second.gates.includes('migration-review'), second.migrations_committed, readState(dir, '.state/migrations') === ran, stateGit(dir, ['status', '--porcelain', '--', '.state']).trim()];
+    const after = refusedPristine(dir, PARK, { env: other, unbooted: true }).error;
+    ok(dir, ['commit', '--migrations', '-m', 'chore: apply Ledger\'s migrations'], { env: other, unbooted: true });
+    const log = writeState(dir, '.product/sessions/session-001.md', '## Pricing\n\nOne-time.\n');
+    ok(dir, PARK, { env: other, unbooted: true });
+
+    assert.deepStrictEqual(refusals, [owed, owed]);
+    assert.deepStrictEqual(waiting, [true, null, true, 'M .state/migrations']);
+    assert.strictEqual(after, owed);
+    assert.deepStrictEqual(stateGit(dir, ['show', '--name-only', '--format=', 'HEAD']).trim().split('\n'), ['manifest.json']);
+    assert.match(stateGit(dir, ['status', '--porcelain', '--untracked-files=all']), new RegExp(`^\\?\\? ${path.relative(statePath(dir), log)}$`, 'm'));
+  });
+});
+
+describe('a boot killed as it stamps', () => {
+  it('leaves the conversation refused, and the next boot stamps it, taking over the lock the killed boot held', () => {
+    killedAt({ method: 'renameSync', file: 'booted.json', when: 'before' }, dir, ['boot'], { env, unbooted: true });
+
+    assert.strictEqual(refusedPristine(dir, WORK, { env, unbooted: true }).error, refusal('brownfield', dir));
+    ok(dir, ['boot'], { env, unbooted: true });
+    ok(dir, WORK, { env, unbooted: true });
+  });
+});

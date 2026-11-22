@@ -1,0 +1,1097 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// The ledger's data layer (ledger-engine/scripts/domain/ledger.cjs): the
+// events and their schemas (domain/ledger-events.cjs), their ids
+// (domain/ledger-ids.cjs), the streamed read, the append, the append-only
+// check on every read and at every state commit (domain/ledger-check.cjs),
+// the engine's stop and its screen (domain/projections/ledger.cjs), and the
+// conversion door only a migration passes (domain/ledger-conversion.cjs):
+// each event written with its fields in the schema's order on a line of its
+// own; a nanoid shown by its shortest unique prefix and resolved as git
+// resolves a short hash; a line validated as it is read, a field a later
+// release added taking its default; a ledger past the read budget read a
+// line at a time; one entry appended whole or not at all, under the writer
+// lock; a rewritten, removed, swapped or truncated line, or a shorter file,
+// stopping the read and refusing the commit, in a sha1 repository and a
+// sha256 one, the branch read before the file and a failed check made again
+// under the lock, and made once in reads taken as one; the entries an append left uncommitted counted past the
+// committed ledger, where the disk starts with it, and committed with no
+// push; and a migration's converted copy, its every event through
+// with the same ids in the same order, let through for its own commit
+// alone.
+//
+// Real repositories in temp folders, each with its state worktree made
+// through the machinery. A `git` first on PATH, or a stand-in for a call the
+// suite cannot reach, plays a commit landing between two reads or a kill.
+//
+// Layer: verb.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { execFileSync, spawn, spawnSync } = require('child_process');
+
+const { git, codeProject, tip, traced, withFrozenClock, FROZEN_MS, holdLock, lockAttempts, ok, refuses, output, setupGitFixture, cleanupFixture, statePath, layout, ledgerEntries, bareRepo, remoteTip } = require('./engine-harness.cjs');
+const { auditMarkers } = require('./gate-audit.cjs');
+const { MADE } = require('./ledger-world.cjs');
+
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
+const LEDGER_MODULE = path.join(SCRIPTS, 'domain/ledger.cjs');
+const CONVERSION_MODULE = path.join(SCRIPTS, 'domain/ledger-conversion.cjs');
+const { checkLedger, withOneCheck, commitUncommitted, withLedger, appendEntry, ledgerStopSurface } = require(LEDGER_MODULE);
+const { LEDGER, LEDGER_VERSION, SCHEMA, LedgerLineError, LedgerNewer, validEvent, parseEntry, entryKind } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
+const { ID_LENGTH, newId, shortIds, resolveId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
+const { LedgerChanged, checkLedgerCommit, keptStop } = require(path.join(SCRIPTS, 'domain/ledger-check.cjs'));
+const { convertLedger } = require(CONVERSION_MODULE);
+const { STATE_BRANCH, withStateLock, commitState, openWorktree } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
+const { ledgerStop } = require(path.join(SCRIPTS, 'domain/projections/ledger.cjs'));
+const { READ_BUDGET_BYTES } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
+
+/** @type {string} */
+let world;
+
+beforeEach(() => {
+  world = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ledger-')));
+});
+
+afterEach(() => {
+  fs.rmSync(world, { recursive: true, force: true });
+});
+
+const TAGS = Object.freeze({ unit: 'fumi', topic: 'note-window', phase: 'discussion', session: 'session-1' });
+const AT = '2026-10-27T09:00:00Z';
+// A project named Fumi with one code commit, and its state.
+const FUMI = Object.freeze({ name: 'fumi', state: true });
+
+/** A question's fields. @param {Record<string, unknown>} [fields] */
+function question(fields = {}) {
+  return { event: 'asked', ...TAGS, ...MADE, text: 'What is a fumi, at its most basic?', part_of: null, relies_on: [], cites: [], task: null, from_before: null, ...fields };
+}
+
+/** A finding's fields. @param {Record<string, unknown>} [fields] */
+function finding(fields = {}) {
+  return {
+    event: 'found', ...TAGS, ...MADE, text: 'CKSyncEngine ships from macOS 14.', how: 'Apple\'s documentation', relies_on: [], product_wide: false,
+    known: 'documented', command: null, result: null, cites: [], task: null, ...fields,
+  };
+}
+
+/** A decision's fields, closing `answers`. @param {string} answers @param {Record<string, unknown>} [fields] */
+function decision(answers, fields = {}) {
+  return {
+    event: 'decided', ...TAGS, ...MADE, answers, text: 'A near-frameless floating note.', why: 'Notes are furniture on the desk.',
+    rules_out: ['a title bar'], relies_on: [], product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: false,
+    given: 'own', cites: [], task: null, ...fields,
+  };
+}
+
+/** A question parked with task 2.3 as Q1, answering `question`. @param {string} question @param {Record<string, unknown>} [fields] */
+function parked(question, fields = {}) {
+  return {
+    event: 'parked', ...TAGS, topic: null, phase: 'implementation', question, replaces: null, reason: null, cause: null, relies_on: [], task: '2.3', went_ahead: null, number: 1,
+    call: {
+      question: 'Where should a new note open?',
+      rows: [{ key: '1', name: 'Cursor', text: 'On the cursor\'s screen', notice: 'it opens where you look' }, { key: '2', name: 'Main', text: 'On the main screen', notice: 'it always opens there' }],
+      lean: '1', why: 'A note follows the person.', sort: 'several', mechanism: 'The pointer\'s screen.', product_wide: false,
+    },
+    rows_judged: [], why_asking: 'I couldn\'t tell what kind of question this is, so it comes to you.', asked_by: 'rule', label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: question, blind: false, ...fields,
+  };
+}
+
+/** @param {string} root */
+function ledgerText(root) {
+  return fs.readFileSync(path.join(root, LEDGER), 'utf8');
+}
+
+/** @param {string} root @param {string} text */
+function writeLedger(root, text) {
+  fs.writeFileSync(path.join(root, LEDGER), text);
+}
+
+/** The ledger committed, through the engine's door. @param {string} root @param {string} [message] */
+function commitLedger(root, message = 'state: the ledger') {
+  return withStateLock(root, () => commitState(root, [LEDGER], message));
+}
+
+/** A question and two decisions on it appended and committed: the ledger's three lines. @param {string} root @returns {string[]} */
+function threeCommitted(root) {
+  const q = appendEntry(root, question(), []);
+  appendEntry(root, decision(/** @type {string} */ (q.id)), []);
+  appendEntry(root, decision(/** @type {string} */ (q.id), { text: 'Its controls appear on hover.' }), []);
+  commitLedger(root);
+  return ledgerText(root).split('\n').slice(0, 3);
+}
+
+/** The state worktree's own git dir. @param {string} root */
+function gitDirOf(root) {
+  return git(root, ['rev-parse', '--absolute-git-dir']).trim();
+}
+
+/** The line the check found not as committed, the stop thrown and kept as found. @param {string} root */
+function stopped(root) {
+  /** @type {any} */
+  let change = null;
+  assert.throws(() => checkLedger(root, []), (err) => {
+    change = err instanceof LedgerChanged ? err.change : null;
+    return change !== null && err.payload.stop === 'ledger' && /changed outside the engine/.test(err.message);
+  });
+  assert.deepStrictEqual(keptStop(gitDirOf(root)), { stop: 'changed', ...change });
+  return change;
+}
+
+describe('the events and their schemas', () => {
+  const HEADER = ['v', 'id', 'event', 'unit', 'topic', 'phase', 'session', 'at'];
+  const BY = ['by', 'who_moved_whom'];
+  const QUESTION = ['text', 'part_of', 'relies_on', 'cites', 'task', 'from_before'];
+  const FINDING = ['text', 'how', 'relies_on', 'product_wide', 'known', 'command', 'result', 'cites', 'task'];
+  const DECISION = ['answers', 'text', 'why', 'rules_out', 'relies_on', 'product_wide', 'sealed', 'alternatives', 'evidence', 'kind', 'hard_to_undo', 'unchecked', 'given', 'cites', 'task'];
+
+  it('writes every event §5 names, and merged, checked, kept, asset, parked, unparked and rehomed, each with its fields in its schema\'s order on a line of its own, ended by LF alone', () => {
+    const { root } = codeProject(world, FUMI);
+    const q = /** @type {string} */ (appendEntry(root, question(), []).id);
+    const f = /** @type {string} */ (appendEntry(root, finding(), []).id);
+    const d = /** @type {string} */ (appendEntry(root, decision(q, { relies_on: [f] }), []).id);
+    const r = /** @type {string} */ (appendEntry(root, {
+      ...decision(q, { text: 'A frameless surface.' }), event: 'replaced', replaces: d, reason: 'new-fact', cause: f, drops: ['a title bar'], of: 'decision',
+    }, []).id);
+    appendEntry(root, { event: 'still-holds', ...TAGS, ...MADE, entry: d, after: r }, []);
+    appendEntry(root, { event: 'moved', ...TAGS, ...MADE, question: q, to: 'space-homing' }, []);
+    appendEntry(root, { event: 'merged', ...TAGS, ...MADE, question: q, into: d, duplicate: null }, []);
+    appendEntry(root, { event: 'checked', ...TAGS, entry: d, rules: 'one' }, []);
+    appendEntry(root, { event: 'kept', ...TAGS, by: 'person', who_moved_whom: 'person-moved-claude', entry: r, reason: 'new-fact', cause: f, why: 'They float every note.', sealed: 'A floating panel.', given: 'own' }, []);
+    appendEntry(root, { event: 'asset', ...TAGS, entry: r, path: 'fumi/assets/note-window.png', status: 'canonical', into: null }, []);
+    const parkedId = /** @type {string} */ (appendEntry(root, parked(q), []).id);
+    appendEntry(root, { event: 'unparked', ...TAGS, topic: null, phase: 'implementation', task: '2.3', parks: [parkedId] }, []);
+    appendEntry(root, { event: 'rehomed', ...TAGS, lines: [q, d], files: [['mint/assets/note.png', 'fumi/assets/note.png']] }, []);
+
+    const text = ledgerText(root);
+    assert.ok(text.endsWith('\n') && !text.includes('\r'), 'a line ends with LF alone');
+    const lines = text.split('\n').slice(0, -1);
+    assert.deepStrictEqual(lines.map((line) => Object.keys(JSON.parse(line))), [
+      [...HEADER, ...BY, ...QUESTION],
+      [...HEADER, ...BY, ...FINDING],
+      [...HEADER, ...BY, ...DECISION],
+      [...HEADER, ...BY, 'replaces', 'reason', 'cause', 'drops', 'of', ...DECISION],
+      [...HEADER, ...BY, 'entry', 'after'],
+      [...HEADER, ...BY, 'question', 'to'],
+      [...HEADER, ...BY, 'question', 'into', 'duplicate'],
+      [...HEADER, 'entry', 'rules'],
+      [...HEADER, ...BY, 'entry', 'reason', 'cause', 'why', 'sealed', 'given'],
+      [...HEADER, 'entry', 'path', 'status', 'into'],
+      [...HEADER, 'question', 'replaces', 'reason', 'cause', 'relies_on', 'task', 'went_ahead', 'number', 'call', 'rows_judged', 'why_asking', 'asked_by', 'label', 'model', 'blocks_build', 'replaced_by', 'always', 'measured', 'chain', 'blind'],
+      [...HEADER, 'task', 'parks'],
+      [...HEADER, 'lines', 'files'],
+    ]);
+    assert.deepStrictEqual(Object.keys(SCHEMA.events).sort(), ['asked', 'asset', 'checked', 'decided', 'found', 'kept', 'merged', 'moved', 'parked', 'rehomed', 'replaced', 'still-holds', 'unparked']);
+  });
+
+  it('holds a keep to its shape: the person\'s alone, standing over Claude\'s proposal — or, a blind question\'s answer keeping Claude\'s call, moving no one (16.17.6) — never Claude moving them, a reason of the four, Claude\'s account of their reason, and that proposal sealed in it, never none; given as their own, or their "don\'t care" on a blind question\'s call gone ahead alone (9.2.16)', () => {
+    const keep = { v: 1, id: newId(), event: 'kept', ...TAGS, at: AT, by: 'person', who_moved_whom: 'person-moved-claude', entry: newId(), reason: 'changed-mind', cause: null, why: 'They float every note.', sealed: 'A floating panel.', given: 'own' };
+    const leftAhead = { ...keep, who_moved_whom: 'none', reason: 'asked-blind', given: 'dont-care' };
+    assert.deepStrictEqual(validEvent(leftAhead), leftAhead);
+    assert.throws(() => validEvent({ ...keep, given: 'dont-care' }), /a keep is given dont-care only where it keeps Claude's sealed answer, moving no one: Claude's call gone ahead while a blind question waited, or a decision Claude leaned to keep/);
+    assert.throws(() => validEvent({ ...keep, given: 'your-call' }), /its given is not one of own, dont-care$/);
+    assert.deepStrictEqual(validEvent(keep), keep);
+    assert.throws(() => validEvent({ ...keep, by: 'claude' }), /its by is not one of person$/);
+    assert.deepStrictEqual(validEvent({ ...keep, who_moved_whom: 'none' }), { ...keep, who_moved_whom: 'none' });
+    assert.throws(() => validEvent({ ...keep, who_moved_whom: 'claude-moved-person' }), /its who_moved_whom is not one of person-moved-claude, none$/);
+    assert.throws(() => validEvent({ ...keep, reason: 'a whim' }), /its reason is not one of new-fact, other-topic, changed-mind, was-wrong/);
+    assert.throws(() => validEvent({ ...keep, sealed: null }), /its sealed is not non-empty text/);
+    const { why: _why, ...unexplained } = keep;
+    assert.throws(() => validEvent(unexplained), { message: 'the kept event needs why' });
+  });
+
+  it('holds a park to its shape: a question answered or a replacement proposed, one and not both, the reason and cause a replacement\'s alone; a task as screens show it, or none; the task Claude\'s call went ahead for, a blind question\'s on it alone, asked-blind, parking none — the park holding that task open asked-blind too, parking it, naming none gone ahead; a number from 1, and the call sealed whole, leaning to a row it holds — or a fact\'s, answering a question, with no lean, why or sort — its label a model\'s id and twelve answers, or none, and what it was decided from: whether it blocks build work, who decided what it would replace, or none, a mark a question always asks by, or none, the experiment still running that measures its question, or none, and its question\'s id the blind draw hashes, or none; a task taken off its questions names the task and the parks', () => {
+    const park = { v: LEDGER_VERSION, id: newId(), at: AT, ...parked(newId()) };
+    const fact = { ...park, call: { ...park.call, rows: [], lean: null, why: null, sort: null } };
+    const unparked = { v: LEDGER_VERSION, id: newId(), event: 'unparked', ...TAGS, topic: null, phase: 'implementation', at: AT, task: '2.3', parks: [newId()] };
+    assert.deepStrictEqual(validEvent(fact), fact);
+    assert.deepStrictEqual(validEvent(unparked), unparked);
+    const replacing = { ...park, question: null, replaces: newId(), reason: 'was-wrong', chain: null };
+    assert.deepStrictEqual(validEvent(park), park);
+    assert.deepStrictEqual(validEvent(replacing), replacing);
+    assert.deepStrictEqual(validEvent({ ...park, task: null }), { ...park, task: null });
+    const labelled = { ...park, label: { labeller: 'claude-sonnet-5-5', answers: Array(12).fill(false) } };
+    assert.deepStrictEqual(validEvent(labelled), labelled);
+    const decidedFrom = { ...replacing, blocks_build: false, replaced_by: 'your-call', always: 'live-server', measured: 'E2.1' };
+    assert.deepStrictEqual(validEvent(decidedFrom), decidedFrom);
+    const ahead = { ...replacing, reason: 'asked-blind', task: null, went_ahead: '2.3', chain: park.chain, blind: true };
+    assert.deepStrictEqual(validEvent(ahead), ahead);
+    const held = { ...ahead, task: '2.3', went_ahead: null };
+    assert.deepStrictEqual(validEvent(held), held);
+    const goneAhead = /a blind question on Claude's call gone ahead proposes to replace it for its reason, asked-blind/;
+    const askedBlind = /a park for asked-blind is asked blind: Claude's call gone ahead, or the task it went ahead for held open/;
+    const parksOne = /a blind question on Claude's call gone ahead names the task it went ahead for and parks none; the park holding that task open parks it, naming none gone ahead/;
+    const cases = [
+      [{ ...park, replaces: newId(), reason: 'was-wrong' }, /a parked question answers a question or proposes a replacement, one and not both/],
+      [{ ...park, question: null }, /a parked question answers a question or proposes a replacement, one and not both/],
+      [{ ...park, reason: 'was-wrong' }, /a replacement proposed gives its reason, and only a replacement does/],
+      [{ ...replacing, reason: null }, /a replacement proposed gives its reason, and only a replacement does/],
+      [{ ...park, cause: newId() }, /only a replacement proposed has a cause/],
+      [{ ...park, call: { ...park.call, lean: '3' } }, /its call leans to 3, a row it does not hold/],
+      [{ ...park, call: { ...park.call, rows: [{ key: '1', name: 'Cursor', text: 'On the cursor\'s screen' }] } }, /its call is not a call, \{question, rows, lean, why, sort, mechanism, product_wide\}/],
+      [{ ...park, call: { ...park.call, said: 'more' } }, /its call is not a call/],
+      [{ ...park, task: '2' }, /its task is not a task, as screens show it: \{phase\}\.\{n\}/],
+      [{ ...park, number: 0 }, /its number is not a whole number from 1/],
+      [{ ...labelled, label: { ...labelled.label, labeller: 'sonnet' } }, /its label is not a label: the labeller's model id, and its 12 answers, true or false, or null/],
+      [{ ...labelled, label: { ...labelled.label, answers: Array(11).fill(false) } }, /its label is not a label/],
+      [{ ...park, blocks_build: null }, /its blocks_build is not true or false$/],
+      [{ ...park, replaced_by: 'builder' }, /its replaced_by is not one of person, claude, your-call, dont-care, carried, or null$/],
+      [{ ...park, always: 'urgent' }, /its always is not one of design-problem, live-server, built-otherwise, or null$/],
+      [{ ...park, measured: 'the timing experiment' }, /its measured is not an experiment's id, or null$/],
+      [{ ...park, chain: 'Q1' }, /its chain is not an entry id, or null$/],
+      [{ ...fact, call: { ...fact.call, why: 'A note follows the person.' } }, /its call has a lean, a why and a sort, or, a fact, none of them/],
+      [{ ...fact, question: null, replaces: newId(), reason: 'was-wrong' }, /a fact parked answers a question, never proposes a replacement/],
+      [{ ...fact, blind: true }, /a fact parked is never blind: it has no answer of Claude's to hold back/],
+      [{ ...replacing, went_ahead: '2.3', task: null, blind: true }, goneAhead],
+      [{ ...ahead, went_ahead: null }, parksOne],
+      [{ ...ahead, task: '2.3' }, parksOne],
+      [{ ...ahead, blind: false }, askedBlind],
+      [{ ...held, blind: false }, askedBlind],
+      [{ ...ahead, went_ahead: '2' }, /its went_ahead is not a task, as screens show it: \{phase\}\.\{n\}, or null/],
+      [{ ...unparked, task: null }, /its task is not a task, as screens show it: \{phase\}\.\{n\}/],
+      [{ ...unparked, parks: [] }, /a task taken off its questions names the parks it is taken off/],
+    ];
+    for (const [value, message] of cases) assert.throws(() => validEvent(value), (err) => err instanceof LedgerLineError && message.test(err.message), `${JSON.stringify(value)} was not refused as ${message}`);
+  });
+
+  it('holds a carry to its shape: the lines it carries, by id, never none, and each file it moved once, from one plain path to another — and no maker, as no entry', () => {
+    const carry = { v: LEDGER_VERSION, id: newId(), event: 'rehomed', ...TAGS, at: AT, lines: [newId(), newId()], files: [['mint/assets/note.png', 'fumi/assets/note-2.png']] };
+    assert.deepStrictEqual(validEvent(carry), carry);
+    assert.deepStrictEqual(validEvent({ ...carry, files: [] }), { ...carry, files: [] });
+    assert.strictEqual(entryKind(carry), null);
+    const notMoved = /its files is not a list of a file moved, \[from, to\]: two paths from the state root/;
+    const cases = [
+      [{ ...carry, lines: [] }, /a carry lists the lines it carries/],
+      [{ ...carry, lines: ['Q1'] }, /its lines is not a list of an entry id/],
+      [{ ...carry, files: [['mint/assets/note.png']] }, notMoved],
+      [{ ...carry, files: [['mint/../note.png', 'fumi/assets/note.png']] }, notMoved],
+      [{ ...carry, files: [['fumi/assets/note.png', 'fumi/assets/note.png']] }, notMoved],
+      [{ ...carry, files: [['mint/a.png', 'fumi/a.png'], ['mint/a.png', 'fumi/b.png']] }, /a carry names each file it moved once/],
+    ];
+    for (const [value, message] of cases) assert.throws(() => validEvent(value), (err) => err instanceof LedgerLineError && message.test(err.message), `${JSON.stringify(value)} was not refused as ${message}`);
+  });
+
+  it('reads a question written at version 1, before from_before — asked, and reworded — as no point from before, from_before null', () => {
+    const lines = [
+      '{"v":1,"id":"g8JBSgaWIycDdYBUIEBNa","event":"asked","unit":"fumi","topic":"note-window","phase":"discussion","session":"session-1","at":"2026-10-27T09:00:00Z","by":"claude","who_moved_whom":"none","text":"Where does a note go?","part_of":null,"relies_on":[],"cites":[],"task":null}',
+      '{"v":1,"id":"LeXlFMASv48yrFE1oAr8d","event":"replaced","unit":"fumi","topic":"note-window","phase":"discussion","session":"session-1","at":"2026-10-27T09:05:00Z","by":"claude","who_moved_whom":"none","replaces":"g8JBSgaWIycDdYBUIEBNa","reason":"changed-mind","cause":null,"drops":[],"of":"question","text":"Where does a new note go?","part_of":null,"relies_on":[],"cites":[],"task":null}',
+    ];
+
+    assert.deepStrictEqual(lines.map((line) => validEvent(JSON.parse(line)).from_before), [null, null]);
+  });
+
+  it('carries in a replacement the content of what it replaces: a question\'s, a finding\'s or a decision\'s', () => {
+    const shapes = {
+      question: { text: 'Where does a note go?', part_of: null, relies_on: [], cites: [], task: null, from_before: null },
+      finding: { text: 'Spaces keep their ids.', how: 'seen in a spike', relies_on: [], product_wide: true, known: 'spike', command: null, result: null, cites: [], task: null },
+    };
+    for (const [of, content] of Object.entries(shapes)) {
+      const event = validEvent({ v: LEDGER_VERSION, id: newId(), event: 'replaced', ...TAGS, at: AT, ...MADE, replaces: newId(), reason: 'was-wrong', cause: null, drops: [], of, ...content });
+      assert.deepStrictEqual(Object.keys(event).slice(-Object.keys(content).length), Object.keys(content));
+    }
+    assert.throws(() => validEvent({ v: LEDGER_VERSION, id: newId(), event: 'replaced', ...TAGS, at: AT, ...MADE, replaces: newId(), reason: 'was-wrong', cause: null, drops: [], of: 'finding', ...shapes.question }),
+      /the replaced event needs how/);
+    assert.throws(() => validEvent({ v: LEDGER_VERSION, id: newId(), event: 'replaced', ...TAGS, at: AT, ...MADE, replaces: newId(), reason: 'was-wrong', cause: null, drops: [], of: 'rule', ...shapes.question }),
+      /its of is not one of question, finding, decision/);
+    assert.throws(() => validEvent({ v: LEDGER_VERSION, id: newId(), event: 'replaced', ...TAGS, at: AT, ...MADE, replaces: newId(), reason: 'a whim', cause: null, drops: [], of: 'question', ...shapes.question }),
+      /its reason is not one of new-fact, other-topic, changed-mind, was-wrong/);
+  });
+
+  it('refuses a value that is no event of the shape its version names, saying why', () => {
+    const base = { v: LEDGER_VERSION, id: newId(), ...TAGS, at: AT, ...question() };
+    const cases = [
+      [[], /not a JSON object/],
+      [{ ...base, v: 0 }, /its v, 0, is not a schema version/],
+      [{ ...base, v: '1' }, /its v, "1", is not a schema version/],
+      [{ ...base, v: 1.5 }, /its v, 1.5, is not a schema version/],
+      [{ ...base, event: 'noted' }, new RegExp(`its event "noted" is none of version ${LEDGER_VERSION}'s: asked, found`)],
+      [{ ...base, id: 'Q1' }, /its id is not an entry id/],
+      [{ ...base, unit: '' }, /its unit is not non-empty text/],
+      [{ ...base, at: 'yesterday' }, /its at is not a UTC time/],
+      [{ ...base, by: 'someone' }, /its by is not one of person, claude, review/],
+      [{ ...base, relies_on: ['Q1'] }, /its relies_on is not a list of an entry id/],
+      [{ ...base, part_of: undefined }, /its part_of is not an entry id, or null/],
+      [{ ...base, kind: 'look' }, new RegExp(`the asked event has no field kind at version ${LEDGER_VERSION}`)],
+      [Object.fromEntries(Object.entries(base).filter(([key]) => key !== 'text')), /the asked event needs text/],
+      [{ ...decision(newId()), v: LEDGER_VERSION, id: newId(), at: AT, by: 'review' }, /its by is not one of person, claude/],
+      [{ ...decision(newId()), v: LEDGER_VERSION, id: newId(), at: AT, kind: 'taste' }, /its kind is not one of process, danger, contract, scope, look, words, behaviour, internals, or null/],
+      [{ ...decision(newId()), v: LEDGER_VERSION, id: newId(), at: AT, hard_to_undo: 'yes' }, /its hard_to_undo is not true or false, or null/],
+      [{ ...decision(newId()), v: LEDGER_VERSION, id: newId(), at: AT, answers: null }, /its answers is not an entry id/],
+    ];
+    for (const [value, message] of cases) assert.throws(() => validEvent(value), (err) => err instanceof LedgerLineError && message.test(err.message), `${JSON.stringify(value)} was not refused as ${message}`);
+  });
+
+  it('gives an entry its version, id and time, and refuses a caller naming any of them, appending nothing', () => {
+    const { root } = codeProject(world, FUMI);
+
+    const entry = withFrozenClock(() => appendEntry(root, question(), []));
+
+    assert.strictEqual(entry.v, LEDGER_VERSION);
+    assert.match(/** @type {string} */ (entry.id), new RegExp(`^[0-9A-Za-z]{${ID_LENGTH}}$`));
+    assert.strictEqual(Date.parse(/** @type {string} */ (entry.at)), FROZEN_MS);
+    assert.deepStrictEqual(JSON.parse(ledgerText(root)), entry);
+    for (const assigned of [{ id: newId() }, { v: 1 }, { at: AT }]) {
+      assert.throws(() => appendEntry(root, question(assigned), []), /is the engine's to give — nothing appended/);
+    }
+    assert.throws(() => appendEntry(root, decision(newId(), { answers: undefined }), []), /its answers is not an entry id/);
+    assert.strictEqual(ledgerText(root).split('\n').length, 2);
+  });
+});
+
+describe('ids', () => {
+  it('draws a nanoid of 21 letters and digits from crypto: ten thousand drawn, never two alike, every character in use', () => {
+    const ids = Array.from({ length: 10000 }, () => newId());
+    assert.ok(ids.every((id) => /^[0-9A-Za-z]{21}$/.test(id)));
+    assert.strictEqual(new Set(ids).size, ids.length);
+    assert.strictEqual(new Set(ids.join('')).size, 62);
+  });
+
+  it('shows an id by its shortest prefix no other id shares, never under six characters', () => {
+    const lone = 'Xk3vQ9a1b2c3d4e5f6g7h';
+    const twins = ['Xk3vQ9Za1b2c3d4e5f6g7', 'Xk3vQ9Zb1b2c3d4e5f6g7'];
+    const shorts = shortIds([lone, ...twins, lone]);
+
+    assert.deepStrictEqual([...shorts], [[twins[0], 'Xk3vQ9Za'], [twins[1], 'Xk3vQ9Zb'], [lone, 'Xk3vQ9a']]);
+    assert.strictEqual(shortIds(['Ab0000000000000000000']).get('Ab0000000000000000000'), 'Ab0000');
+  });
+
+  it('resolves a prefix as git resolves a short hash: the one id it begins, refused where it begins none or several, or is under four characters', () => {
+    const ids = ['Xk3vQ9Za1b2c3d4e5f6g7', 'Xk3vQ9Zb1b2c3d4e5f6g7', 'Pq0000000000000000000'];
+
+    assert.strictEqual(resolveId('Xk3vQ9Zb', ids), ids[1]);
+    assert.strictEqual(resolveId('Pq00', ids), ids[2]);
+    assert.strictEqual(resolveId(ids[0], ids), ids[0]);
+    assert.throws(() => resolveId('Xk3vQ9Z', ids), { message: `"Xk3vQ9Z" is ambiguous: 2 ledger entries' ids begin with it — give more of the id` });
+    assert.throws(() => resolveId('Zz00', ids), { message: `no ledger entry's id begins "Zz00"` });
+    assert.throws(() => resolveId('Pq0', ids), { message: `"Pq0" is too short to name a ledger entry — give at least 4 characters of its id` });
+    assert.throws(() => resolveId('xk3vQ9Zb', ids), /no ledger entry's id begins/);
+  });
+});
+
+describe('the streamed reader', () => {
+  it('reads every entry in order, each line read as an event of the current shape; no ledger reads as none', () => {
+    const { root } = codeProject(world, FUMI);
+    assert.deepStrictEqual(ledgerEntries(root), []);
+    const written = [appendEntry(root, question(), [])];
+    written.push(appendEntry(root, decision(/** @type {string} */ (written[0].id)), []));
+    commitLedger(root);
+    written.push(appendEntry(root, decision(/** @type {string} */ (written[0].id), { text: 'Appended, not yet committed.' }), []));
+
+    assert.deepStrictEqual(ledgerEntries(root), written);
+  });
+
+  it('refuses a line that is no entry, naming its number: one that is not JSON, one of another shape, and an unfinished last line', () => {
+    const { root } = codeProject(world, FUMI);
+    const q = appendEntry(root, question(), []);
+    commitLedger(root);
+    const committed = ledgerText(root);
+    const cases = [
+      ['not json\n', /line 2 of the ledger is not JSON: not json/],
+      [`${JSON.stringify({ ...q, id: newId(), why: 'a decision\'s field' })}\n`, new RegExp(`line 2 of the ledger is no ledger entry: the asked event has no field why at version ${LEDGER_VERSION}`)],
+      [JSON.stringify({ ...q, id: newId() }).slice(0, 40), /line 2 of the ledger is not JSON/],
+      ['\n', /line 2 of the ledger is not JSON/],
+    ];
+    for (const [tail, message] of cases) {
+      writeLedger(root, committed + tail);
+      assert.throws(() => ledgerEntries(root), (err) => err instanceof LedgerLineError && message.test(err.message), `${JSON.stringify(tail)} was not refused as ${message}`);
+    }
+  });
+
+  it('reads a line written before a later version added a field as valid, the field taking its stated default; a line of that version must carry it (5.S24)', () => {
+    const { root } = codeProject(world, FUMI);
+    const q = appendEntry(root, question(), []);
+    const line = ledgerText(root).trim();
+    const flag = { is: 'true or false', test: (/** @type {unknown} */ v) => typeof v === 'boolean' };
+    const next = LEDGER_VERSION + 1;
+    const later = {
+      version: next,
+      events: {
+        ...SCHEMA.events,
+        asked: { since: 1, fields: [...SCHEMA.events.asked.fields, { name: 'raised', type: flag, added: { version: next, default: false } }] },
+        noted: { since: next, fields: [{ name: 'text', type: { is: 'text', test: (/** @type {unknown} */ v) => typeof v === 'string' } }] },
+      },
+    };
+
+    assert.deepStrictEqual(parseEntry(line, 1, later), { ...q, raised: false });
+    assert.strictEqual(parseEntry(JSON.stringify({ ...q, v: next, raised: true }), 1, later).raised, true);
+    assert.throws(() => parseEntry(JSON.stringify({ ...q, v: next }), 1, later), /line 1 of the ledger is no ledger entry: the asked event needs raised/);
+    assert.throws(() => parseEntry(JSON.stringify({ ...q, raised: true }), 1, later), new RegExp(`the asked event has no field raised at version ${LEDGER_VERSION}`));
+    const noted = { v: next, id: newId(), event: 'noted', ...TAGS, at: AT, text: 'Seen.' };
+    assert.strictEqual(parseEntry(JSON.stringify(noted), 1, later).text, 'Seen.');
+    assert.throws(() => parseEntry(JSON.stringify({ ...noted, v: LEDGER_VERSION }), 1, later), new RegExp(`its event "noted" is none of version ${LEDGER_VERSION}'s`));
+    assert.deepStrictEqual(parseEntry(line, 1), q);
+  });
+
+  it('stops on a line a newer release wrote, keeping its stop, and never reads it; a line of a version it knows with a field or an event it does not is a broken line', () => {
+    const { main, root } = codeProject(world, FUMI);
+    const q = appendEntry(root, question(), []);
+    commitLedger(root);
+    const newer = JSON.stringify({ ...q, v: LEDGER_VERSION + 1, id: newId(), raised: true });
+    writeLedger(root, `${ledgerText(root)}${newer}\n`);
+    const gitDir = gitDirOf(root);
+
+    const read = [];
+    assert.throws(() => withLedger(root, [], (ledger) => { for (const { event } of ledger.entries()) read.push(event); }),
+      (err) => err instanceof LedgerNewer && !(err instanceof LedgerLineError) && err.payload.stop === 'ledger'
+        && new RegExp(`holds entries a newer release wrote, at schema version ${LEDGER_VERSION + 1}, and Ledger here reads up to version ${LEDGER_VERSION} — update Ledger on this machine \\(pull the project's code\\) and start again`).test(err.message));
+    assert.deepStrictEqual(read, [q]);
+    assert.deepStrictEqual(keptStop(gitDir), { stop: 'newer', version: LEDGER_VERSION + 1, reads: LEDGER_VERSION });
+    assert.strictEqual(ledgerStopSurface(main, {}), [
+      '=== DISPLAY: ledger stop (emit verbatim as a properties code block (```properties fence)) ===',
+      '⚑ The engine stopped: the ledger holds entries a newer release wrote',
+      '',
+      '=== DISPLAY: ledger account (emit verbatim as markdown (not a code block)) ===',
+      `> Fumi's ledger holds entries at schema version ${LEDGER_VERSION + 1}, and Ledger on this machine reads up to version ${LEDGER_VERSION}, so the engine reads none of it.`,
+      '>',
+      "> Update Ledger on this machine — pull the project's code — and start again.",
+      '',
+    ].join('\n'));
+
+    for (const broken of [{ ...q, id: newId(), raised: true }, { ...q, id: newId(), event: 'noted' }]) {
+      writeLedger(root, `${git(root, ['show', `${STATE_BRANCH}:${LEDGER}`])}${JSON.stringify(broken)}\n`);
+      assert.throws(() => ledgerEntries(root), (err) => err instanceof LedgerLineError && /^line 2 of the ledger is no ledger entry: /.test(err.message));
+    }
+  });
+
+  it('reads a ledger past the 64 MiB a pipe holds a line at a time: the check hashes it, extracting nothing, and only finding a changed line writes the blob out', () => {
+    const { main, root } = codeProject(world, FUMI);
+    git(main, ['config', 'core.looseCompression', '0']);
+    const file = path.join(root, LEDGER);
+    const fd = fs.openSync(file, 'w');
+    let size = 0;
+    let count = 0;
+    let last = '';
+    try {
+      while (size <= READ_BUDGET_BYTES) {
+        last = `${JSON.stringify(validEvent({ v: LEDGER_VERSION, id: newId(), at: AT, ...finding({ text: 'x'.repeat(2000) }) }))}\n`;
+        fs.writeSync(fd, last);
+        size += Buffer.byteLength(last);
+        count += 1;
+      }
+    } finally {
+      fs.closeSync(fd);
+    }
+    commitLedger(root, 'state: a long ledger');
+
+    const clean = traced(() => withLedger(root, [], (ledger) => {
+      let read = 0;
+      for (const { event } of ledger.entries()) {
+        read += 1;
+        if (read === count) assert.strictEqual(`${JSON.stringify(event)}\n`, last);
+      }
+      return read;
+    }));
+    assert.strictEqual(clean.result, count);
+    assert.ok(clean.commands.every((call) => !/^(cat-file blob|show)\b/.test(call)), `the clean read wrote a blob out: ${clean.commands}`);
+
+    appendEntry(root, question(), []);
+    assert.notStrictEqual(commitLedger(root, 'state: one more').commit, null);
+    const fd2 = fs.openSync(file, 'r+');
+    try {
+      fs.writeSync(fd2, 'X', size - 10);
+    } finally {
+      fs.closeSync(fd2);
+    }
+    const changed = traced(() => stopped(root));
+    assert.deepStrictEqual(changed.result, { line: count, found: `${last.slice(0, -10)}X${last.slice(-9, -1)}` });
+    assert.ok(changed.commands.some((call) => call.startsWith('cat-file blob')), `finding the line wrote no blob out: ${changed.commands}`);
+    assert.throws(() => commitLedger(root), LedgerChanged);
+  });
+});
+
+describe('the append', () => {
+  it('appends each entry as a whole line after the last, never editing a line before it', () => {
+    const { root } = codeProject(world, FUMI);
+    const texts = [];
+    const q = appendEntry(root, question(), []);
+    texts.push(ledgerText(root));
+    for (const text of ['One.', 'Two.']) {
+      appendEntry(root, decision(/** @type {string} */ (q.id), { text }), []);
+      texts.push(ledgerText(root));
+    }
+
+    texts.forEach((text, i) => {
+      assert.strictEqual(text.split('\n').length, i + 2);
+      if (i > 0) assert.ok(text.startsWith(texts[i - 1]), `append ${i + 1} edited what was there`);
+    });
+  });
+
+  it('replaces the file whole: killed before the rename, the ledger stands as it was with no half line, and the next append clears the copy left', () => {
+    const { root } = codeProject(world, FUMI);
+    const q = appendEntry(root, question(), []);
+    const before = ledgerText(root);
+    const file = path.join(root, LEDGER);
+    const rename = fs.renameSync;
+    fs.renameSync = (from, to) => {
+      if (to === file) throw new Error('killed');
+      return rename(from, to);
+    };
+    try {
+      assert.throws(() => appendEntry(root, decision(/** @type {string} */ (q.id)), []), /killed/);
+    } finally {
+      fs.renameSync = rename;
+    }
+    const left = fs.readdirSync(root).filter((name) => name.startsWith(`${LEDGER}.`));
+    assert.strictEqual(ledgerText(root), before);
+    assert.strictEqual(left.length, 1);
+    assert.strictEqual(spawnSync('git', ['check-ignore', '-q', left[0]], { cwd: root }).status, 0, 'the copy a kill leaves is not ignored');
+
+    appendEntry(root, decision(/** @type {string} */ (q.id)), []);
+
+    assert.deepStrictEqual(fs.readdirSync(root).filter((name) => name.startsWith(`${LEDGER}.`)), []);
+    assert.strictEqual(ledgerText(root).split('\n').length, 3);
+  });
+
+  it('appends under the writer lock, timed under it: a live peer holding it, the append waits, then lands with the time it took the lock', (t) => {
+    const { root } = codeProject(world, FUMI);
+    appendEntry(root, question(), []);
+    const before = ledgerText(root);
+    const lock = holdLock(path.join(root, layout.lock));
+    /** @type {string[]} */
+    const whileHeld = [];
+    let released = 0;
+    // The lock is let go at the append's second attempt: it found the lock held, and waited.
+    const attempts = lockAttempts(t, lock, (taken) => {
+      whileHeld.push(ledgerText(root));
+      if (taken < 2) return;
+      released = Math.floor(Date.now() / 1000) * 1000;
+      fs.unlinkSync(lock);
+    });
+
+    appendEntry(root, question({ text: 'Waited its turn?' }), []);
+
+    assert.deepStrictEqual(attempts, ['taken', 'taken', 'made']);
+    assert.deepStrictEqual(whileHeld, [before, before], 'appended while the peer held the lock');
+    const landed = JSON.parse(ledgerText(root).split('\n')[1]);
+    assert.strictEqual(landed.text, 'Waited its turn?');
+    assert.ok(Date.parse(landed.at) >= released, `the append was timed before it took the lock: ${landed.at}`);
+  });
+
+  it('refuses to append to a ledger the check stops on, or one ending in an unfinished line, appending nothing', () => {
+    const { root } = codeProject(world, FUMI);
+    const lines = threeCommitted(root);
+    writeLedger(root, `${lines[0]}\n${lines[2]}\n`);
+    assert.throws(() => appendEntry(root, question(), []), LedgerChanged);
+    assert.strictEqual(ledgerText(root), `${lines[0]}\n${lines[2]}\n`);
+
+    const unfinished = `${lines.join('\n')}\n{"v":1,"id":`;
+    writeLedger(root, unfinished);
+    assert.throws(() => appendEntry(root, question(), []), /ends in an unfinished line — nothing appended/);
+    assert.strictEqual(ledgerText(root), unfinished);
+  });
+
+  it('counts the entries appends left uncommitted past the committed ledger, every line where none is committed and none where the ledger changed other than at its end, and commits them pushing nothing (4.7.8)', () => {
+    const { main, root } = codeProject(world, FUMI);
+    const tail = () => withStateLock(root, () => commitUncommitted(root, 'state: the tail'));
+    appendEntry(root, question({ text: 'Never committed?' }), []);
+    assert.deepStrictEqual(tail(), { entries: 1, warnings: [] });
+    assert.deepStrictEqual(tail(), { entries: 0, warnings: [] });
+    const bare = bareRepo(path.join(world, 'fumi.git'));
+    git(main, ['remote', 'add', 'origin', bare]);
+    git(main, ['push', '-q', 'origin', STATE_BRANCH]);
+    const pushed = tip(main, STATE_BRANCH);
+
+    appendEntry(root, question({ text: 'Left by a kill?' }), []);
+    appendEntry(root, question({ text: 'And this one?' }), []);
+    assert.deepStrictEqual(tail(), { entries: 2, warnings: [] });
+
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:${LEDGER}`]), ledgerText(root));
+    assert.deepStrictEqual([tip(main, `${STATE_BRANCH}^`), remoteTip(bare)], [pushed, pushed]);
+    const committed = tip(main, STATE_BRANCH);
+    const [a, b, c] = ledgerText(root).split('\n');
+    writeLedger(root, `${b}\n${a}\n${c}\n${a}\n`);
+    assert.deepStrictEqual(tail(), { entries: 0, warnings: [] });
+    assert.strictEqual(tip(main, STATE_BRANCH), committed);
+  });
+
+  it('commits nothing of a tail holding a line no read takes — not JSON, JSON that is no entry, an id an earlier line holds, named with the line holding it — or a last line with no newline, refused, naming the line; a tail of entries alone commits (4.7.8, 5.4.4)', () => {
+    const { main, root } = codeProject(world, FUMI);
+    const [first] = threeCommitted(root);
+    const committed = [ledgerText(root), tip(main, STATE_BRANCH)];
+    const kept = JSON.stringify(validEvent({ v: LEDGER_VERSION, id: newId(), at: AT, ...question({ text: 'Left by a kill?' }) }));
+    const tail = () => withStateLock(root, () => commitUncommitted(root, 'state: the tail'));
+    for (const [after, refusal] of /** @type {[string, RegExp][]} */ ([
+      ['oops, not JSON\n', /^line 5 of the ledger is not JSON: oops, not JSON$/],
+      ['{"v":1,"id":"AAAAAAAAAAAAAAAAAAAAA","event":"decided"}\n', /^line 5 of the ledger is no ledger entry: /],
+      [`${first}\n`, /^line 5 of the ledger repeats the id \w+, which line 1 holds$/],
+      [`${kept}\n`, /^line 5 of the ledger repeats the id \w+, which line 4 holds$/],
+      ['{"v":1,"id":"BBBB', /^line 5 of the ledger is not JSON: /],
+      [kept.replace(/"id":"\w+"/, `"id":"${newId()}"`), /^line 5 of the ledger is unfinished: it has no newline$/],
+    ])) {
+      writeLedger(root, `${committed[0]}${kept}\n${after}`);
+      assert.throws(tail, { message: refusal }, after);
+      assert.strictEqual(tip(main, STATE_BRANCH), committed[1], `committed a tail ending ${after}`);
+    }
+    writeLedger(root, `${committed[0]}${kept}\n`);
+    assert.deepStrictEqual(tail(), { entries: 1, warnings: [] });
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:${LEDGER}`]), ledgerText(root));
+  });
+});
+
+describe('the append-only check on a read', () => {
+  it('passes a ledger as committed, and one grown only at its end', () => {
+    const { root } = codeProject(world, FUMI);
+    checkLedger(root, []);
+    threeCommitted(root);
+    checkLedger(root, []);
+    appendEntry(root, question(), []);
+    checkLedger(root, []);
+  });
+
+  it('stops on a rewritten line, a removed one, two swapped, a truncated last line, a blank line put in, a file shorter than the committed one, and none: showing the first line not as committed', () => {
+    const { root } = codeProject(world, FUMI);
+    const [a, b, c] = threeCommitted(root);
+    const rewritten = b.replace('A near-frameless floating note.', 'A floating note.');
+    const cases = [
+      [`${a}\n${rewritten}\n${c}\n`, { line: 2, found: rewritten }],
+      [`${a}\n${c}\n`, { line: 2, found: c }],
+      [`${b}\n${a}\n${c}\n`, { line: 1, found: b }],
+      [`${a}\n${b}\n${c.slice(0, 50)}`, { line: 3, found: c.slice(0, 50) }],
+      [`${a}\n${b}\n${c}`, { line: 3, found: c }],
+      [`${a}\n\n${b}\n${c}\n`, { line: 2, found: '' }],
+      [`${a}\n`, { line: 2, found: null }],
+    ];
+    for (const [text, change] of cases) {
+      writeLedger(root, /** @type {string} */ (text));
+      assert.deepStrictEqual(stopped(root), change, `not stopped as ${JSON.stringify(change)}`);
+    }
+    fs.rmSync(path.join(root, LEDGER));
+    assert.deepStrictEqual(stopped(root), { line: 1, found: null });
+  });
+
+  it('checks the ledger once in reads taken as one: a line rewritten after the first check passed reads unchecked until they end, and stops the first read after; a check that stops stops every read after it', () => {
+    const { root } = codeProject(world, FUMI);
+    const [a, b, c] = threeCommitted(root);
+    const rewritten = b.replace('A near-frameless floating note.', 'A floating note.');
+
+    withOneCheck(() => {
+      checkLedger(root, []);
+      writeLedger(root, `${a}\n${rewritten}\n${c}\n`);
+      checkLedger(root, []);
+    });
+
+    assert.deepStrictEqual(stopped(root), { line: 2, found: rewritten });
+    withOneCheck(() => {
+      assert.throws(() => checkLedger(root, []), LedgerChanged);
+      assert.throws(() => checkLedger(root, []), LedgerChanged, 'a check that stopped marks nothing: the next read checks again');
+    });
+  });
+
+  it('hashes the file against the blob in a repository whose objects are named by sha256 too', () => {
+    const { main, root } = codeProject(world, { ...FUMI, objectFormat: 'sha256' });
+    const [a, b, c] = threeCommitted(root);
+    assert.strictEqual(git(main, ['rev-parse', `${STATE_BRANCH}:${LEDGER}`]).trim().length, 64);
+    checkLedger(root, []);
+
+    writeLedger(root, `${a}\n${c}\n${b}\n`);
+
+    assert.deepStrictEqual(stopped(root), { line: 2, found: c });
+    assert.throws(() => commitLedger(root), LedgerChanged);
+  });
+
+  it('reads the branch before the file: an append committed between the two reads never reads as a change, and the check waits on no lock', (t) => {
+    const { root } = codeProject(world, FUMI);
+    threeCommitted(root);
+    const later = JSON.stringify(validEvent({ v: LEDGER_VERSION, id: newId(), at: AT, ...question({ text: 'Landed between the reads?' }) }));
+    const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
+    const wrapper = fs.mkdtempSync(path.join(world, 'git-'));
+    fs.writeFileSync(path.join(wrapper, 'git'), [
+      '#!/bin/sh',
+      `real="${real}"`,
+      'case "$*" in',
+      '  *"--batch-check="*)',
+      `    if [ ! -f "${wrapper}/done" ]; then`,
+      `      touch "${wrapper}/done"`,
+      `      printf '%s\\n' '${later}' >> "${path.join(root, LEDGER)}"`,
+      `      "$real" -C "${root}" commit -q -m 'state: landed between the reads' -- ${LEDGER}`,
+      '    fi',
+      '    ;;',
+      'esac',
+      'exec "$real" "$@"',
+      '',
+    ].join('\n'), { mode: 0o755 });
+    const attempts = lockAttempts(t, holdLock(path.join(root, layout.lock)), () => {
+      throw new Error('the check tried the writer lock');
+    });
+    const { PATH } = process.env;
+    process.env.PATH = `${wrapper}:${PATH}`;
+    try {
+      checkLedger(root, []);
+    } finally {
+      process.env.PATH = PATH;
+    }
+
+    assert.deepStrictEqual(attempts, []);
+    assert.ok(fs.existsSync(path.join(wrapper, 'done')), 'nothing landed between the reads');
+    assert.ok(git(root, ['show', `${STATE_BRANCH}:${LEDGER}`]).endsWith(`${later}\n`));
+  });
+
+  it('makes a failed check again under the writer lock before it stops: a landing that rewrote the file before moving the branch passes once it lands', (t) => {
+    const { root } = codeProject(world, FUMI);
+    const [a, b] = threeCommitted(root);
+    const lock = holdLock(path.join(root, layout.lock));
+    writeLedger(root, `${b}\n${a}\n`);
+    // The landing, holding the lock, moves the branch and lets go once the check has found the lock held.
+    const attempts = lockAttempts(t, lock, () => {
+      git(root, ['commit', '-q', '-m', 'state: the landing moves the branch', '--', LEDGER]);
+      fs.unlinkSync(lock);
+    });
+
+    checkLedger(root, []);
+
+    assert.deepStrictEqual(attempts, ['taken', 'made']);
+  });
+
+  it('clears the blobs a killed check left written out in the git dir, never a running process\'s', () => {
+    const { root } = codeProject(world, FUMI);
+    const [a, b] = threeCommitted(root);
+    const gitDir = gitDirOf(root);
+    const gone = spawnSync('node', ['-e', '0']).pid;
+    const running = spawn('sleep', ['30']);
+    try {
+      fs.writeFileSync(path.join(gitDir, `ledger.${gone}.abc`), 'x'.repeat(4096));
+      fs.writeFileSync(path.join(gitDir, `ledger.${running.pid}.abc`), 'x');
+      writeLedger(root, `${b}\n${a}\n`);
+
+      assert.throws(() => checkLedger(root, []), LedgerChanged);
+
+      assert.deepStrictEqual(fs.readdirSync(gitDir).filter((name) => name.startsWith('ledger.')), [`ledger.${running.pid}.abc`]);
+    } finally {
+      running.kill();
+    }
+  });
+
+  it('stops once it holds the lock where the ledger is still not as committed', (t) => {
+    const { root } = codeProject(world, FUMI);
+    const [a, b] = threeCommitted(root);
+    const lock = holdLock(path.join(root, layout.lock));
+    writeLedger(root, `${b}\n${a}\n`);
+    const attempts = lockAttempts(t, lock, () => fs.unlinkSync(lock));
+
+    assert.throws(() => checkLedger(root, []), (err) => err instanceof LedgerChanged
+      && err.message === `${layout.ledger} changed outside the engine: line 1 is not the line committed there — the engine stops here`);
+
+    assert.deepStrictEqual(attempts, ['taken', 'made']);
+  });
+});
+
+describe('the append-only check on a state commit (5.S6)', () => {
+  it('commits a ledger that only grew, and a commit that leaves the ledger alone', () => {
+    const { main, root } = codeProject(world, FUMI);
+    threeCommitted(root);
+    appendEntry(root, question(), []);
+    assert.notStrictEqual(commitLedger(root).commit, null);
+    fs.writeFileSync(path.join(root, layout.projectManifest), '{}\n');
+    writeLedger(root, 'not the ledger committed\n');
+    assert.notStrictEqual(withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: the manifest')).commit, null);
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:${LEDGER}`]).split('\n').length, 5);
+  });
+
+  it('refuses a commit whose ledger does not start, byte for byte, with its parent\'s: a rewritten line, a removed one, a truncated last line, a shorter file, none — nothing committed', () => {
+    const { main, root } = codeProject(world, FUMI);
+    const [a, b, c] = threeCommitted(root);
+    const before = tip(main, STATE_BRANCH);
+    const rewritten = c.replace('Its controls appear on hover.', 'Its controls are always shown.');
+    const cases = [
+      [`${a}\n${b}\n${rewritten}\n`, { line: 3, found: rewritten }],
+      [`${b}\n${c}\n`, { line: 1, found: b }],
+      [`${a}\n${b}\n${c.slice(0, 30)}`, { line: 3, found: c.slice(0, 30) }],
+      [`${a}\n${b}\n`, { line: 3, found: null }],
+      [null, { line: 1, found: null }],
+    ];
+    for (const [text, change] of cases) {
+      if (text === null) fs.rmSync(path.join(root, LEDGER));
+      else writeLedger(root, /** @type {string} */ (text));
+      assert.throws(() => commitLedger(root), (err) => err instanceof LedgerChanged && /— nothing committed$/.test(err.message) && JSON.stringify(err.change) === JSON.stringify(change),
+        `not refused as ${JSON.stringify(change)}`);
+      assert.deepStrictEqual(keptStop(gitDirOf(root)), { stop: 'changed', ...change });
+      assert.throws(() => withStateLock(root, () => commitState(root, ['.'], 'state: everything')), LedgerChanged);
+      assert.strictEqual(tip(main, STATE_BRANCH), before);
+    }
+  });
+
+  it('judges the ledger the commit holds, not the file, where the two differ', () => {
+    const { main, root } = codeProject(world, FUMI);
+    const [a, b] = threeCommitted(root);
+    const worktree = /** @type {import('../../skills/ledger-engine/scripts/domain/state-worktree.cjs').OpenWorktree} */ (openWorktree(root));
+    /** @param {string} text */
+    const treeHolding = (text) => {
+      const blob = execFileSync('git', ['hash-object', '-w', '--stdin'], { cwd: main, encoding: 'utf8', input: text }).trim();
+      return execFileSync('git', ['mktree'], { cwd: main, encoding: 'utf8', input: `100644 blob ${blob}\t${LEDGER}\n` }).trim();
+    };
+    const grown = `${ledgerText(root)}${a}\n`;
+
+    writeLedger(root, 'z\n');
+    assert.strictEqual(checkLedgerCommit(worktree, STATE_BRANCH, treeHolding(grown)), null);
+    writeLedger(root, grown);
+    assert.throws(() => checkLedgerCommit(worktree, STATE_BRANCH, treeHolding(`${b}\n${a}\n`)), (err) => err instanceof LedgerChanged && err.change.line === 1);
+  });
+
+  it('stops the engine\'s commit door with the ledger\'s screen, which `render ledger-stop` draws', () => {
+    const dir = setupGitFixture('ledger-door-');
+    try {
+      const root = statePath(dir);
+      const q = appendEntry(root, question(), []);
+      appendEntry(root, decision(/** @type {string} */ (q.id)), []);
+      assert.ok(ok(dir, ['commit', '--whole', '-m', 'state: two entries']).committed);
+      assert.match(refuses(dir, ['render', 'ledger-stop']).error, /no stop on the ledger is kept — nothing stopped the engine/);
+      const [first] = ledgerText(root).split('\n');
+      writeLedger(root, `${first}\n`);
+
+      const refusal = refuses(dir, ['commit', '--whole', '-m', 'state: a shorter ledger']);
+
+      assert.strictEqual(refusal.stop, 'ledger');
+      assert.match(refusal.error, /\.ledger\.jsonl changed outside the engine: it ends before line 2, which was committed — nothing committed/);
+      const screen = output(dir, ['render', 'ledger-stop']);
+      assert.strictEqual(screen, ledgerStopSurface(dir, {}));
+      assert.match(screen, /'s ledger only grows at its end, and it ends before line 2, which the state branch last committed\.\n/);
+      auditMarkers(screen, 'ledger stop');
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+});
+
+describe('the stop\'s screen (5.4.4)', () => {
+  const INDENT = '  ';
+
+  it('names the project, the line by its number, and the line found there, indented, its id in short form, cut short', () => {
+    const found = '{"v":1,"id":"Xk3vQ9a1b2c3d4e5f6g7h","event":"decided","unit":"mint","topic":"token-auth"}';
+
+    assert.strictEqual(ledgerStop('Mint', { line: 1204, found }, 'Xk3vQ9'), [
+      '=== DISPLAY: ledger stop (emit verbatim as a properties code block (```properties fence)) ===',
+      "⚑ The engine stopped: a ledger line isn't as it was committed",
+      '',
+      '=== DISPLAY: ledger account (emit verbatim as markdown (not a code block)) ===',
+      "> Mint's ledger only grows at its end, and line 1,204 isn't the line the state branch last committed there. The line it found:",
+      `> ${INDENT}{"v":1,"id":"Xk3vQ9…","event":"decided","unit":"mint","topi…`,
+      '> Something outside the engine changed, removed or reordered the ledger, so the engine stops here.',
+      '',
+    ].join('\n'));
+  });
+
+  it('says the ledger ends before a line it lost, shows a blank line as one, escapes the markdown a line holds, and shows an id whole where no shorter form names it', () => {
+    assert.match(ledgerStop('Mint', { line: 3, found: null }, null), /\n> Mint's ledger only grows at its end, and it ends before line 3, which the state branch last committed\.\n> Something outside/);
+    assert.match(ledgerStop('Mint', { line: 2, found: '' }, null), new RegExp(`\\n> ${INDENT}\\*a blank line\\*\\n`));
+    assert.match(ledgerStop('Mint', { line: 2, found: '{"why":"*not* `code`"}' }, null), new RegExp(`\\n> ${INDENT}\\{"why":"\\\\\\*not\\\\\\* \\\\\`code\\\\\`"\\}\\n`));
+    assert.match(ledgerStop('Mint', { line: 2, found: '{"id":"Q1"}' }, 'Q1'), /\{"id":"Q1"\}\n/);
+  });
+
+  it('draws the stop the engine kept, the id in its shortest form among the ledger\'s ids, and refuses where none is kept', () => {
+    const { main, root } = codeProject(world, FUMI);
+    const twin = `${newId().slice(0, 7)}`;
+    const [a, b] = [`${twin}${newId().slice(0, 14)}`, `${twin}${newId().slice(0, 14)}`];
+    const lines = [a, b].map((id) => JSON.stringify(validEvent({ v: LEDGER_VERSION, id, at: AT, ...question() })));
+    writeLedger(root, `${lines.join('\n')}\n`);
+    commitLedger(root);
+    assert.throws(() => ledgerStopSurface(main, {}), /render ledger-stop: no stop on the ledger is kept — nothing stopped the engine/);
+    writeLedger(root, `${lines[1]}\n${lines[0]}\n`);
+
+    assert.throws(() => checkLedger(root, []), LedgerChanged);
+
+    const shared = [...a].findIndex((ch, i) => ch !== b[i]);
+    assert.ok(ledgerStopSurface(main, {}).includes(`{"v":${LEDGER_VERSION},"id":"${b.slice(0, Math.max(6, shared + 1))}…"`));
+    writeLedger(root, `${lines.join('\n')}\n`);
+    fs.writeFileSync(path.join(root, layout.projectManifest), '{}\n');
+    withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: a commit lands'));
+    assert.throws(() => ledgerStopSurface(main, {}), /no stop on the ledger is kept/);
+  });
+});
+
+/**
+ * A migration at `rel` in the world, converting the ledger with the
+ * converter whose source is `convert`, loaded.
+ * @param {string} rel @param {string} convert
+ * @returns {{run: (opts: {projectDir: string}) => {events: number, warnings: string[]}}}
+ */
+function migrationAt(rel, convert) {
+  const file = path.join(world, rel);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, [
+    "'use strict';",
+    `const { convertLedger } = require(${JSON.stringify(CONVERSION_MODULE)});`,
+    `module.exports = { id: '900', description: 'the ledger converted', run: ({ projectDir }) => convertLedger(projectDir, ${convert}) };`,
+    '',
+  ].join('\n'));
+  return require(file);
+}
+
+// The shape before: each event's name under `type`, at version 0.
+const TO_CURRENT = `function* (events) { for (const { v, type, ...rest } of events) yield { v: ${LEDGER_VERSION}, event: type, ...rest }; }`;
+
+/** A question and its decision committed in the shape before: the ledger's text. @param {string} root */
+function oldShapeCommitted(root) {
+  const q = validEvent({ v: LEDGER_VERSION, id: newId(), at: AT, ...question() });
+  const d = validEvent({ v: LEDGER_VERSION, id: newId(), at: AT, ...decision(/** @type {string} */ (q.id)) });
+  const text = [q, d].map(({ v, event, ...rest }) => `${JSON.stringify({ v: 0, type: event, ...rest })}\n`).join('');
+  writeLedger(root, text);
+  commitLedger(root, 'state: the ledger in the shape before');
+  return text;
+}
+
+/** Where the conversion's pass stands. @param {string} root */
+function passFile(root) {
+  return path.resolve(root, git(root, ['rev-parse', '--git-path', 'ledger-conversion.json']).trim());
+}
+
+describe('the conversion door (5.S25)', () => {
+  it('converts the stream, every event through with its id in its order; the commit carrying the copy passes the check, that commit alone, and git keeps the original byte for byte', () => {
+    const { main, root } = codeProject(world, FUMI);
+    const original = oldShapeCommitted(root);
+
+    assert.deepStrictEqual(migrationAt('migrations/900-ledger-event-field.cjs', TO_CURRENT).run({ projectDir: main }), { events: 2, warnings: [] });
+
+    const converted = ledgerEntries(root);
+    assert.deepStrictEqual(converted.map((e) => e.event), ['asked', 'decided']);
+    assert.deepStrictEqual(converted.map((e) => e.id), original.trim().split('\n').map((line) => JSON.parse(line).id));
+    fs.writeFileSync(path.join(root, layout.projectManifest), '{}\n');
+    withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: not the ledger'));
+    assert.ok(fs.existsSync(passFile(root)), 'a commit without the copy spent the pass');
+
+    assert.notStrictEqual(commitLedger(root, 'chore: migrate the ledger').commit, null);
+
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}^:${LEDGER}`]), original);
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:${LEDGER}`]), ledgerText(root));
+    assert.ok(!fs.existsSync(passFile(root)), 'the pass outlived its commit');
+    appendEntry(root, question(), []);
+    assert.notStrictEqual(commitLedger(root).commit, null);
+    writeLedger(root, ledgerText(root).split('\n').reverse().join('\n'));
+    assert.throws(() => commitLedger(root), LedgerChanged);
+  });
+
+  it('refuses a copy that drops an event, adds one, repeats one, changes an id, reorders them or is no entry, changing nothing', () => {
+    const { main, root } = codeProject(world, FUMI);
+    const original = oldShapeCommitted(root);
+    const [first, second] = original.trim().split('\n').map((line) => JSON.parse(line).id);
+    const converters = [
+      [`function* (events) { let n = 0; for (const { v, type, ...rest } of events) if (n++ === 0) yield { v: ${LEDGER_VERSION}, event: type, ...rest }; }`, `at line 2 the ledger holds ${second} and the copy none`],
+      [`function* (events) { yield* (${TO_CURRENT})(events); yield { id: 'added' }; }`, 'at line 3 the ledger holds no event and the copy added'],
+      [`function* (events) { const all = [...(${TO_CURRENT})(events)]; yield all[0]; yield* all; }`, `at line 2 the ledger holds ${second} and the copy ${first}`],
+      [`function* (events) { for (const { v, type, ...rest } of events) yield { v: ${LEDGER_VERSION}, event: type, ...rest, id: \`\${rest.id}x\` }; }`, `at line 1 the ledger holds ${first} and the copy ${first}x`],
+      [`function* (events) { yield* [...(${TO_CURRENT})(events)].reverse(); }`, `at line 1 the ledger holds ${first} and the copy ${second}`],
+      ['function* (events) { for (const e of events) yield null; }', 'line 1 of the converted copy is not an entry with an id'],
+    ];
+    converters.forEach(([convert, message], i) => {
+      const migration = migrationAt(`migrations/90${i}-ledger.cjs`, convert);
+      assert.throws(() => migration.run({ projectDir: main }), (err) => err instanceof Error && err.message.includes(message) && err.message.endsWith('— nothing converted'), `not refused: ${message}`);
+      assert.strictEqual(ledgerText(root), original);
+      assert.ok(!fs.existsSync(passFile(root)));
+      assert.deepStrictEqual(fs.readdirSync(root).filter((name) => name.startsWith(`${LEDGER}.`)), []);
+    });
+  });
+
+  it('is passed only by a migration: from anywhere else it refuses, converting nothing', () => {
+    const { main, root } = codeProject(world, FUMI);
+    const original = oldShapeCommitted(root);
+    const identity = 'function* (events) { yield* events; }';
+
+    assert.throws(() => convertLedger(main, function* (events) { yield* events; }), /only a migration converts the ledger's shape, and .*test-engine-ledger\.cjs is no migration — nothing converted/);
+    for (const rel of ['scripts/900-convert.cjs', 'migrations/convert.cjs', 'migrations/900-convert.js']) {
+      assert.throws(() => migrationAt(rel, identity).run({ projectDir: main }), /only a migration converts the ledger's shape/, `${rel} passed the door`);
+    }
+    assert.strictEqual(ledgerText(root), original);
+    assert.deepStrictEqual(migrationAt('migrations/900-convert.cjs', identity).run({ projectDir: main }), { events: 2, warnings: [] });
+  });
+
+  it('refuses a ledger the check stops on, converting nothing', () => {
+    const { main, root } = codeProject(world, FUMI);
+    const original = oldShapeCommitted(root);
+    const swapped = original.trim().split('\n').reverse().map((line) => `${line}\n`).join('');
+    writeLedger(root, swapped);
+
+    assert.throws(() => migrationAt('migrations/900-convert.cjs', TO_CURRENT).run({ projectDir: main }), (err) => err instanceof LedgerChanged && /— nothing converted$/.test(err.message));
+    assert.strictEqual(ledgerText(root), swapped);
+    assert.ok(!fs.existsSync(passFile(root)));
+  });
+
+  it('killed between leaving the pass and renaming the copy in, leaves the original standing, which the check passes and a commit leaves as it was', () => {
+    const { main, root } = codeProject(world, FUMI);
+    const original = oldShapeCommitted(root);
+    const file = path.join(root, LEDGER);
+    const rename = fs.renameSync;
+    fs.renameSync = (from, to) => {
+      if (to === file) throw new Error('killed');
+      return rename(from, to);
+    };
+    try {
+      assert.throws(() => migrationAt('migrations/900-convert.cjs', TO_CURRENT).run({ projectDir: main }), /killed/);
+    } finally {
+      fs.renameSync = rename;
+    }
+
+    assert.strictEqual(ledgerText(root), original);
+    assert.ok(fs.existsSync(passFile(root)));
+    checkLedger(root, []);
+    assert.strictEqual(commitLedger(root).commit, null);
+    assert.deepStrictEqual(migrationAt('migrations/901-convert.cjs', TO_CURRENT).run({ projectDir: main }), { events: 2, warnings: [] });
+    assert.notStrictEqual(commitLedger(root, 'chore: migrate the ledger').commit, null);
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}^:${LEDGER}`]), original);
+  });
+
+  it('commits first the lines an earlier write left uncommitted, never stopping on them, so every line it rewrites is in git as written', () => {
+    const { main, root } = codeProject(world, FUMI);
+    const original = oldShapeCommitted(root);
+    const { v, event, ...rest } = validEvent({ v: LEDGER_VERSION, id: newId(), at: AT, ...question({ text: 'Left uncommitted?' }) });
+    const tail = `${JSON.stringify({ v: 0, type: event, ...rest })}\n`;
+    writeLedger(root, `${original}${tail}`);
+    const before = tip(main, STATE_BRANCH);
+
+    assert.deepStrictEqual(migrationAt('migrations/900-convert.cjs', TO_CURRENT).run({ projectDir: main }), { events: 3, warnings: [] });
+
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:${LEDGER}`]), `${original}${tail}`);
+    assert.strictEqual(tip(main, `${STATE_BRANCH}^`), before);
+    assert.strictEqual(git(main, ['log', '-1', '--format=%s', STATE_BRANCH]).trim(), 'state: the ledger as written, before its conversion');
+    assert.notStrictEqual(commitLedger(root, 'chore: migrate the ledger').commit, null);
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}^:${LEDGER}`]), `${original}${tail}`);
+    assert.deepStrictEqual(ledgerEntries(root).map((e) => e.text), ['What is a fumi, at its most basic?', 'A near-frameless floating note.', 'Left uncommitted?']);
+  });
+
+  it('commits and converts nothing where a line left uncommitted is no entry with an id, or holds an id an earlier line holds', () => {
+    const { main, root } = codeProject(world, FUMI);
+    const original = oldShapeCommitted(root);
+    const [first] = original.split('\n');
+    const before = tip(main, STATE_BRANCH);
+    const migration = migrationAt('migrations/900-convert.cjs', TO_CURRENT);
+    for (const [tail, refusal] of /** @type {[string, RegExp][]} */ ([
+      ['not an entry\n', /^line 3 of the ledger is not an entry with an id — nothing converted$/],
+      [`${first}\n`, /^line 3 of the ledger repeats the id \w+, which line 1 holds$/],
+    ])) {
+      writeLedger(root, `${original}${tail}`);
+      assert.throws(() => migration.run({ projectDir: main }), { message: refusal }, tail);
+      assert.deepStrictEqual([tip(main, STATE_BRANCH), ledgerText(root)], [before, `${original}${tail}`], `committed or converted a tail of ${tail}`);
+    }
+  });
+
+  it('honours a pass only where its copy, stored in git, keeps the door\'s rule: a pass written by hand lifts no removed line from a read or a commit', () => {
+    const { main, root } = codeProject(world, FUMI);
+    const lines = threeCommitted(root);
+    const before = tip(main, STATE_BRANCH);
+    const from = { oid: tip(main, `${STATE_BRANCH}:${LEDGER}`), size: Buffer.byteLength(ledgerText(root)) };
+    /** @param {string} text @param {boolean} [stored] */
+    const forge = (text, stored = true) => {
+      writeLedger(root, text);
+      const oid = git(root, ['hash-object', ...(stored ? ['-w'] : []), '--', LEDGER]).trim();
+      fs.writeFileSync(passFile(root), JSON.stringify({ from, to: { oid, size: Buffer.byteLength(text) } }));
+    };
+
+    forge(`${lines[0]}\n${lines[2]}\n`);
+    assert.throws(() => checkLedger(root, []), (err) => err instanceof LedgerChanged && err.change.line === 2);
+    assert.throws(() => commitLedger(root), LedgerChanged);
+    const kept = lines.map((line) => `${JSON.stringify({ ...JSON.parse(line), text: 'Converted.' })}\n`).join('');
+    forge(kept, false);
+    assert.throws(() => checkLedger(root, []), (err) => err instanceof LedgerChanged && err.change.line === 1);
+    assert.strictEqual(tip(main, STATE_BRANCH), before);
+
+    forge(kept);
+    checkLedger(root, []);
+    assert.notStrictEqual(commitLedger(root, 'chore: migrate the ledger').commit, null);
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:${LEDGER}`]), kept);
+  });
+});

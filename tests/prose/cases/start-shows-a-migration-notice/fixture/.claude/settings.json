@@ -1,9 +1,0 @@
-{
-  "showClearContextOnPlanAccept": true,
-  "permissions": {
-    "allow": [
-      "Edit(.workflows/**)",
-      "Bash(mv .workflows/:*)"
-    ]
-  }
-}

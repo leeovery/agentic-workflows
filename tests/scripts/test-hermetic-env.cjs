@@ -2,10 +2,12 @@
 
 // The suite's own guard: the hermetic environment is pinned, every node test
 // file adopts it, a knowledge store built under it reaches no embedding
-// provider, and Claude Code's config directory is never the developer's own.
-// A future suite that forgets the module fails here rather than silently
-// reading the developer's config, billing their key, or writing their
-// settings.
+// provider, and neither Claude Code's config directory nor gh's login is
+// ever the developer's own. A future suite that forgets the module fails
+// here rather than silently reading the developer's config, billing their
+// key, writing their settings, or acting on GitHub as them.
+//
+// Layer: verb.
 
 const hermeticEnv = require('./hermetic-env.cjs');
 
@@ -16,8 +18,9 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const engine = require('../../skills/workflow-engine/scripts/engine.cjs');
+const engine = require('../../skills/ledger-engine/scripts/engine.cjs');
 const { recordLaunches } = require('./knowledge-harness.cjs');
+const { setupGitFixture, statePath, cleanupFixture, layout } = require('./engine-harness.cjs');
 
 const HERMETIC_MODULE = './hermetic-env.cjs';
 
@@ -41,13 +44,14 @@ function offenders(dir) {
     .sort();
 }
 
-/** A project holding one indexable document. */
+/** A project whose state holds one indexable document. */
 function setupProject() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hermetic-'));
-  fs.mkdirSync(path.join(dir, '.workflows', 'auth', 'discussion'), { recursive: true });
-  fs.writeFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'),
+  const dir = setupGitFixture('hermetic-');
+  fs.mkdirSync(statePath(dir, 'auth'), { recursive: true });
+  fs.mkdirSync(path.dirname(statePath(dir, layout.record('auth', 'auth'))), { recursive: true });
+  fs.writeFileSync(statePath(dir, 'auth', 'manifest.json'),
     JSON.stringify({ name: 'auth', work_type: 'feature', status: 'in-progress', phases: {} }));
-  fs.writeFileSync(path.join(dir, '.workflows', 'auth', 'discussion', 'auth.md'),
+  fs.writeFileSync(statePath(dir, layout.record('auth', 'auth')),
     '# Auth\n\nToken refresh is decided here.\n');
   return dir;
 }
@@ -64,25 +68,33 @@ function cleanup(dir) {
 function indexUnderConfigDir(configDir) {
   const project = setupProject();
   try {
-    const env = configDir === undefined ? {} : { WORKFLOWS_CONFIG_DIR: configDir };
-    const res = engine.run(['knowledge', 'index', '.workflows/auth/discussion/auth.md'], { cwd: project, env });
-    const metadataFile = path.join(project, '.workflows', '.knowledge', 'metadata.json');
+    const env = configDir === undefined ? {} : { LEDGER_CONFIG_DIR: configDir };
+    const res = engine.run(['knowledge', 'index', statePath(project, layout.record('auth', 'auth'))], { cwd: project, env });
+    const metadataFile = statePath(project, '.knowledge', 'metadata.json');
     return { res, metadata: fs.existsSync(metadataFile) ? JSON.parse(fs.readFileSync(metadataFile, 'utf8')) : null };
   } finally {
-    cleanup(project);
+    cleanupFixture(project);
   }
 }
 
 describe('hermetic environment — the pins', () => {
   it('the system config directory is set, exists, and holds nothing to read', () => {
-    const dir = process.env.WORKFLOWS_CONFIG_DIR;
-    assert.ok(dir, 'WORKFLOWS_CONFIG_DIR is set');
+    const dir = process.env.LEDGER_CONFIG_DIR;
+    assert.ok(dir, 'LEDGER_CONFIG_DIR is set');
     assert.ok(fs.existsSync(dir), `${dir} exists`);
     assert.deepStrictEqual(
       ['config.json', 'credentials.json'].filter((name) => fs.existsSync(path.join(dir, name))),
       [],
       'the config directory holds neither file'
     );
+  });
+
+  it('the released migrations\' name for the user-level folder is set to a directory of its own, which exists and holds nothing — a migration never reaches the developer\'s ~/.config/workflows', () => {
+    const dir = process.env.WORKFLOWS_CONFIG_DIR;
+    assert.ok(dir, 'WORKFLOWS_CONFIG_DIR is set');
+    assert.notStrictEqual(dir, process.env.LEDGER_CONFIG_DIR);
+    assert.ok(fs.existsSync(dir), `${dir} exists`);
+    assert.deepStrictEqual(fs.readdirSync(dir), []);
   });
 
   it('Claude Code\'s config directory is set, exists, and holds nothing — no test reaches the developer\'s own', () => {
@@ -97,45 +109,120 @@ describe('hermetic environment — the pins', () => {
   });
 
   it('the gate surface is unannounced — a session that loads one announces it to every command, and the goldens pin the bytes without it', () => {
-    assert.strictEqual(process.env.WORKFLOWS_GATE_SURFACE, undefined);
+    assert.strictEqual(process.env.LEDGER_GATE_SURFACE, undefined);
   });
 
   it('the handoff is unannounced — the gate mod announces it to every command as it does the gate surface', () => {
-    assert.strictEqual(process.env.WORKFLOWS_HANDOFF, undefined);
+    assert.strictEqual(process.env.LEDGER_HANDOFF, undefined);
   });
 
   it('no Claude Code session reaches a test — every engine call marks the conversation whose id it carries', () => {
     assert.strictEqual(process.env.CLAUDE_CODE_SESSION_ID, undefined);
   });
 
+  it('no session\'s effort reaches a test — boot reports the one it is handed', () => {
+    assert.strictEqual(process.env.CLAUDE_EFFORT, undefined);
+  });
+
+  it('the separate Claude call runs the stub, never a real Claude — and the stub has no login until a test arms it', () => {
+    assert.strictEqual(process.env.LEDGER_CLAUDE, path.join(__dirname, 'claude-stub.sh'));
+    assert.ok(fs.statSync(process.env.LEDGER_CLAUDE).mode & 0o111, 'the stub runs as a binary');
+    const res = spawnSync(process.env.LEDGER_CLAUDE, ['-p'], { encoding: 'utf8', input: 'a question' });
+    assert.strictEqual(res.status, 1, res.stderr);
+    assert.strictEqual(JSON.parse(res.stdout).result, 'Not logged in · Please run /login');
+  });
+
+  it('the stub unarmed answers in the shell byte for byte as its node side does unarmed, and armed is its node side', () => {
+    const ask = (/** @type {string} */ binary, /** @type {NodeJS.ProcessEnv} */ env) => {
+      const res = spawnSync(binary, ['-p'], { encoding: 'utf8', input: 'a question', env });
+      return [res.status, res.stdout, res.stderr];
+    };
+    const node = path.join(__dirname, 'claude-stub.cjs');
+    assert.deepStrictEqual(ask(process.env.LEDGER_CLAUDE, process.env), ask(node, process.env));
+    const armed = { ...process.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { rules: ['One rule.'] } }) };
+    assert.deepStrictEqual(ask(process.env.LEDGER_CLAUDE, armed), ask(node, armed));
+    assert.strictEqual(JSON.parse(ask(process.env.LEDGER_CLAUDE, armed)[1]).structured_output.rules[0], 'One rule.');
+  });
+
+  it('the stub writes down its environment\'s names, and no value a test did not name — a login the environment holds never lands in its log', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-stub-log-'));
+    try {
+      const log = path.join(dir, 'calls.jsonl');
+      const env = { ...process.env, CLAUDE_STUB_LOG: log, CLAUDE_STUB_LOG_VALUES: 'PATH', ANTHROPIC_API_KEY: 'sk-developer', CLAUDE_CODE_OAUTH_TOKEN: 'oauth-developer' };
+      spawnSync(process.env.LEDGER_CLAUDE, ['-p'], { encoding: 'utf8', input: 'a question', env });
+      const text = fs.readFileSync(log, 'utf8');
+      const logged = JSON.parse(text).env;
+      assert.deepStrictEqual([logged.ANTHROPIC_API_KEY, logged.CLAUDE_CODE_OAUTH_TOKEN, logged.PATH], [null, null, process.env.PATH]);
+      assert.ok(!text.includes('sk-developer') && !text.includes('oauth-developer'), 'a login reached the log');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('git reads no user or system config, and the display width is pinned', () => {
     assert.strictEqual(process.env.GIT_CONFIG_GLOBAL, '/dev/null');
     assert.strictEqual(process.env.GIT_CONFIG_SYSTEM, '/dev/null');
-    assert.strictEqual(process.env.WORKFLOWS_DISPLAY_WIDTH, '65');
+    assert.strictEqual(process.env.LEDGER_DISPLAY_WIDTH, '65');
+  });
+
+  it('git runs no ssh command of the developer\'s — it would override a suite\'s stand-in for a remote, with their keys', () => {
+    const res = spawnSync('node', ['-e', `require(${JSON.stringify(require.resolve(HERMETIC_MODULE))}); console.log(JSON.stringify([process.env.GIT_SSH_COMMAND ?? null, process.env.GIT_SSH ?? null]))`],
+      { encoding: 'utf8', env: { ...process.env, GIT_SSH_COMMAND: 'ssh -i ~/.ssh/mine', GIT_SSH: 'plink' } });
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.deepStrictEqual(JSON.parse(res.stdout), [null, null]);
+  });
+
+  it('no multiplexer\'s session reaches a test — a session label would relabel the developer\'s own tmux or Portal session', () => {
+    const named = ['TMUX', 'TMUX_PANE', 'ZMX_SESSION', 'ZMX_DIR'];
+    const res = spawnSync('node', ['-e', `require(${JSON.stringify(require.resolve(HERMETIC_MODULE))}); console.log(JSON.stringify(${JSON.stringify(named)}.filter((name) => process.env[name] !== undefined)))`],
+      { encoding: 'utf8', env: { ...process.env, ...Object.fromEntries(named.map((name) => [name, 'the-developers'])) } });
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.deepStrictEqual(JSON.parse(res.stdout), []);
+  });
+
+  it('gh reaches no login of the developer\'s — its config directory an empty one of the suite\'s, and no token or host it would take over that', () => {
+    const login = ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN', 'GH_HOST'];
+    const mine = path.join(os.homedir(), '.config', 'gh');
+    const probe = `require(${JSON.stringify(require.resolve(HERMETIC_MODULE))});
+      const fs = require('fs'); const os = require('os');
+      const dir = process.env.GH_CONFIG_DIR;
+      console.log(JSON.stringify({
+        set: ${JSON.stringify(login)}.filter((name) => process.env[name] !== undefined),
+        mine: dir === ${JSON.stringify(mine)},
+        suites: fs.realpathSync(dir).startsWith(fs.realpathSync(os.tmpdir())) && fs.readdirSync(dir).length === 0,
+      }));`;
+    const res = spawnSync('node', ['-e', probe], { encoding: 'utf8', env: { ...process.env, GH_CONFIG_DIR: mine, ...Object.fromEntries(login.map((name) => [name, 'the-developers'])) } });
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.deepStrictEqual(JSON.parse(res.stdout), { set: [], mine: false, suites: true });
   });
 
   it('exports exactly what it pinned, for a caller composing a child environment', () => {
     assert.deepStrictEqual(hermeticEnv, {
+      LEDGER_CONFIG_DIR: process.env.LEDGER_CONFIG_DIR,
       WORKFLOWS_CONFIG_DIR: process.env.WORKFLOWS_CONFIG_DIR,
       CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR,
+      GH_CONFIG_DIR: process.env.GH_CONFIG_DIR,
       GIT_CONFIG_GLOBAL: '/dev/null',
       GIT_CONFIG_SYSTEM: '/dev/null',
-      WORKFLOWS_DISPLAY_WIDTH: '65',
+      LEDGER_DISPLAY_WIDTH: '65',
+      LEDGER_CLAUDE: path.join(__dirname, 'claude-stub.sh'),
     });
   });
 
   it('a spawned process inherits the pins — every engine and knowledge call a test makes', () => {
-    const res = spawnSync('node', ['-e', 'console.log(JSON.stringify({ dir: process.env.WORKFLOWS_CONFIG_DIR, claude: process.env.CLAUDE_CONFIG_DIR, key: process.env.OPENAI_API_KEY ?? null, surface: process.env.WORKFLOWS_GATE_SURFACE ?? null, handoff: process.env.WORKFLOWS_HANDOFF ?? null, session: process.env.CLAUDE_CODE_SESSION_ID ?? null, width: process.env.WORKFLOWS_DISPLAY_WIDTH }))'],
+    const res = spawnSync('node', ['-e', 'console.log(JSON.stringify({ dir: process.env.LEDGER_CONFIG_DIR, legacy: process.env.WORKFLOWS_CONFIG_DIR, claude: process.env.CLAUDE_CONFIG_DIR, key: process.env.OPENAI_API_KEY ?? null, surface: process.env.LEDGER_GATE_SURFACE ?? null, handoff: process.env.LEDGER_HANDOFF ?? null, session: process.env.CLAUDE_CODE_SESSION_ID ?? null, width: process.env.LEDGER_DISPLAY_WIDTH, binary: process.env.LEDGER_CLAUDE }))'],
       { encoding: 'utf8' });
     assert.strictEqual(res.status, 0, res.stderr);
     assert.deepStrictEqual(JSON.parse(res.stdout), {
-      dir: process.env.WORKFLOWS_CONFIG_DIR,
+      dir: process.env.LEDGER_CONFIG_DIR,
+      legacy: process.env.WORKFLOWS_CONFIG_DIR,
       claude: process.env.CLAUDE_CONFIG_DIR,
       key: null,
       surface: null,
       handoff: null,
       session: null,
       width: '65',
+      binary: path.join(__dirname, 'claude-stub.sh'),
     });
   });
 });
@@ -192,6 +279,35 @@ describe('hermetic environment — Claude Code\'s config directory', () => {
       cleanup(own);
     }
   });
+});
+
+describe('hermetic environment — the shell tiers', () => {
+  const scripts = JSON.parse(fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8')).scripts;
+
+  /**
+   * The environment a shell tier's npm script hands its suites, run from a
+   * developer's own: the script's setup, everything before its loop over the
+   * suites.
+   */
+  function tierEnv(script) {
+    const setup = scripts[script].split('; for ')[0];
+    const res = spawnSync('bash', ['-c', `${setup}; node -e 'console.log(JSON.stringify(process.env))'`], {
+      encoding: 'utf8',
+      env: { ...process.env, GIT_CONFIG_GLOBAL: '/home/dev/.gitconfig', GIT_CONFIG_SYSTEM: '/etc/gitconfig', GIT_SSH_COMMAND: 'ssh -i ~/.ssh/mine', GIT_SSH: 'plink' },
+    });
+    assert.strictEqual(res.status, 0, res.stderr);
+    return JSON.parse(res.stdout);
+  }
+
+  for (const script of ['test:cli', 'test:migrations']) {
+    it(`${script} runs git with no user or system config and no ssh command of the developer's`, () => {
+      const env = tierEnv(script);
+      assert.deepStrictEqual(
+        [env.GIT_CONFIG_GLOBAL, env.GIT_CONFIG_SYSTEM, env.GIT_SSH_COMMAND, env.GIT_SSH],
+        ['/dev/null', '/dev/null', undefined, undefined],
+      );
+    });
+  }
 });
 
 describe('hermetic environment — adoption', () => {

@@ -1,0 +1,525 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// A bugfix's investigation's hunt: its entry, `engine enter investigation
+// <bugfix>` (ledger-engine/scripts/domain/enter.cjs) — its one topic the
+// unit, started as a discussion's is and reading the brief, discovery's log
+// and the seeds in full before it opens (8.S54, 8.7.7); a resume reading the
+// topic's record and map and the agents a process now gone left; mail
+// waiting raised first; refused where the unit cannot take it. Its log,
+// `engine investigation-log` (domain/investigation-log.cjs): the hunt under
+// fixed headings in the topic's log, its experiments, root cause, fix
+// direction and intended hypotheses resting on their ledger entries, the
+// fix direction only after a current root cause and carrying what the step
+// back found (19.S7, 19.4.1–19.4.3), every refusal writing nothing, a line
+// passed over said where Claude reads; and a raise setting out the fix
+// refused before the root cause. Its plan gate and check-in, `render
+// investigation-plan|investigation-check-in` (domain/investigation.cjs,
+// domain/projections/investigation.cjs), drawn from the hunt's log and
+// Claude's payload: the plan a learned process gate, the revised plan back
+// at it saying first what the finding changed (19.S35, 19.4.19, 19.4.24),
+// its showing held at the investigation across conversations and stepped by
+// the decision point there; the check-in a display the hunt carries past;
+// and what each refuses. Its validations' briefs and its close are
+// test-engine-investigation-conclude.cjs's.
+//
+// Layer: verb. World: investigation-world.cjs's, copied for each test, each
+// test's conversation with a system config of its own.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const {
+  ok, output, layout, writeState, readManifest, stateGit, lastMessage, head, withFrozenClock, okSectionsAsync, refusesAsync, readState,
+} = require('./engine-harness.cjs');
+const { ledgerHelpers } = require('./ledger-world.cjs');
+const { auditGate } = require('./gate-audit.cjs');
+const { huntIn } = require('../../skills/ledger-engine/scripts/domain/investigation-log.cjs');
+const decisionPoint = require('../../skills/ledger-engine/scripts/domain/decision-point.cjs');
+const { showingAnswers } = require('./trust-world.cjs');
+const { labelling } = require('./labels.cjs');
+const { undrawn } = require('./raise-world.cjs');
+const { BUG, HUNT, FEATURE, ENGINE, TODAY, GONE, data, useInvestigationWorld, AT, CLAUDE, made } = require('./investigation-world.cjs');
+
+let dir = ''; // the project
+let config = ''; // the system config: the conversation's folder
+const {
+  drawn, refused, at, env, rendered, log, staged, payload, full, huntLog, run,
+} = useInvestigationWorld((copy) => ({ dir, config } = copy));
+
+/** The engine as the next conversation runs it, after this one. */
+const NEXT = () => ({ ...env(), CLAUDE_CODE_SESSION_ID: 'sess-2' });
+
+describe('enter investigation — the bugfix\'s one topic (6.1.21, 8.7.7)', () => {
+  it('8.S54: the first opening starts the topic, the unit itself, committing the start, and reads the brief, discovery\'s log and both seeds in full, then the product record, naming the log — the investigation — with the line it opens with; nothing is written ahead of the opening', () => {
+    const { res, sections } = withFrozenClock(() => drawn(['enter', 'investigation', BUG]));
+
+    assert.deepStrictEqual(res, { ok: true, phase: 'investigation', unit: BUG, topic: BUG, entered: true, started: true, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
+    assert.strictEqual(lastMessage(dir), `investigation(${BUG}): start ${BUG}`);
+    assert.deepStrictEqual(readManifest(dir, BUG).phases.investigation, { items: { [BUG]: { status: 'in-progress' } } });
+    assert.strictEqual(sections, data([
+      `brief: ${at(layout.brief(BUG, BUG))}`,
+      `discovery log: ${at(layout.session(BUG, '001'))}`,
+      `seed: ${at(layout.unit(BUG, 'seeds', 'report.md'))}`,
+      `seed: ${at(layout.unit(BUG, 'seeds', 'trace.md'))}`,
+      `product: \`${ENGINE} ledger product ${BUG} ${BUG}\``,
+      `log: ${at(layout.topic(BUG, BUG, 'log.md'))}`,
+      `log header: ## ${TODAY} · session sess-1`,
+    ]));
+    assert.strictEqual(fs.existsSync(at(layout.topic(BUG, BUG, 'log.md'))), false, 'the log is the conversation\'s to write');
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(config, 'conversations', 'sess-1', 'position.json'), 'utf8')), { name: BUG, phase: 'investigation', topic: BUG });
+  });
+
+  it('a resume starts nothing and reads the topic\'s record and map besides, then the agents a process now gone left: the validator\'s report landed since, and the one lost with it (9.7.8)', () => {
+    const earlier = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-investigation-earlier-'));
+    try {
+      for (const kind of ['root-cause-validation', 'fix-validation']) {
+        ok(dir, ['agent', 'dispatch', HUNT, 'investigation', HUNT, '--kind', kind, '--label', kind === 'fix-validation' ? 'lost' : 'landed'], {
+          env: { LEDGER_CONFIG_DIR: earlier, CLAUDE_CODE_SESSION_ID: 'earlier', CLAUDE_PID: GONE, TMUX: undefined },
+        });
+      }
+    } finally {
+      fs.rmSync(earlier, { recursive: true, force: true });
+    }
+    const report = layout.cache(HUNT, 'investigation', HUNT, 'root-cause-validation-001-landed.md');
+    writeState(dir, report, '# The root cause holds\n');
+    const before = head(dir);
+
+    const { res, sections } = withFrozenClock(() => drawn(['enter', 'investigation', HUNT]));
+
+    assert.deepStrictEqual([res.started, res.committed, head(dir)], [false, undefined, before]);
+    assert.strictEqual(sections, data([
+      `product: \`${ENGINE} ledger product ${HUNT} ${HUNT}\``,
+      `record: \`${ENGINE} ledger record ${HUNT} ${HUNT}\``,
+      `map: \`${ENGINE} ledger map ${HUNT} ${HUNT}\``,
+      `landed: ${at(report)}`,
+      'lost: fix-validation-001-lost',
+      `log: ${at(layout.topic(HUNT, HUNT, 'log.md'))}`,
+      `log header: ## ${TODAY} · session sess-1`,
+    ]));
+  });
+
+  it('mail waiting is raised before anything is read, and named first in what to read (10.4.1)', () => {
+    writeState(dir, layout.mailbox(BUG, BUG, '001-also-on-reboot.md'), 'It happens on a reboot too\nFrom Discovery · 2 Jan\n');
+
+    const { sections } = drawn(['enter', 'investigation', BUG]);
+
+    const [mail, reads] = sections.split(/(?==== DATA )/);
+    assert.match(mail, /^=== DISPLAY: waiting mail /);
+    assert.strictEqual(reads.split('\n')[1], `mail: ${at(layout.mailbox(BUG, BUG, '001-also-on-reboot.md'))}`);
+  });
+
+  it('refuses, writing nothing: a unit of another type, one past its spec, an investigation concluded, and a topic but the unit\'s own', () => {
+    assert.deepStrictEqual([['investigation', FEATURE], ['investigation', 'specced'], ['investigation', 'fixed'], ['investigation', BUG, 'other']].map((args) => refused(['enter', ...args])), [
+      'a feature has no investigation — its phases are experiment, discussion, specification, implementation, review',
+      'specced has its spec — a topic exists only before it, and a change is settled in the spec from here',
+      'the topic "fixed" is concluded — its work goes on in specification, from the start menu, and a message sent to it reopens it',
+      `${BUG} has no topic "other" — a bugfix's topic is the unit itself`,
+    ]);
+  });
+});
+
+describe('investigation-log — the hunt under its fixed headings (19.4.1–19.4.3, P1)', () => {
+  it('19.S7: each entry goes under its own heading in the topic\'s log, after the conversation\'s words, each resting on its ledger entry by its full id, and the hunt reads back as logged; nothing is committed (6.3.2)', () => {
+    writeState(dir, layout.topic(HUNT, HUNT, 'log.md'), '## 2026-01-02 · session sess-1\n\nThe person reported it.\n');
+    const before = head(dir);
+
+    const responses = [
+      log('symptom', ['--text', 'sessions.json is overwritten with an empty index']),
+      log('hypothesis', ['--title', 'Killing every session empties the state']),
+      log('symptom', ['--text', 'No warning; the next restore has nothing']),
+      log('hypothesis', ['--title', 'kill-server saves an empty state']),
+      log('experiment', ['--title', 'Kill every session', '--showed', 'each kill shrank it · 3 → 0', '--entry', made.kill]),
+      log('hypothesis', ['H1', '--state', 'confirmed']),
+      log('hypothesis', ['H2', '--state', 'ruled-out']),
+      log('root-cause', ['--entry', made.rootCause]),
+      log('validation', ['root-cause', '--found', 'the capture can come back empty mid-shutdown', '--did', 'added the shutdown race to the cause']),
+      log('fix-direction', ['--question', made.fix]),
+    ];
+
+    assert.deepStrictEqual(responses[4], { ok: true, log: layout.topic(HUNT, HUNT, 'log.md'), heading: 'Experiments', line: `- E1 · Kill every session — each kill shrank it · 3 → 0 [${full(made.kill)}]` });
+    assert.strictEqual(huntLog(), [
+      '## 2026-01-02 · session sess-1', '', 'The person reported it.', '',
+      '## Symptoms', '', '- sessions.json is overwritten with an empty index', '- No warning; the next restore has nothing', '',
+      '## Hypotheses', '', '- H1 · Killing every session empties the state · suspected', '- H2 · kill-server saves an empty state · suspected',
+      '- H1 · Killing every session empties the state · confirmed', '- H2 · kill-server saves an empty state · ruled out', '',
+      '## Experiments', '', `- E1 · Kill every session — each kill shrank it · 3 → 0 [${full(made.kill)}]`, '',
+      '## Root cause', '', `- Every save takes the session list as the whole truth. [${full(made.rootCause)}]`, '',
+      '## Validation', '', '- root cause · the capture can come back empty mid-shutdown — added the shutdown race to the cause', '',
+      '## Fix direction', '', `- How should restore stop losing sessions? [${full(made.fix)}]`, '',
+    ].join('\n'));
+    assert.strictEqual(head(dir), before, 'the log rides the next state commit');
+    const warnings = [];
+    assert.deepStrictEqual(huntIn(huntLog(), 'log.md', warnings), {
+      symptoms: [{ text: 'sessions.json is overwritten with an empty index', body: [] }, { text: 'No warning; the next restore has nothing', body: [] }],
+      hypotheses: [
+        { name: 'H1', title: 'Killing every session empties the state', state: 'confirmed', by: null, body: [] },
+        { name: 'H2', title: 'kill-server saves an empty state', state: 'ruled-out', by: null, body: [] },
+      ],
+      experiments: [{ name: 'E1', title: 'Kill every session', showed: 'each kill shrank it · 3 → 0', entry: full(made.kill), body: [] }],
+      rootCause: { text: 'Every save takes the session list as the whole truth.', entry: full(made.rootCause), body: [] },
+      fixDirection: { text: 'How should restore stop losing sessions?', entry: full(made.fix), body: [] },
+    });
+    assert.deepStrictEqual(warnings, []);
+  });
+
+  it('a hypothesis is intended on the person\'s ruling, its line naming the decision', () => {
+    log('hypothesis', ['--title', 'A killed session should stay gone']);
+    const { line } = log('hypothesis', ['H1', '--state', 'intended', '--by', made.ruling]);
+
+    assert.strictEqual(line, `- H1 · A killed session should stay gone · intended [${full(made.ruling)}]`);
+    assert.deepStrictEqual(huntIn(huntLog(), 'log.md', []).hypotheses, [{ name: 'H1', title: 'A killed session should stay gone', state: 'intended', by: full(made.ruling), body: [] }]);
+  });
+
+  it('a body goes beneath its entry, indented, and is read back with it — a hypothesis\'s across all its lines; each experiment numbered as it is logged (20.12.2)', () => {
+    log('hypothesis', ['--title', 'The daemon saves a dying server', '--body', staged('first.md', 'The last save lands\n  as the server dies.\n')]);
+    log('symptom', ['--text', 'Restore finds nothing', '--body', staged('symptom.md', 'Since Tuesday.')]);
+    log('hypothesis', ['H1', '--state', 'confirmed', '--body', staged('then.md', 'E2 caught it.')]);
+    log('experiment', ['--title', 'Kill every session', '--showed', 'the save empties', '--entry', made.kill]);
+    log('experiment', ['--title', 'Kill the server', '--showed', 'the save empties too', '--entry', made.kill, '--body', staged('e2.md', 'On a throwaway tmux.')]);
+
+    assert.strictEqual(huntLog(), [
+      '## Hypotheses', '', '- H1 · The daemon saves a dying server · suspected', '    The last save lands', '      as the server dies.',
+      '- H1 · The daemon saves a dying server · confirmed', '    E2 caught it.', '', '## Symptoms', '', '- Restore finds nothing', '    Since Tuesday.', '',
+      '## Experiments', '', `- E1 · Kill every session — the save empties [${full(made.kill)}]`, `- E2 · Kill the server — the save empties too [${full(made.kill)}]`, '    On a throwaway tmux.', '',
+    ].join('\n'));
+    const hunt = huntIn(huntLog(), 'log.md', []);
+    assert.deepStrictEqual(hunt.hypotheses[0].body, ['The last save lands', '  as the server dies.', 'E2 caught it.']);
+    assert.deepStrictEqual(hunt.symptoms, [{ text: 'Restore finds nothing', body: ['Since Tuesday.'] }]);
+    assert.deepStrictEqual(hunt.experiments.map(({ name, body }) => ({ name, body })), [{ name: 'E1', body: [] }, { name: 'E2', body: ['On a throwaway tmux.'] }]);
+  });
+
+  it('a hypothesis is reworded under its number, its state carried, and then read under its new title', () => {
+    log('hypothesis', ['--title', 'The save races the shutdown']);
+    log('hypothesis', ['H1', '--state', 'intended', '--by', made.ruling]);
+    const { line } = log('hypothesis', ['H1', '--title', 'The save trusts a capture taken mid-shutdown']);
+
+    assert.strictEqual(line, `- H1 · The save trusts a capture taken mid-shutdown · intended [${full(made.ruling)}]`);
+    assert.deepStrictEqual(huntIn(huntLog(), 'log.md', []).hypotheses, [
+      { name: 'H1', title: 'The save trusts a capture taken mid-shutdown', state: 'intended', by: full(made.ruling), body: [] },
+    ]);
+    assert.strictEqual(log('hypothesis', ['H1', '--title', 'The capture runs late', '--state', 'confirmed']).line, '- H1 · The capture runs late · confirmed');
+  });
+
+  it('19.4.1–19.4.3: the fix direction is refused while no root cause is logged, and again once the root cause\'s decision is replaced, until its replacement is', () => {
+    const before = `investigation-log: the fix direction comes after the root cause, and no root cause is logged — log it first: engine investigation-log root-cause ${HUNT} --entry <decision>`;
+    assert.strictEqual(refused(['investigation-log', 'fix-direction', HUNT, '--question', made.fix]), before);
+
+    log('root-cause', ['--entry', made.rootCause]);
+    log('fix-direction', ['--question', made.fix]);
+    const { write } = ledgerHelpers(() => dir);
+    const replaced = write('replace', AT, ['--replaces', made.rootCause, '--reason', 'was-wrong'], { ...CLAUDE, drops: ['the whole truth'], text: 'A save trusts a capture taken mid-shutdown.', why: 'E6 showed it.' }).id;
+
+    assert.strictEqual(refused(['investigation-log', 'fix-direction', HUNT, '--question', made.fix]),
+      `investigation-log: the fix direction comes after the root cause, and the root cause logged points at no current entry — log it first: engine investigation-log root-cause ${HUNT} --entry <decision>`);
+    assert.strictEqual(refused(['investigation-log', 'root-cause', HUNT, '--entry', made.rootCause]), `investigation-log: --entry names ${made.rootCause}, which is no longer current — ${replaced} replaced it`);
+    log('root-cause', ['--entry', replaced]);
+    assert.strictEqual(log('fix-direction', ['--question', made.fix]).line, `- How should restore stop losing sessions? [${full(made.fix)}]`);
+    log('fix-direction', ['--question', made.keep]);
+    assert.strictEqual(huntIn(huntLog(), 'log.md', []).fixDirection?.entry, full(made.keep), 'the latest fix direction stands');
+  });
+
+  /**
+   * A raise at the investigation's place, drawn in this conversation: of the
+   * fix, or of what `target` names.
+   * @param {Record<string, unknown>} call @param {string[]} [target]
+   */
+  const raised = (call, target = ['--answers', made.fix]) => okSectionsAsync(dir, ['raise', AT, ...target], { env: env(), stdin: JSON.stringify(call) });
+
+  /** The person's pick of a raise drawn: the decision it landed, by its full id. @param {string} raise @param {string} pick */
+  function picked(raise, pick) {
+    ok(dir, ['raise', 'answer', raise, '--pick', pick], { env: env(), stdin: JSON.stringify({ why: 'It is the cause.' }) });
+    return JSON.parse(readState(dir, '.ledger.jsonl').trim().split('\n').at(-1)).id;
+  }
+
+  const FIX_CALL = Object.freeze({
+    question: 'How should restore stop losing sessions?',
+    rows: [
+      { key: '1', name: 'Refuse', text: 'Refuse to save an empty capture', notice: 'a kill never empties the save' },
+      { key: '2', name: 'Keep', text: 'Keep the last good save beside it', notice: 'restore offers the one before' },
+    ],
+    lean: '1',
+    why: 'The empty capture is the cause.',
+    sort: 'one',
+    mechanism: 'The save checks the capture before it writes.',
+    product_wide: false,
+  });
+  const STEPPED_BACK = ['The capture is trusted whole wherever it is taken.', 'A kill and a shutdown are one case.'];
+
+  it('the fix direction carries what the step back found as its body, copied from this conversation\'s raise of the question once the person picked — never another question\'s, drawn later; a body given besides passed over, said so', async () => {
+    log('root-cause', ['--entry', made.rootCause]);
+    picked((await raised({ ...FIX_CALL, stepped_back: STEPPED_BACK })).res.raise, '1');
+    const { write } = ledgerHelpers(() => dir);
+    const warn = write('ask', AT, [], { ...CLAUDE, text: 'Should restore say what it lost?' }).id;
+    await raised({ ...FIX_CALL, question: 'Should restore say what it lost?', stepped_back: ['Not the fix\'s step back.'] }, ['--answers', warn]);
+
+    const res = log('fix-direction', ['--question', made.fix, '--body', staged('fix.md', 'My own words.')]);
+
+    assert.deepStrictEqual(res.warnings, [`--body ${path.join(config, 'fix.md')} is passed over: the fix direction's body is what the step back found, as this conversation's raise of the question sealed it`]);
+    assert.deepStrictEqual(huntIn(huntLog(), 'log.md', []).fixDirection?.body, STEPPED_BACK);
+  });
+
+  it('a fix the person picked, then replaced in the same conversation, carries the replacement\'s step back, the latest down the question\'s chain', async () => {
+    log('root-cause', ['--entry', made.rootCause]);
+    const decided = picked((await raised({ ...FIX_CALL, stepped_back: ['The first step back.'] })).res.raise, '1');
+    const replacing = await raised({
+      ...FIX_CALL, rows: [FIX_CALL.rows[1], { key: '3', name: 'Both', text: 'Refuse it and keep the last good save', notice: 'both' }], lean: '3', stepped_back: STEPPED_BACK,
+    }, ['--replaces', decided, '--reason', 'changed-mind']);
+    picked(replacing.res.raise, '3');
+
+    log('fix-direction', ['--question', made.fix]);
+
+    assert.deepStrictEqual(huntIn(huntLog(), 'log.md', []).fixDirection?.body, STEPPED_BACK);
+  });
+
+  it('a fix direction the rule lets proceed lands Claude\'s call carrying what the step back found as its evidence (5.1.1), which the fix direction takes as its body in any conversation, the seal holding nothing; a body given besides passed over, said so', async (t) => {
+    undrawn(t);
+    log('root-cause', ['--entry', made.rootCause]);
+    const { res } = await okSectionsAsync(dir, ['raise', AT, '--answers', made.fix], { env: { ...env(), ...labelling(FIX_CALL.question, 'behaviour') }, stdin: JSON.stringify({ ...FIX_CALL, stepped_back: STEPPED_BACK }) });
+    const decision = JSON.parse(readState(dir, '.ledger.jsonl').trim().split('\n').at(-1));
+
+    const logged = ok(dir, ['investigation-log', 'fix-direction', HUNT, '--question', made.fix, '--body', staged('fix.md', 'My own words.')], { env: NEXT() });
+
+    assert.deepStrictEqual([res.decision, decision.id, decision.by, decision.evidence], ['proceed', full(res.id), 'claude', STEPPED_BACK]);
+    assert.deepStrictEqual(logged.warnings, [`--body ${path.join(config, 'fix.md')} is passed over: the fix direction's body is what the step back found, as Claude's call deciding the question carries it`]);
+    assert.deepStrictEqual(huntIn(huntLog(), 'log.md', []).fixDirection?.body, STEPPED_BACK);
+  });
+
+  it('where this conversation sealed no step back for the question, the fix direction takes --body, and goes without one where none is given', async () => {
+    log('root-cause', ['--entry', made.rootCause]);
+    await raised(FIX_CALL);
+
+    assert.strictEqual(log('fix-direction', ['--question', made.fix, '--body', staged('fix.md', 'Found on a /clear.')]).warnings, undefined);
+    assert.deepStrictEqual(huntIn(huntLog(), 'log.md', []).fixDirection?.body, ['Found on a /clear.']);
+    log('fix-direction', ['--question', made.fix]);
+    assert.deepStrictEqual(huntIn(huntLog(), 'log.md', []).fixDirection?.body, []);
+  });
+
+  it('19.S7: a raise at the investigation\'s place carrying a step back, the fix direction\'s screen, is refused while no root cause is logged, sealing nothing; one without is drawn', async () => {
+    const { error } = await refusesAsync(dir, ['raise', AT, '--answers', made.fix], { env: env(), stdin: JSON.stringify({ ...FIX_CALL, stepped_back: STEPPED_BACK }) });
+
+    assert.strictEqual(error, `raise: the fix direction comes after the root cause, and no root cause is logged — log it first: engine investigation-log root-cause ${HUNT} --entry <decision>`);
+    assert.strictEqual(fs.existsSync(path.join(config, 'conversations', 'sess-1', 'raise-shown.json')), false, 'nothing sealed');
+    assert.strictEqual((await raised(FIX_CALL)).res.decision, 'ask');
+  });
+
+  it('refuses, writing nothing: a call out of its shape, a place that cannot take it, words out of their line\'s shape, a state or a hypothesis it lacks, and an entry that is none of the unit\'s current ones of its kind', () => {
+    log('hypothesis', ['--title', 'Killing every session empties the state']);
+    const blank = staged('blank.md', 'One\n\nTwo\n');
+    for (const [args, error] of /** @type {[string[], string|RegExp][]} */ ([
+      [['what', HUNT], /^Usage: engine investigation-log <symptom\|hypothesis\|experiment\|root-cause\|validation\|fix-direction> …\n/],
+      [['symptom', HUNT], 'Usage: engine investigation-log symptom <bugfix> --text "<the person\'s words>" [--body <file>]'],
+      [['symptom', HUNT, '--text', 'x', '--entry', made.kill], 'Usage: engine investigation-log symptom <bugfix> --text "<the person\'s words>" [--body <file>]'],
+      [['symptom', BUG, '--text', 'x'], `investigation-log: ${BUG}'s investigation has not started — engine enter investigation ${BUG} starts it`],
+      [['symptom', FEATURE, '--text', 'x'], 'investigation-log: a feature has no investigation — its phases are experiment, discussion, specification, implementation, review'],
+      [['symptom', 'fixed', '--text', 'x'], 'investigation-log: the topic "fixed" is concluded — its work goes on in specification, from the start menu, and a message sent to it reopens it'],
+      [['symptom', HUNT, '--text', 'one\ntwo'], 'investigation-log: --text is one line of words, not empty'],
+      [['hypothesis', HUNT, '--title', 'One · two'], 'investigation-log: --title holds "·", which its line\'s shape keeps for itself'],
+      [['hypothesis', HUNT, 'H1', '--state', 'likely'], 'investigation-log: --state is suspected, confirmed, ruled-out, intended, not "likely"'],
+      [['hypothesis', HUNT, 'H1', '--state', 'intended'], 'investigation-log: an intended hypothesis rests on the person\'s ruling — name it: --by <decision>'],
+      [['hypothesis', HUNT, 'H1', '--state', 'confirmed', '--by', made.ruling], 'investigation-log: --by names the person\'s ruling an intended hypothesis rests on — a confirmed one takes none'],
+      [['hypothesis', HUNT, 'H1', '--state', 'intended', '--by', made.rootCause], `investigation-log: --by names ${made.rootCause}, a call of Claude's — a hypothesis is intended on the person's ruling`],
+      [['hypothesis', HUNT, 'H9', '--state', 'confirmed'], 'investigation-log: the log holds no hypothesis "H9" — a new one is logged with --title'],
+      [['hypothesis', HUNT, 'H1'], 'investigation-log: H1 reads so already — log it again with the --title or --state that changed'],
+      [['hypothesis', HUNT, 'H1', '--state', 'suspected', '--title', 'Killing every session empties the state'], 'investigation-log: H1 reads so already — log it again with the --title or --state that changed'],
+      [['hypothesis', HUNT, 'H1', '--by', made.ruling], 'investigation-log: --by names the person\'s ruling an intended hypothesis rests on — give it with --state intended'],
+      [['hypothesis', HUNT, 'H1', '--title', 'One · two'], 'investigation-log: --title holds "·", which its line\'s shape keeps for itself'],
+      [['experiment', HUNT, '--title', 'Kill — all', '--showed', 'x', '--entry', made.kill], 'investigation-log: --title holds "—", which its line\'s shape keeps for itself'],
+      [['experiment', HUNT, '--title', 'Kill', '--showed', 'x', '--entry', made.rootCause], `investigation-log: --entry names ${made.rootCause}, which is not a finding`],
+      [['experiment', HUNT, '--title', 'Kill', '--showed', 'x', '--entry', made.other], `investigation-log: --entry names ${made.other}, which stands in ${FEATURE}, not ${HUNT}`],
+      [['experiment', HUNT, '--title', 'Kill', '--showed', 'x', '--entry', 'zz'], 'investigation-log: --entry: "zz" is too short to name a ledger entry — give at least 4 characters of its id'],
+      [['root-cause', HUNT, '--entry', made.cause], `investigation-log: --entry names ${made.cause}, which is not a decision`],
+      [['validation', HUNT, 'both', '--found', 'x', '--did', 'y'], 'investigation-log: a validation is the root-cause or the fix one, not "both"'],
+      [['validation', HUNT, 'fix', '--found', 'x — y', '--did', 'z'], 'investigation-log: --found holds "—", which its line\'s shape keeps for itself'],
+      [['symptom', HUNT, '--text', 'x', '--body', blank], `investigation-log: --body ${blank} holds a blank line, which would end the body beneath its entry — join its paragraphs`],
+      [['symptom', HUNT, '--text', 'x', '--body', path.join(config, 'none.md')], new RegExp(`^investigation-log: --body ${path.join(config, 'none.md')} cannot be read — `)],
+    ])) {
+      const said = refused(['investigation-log', ...args]);
+      if (typeof error === 'string') assert.strictEqual(said, error, args.join(' '));
+      else assert.match(said, error, args.join(' '));
+    }
+  });
+
+  it('a line under a fixed heading that does not read as its shape is passed over, said among the warnings', () => {
+    const warnings = [];
+    const hunt = huntIn([
+      '## Hypotheses', '', '- H1 · No state', '- H2 · Intended on nothing · intended', '',
+      '## Root cause', '', '- Points at nothing', '',
+    ].join('\n'), 'hunt/topics/hunt/log.md', warnings);
+
+    assert.deepStrictEqual([hunt.hypotheses, hunt.rootCause], [[], null]);
+    assert.deepStrictEqual(warnings, [
+      'hunt/topics/hunt/log.md: "H1 · No state" under ## Hypotheses does not read as a hypothesis, and is passed over',
+      'hunt/topics/hunt/log.md: "H2 · Intended on nothing · intended" under ## Hypotheses does not read as a hypothesis, and is passed over',
+      'hunt/topics/hunt/log.md: "Points at nothing" under ## Root cause does not read as a root cause, and is passed over',
+    ]);
+  });
+
+  it('a line of the log passed over is said where Claude reads: on the verb\'s response, and ahead of a gate in its DATA', () => {
+    writeState(dir, layout.topic(HUNT, HUNT, 'log.md'), '## Hypotheses\n\n- Traced the save through capture()\n');
+    const passed = `${layout.topic(HUNT, HUNT, 'log.md')}: "Traced the save through capture()" under ## Hypotheses does not read as a hypothesis, and is passed over`;
+
+    assert.deepStrictEqual(log('hypothesis', ['--title', 'The save races the shutdown']).warnings, [passed]);
+    const sections = rendered(['investigation-plan', HUNT, '--file', payload('plan.json', { order: [{ hypothesis: 'H1', check: 'Kill it mid-save' }] })]);
+    assert.ok(sections.startsWith(`${data([`warning: ${passed}`])}=== DISPLAY: investigation plan `), sections);
+  });
+});
+
+describe('the plan gate, a learned process gate, and the check-in, a display (19.4.19)', () => {
+  /** The hunt with three hypotheses, the first confirmed and an experiment. */
+  function hunting() {
+    for (const title of ['Killing every session empties the state', 'kill-server saves an empty state', 'A reboot finds the server gone']) log('hypothesis', ['--title', title]);
+    log('experiment', ['--title', 'Kill every session', '--showed', 'each kill shrank it', '--entry', made.kill]);
+    log('hypothesis', ['H1', '--state', 'confirmed']);
+  }
+
+  const PLAN = { order: [{ hypothesis: 'H3', check: 'Reboot a throwaway machine and read the save' }, { hypothesis: 'H2', check: 'Run kill-server with the runtime live' }] };
+
+  it('the plan: the open hypotheses in the order given, each with how it is checked, those settled so far, then the plan gate, whose yes goes on; its showing held at the investigation, so set aside by a Comment it shows on its hold in the next conversation, the yes there the same event (N2)', () => {
+    hunting();
+
+    const sections = rendered(['investigation-plan', HUNT, '--file', payload('plan.json', PLAN)]);
+
+    assert.strictEqual(sections.slice(0, sections.indexOf('=== MENU')), [
+      '=== DISPLAY: investigation plan (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===',
+      'Hunt · investigation plan',
+      '',
+      'IN THE ORDER I\'LL CHECK THEM (2)',
+      '  ├─ ○ H3 A reboot finds the server gone',
+      '  │     Reboot a throwaway machine and read the save',
+      '  └─ ○ H2 kill-server saves an empty state',
+      '        Run kill-server with the runtime live',
+      '',
+      'SETTLED SO FAR (1)',
+      '  └─ ✓ H1 Killing every session empties the state    [confirmed]',
+      '',
+    ].join('\n'));
+    const gate = auditGate(rendered(['investigation-plan', HUNT, '--file', payload('plan.json', PLAN)], true), 'investigation-plan');
+    assert.strictEqual(gate?.gate, 'plan gate');
+    run(['gate', 'plan gate', '--typed', 'comment']);
+    output(dir, ['render', 'investigation-plan', HUNT, '--file', payload('plan.json', PLAN)], { env: NEXT() });
+    assert.deepStrictEqual(ok(dir, ['gate', 'plan gate', '--pick', 'y'], { env: NEXT() }).next, { kind: 'continue' });
+    assert.deepStrictEqual(showingAnswers(config, 'plan gate'), [['comment', 'y'], [0, 0]]);
+  });
+
+  it('19.S35: a revised plan comes back to the plan gate, saying first what the finding changed (19.4.24)', () => {
+    hunting();
+
+    const sections = rendered(['investigation-plan', HUNT, '--file', payload('plan.json', { ...PLAN, changed: 'E1 showed a kill alone empties it, so the reboot comes first' }), '--revised']);
+
+    assert.match(sections, /^Hunt · revised plan\n\nWHAT THE FINDING CHANGED\n {2}E1 showed a kill alone empties it, so the reboot comes first\n\nIN THE ORDER I'LL CHECK THEM \(2\)\n/m);
+    assert.match(sections, /^=== MENU: plan gate /m);
+  });
+
+  it('the plan refuses: an open hypothesis left out, a settled one ordered, one named twice or not held, none open at all, and what changed without --revised or missing with it', () => {
+    hunting();
+    const plan = (/** @type {unknown} */ value, /** @type {string[]} */ flags = []) => refused(['render', 'investigation-plan', HUNT, '--file', payload('plan.json', value), ...flags]);
+
+    assert.deepStrictEqual([
+      plan({ order: [PLAN.order[0]] }),
+      plan({ order: [...PLAN.order, { hypothesis: 'H1', check: 'Again' }] }),
+      plan({ order: [...PLAN.order, PLAN.order[0]] }),
+      plan({ order: [...PLAN.order, { hypothesis: 'H7', check: 'Again' }] }),
+      plan({ order: PLAN.order.map((row) => ({ ...row, check: 'two\nlines' })) }),
+      plan({ ...PLAN, changed: 'A finding' }),
+      plan(PLAN, ['--revised']),
+    ], [
+      'render investigation-plan: the plan leaves out H2, which the log holds open — order every open hypothesis, or log it ruled out',
+      'render investigation-plan: the plan orders H1, which the log holds settled — a plan orders the hypotheses still open',
+      'render investigation-plan: the plan names H3 twice',
+      'render investigation-plan: the plan names H7, which the log holds no hypothesis as',
+      'render investigation-plan: the plan\'s order[0] check is one line of words, not empty',
+      'render investigation-plan: the plan must be {order}',
+      'render investigation-plan: the plan must be {order, changed}',
+    ]);
+    log('hypothesis', ['H2', '--state', 'ruled-out']);
+    log('hypothesis', ['H3', '--state', 'ruled-out']);
+    assert.strictEqual(plan({ order: [] }), `render investigation-plan: the log holds no open hypothesis — log each one the plan checks first: engine investigation-log hypothesis ${HUNT} --title "<title>"`);
+  });
+
+  it('the check-in: every hypothesis, those just resolved marked, the experiments with what each showed and what comes next — a display the hunt carries past, with no gate, never stepped by the decision point', (t) => {
+    hunting();
+    const asked = t.mock.method(decisionPoint, 'gateStep');
+
+    const sections = rendered(['investigation-check-in', HUNT, '--file', payload('check-in.json', { resolved: ['H1'], next: 'Run kill-server with the runtime live' })]);
+
+    assert.strictEqual(sections, [
+      '=== DISPLAY: investigation check-in (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===',
+      'Hunt · check-in',
+      '',
+      '3 hypotheses · 1 confirmed · 1 experiment',
+      '',
+      'HYPOTHESES (3)',
+      '  ├─ ✓ H1 Killing every session empties the state [confirmed · just now]',
+      '  ├─ ○ H2 kill-server saves an empty state        [open]',
+      '  └─ ○ H3 A reboot finds the server gone          [open]',
+      '',
+      'EXPERIMENTS (1)',
+      '  └─ ✓ E1 Kill every session',
+      '        each kill shrank it',
+      '',
+      'NEXT',
+      '  Run kill-server with the runtime live',
+      '',
+    ].join('\n'));
+    assert.strictEqual(asked.mock.callCount(), 0);
+  });
+
+  it('an intended hypothesis is drawn with the ruled-out glyph, as 20.12.1 draws it (19.4.13)', () => {
+    hunting();
+    log('hypothesis', ['H3', '--state', 'intended', '--by', made.ruling]);
+
+    const sections = rendered(['investigation-check-in', HUNT, '--file', payload('check-in.json', { resolved: ['H3'], next: 'Run kill-server' })]);
+
+    assert.match(sections, /^ {2}└─ – H3 A reboot finds the server gone +\[intended · just now\]$/m);
+  });
+
+  it('the check-in refuses one still open, none resolved, and its payload out of shape', () => {
+    hunting();
+    const checkIn = (/** @type {unknown} */ value) => refused(['render', 'investigation-check-in', HUNT, '--file', payload('check-in.json', value)]);
+
+    assert.deepStrictEqual([checkIn({ resolved: ['H2'], next: 'x' }), checkIn({ resolved: [], next: 'x' }), checkIn({ resolved: ['H1'] })], [
+      `render investigation-check-in: the check-in names H2, which the log holds open — log where it stands first: engine investigation-log hypothesis ${HUNT} H2 --state <state>`,
+      'render investigation-check-in: the check-in names no hypothesis resolved — a check-in comes once one is',
+      'render investigation-check-in: the check-in must be {resolved, next}',
+    ]);
+  });
+
+  it('the plan is stepped by the decision point at the investigation, its showing told by its order and what a revision changed, and run as a step on yes, its report in its menu\'s place', (t) => {
+    hunting();
+    const asked = t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ gate) => ({ step: 'automatic', gate, row: 'y', showing: '47e5a17f3cac2787' }));
+    const changed = 'E1 showed a kill alone empties it, so the reboot comes first';
+
+    const drawn = [
+      rendered(['investigation-plan', HUNT, '--file', payload('plan.json', PLAN)]),
+      rendered(['investigation-plan', HUNT, '--file', payload('plan.json', { ...PLAN, changed }), '--revised']),
+    ];
+
+    const place = { unit: HUNT, phase: 'investigation', topic: HUNT };
+    assert.deepStrictEqual(asked.mock.calls.map(({ arguments: [name, at] }) => [name, at.place, at.key]), [
+      ['plan gate', place, [['H3', 'H2'], null]],
+      ['plan gate', place, [['H3', 'H2'], changed]],
+    ]);
+    assert.deepStrictEqual(drawn.map((sections) => sections.match(/^automatic step: .+$/m)?.[0]), ['automatic step: plan gate', 'automatic step: plan gate']);
+  });
+
+  it('each refuses a place whose investigation is not open, and a call with no payload', () => {
+    const file = payload('plan.json', PLAN);
+    assert.deepStrictEqual([
+      refused(['render', 'investigation-plan', BUG, '--file', file]),
+      refused(['render', 'investigation-check-in', 'fixed', '--file', file]),
+      refused(['render', 'investigation-plan', HUNT]),
+      refused(['render', 'investigation-check-in', HUNT]),
+    ], [
+      `render investigation-plan: ${BUG}'s investigation has not started — engine enter investigation ${BUG} starts it`,
+      'render investigation-check-in: the topic "fixed" is concluded — its work goes on in specification, from the start menu, and a message sent to it reopens it',
+      'render investigation-plan: Usage: engine render investigation-plan <bugfix> --file <plan.json> [--revised]',
+      'render investigation-check-in: Usage: engine render investigation-check-in <bugfix> --file <check-in.json>',
+    ]);
+  });
+});

@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-MIGRATION="$REPO_DIR/skills/workflow-migrate/scripts/migrations/010-gitignore-sessions.sh"
+MIGRATION="$REPO_DIR/skills/ledger-migrate/scripts/migrations/010-gitignore-sessions.sh"
 
 PASS=0
 FAIL=0
@@ -86,9 +86,9 @@ EOF
   local content
   content=$(cat "$TEST_DIR/.gitignore")
 
-  assert_eq "existing node_modules/ preserved" "true" "$(echo "$content" | grep -qF 'node_modules/' && echo true || echo false)"
-  assert_eq "existing .env preserved" "true" "$(echo "$content" | grep -qF '.env' && echo true || echo false)"
-  assert_eq ".cache/ entry appended" "true" "$(echo "$content" | grep -qF 'docs/workflow/.cache/' && echo true || echo false)"
+  assert_eq "existing node_modules/ preserved" "true" "$(grep -qF 'node_modules/' <<<"$content" && echo true || echo false)"
+  assert_eq "existing .env preserved" "true" "$(grep -qF '.env' <<<"$content" && echo true || echo false)"
+  assert_eq ".cache/ entry appended" "true" "$(grep -qF 'docs/workflow/.cache/' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -108,10 +108,10 @@ EOF
   local content
   content=$(cat "$TEST_DIR/.gitignore")
 
-  assert_eq "old sessions/ entry removed" "false" "$(echo "$content" | grep -qF 'docs/workflow/.cache/sessions/' && echo true || echo false)"
-  assert_eq "new .cache/ entry added" "true" "$(echo "$content" | grep -qF 'docs/workflow/.cache/' && echo true || echo false)"
-  assert_eq "node_modules/ preserved" "true" "$(echo "$content" | grep -qF 'node_modules/' && echo true || echo false)"
-  assert_eq ".env preserved" "true" "$(echo "$content" | grep -qF '.env' && echo true || echo false)"
+  assert_eq "old sessions/ entry removed" "false" "$(grep -qF 'docs/workflow/.cache/sessions/' <<<"$content" && echo true || echo false)"
+  assert_eq "new .cache/ entry added" "true" "$(grep -qF 'docs/workflow/.cache/' <<<"$content" && echo true || echo false)"
+  assert_eq "node_modules/ preserved" "true" "$(grep -qF 'node_modules/' <<<"$content" && echo true || echo false)"
+  assert_eq ".env preserved" "true" "$(grep -qF '.env' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -125,7 +125,7 @@ test_no_gitignore() {
   local content
   content=$(cat "$TEST_DIR/.gitignore")
 
-  assert_eq ".cache/ entry added to new .gitignore" "true" "$(echo "$content" | grep -qF 'docs/workflow/.cache/' && echo true || echo false)"
+  assert_eq ".cache/ entry added to new .gitignore" "true" "$(grep -qF 'docs/workflow/.cache/' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -205,9 +205,9 @@ test_no_trailing_newline() {
   local content
   content=$(cat "$TEST_DIR/.gitignore")
 
-  assert_eq "original last line preserved intact" "true" "$(echo "$content" | grep -qF '.claude/settings.local.json' && echo true || echo false)"
-  assert_eq "no concatenation with appended entry" "false" "$(echo "$content" | grep -qF '.claude/settings.local.jsondocs' && echo true || echo false)"
-  assert_eq ".cache/ entry present" "true" "$(echo "$content" | grep -qF 'docs/workflow/.cache/' && echo true || echo false)"
+  assert_eq "original last line preserved intact" "true" "$(grep -qF '.claude/settings.local.json' <<<"$content" && echo true || echo false)"
+  assert_eq "no concatenation with appended entry" "false" "$(grep -qF '.claude/settings.local.jsondocs' <<<"$content" && echo true || echo false)"
+  assert_eq ".cache/ entry present" "true" "$(grep -qF 'docs/workflow/.cache/' <<<"$content" && echo true || echo false)"
   local line_count
   line_count=$(wc -l < "$TEST_DIR/.gitignore" | tr -d ' ')
   assert_eq "entry appended as separate line (3 lines total)" "3" "$line_count"

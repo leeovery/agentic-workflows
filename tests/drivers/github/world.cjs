@@ -1,0 +1,279 @@
+'use strict';
+
+// The fake GitHub a suite of GitHub's landing driver runs against
+// (gh-stub.cjs): made inside a world's git directory, so each copy of the
+// world carries its own (`githubWorld`) — and inside each nested
+// repository's, a repository on GitHub of its own; reached by the stand-in
+// `gh`, shadowing any other on the PATH, and by the stand-in ssh. Its remote is
+// 29.2's fake GitHub remote (engine-harness.cjs, `githubOffline`): a GitHub
+// URL rewritten to port 0, so a git call the stand-in ssh misses fails
+// closed, never reaching github.com. Every call runs under `GH_ENV`, the
+// stand-in first on the PATH, so the developer's gh is never reached, and
+// the driver's pauses between reads of whether a pull request can merge
+// cut to nothing; the hermetic environment keeps their login out
+// (hermetic-env.cjs).
+// What a person might do by hand on GitHub — close a pull request, merge
+// one, delete a merged one's branch, or a branch with its pull request,
+// commit on the site, or merge main into a branch there with its "Update
+// branch", open a pull request no unit opened, from a fork or
+// not, change GitHub's default branch or its squash default — is done to
+// the fake's state here, as is how many reads GitHub takes to work out
+// whether a pull request can merge once it moves. The fake starts with
+// GitHub's own squash default, and works it out at once.
+// The verbs its suites call go through and refuse under `GH_ENV` (`ok`,
+// `refused`), a phase of two is built the one way (`stackOfTwo`), and a
+// task squashed by hand on the site, its phase landed, the one way
+// (`squashedByHand`).
+
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { execFileSync } = require('child_process');
+const { git, bareRepo, githubOffline, createFile, ok: harnessOk, refuses } = require('../../scripts/engine-harness.cjs');
+const { TASKS, openArgs, mergeBack, cutTask, phaseReviewed } = require('../../scripts/landing-world.cjs');
+const { STATE_BRANCH } = require('../../../skills/ledger-engine/scripts/domain/state-worktree.cjs');
+const stub = require('./gh-stub.cjs');
+
+const REPOSITORY = 'acme/portal';
+const SSH = path.join(__dirname, 'ssh');
+/** The environment every call runs under, as a call's overlay. */
+const GH_ENV = Object.freeze({ PATH: `${path.join(__dirname, 'bin')}:${process.env.PATH}`, LEDGER_MERGEABLE_PAUSE_MS: '0' });
+
+/** `GH_ENV` over the process's own, as a spawned shell takes it. @param {Record<string, string|undefined>} [more] */
+function ghEnv(more = {}) {
+  /** @type {Record<string, string>} */
+  const env = {};
+  for (const [name, value] of Object.entries({ ...process.env, ...GH_ENV, ...more })) if (value !== undefined) env[name] = value;
+  return env;
+}
+
+/** The fake GitHub's folder for the repository at `dir`, the world's own or one nested in it. @param {string} dir */
+const githubOf = (dir) => stub.githubAt(dir);
+
+/** The bare repository standing for GitHub's copy of the code of the repository at `dir`. @param {string} dir */
+const bareOf = (dir) => stub.bareOf(githubOf(dir), stub.readState(githubOf(dir)));
+
+/**
+ * The fake GitHub made for the repository at `dir` — the world's own, or one
+ * nested in it, standing for `repository` on GitHub — and its remote,
+ * origin, on it: its URL GitHub's, reached through the stand-in ssh; its
+ * default branch `into`, its tags and the state branch, where it has one,
+ * pushed, and origin's HEAD naming the default branch.
+ * @param {string} dir @param {{repository?: string, into?: string}} [opts]
+ */
+function githubWorld(dir, { repository = REPOSITORY, into = 'main' } = {}) {
+  const at = githubOf(dir);
+  const bare = bareRepo(path.join(at, `${repository}.git`), ['-b', into]);
+  const state = git(dir, ['for-each-ref', '--format=%(refname:lstrip=2)', `refs/heads/${STATE_BRANCH}`]).trim();
+  const pushed = [into, ...(state === '' ? [] : [state])].map((branch) => `refs/heads/${branch}:refs/heads/${branch}`);
+  git(dir, ['config', 'include.path', path.basename(githubOffline(path.dirname(at)).GIT_CONFIG_GLOBAL)]);
+  git(dir, ['config', 'core.sshCommand', SSH]);
+  git(dir, ['remote', 'add', 'origin', `git@github.com:${repository}.git`]);
+  git(dir, ['push', '-q', '--tags', 'origin', ...pushed]);
+  git(dir, ['fetch', '-q', 'origin']);
+  git(dir, ['remote', 'set-head', 'origin', into]);
+  stub.writeState(at, { repo: repository, default: into, next: 1, method: 'merge', squash: { ...stub.GITHUB_SQUASH }, rulesets: [], pulls: [], stacks: [] });
+  return bare;
+}
+
+/** What the fake GitHub in the world at `dir` holds. @param {string} dir */
+const github = (dir) => stub.readState(githubOf(dir));
+
+/** Change what the fake GitHub holds. @param {string} dir @param {(state: ReturnType<typeof github>) => void} change */
+function onGithub(dir, change) {
+  const state = github(dir);
+  change(state);
+  stub.writeState(githubOf(dir), state);
+}
+
+/** Every gh call made in the world, oldest first, each its words. @param {string} dir */
+function calls(dir) {
+  const log = path.join(githubOf(dir), 'calls');
+  return fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean) : [];
+}
+
+/** A pull request closed by hand on GitHub. @param {string} dir @param {number} number */
+function closeByHand(dir, number) {
+  onGithub(dir, (state) => {
+    const pull = state.pulls.find((held) => held.number === number);
+    if (pull !== undefined) pull.state = 'CLOSED';
+  });
+}
+
+/**
+ * A pull request merged by hand on GitHub, into `into`, else its base, by
+ * `method` — squashed under its title, else a merge commit under the site's
+ * own message, its default button, or its own commits put on the branch.
+ * @param {string} dir @param {number} number @param {string} [into] @param {'squash'|'merge'|'rebase'} [method]
+ */
+function mergeByHand(dir, number, into, method = 'squash') {
+  onGithub(dir, (state) => {
+    const pull = state.pulls.find((held) => held.number === number);
+    if (pull === undefined) throw new Error(`no pull request #${number}`);
+    stub.mergePulls(githubOf(dir), state, [pull], method, { into: into ?? pull.base, ...(method === 'squash' ? { subject: pull.title } : {}) });
+  });
+}
+
+/**
+ * A pull request on GitHub no unit opened, of `head` onto `base`, left in
+ * `state` — the person's own, made by hand, its branch there `kept` or
+ * deleted, or a fork's of `fork`, its head held as its own ref alone, as
+ * GitHub holds a fork's: its head one commit on `base` writing `files`
+ * under `message`, opened, and committed, at `created`, where given, else
+ * long before any unit (gh-stub.cjs). Its number.
+ * @param {string} dir
+ * @param {{head: string, base?: string, state?: 'OPEN'|'CLOSED', kept?: boolean, fork?: string, files: Record<string, string>, message: string, created?: string}} pull
+ */
+function strangerPull(dir, { head, base = 'main', state = 'OPEN', kept = true, fork, files, message, created }) {
+  const bare = bareOf(dir);
+  const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'github-stranger-'));
+  git(bare, ['worktree', 'add', '-q', '--detach', tree, base]);
+  for (const [file, text] of Object.entries(files)) {
+    createFile(tree, file, text);
+    git(tree, ['add', file]);
+  }
+  const at = created ?? stub.LONG_AGO;
+  execFileSync('git', ['commit', '-q', '-m', message], { cwd: tree, env: { ...process.env, GIT_AUTHOR_DATE: at, GIT_COMMITTER_DATE: at } });
+  const sha = git(tree, ['rev-parse', 'HEAD']).trim();
+  git(bare, ['worktree', 'remove', '--force', tree]);
+  let number = 0;
+  onGithub(dir, (held) => {
+    number = held.next;
+    held.next += 1;
+    git(bare, ['update-ref', `refs/pull/${number}/head`, sha]);
+    if (fork === undefined && kept) git(bare, ['update-ref', `refs/heads/${head}`, sha]);
+    held.pulls.push({ number, state, head, base, title: message.split('\n')[0], body: '', ...(created === undefined ? {} : { created }), ...(fork === undefined ? {} : { fork, oid: sha }) });
+  });
+  return number;
+}
+
+/** A pull request's branch deleted on GitHub, its pull request closed with it, as GitHub closes one whose head is gone. @param {string} dir @param {number} number */
+function branchDeleted(dir, number) {
+  onGithub(dir, (state) => {
+    const pull = state.pulls.find((held) => held.number === number);
+    if (pull === undefined) throw new Error(`no pull request #${number}`);
+    pull.state = 'CLOSED';
+    execFileSync('git', ['update-ref', '-d', `refs/heads/${pull.head}`], { cwd: bareOf(dir) });
+  });
+}
+
+/**
+ * A merged pull request's head branch deleted on GitHub, as its button or
+ * auto-delete does: each pull request open on that branch retargeted onto
+ * the merged one's base, as GitHub retargets them.
+ * @param {string} dir @param {number} number
+ */
+function headDeleted(dir, number) {
+  onGithub(dir, (state) => {
+    const merged = state.pulls.find((held) => held.number === number);
+    if (merged === undefined) throw new Error(`no pull request #${number}`);
+    for (const pull of state.pulls) if (pull.state === 'OPEN' && pull.base === merged.head) pull.base = merged.base;
+    execFileSync('git', ['update-ref', '-d', `refs/heads/${merged.head}`], { cwd: bareOf(dir) });
+  });
+}
+
+/** GitHub's own default branch moved to `branch`, made from main there, as a person might change it after cloning. @param {string} dir @param {string} branch */
+function defaultOnGithub(dir, branch) {
+  execFileSync('git', ['branch', branch, 'main'], { cwd: bareOf(dir) });
+  onGithub(dir, (state) => {
+    state.default = branch;
+  });
+}
+
+/** The repository's squash default made the pull request's title and description, as setup's yes makes it. @param {string} dir */
+function squashFromPullRequests(dir) {
+  onGithub(dir, (state) => {
+    state.squash = { squash_merge_commit_title: 'PR_TITLE', squash_merge_commit_message: 'PR_BODY' };
+  });
+}
+
+/**
+ * GitHub made to take `reads` reads to work out whether a pull request can
+ * merge once it moves — `stale`, answering meanwhile, after a push, for the
+ * head before it.
+ * @param {string} dir @param {number} reads @param {{stale?: boolean}} [opts]
+ */
+function lagOnGithub(dir, reads, { stale = false } = {}) {
+  onGithub(dir, (state) => {
+    Object.assign(state, { lag: reads, stale });
+  });
+}
+
+/** A branch's tip on GitHub, or '' where GitHub has none. @param {string} dir @param {string} branch */
+const tipOnGithub = (dir, branch) => git(bareOf(dir), ['for-each-ref', '--format=%(objectname)', `refs/heads/${branch}`]).trim();
+
+/**
+ * `branch` on GitHub moved as its site moves it, `make` run in a checkout
+ * of it there, each pull request open on the branch holding its new tip as
+ * its own ref, as GitHub's does: that tip.
+ * @param {string} dir @param {string} branch @param {(tree: string) => void} make
+ */
+function onSite(dir, branch, make) {
+  const bare = bareOf(dir);
+  const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'github-site-'));
+  git(bare, ['worktree', 'add', '-q', tree, branch]);
+  make(tree);
+  git(bare, ['worktree', 'remove', '--force', tree]);
+  const sha = tipOnGithub(dir, branch);
+  for (const pull of github(dir).pulls) if (pull.state === 'OPEN' && pull.head === branch && pull.fork === undefined) git(bare, ['update-ref', `refs/pull/${pull.number}/head`, sha]);
+  return sha;
+}
+
+/**
+ * A commit made on GitHub on `branch`, as the site makes one — a review's
+ * suggestion, an edit on its page — `files` written in it (`onSite`): its
+ * sha.
+ * @param {string} dir @param {string} branch @param {Record<string, string>} files @param {string} subject
+ */
+function madeOnGithub(dir, branch, files, subject) {
+  return onSite(dir, branch, (tree) => {
+    for (const [file, text] of Object.entries(files)) {
+      createFile(tree, file, text);
+      git(tree, ['add', file]);
+    }
+    git(tree, ['commit', '-q', '-m', subject]);
+  });
+}
+
+/**
+ * The site's "Update branch" on `branch`: GitHub's default branch, main,
+ * merged into it there (`onSite`): the merge's sha.
+ * @param {string} dir @param {string} branch
+ */
+const updatedOnGithub = (dir, branch) => onSite(dir, branch, (tree) => git(tree, ['merge', '-q', '--no-edit', '-m', `Merge branch 'main' into ${branch}`, 'main']));
+
+/** The pull requests GitHub holds, each its number, state and base. @param {string} dir */
+const pulls = (dir) => github(dir).pulls.map(({ number, state, base }) => ({ number, state, base }));
+
+/** A verb that must go through, under the stand-in gh. @param {string} dir @param {string[]} args @param {Record<string, string|undefined>} [env] */
+const ok = (dir, args, env = {}) => harnessOk(dir, args, { env: { ...GH_ENV, ...env } });
+
+/** A verb that must refuse, its refusal. @param {string} dir @param {string[]} args @param {Record<string, string|undefined>} [env] */
+const refused = (dir, args, env = {}) => refuses(dir, args, { env: { ...GH_ENV, ...env } }).error;
+
+/** A phase of two in the landing world: card opened from main, total merged back onto it and opened on it, the two linked. @param {string} dir */
+function stackOfTwo(dir) {
+  const { card, total } = TASKS;
+  ok(dir, openArgs(card));
+  mergeBack(dir, total.branch, card.branch);
+  ok(dir, openArgs(total));
+  ok(dir, ['land', 'chain', 'pay', '1.2']);
+}
+
+/** Task 4.1, its commit stamped as the door stamps it, opened, squashed by hand on GitHub's site, and phase 4 landed. @param {string} dir */
+function squashedByHand(dir) {
+  const task = cutTask(dir, '4.1', 'feat', 'Add tip', 'main', { 'tip.txt': 'tip\n' }, { message: 'feat(pay): add the tip\n\nLedger-Task: pay-4-1' });
+  ok(dir, openArgs(task));
+  mergeByHand(dir, 1, undefined, 'squash');
+  phaseReviewed(dir, 4, 'auto');
+  ok(dir, ['land', 'phase', 'pay', '4']);
+  return task;
+}
+
+/** The pull requests opened and merged since the call count `from`. @param {string} dir @param {number} from */
+const madeSince = (dir, from) => calls(dir).slice(from).filter((made) => /^pr (create|merge)/.test(made));
+
+module.exports = {
+  REPOSITORY, GH_ENV, ghEnv, githubWorld, github, onGithub, bareOf, calls, closeByHand, mergeByHand, strangerPull, branchDeleted, headDeleted, defaultOnGithub, squashFromPullRequests, lagOnGithub,
+  tipOnGithub, madeOnGithub, updatedOnGithub, pulls, ok, refused, stackOfTwo, squashedByHand, madeSince,
+};

@@ -3,6 +3,8 @@
 // A file's outline, as a query places a chunk in it: the chunk's lines in
 // the file as it stands, frontmatter counted, and the headings enclosing a
 // line — fenced headings and frontmatter never among them.
+//
+// Layer: unit.
 
 require('./hermetic-env.cjs');
 
@@ -11,10 +13,10 @@ const path = require('path');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { chunk } = require('../../skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs');
-const { outline } = require('../../skills/workflow-engine/scripts/kernel/knowledge/outline.cjs');
+const { chunk } = require('../../skills/ledger-engine/scripts/kernel/knowledge/chunker.cjs');
+const { outline } = require('../../skills/ledger-engine/scripts/kernel/knowledge/outline.cjs');
 
-const CHUNKING = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'content', 'knowledge', 'chunking');
+const CHUNKING = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'content', 'knowledge', 'chunking');
 
 /** @param {string[]} lines */
 const fileOf = (lines) => lines.join('\n') + '\n';
@@ -101,7 +103,7 @@ describe('outline — locate', () => {
   });
 
   it('finds every chunk the chunker cuts from a file, at the lines holding its text', () => {
-    const config = JSON.parse(fs.readFileSync(path.join(CHUNKING, 'discussion.json'), 'utf8'));
+    const config = JSON.parse(fs.readFileSync(path.join(CHUNKING, 'record.json'), 'utf8'));
     const sections = Array.from({ length: 30 }, (_, n) => [`## Section ${n}`, '', `Body of section ${n}.`, '']);
     const markdown = ['---', 'topic: auth', '---', '', ...DOCUMENT, '', ...sections.flat()].join('\r\n');
     const lines = markdown.split('\r\n');

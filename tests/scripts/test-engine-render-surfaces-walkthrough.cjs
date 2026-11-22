@@ -1,0 +1,274 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// The render catalogue's surfaces (domain/render.cjs) for the walkthrough:
+// the offer, the walk's screens and the reference cards (23.2.3), each card
+// whole with its way back to the cards, or its content alone in an answer; and the cards' slugs as the answering rule
+// names them (answering-how-it-works.md).
+//
+// Layer: verb. World: the project world (setupFixture), a copied git project,
+// its manifests and payloads written per test; the domain's renderSurface is
+// called in process, every gate payload audited against its menu
+// (gate-audit.cjs).
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+
+const { DOTS, gateShown } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+const { renderSurface, NB, setup, teardown } = require('./render-surfaces-world.cjs');
+
+describe('walkthrough surfaces', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => { teardown(dir); });
+
+  const SCREENS = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'content', 'walkthrough', 'screens');
+  const screenFiles = () => fs.readdirSync(SCREENS).filter((f) => f.endsWith('.md')).sort();
+  const screenText = (n) => fs.readFileSync(path.join(SCREENS, screenFiles()[n - 1]), 'utf8');
+  const titleOf = (n) => screenText(n).split('\n').find((l) => l.startsWith('# ')).slice(2).trim();
+
+  const TOPICS = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'content', 'walkthrough', 'topics');
+  const cardFiles = () => fs.readdirSync(TOPICS).filter((f) => f.endsWith('.md')).sort();
+  const cardText = (n) => fs.readFileSync(path.join(TOPICS, cardFiles()[n - 1]), 'utf8');
+  const cardTitle = (n) => cardText(n).split('\n').find((l) => l.startsWith('# ')).slice(2).trim();
+  // The addresses `walkthrough-topic` takes. Pinned rather than re-derived
+  // from the filenames the projection reads: a slug is what a session names,
+  // and a card renamed out from under one has to fail here.
+  const SLUGS = [
+    'kinds-of-work', 'the-phases', 'epics-the-map-and-the-menu', 'the-roadmap', 'gates-auto-and-step',
+    'the-knowledge-base', 'the-inbox-and-triage', 'reshaping-work', 'working-in-parallel',
+  ];
+  /** The section markers of a render, in order — the shape the emitting prose walks. */
+  const markers = (out) => out.split('\n').filter((l) => l.startsWith('=== ')).map((l) => l.slice(4, l.indexOf(' (')));
+  /** A content file's chunks in order, each carrying its fence tag ('' when untagged, null for prose). */
+  const fenceChunks = (text) => {
+    const chunks = [];
+    let tag = null;
+    let buffer = [];
+    const flush = () => {
+      const body = buffer.join('\n').replace(/^\n+|\n+$/g, '');
+      if (body !== '' || tag) chunks.push({ tag, text: body });
+      buffer = [];
+    };
+    for (const line of text.split('\n').slice(1)) {
+      if (line.startsWith('```')) { const open = line.slice(3).trim(); flush(); tag = tag === null ? open : null; continue; }
+      buffer.push(line);
+    }
+    flush();
+    return chunks;
+  };
+  const menuOf = (out) => out.slice(out.indexOf('=== MENU:'));
+
+  it('a screen is its heading, its content in file order, then its menu', () => {
+    const out = renderSurface(dir, 'walkthrough-screen', { screen: '1', from: 'first-run' });
+    assert.deepStrictEqual(markers(out), ['TITLE', 'DISPLAY: walkthrough prose', 'DISPLAY: walkthrough diagram', 'DISPLAY: walkthrough prose', 'MENU: walkthrough screen']);
+    assert.ok(out.startsWith([
+      "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
+      `# **\`■ How Ledger works · 1 of ${screenFiles().length} · ${titleOf(1)}\`**`,
+      '',
+      '=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===',
+    ].join('\n')), out.slice(0, 400));
+
+    // Every chunk the file marks off reaches the render in file order: the
+    // prose as written, an untagged diagram as drawn. A tagged fence is
+    // notation the engine lays out, so what reaches the render is the
+    // layout's output, not the source — its own suite pins that.
+    const chunks = fenceChunks(screenText(1));
+    assert.strictEqual(chunks.length, 3, 'screen 1 is prose, diagram, prose');
+    let cursor = 0;
+    for (const chunk of chunks) {
+      if (chunk.tag) continue;
+      const at = out.indexOf(chunk.text, cursor);
+      assert.ok(at > cursor, `chunk missing or out of order:\n${chunk.text.slice(0, 60)}…`);
+      cursor = at;
+    }
+  });
+
+  it('the first screen: a first run goes on or stops, the offer before it already answered; from help it goes on or back', () => {
+    assert.strictEqual(menuOf(renderSurface(dir, 'walkthrough-screen', { screen: '1', from: 'first-run' })), [
+      "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ What next?`**',
+      '',
+      `**\`n/next\`** → ${titleOf(2)}`,
+      "**`s/skip`** → Stop here — it's under h/help whenever you want it",
+      "**Ask**    → Ask anything about what's on this screen",
+      '',
+    ].join('\n'));
+
+    assert.strictEqual(menuOf(renderSurface(dir, 'walkthrough-screen', { screen: '1', from: 'help' })), [
+      "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ What next?`**',
+      '',
+      `**\`n/next\`** → ${titleOf(2)}`,
+      '**`b/back`** → Back to help',
+      "**Ask**    → Ask anything about what's on this screen",
+      '',
+    ].join('\n'));
+  });
+
+  it('a middle screen: next, back, and a stop that names where stopping lands', () => {
+    assert.strictEqual(menuOf(renderSurface(dir, 'walkthrough-screen', { screen: '2', from: 'first-run' })), [
+      "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ What next?`**',
+      '',
+      `**\`n/next\`** → ${titleOf(3)}`,
+      '**`b/back`** → Go back a screen',
+      "**`s/skip`** → Stop here — it's under h/help whenever you want it",
+      "**Ask**    → Ask anything about what's on this screen",
+      '',
+    ].join('\n'));
+
+    assert.strictEqual(menuOf(renderSurface(dir, 'walkthrough-screen', { screen: '2', from: 'help' })), [
+      "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ What next?`**',
+      '',
+      `**\`n/next\`** → ${titleOf(3)}`,
+      '**`b/back`** → Go back a screen',
+      '**`s/stop`** → Stop here and go back to help',
+      "**Ask**    → Ask anything about what's on this screen",
+      '',
+    ].join('\n'));
+  });
+
+  it('the last screen: one way out, and the closing invitation beside the standing one', () => {
+    const last = screenFiles().length;
+    assert.strictEqual(menuOf(renderSurface(dir, 'walkthrough-screen', { screen: String(last), from: 'first-run' })), [
+      "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ What next?`**',
+      '',
+      '**`d/done`**  → Go to the start menu',
+      "**Ask**     → Ask anything about what's on this screen",
+      "**Tell me** → Tell me what you're likely to start with, and I'll say",
+      `${NB(10)}what path it will take`,
+      '',
+    ].join('\n'));
+
+    assert.match(renderSurface(dir, 'walkthrough-screen', { screen: String(last), from: 'help' }), /\*\*`d\/done`\*\*\s+→ Back to help/);
+  });
+
+  it('refuses a screen outside the walk, a missing or unknown origin', () => {
+    const total = screenFiles().length;
+    for (const screen of [undefined, '', '0', String(total + 1), 'two', '1.5']) {
+      assert.throws(
+        () => renderSurface(dir, 'walkthrough-screen', { screen, from: 'help' }),
+        new RegExp(`--screen is 1–${total} — got "${screen ?? ''}"`),
+        JSON.stringify(screen),
+      );
+    }
+    assert.throws(() => renderSurface(dir, 'walkthrough-screen', { screen: '1' }), /--from must be one of first-run, help, got ""/);
+    assert.throws(() => renderSurface(dir, 'walkthrough-screen', { screen: '1', from: 'menu' }), /--from must be one of first-run, help, got "menu"/);
+  });
+
+  it('walkthrough-offer: the heading with no position, the offer\'s prose, and a yes/skip menu with a question', () => {
+    const out = renderSurface(dir, 'walkthrough-offer', {});
+    assert.deepStrictEqual(markers(out), ['TITLE', 'DISPLAY: walkthrough prose', 'MENU: walkthrough offer']);
+    assert.ok(out.startsWith([
+      "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
+      '# **`■ How Ledger works`**',
+    ].join('\n')), out.slice(0, 200));
+    assert.strictEqual(menuOf(out), [
+      "=== MENU: walkthrough offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Take the walkthrough?`**',
+      '',
+      "**`y/yes`**  → Let's do it",
+      "**`s/skip`** → Skip for now — it's under h/help whenever you want it",
+      '**Ask**    → Ask anything about how Ledger works',
+      '',
+    ].join('\n'));
+  });
+
+  it('the offer\'s yes records the walk and its skip the skip, each the call its row runs', () => {
+    renderSurface(dir, 'walkthrough-offer', {});
+    const { options } = /** @type {import('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs').GateShown} */ (gateShown());
+
+    assert.deepStrictEqual(options.map(({ key, next }) => [key, next]), [
+      ['y', { kind: 'engine', argv: ['walkthrough', 'record', 'walked'] }],
+      ['s', { kind: 'engine', argv: ['walkthrough', 'record', 'skipped'] }],
+    ]);
+  });
+
+  it('the offer stands outside the walk — no screen of it, and the walk\'s length is the screens alone', () => {
+    const total = screenFiles().length;
+    assert.ok(!screenFiles().some((f) => f.includes('offer')), 'the offer is not a screen file');
+    assert.match(renderSurface(dir, 'walkthrough-screen', { screen: '1', from: 'first-run' }), new RegExp(`· 1 of ${total} · ${titleOf(1)}`));
+  });
+
+  const CARD_MENU = [
+    "=== MENU: walkthrough card (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+    DOTS,
+    '**`◆ What next?`**',
+    '',
+    '**`b/back`** → Back to the reference cards',
+    "**Ask**    → Ask anything about what's on this card",
+    '',
+  ].join('\n');
+
+  it('a card is its heading, its content in file order, then its menu — back to the cards, and a question', () => {
+    const out = renderSurface(dir, 'walkthrough-topic', { name: SLUGS[0] });
+    assert.deepStrictEqual(markers(out), ['TITLE', 'DISPLAY: walkthrough prose', 'DISPLAY: walkthrough diagram', 'DISPLAY: walkthrough prose', 'MENU: walkthrough card']);
+    assert.ok(out.startsWith([
+      "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
+      `# **\`■ Help · ${cardTitle(1)}\`**`,
+      '',
+      '=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===',
+    ].join('\n')), out.slice(0, 400));
+
+    const body = cardText(1).split('\n').slice(1).join('\n');
+    const chunks = body.split(/^```$/m).map((c) => c.replace(/^\n+|\n+$/g, '')).filter(Boolean);
+    assert.strictEqual(chunks.length, 3, 'the first card is prose, diagram, prose');
+    let cursor = 0;
+    for (const chunk of chunks) {
+      const at = out.indexOf(chunk, cursor);
+      assert.ok(at > cursor, `chunk missing or out of order:\n${chunk.slice(0, 60)}…`);
+      cursor = at;
+    }
+    assert.strictEqual(menuOf(out), CARD_MENU);
+  });
+
+  it('a card\'s back draws the cards again, and its Ask carries on in the conversation', () => {
+    renderSurface(dir, 'walkthrough-topic', { name: SLUGS[0] });
+    const { options, typed } = /** @type {import('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs').GateShown} */ (gateShown());
+
+    assert.deepStrictEqual([options.map(({ key, next }) => [key, next]), typed.map(({ label, next }) => [label, next])], [
+      [['b', { kind: 'engine', argv: ['render', 'help-topics'] }]],
+      [['Ask', { kind: 'continue' }]],
+    ]);
+  });
+
+  it('every card wears the same menu, and --content-only is the card without it, carrying no gate', () => {
+    const menus = new Set();
+    for (const slug of SLUGS) {
+      const whole = renderSurface(dir, 'walkthrough-topic', { name: slug });
+      const content = renderSurface(dir, 'walkthrough-topic', { name: slug, 'content-only': '1' });
+      assert.ok(!markers(content).some((m) => m.startsWith('MENU')), slug);
+      assert.strictEqual(`${content}\n${CARD_MENU}`, whole, slug);
+      menus.add(menuOf(whole));
+    }
+    assert.strictEqual(menus.size, 1);
+  });
+
+  it('the answering rule names every card by its slug, and no other', () => {
+    const rule = fs.readFileSync(path.join(__dirname, '..', '..', 'skills', 'ledger-shared', 'references', 'answering-how-it-works.md'), 'utf8');
+    const named = /walkthrough-topic --name \{card:\[([^\]]+)\]\}/.exec(rule);
+
+    assert.deepStrictEqual(named?.[1].split('|'), SLUGS);
+  });
+
+  it('refuses a missing or unknown card, naming the ones there are', () => {
+    const named = new RegExp(`--name is one of ${SLUGS.join(', ')} — got`);
+    for (const name of [undefined, '', 'the-map', '01-kinds-of-work', 'Kinds-Of-Work']) {
+      assert.throws(() => renderSurface(dir, 'walkthrough-topic', { name }), named, JSON.stringify(name));
+    }
+  });
+});

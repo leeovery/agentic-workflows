@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-MIGRATION="$REPO_DIR/skills/workflow-migrate/scripts/migrations/016-work-unit-restructure.sh"
+MIGRATION="$REPO_DIR/skills/ledger-migrate/scripts/migrations/016-work-unit-restructure.sh"
 
 PASS=0
 FAIL=0
@@ -114,9 +114,9 @@ EOF
   assert_eq "tasks directory in topic subdir" "true" "$([ -f "$TEST_DIR/.workflows/dark-mode/planning/dark-mode/tasks/task-1.md" ] && echo true || echo false)"
 
   manifest=$(cat "$TEST_DIR/.workflows/dark-mode/manifest.json")
-  assert_eq "manifest has correct work_type" "true" "$(echo "$manifest" | grep -qF '"work_type": "feature"' && echo true || echo false)"
-  assert_eq "manifest has correct name" "true" "$(echo "$manifest" | grep -qF '"name": "dark-mode"' && echo true || echo false)"
-  assert_eq "manifest has active status" "true" "$(echo "$manifest" | grep -qF '"status": "active"' && echo true || echo false)"
+  assert_eq "manifest has correct work_type" "true" "$(grep -qF '"work_type": "feature"' <<<"$manifest" && echo true || echo false)"
+  assert_eq "manifest has correct name" "true" "$(grep -qF '"name": "dark-mode"' <<<"$manifest" && echo true || echo false)"
+  assert_eq "manifest has active status" "true" "$(grep -qF '"status": "active"' <<<"$manifest" && echo true || echo false)"
 
   assert_eq "discussion phase dir cleaned up" "false" "$([ -d "$TEST_DIR/.workflows/discussion" ] && echo true || echo false)"
   assert_eq "specification phase dir cleaned up" "false" "$([ -d "$TEST_DIR/.workflows/specification" ] && echo true || echo false)"
@@ -152,8 +152,8 @@ EOF
   assert_eq "investigation moved as {name}.md" "true" "$([ -f "$TEST_DIR/.workflows/login-timeout/investigation/login-timeout.md" ] && echo true || echo false)"
 
   manifest=$(cat "$TEST_DIR/.workflows/login-timeout/manifest.json")
-  assert_eq "manifest has bugfix work_type" "true" "$(echo "$manifest" | grep -qF '"work_type": "bugfix"' && echo true || echo false)"
-  assert_eq "manifest has investigation phase" "true" "$(echo "$manifest" | grep -qF '"investigation"' && echo true || echo false)"
+  assert_eq "manifest has bugfix work_type" "true" "$(grep -qF '"work_type": "bugfix"' <<<"$manifest" && echo true || echo false)"
+  assert_eq "manifest has investigation phase" "true" "$(grep -qF '"investigation"' <<<"$manifest" && echo true || echo false)"
 
   teardown
 }
@@ -225,7 +225,7 @@ EOF
   assert_eq "second epic discussion preserved" "true" "$([ -f "$TEST_DIR/.workflows/v1/discussion/refund-handling.md" ] && echo true || echo false)"
 
   manifest=$(cat "$TEST_DIR/.workflows/v1/manifest.json")
-  assert_eq "greenfield mapped to epic" "true" "$(echo "$manifest" | grep -qF '"work_type": "epic"' && echo true || echo false)"
+  assert_eq "greenfield mapped to epic" "true" "$(grep -qF '"work_type": "epic"' <<<"$manifest" && echo true || echo false)"
 
   teardown
 }
@@ -280,9 +280,9 @@ EOF
   epic_manifest=$(cat "$TEST_DIR/.workflows/v1/manifest.json")
   bug_manifest=$(cat "$TEST_DIR/.workflows/crash-fix/manifest.json")
 
-  assert_eq "notifications is feature" "true" "$(echo "$feat_manifest" | grep -qF '"work_type": "feature"' && echo true || echo false)"
-  assert_eq "v1 is epic" "true" "$(echo "$epic_manifest" | grep -qF '"work_type": "epic"' && echo true || echo false)"
-  assert_eq "crash-fix is bugfix" "true" "$(echo "$bug_manifest" | grep -qF '"work_type": "bugfix"' && echo true || echo false)"
+  assert_eq "notifications is feature" "true" "$(grep -qF '"work_type": "feature"' <<<"$feat_manifest" && echo true || echo false)"
+  assert_eq "v1 is epic" "true" "$(grep -qF '"work_type": "epic"' <<<"$epic_manifest" && echo true || echo false)"
+  assert_eq "crash-fix is bugfix" "true" "$(grep -qF '"work_type": "bugfix"' <<<"$bug_manifest" && echo true || echo false)"
 
   teardown
 }
@@ -350,12 +350,12 @@ EOF
   source "$MIGRATION"
 
   content=$(cat "$TEST_DIR/.workflows/preserved/discussion/preserved.md")
-  assert_eq "Frontmatter delimiters preserved" "true" "$(echo "$content" | grep -q '^---$' && echo true || echo false)"
-  assert_eq "topic field preserved" "true" "$(echo "$content" | grep -q '^topic: preserved$' && echo true || echo false)"
-  assert_eq "status field preserved" "true" "$(echo "$content" | grep -q '^status: concluded$' && echo true || echo false)"
-  assert_eq "work_type field preserved" "true" "$(echo "$content" | grep -q '^work_type: feature$' && echo true || echo false)"
-  assert_eq "Body content preserved" "true" "$(echo "$content" | grep -qF 'Content with special chars' && echo true || echo false)"
-  assert_eq "Sections after --- preserved" "true" "$(echo "$content" | grep -qF '## Section Two' && echo true || echo false)"
+  assert_eq "Frontmatter delimiters preserved" "true" "$(grep -q '^---$' <<<"$content" && echo true || echo false)"
+  assert_eq "topic field preserved" "true" "$(grep -q '^topic: preserved$' <<<"$content" && echo true || echo false)"
+  assert_eq "status field preserved" "true" "$(grep -q '^status: concluded$' <<<"$content" && echo true || echo false)"
+  assert_eq "work_type field preserved" "true" "$(grep -q '^work_type: feature$' <<<"$content" && echo true || echo false)"
+  assert_eq "Body content preserved" "true" "$(grep -qF 'Content with special chars' <<<"$content" && echo true || echo false)"
+  assert_eq "Sections after --- preserved" "true" "$(grep -qF '## Section Two' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -412,13 +412,13 @@ EOF
 
   manifest=$(cat "$TEST_DIR/.workflows/full-test/manifest.json")
 
-  assert_eq "discussion status in manifest" "true" "$(echo "$manifest" | grep -qF '"status": "concluded"' && echo true || echo false)"
-  assert_eq "research_source in manifest" "true" "$(echo "$manifest" | grep -qF '"research_source": "exploration.md"' && echo true || echo false)"
-  assert_eq "spec type in manifest" "true" "$(echo "$manifest" | grep -qF '"type": "feature"' && echo true || echo false)"
-  assert_eq "review_cycle in manifest" "true" "$(echo "$manifest" | grep -qF '"review_cycle": 2' && echo true || echo false)"
-  assert_eq "plan format in manifest" "true" "$(echo "$manifest" | grep -qF '"format": "local-markdown"' && echo true || echo false)"
-  assert_eq "task_gate_mode in manifest" "true" "$(echo "$manifest" | grep -qF '"task_gate_mode": "gated"' && echo true || echo false)"
-  assert_eq "author_gate_mode in manifest" "true" "$(echo "$manifest" | grep -qF '"author_gate_mode": "auto"' && echo true || echo false)"
+  assert_eq "discussion status in manifest" "true" "$(grep -qF '"status": "concluded"' <<<"$manifest" && echo true || echo false)"
+  assert_eq "research_source in manifest" "true" "$(grep -qF '"research_source": "exploration.md"' <<<"$manifest" && echo true || echo false)"
+  assert_eq "spec type in manifest" "true" "$(grep -qF '"type": "feature"' <<<"$manifest" && echo true || echo false)"
+  assert_eq "review_cycle in manifest" "true" "$(grep -qF '"review_cycle": 2' <<<"$manifest" && echo true || echo false)"
+  assert_eq "plan format in manifest" "true" "$(grep -qF '"format": "local-markdown"' <<<"$manifest" && echo true || echo false)"
+  assert_eq "task_gate_mode in manifest" "true" "$(grep -qF '"task_gate_mode": "gated"' <<<"$manifest" && echo true || echo false)"
+  assert_eq "author_gate_mode in manifest" "true" "$(grep -qF '"author_gate_mode": "auto"' <<<"$manifest" && echo true || echo false)"
 
   teardown
 }
@@ -471,8 +471,8 @@ EOF
   source "$MIGRATION"
 
   manifest=$(cat "$TEST_DIR/.workflows/v1/manifest.json")
-  assert_eq "greenfield mapped to epic in manifest" "true" "$(echo "$manifest" | grep -qF '"work_type": "epic"' && echo true || echo false)"
-  assert_eq "no greenfield reference in manifest" "false" "$(echo "$manifest" | grep -qF '"greenfield"' && echo true || echo false)"
+  assert_eq "greenfield mapped to epic in manifest" "true" "$(grep -qF '"work_type": "epic"' <<<"$manifest" && echo true || echo false)"
+  assert_eq "no greenfield reference in manifest" "false" "$(grep -qF '"greenfield"' <<<"$manifest" && echo true || echo false)"
 
   teardown
 }
@@ -518,7 +518,7 @@ EOF
   assert_eq "old tracking.md not present" "false" "$([ -f "$TEST_DIR/.workflows/impl-rename/implementation/impl-rename/tracking.md" ] && echo true || echo false)"
 
   content=$(cat "$TEST_DIR/.workflows/impl-rename/implementation/impl-rename/implementation.md")
-  assert_eq "implementation content preserved" "true" "$(echo "$content" | grep -qF 'Some progress here' && echo true || echo false)"
+  assert_eq "implementation content preserved" "true" "$(grep -qF 'Some progress here' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -670,7 +670,7 @@ EOF
   assert_eq "epic review moved" "true" "$([ -f "$TEST_DIR/.workflows/v1/review/payment-processing/r1/review.md" ] && echo true || echo false)"
 
   manifest=$(cat "$TEST_DIR/.workflows/v1/manifest.json")
-  assert_eq "manifest has epic work_type" "true" "$(echo "$manifest" | grep -qF '"work_type": "epic"' && echo true || echo false)"
+  assert_eq "manifest has epic work_type" "true" "$(grep -qF '"work_type": "epic"' <<<"$manifest" && echo true || echo false)"
 
   spec_status=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/v1/manifest.json','utf8')); var s=m.phases.specification; console.log(s && s.items && s.items['payment-processing'] ? s.items['payment-processing'].status : 'missing')")
   assert_eq "manifest spec items has correct status" "concluded" "$spec_status"
@@ -728,7 +728,7 @@ EOF
   assert_eq "original state file removed" "false" "$([ -f "$TEST_DIR/.workflows/.state/discussion-consolidation-analysis.md" ] && echo true || echo false)"
 
   content=$(cat "$TEST_DIR/.workflows/v1/.state/discussion-consolidation-analysis.md")
-  assert_eq "state file content preserved" "true" "$(echo "$content" | grep -qF 'consolidation analysis content' && echo true || echo false)"
+  assert_eq "state file content preserved" "true" "$(grep -qF 'consolidation analysis content' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -838,8 +838,8 @@ EOF
 
   feat_manifest=$(cat "$TEST_DIR/.workflows/dark-mode/manifest.json")
   epic_manifest=$(cat "$TEST_DIR/.workflows/v1/manifest.json")
-  assert_eq "dark-mode is feature" "true" "$(echo "$feat_manifest" | grep -qF '"work_type": "feature"' && echo true || echo false)"
-  assert_eq "v1 is epic" "true" "$(echo "$epic_manifest" | grep -qF '"work_type": "epic"' && echo true || echo false)"
+  assert_eq "dark-mode is feature" "true" "$(grep -qF '"work_type": "feature"' <<<"$feat_manifest" && echo true || echo false)"
+  assert_eq "v1 is epic" "true" "$(grep -qF '"work_type": "epic"' <<<"$epic_manifest" && echo true || echo false)"
 
   assert_eq "discussion phase dir cleaned up" "false" "$([ -d "$TEST_DIR/.workflows/discussion" ] && echo true || echo false)"
   assert_eq "spec phase dir cleaned up" "false" "$([ -d "$TEST_DIR/.workflows/specification" ] && echo true || echo false)"
@@ -978,8 +978,8 @@ EOF
   assert_eq "feature review moved" "true" "$([ -f "$TEST_DIR/.workflows/dark-mode/review/dark-mode/r1/review.md" ] && echo true || echo false)"
 
   manifest=$(cat "$TEST_DIR/.workflows/dark-mode/manifest.json")
-  assert_eq "manifest has review phase" "true" "$(echo "$manifest" | grep -qF '"review"' && echo true || echo false)"
-  assert_eq "manifest review status is completed" "true" "$(echo "$manifest" | grep -qF '"status": "completed"' && echo true || echo false)"
+  assert_eq "manifest has review phase" "true" "$(grep -qF '"review"' <<<"$manifest" && echo true || echo false)"
+  assert_eq "manifest review status is completed" "true" "$(grep -qF '"status": "completed"' <<<"$manifest" && echo true || echo false)"
 
   teardown
 }
@@ -1010,7 +1010,7 @@ EOF
   assert_eq "original research-analysis.md removed" "false" "$([ -f "$TEST_DIR/.workflows/.state/research-analysis.md" ] && echo true || echo false)"
 
   content=$(cat "$TEST_DIR/.workflows/v1/.state/research-analysis.md")
-  assert_eq "research-analysis.md content preserved" "true" "$(echo "$content" | grep -qF 'research analysis content' && echo true || echo false)"
+  assert_eq "research-analysis.md content preserved" "true" "$(grep -qF 'research analysis content' <<<"$content" && echo true || echo false)"
 
   teardown
 }
@@ -1029,7 +1029,7 @@ test_review_only_v1() {
   assert_eq "review-only topic moved to v1" "true" "$([ -f "$TEST_DIR/.workflows/v1/review/orphan-topic/r1/review.md" ] && echo true || echo false)"
 
   manifest=$(cat "$TEST_DIR/.workflows/v1/manifest.json")
-  assert_eq "v1 is epic" "true" "$(echo "$manifest" | grep -qF '"work_type": "epic"' && echo true || echo false)"
+  assert_eq "v1 is epic" "true" "$(grep -qF '"work_type": "epic"' <<<"$manifest" && echo true || echo false)"
 
   review_status=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/v1/manifest.json','utf8')); var r=m.phases.review; console.log(r && r.items && r.items['orphan-topic'] ? r.items['orphan-topic'].status : 'missing')")
   assert_eq "review-only topic in manifest items" "completed" "$review_status"
@@ -1105,7 +1105,7 @@ EOF
   assert_eq "old implementation file removed" "false" "$([ -f "$TEST_DIR/.workflows/implementation/auth-flow/tracking.md" ] && echo true || echo false)"
 
   manifest=$(cat "$TEST_DIR/.workflows/auth-flow/manifest.json")
-  assert_eq "work unit is feature" "true" "$(echo "$manifest" | grep -qF '"work_type": "feature"' && echo true || echo false)"
+  assert_eq "work unit is feature" "true" "$(grep -qF '"work_type": "feature"' <<<"$manifest" && echo true || echo false)"
 
   impl_status=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/auth-flow/manifest.json','utf8')); console.log(m.phases.implementation ? m.phases.implementation.status : 'missing')")
   assert_eq "implementation status in manifest" "completed" "$impl_status"
@@ -1172,7 +1172,7 @@ EOF
   assert_eq "bugfix implementation moved to own work unit" "true" "$([ -f "$TEST_DIR/.workflows/fix-crash/implementation/fix-crash/implementation.md" ] && echo true || echo false)"
 
   manifest=$(cat "$TEST_DIR/.workflows/fix-crash/manifest.json")
-  assert_eq "work unit is bugfix" "true" "$(echo "$manifest" | grep -qF '"work_type": "bugfix"' && echo true || echo false)"
+  assert_eq "work unit is bugfix" "true" "$(grep -qF '"work_type": "bugfix"' <<<"$manifest" && echo true || echo false)"
 
   impl_status=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/fix-crash/manifest.json','utf8')); console.log(m.phases.implementation ? m.phases.implementation.status : 'missing')")
   assert_eq "implementation status in bugfix manifest" "completed" "$impl_status"

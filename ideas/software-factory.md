@@ -1,8 +1,8 @@
-# A Factory Mode for Leeway
+# A Factory Mode for Ledger
 
 ## The Idea
 
-Leeway walks a person through a piece of work, collaborating as much as the
+Ledger walks a person through a piece of work, collaborating as much as the
 work deserves: an epic goes through the whole cone, while a quick-fix rips
 straight through. A factory mode would add a second way of working beside
 that one. An agent picks items off the backlog unattended, does the prep,
@@ -12,7 +12,7 @@ flows through on its own, under the same rules.
 
 ## Where It Came From
 
-Lee, 2026-10-27, during the Leeway build, after seeing SuperPlane
+Lee, 2026-10-27, during the Ledger build, after seeing SuperPlane
 (https://github.com/superplanehq/superplane). SuperPlane calls itself an
 "open source factory for one-shot engineering" that "turns high-confidence
 backlog issues into verified, review-ready pull requests". Projects like it
@@ -20,9 +20,9 @@ are appearing often. Lee: "what we are creating … isn't really a software
 factory, but I think it could become one … we could probably learn a lot
 from other tools."
 
-## What Leeway Already Has Toward It
+## What Ledger Already Has Toward It
 
-Most of the parts are being built for Leeway itself:
+Most of the parts are being built for Ledger itself:
 
 - **The work types scale the ceremony.** Quick-fix and bugfix already run
   with little conversation. Which items are factory-eligible is the same
@@ -41,13 +41,13 @@ Most of the parts are being built for Leeway itself:
 
 ## Where It Could Lead
 
-SuperPlane takes only issues judged "high-confidence" up front. Leeway can
+SuperPlane takes only issues judged "high-confidence" up front. Ledger can
 earn that confidence instead. The trust log records the person's verdicts on
 Claude's unattended calls, project by project, and the ask rule's arithmetic
 turns that record into how far Claude may go alone. The factory's reach then
 grows as the person's verdicts show the calls were right, and shrinks where
 they were not. That is calibrated autonomy, not a fixed threshold, and it
-would set Leeway apart.
+would set Ledger apart.
 
 ## Open Questions
 

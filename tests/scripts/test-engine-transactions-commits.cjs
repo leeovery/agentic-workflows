@@ -1,0 +1,380 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// What the engine's transactions commit and move, apart from the lifecycle
+// they change (ledger-engine/scripts/domain/inbox.cjs, commit.cjs, and the
+// knowledge changes in transitions.cjs and workunit-lifecycle.cjs):
+// `inbox archive|restore|delete`, each set one commit or none, a move that
+// throws put back whole (`moveFiles`); `engine commit`, scoped to a unit or
+// the inbox; the knowledge store never riding a commit; and each transaction's
+// knowledge change against a real store, the chunks it must leave alone
+// beside it. The lifecycle verbs themselves are test-engine-transactions.cjs's.
+//
+// Layer: verb. World: each describe's own, built once (`fixtureFrom`).
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+
+const harness = require('./engine-harness.cjs');
+const { layout } = harness;
+const { moveFiles } = require('../../skills/ledger-engine/scripts/domain/inbox.cjs');
+
+const { git, stateGit, commitAll, cleanupFixture, createFile: writeFile, lastMessage, ok: engine, refuses: engineFails } = harness;
+
+/** The state branch's head, short. @param {string} dir */
+function shortHead(dir) {
+  return stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim();
+}
+
+/** A world built once from `build`, named `name`, every test given a copy. @param {string} name @param {(dir: string) => void} build */
+const world = (name, build) => harness.fixtureFrom(name, build);
+
+/** A manifest's file text. @param {Record<string, unknown>} manifest */
+const json = (manifest) => JSON.stringify(manifest, null, 2) + '\n';
+
+describe('engine inbox archive / restore / delete', () => {
+  const inbox = world('engine-tx-commits-inbox-', (dir) => {
+    writeFile(dir, '.ledger/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
+    writeFile(dir, '.ledger/.inbox/bugs/2026-06-02--login-loop.md', '# Login Loop\n');
+    commitAll(dir, 'init');
+  });
+  let dir;
+  beforeEach(() => { dir = inbox(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('archives a single item — file moved to its source folder under .archived, slug commit message', () => {
+    const res = engine(dir, ['inbox', 'archive', '.ledger/.inbox/ideas/2026-06-01--smart-retry.md']);
+
+    assert.deepStrictEqual(res.archived, [path.join(dir, '.ledger/.inbox/.archived/ideas/2026-06-01--smart-retry.md')]);
+    assert.strictEqual(res.committed, shortHead(dir));
+    assert.ok(!fs.existsSync(path.join(dir, '.ledger/.inbox/ideas/2026-06-01--smart-retry.md')));
+    assert.ok(fs.existsSync(path.join(dir, '.ledger/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
+    assert.strictEqual(lastMessage(dir), 'ledger(inbox): archive smart-retry');
+  });
+
+  it('archives a multi-item set in one commit with the N-items message form', () => {
+    const res = engine(dir, [
+      'inbox', 'archive',
+      '.ledger/.inbox/ideas/2026-06-01--smart-retry.md',
+      '.ledger/.inbox/bugs/2026-06-02--login-loop.md',
+    ]);
+
+    assert.deepStrictEqual(res.archived, [
+      path.join(dir, '.ledger/.inbox/.archived/ideas/2026-06-01--smart-retry.md'),
+      path.join(dir, '.ledger/.inbox/.archived/bugs/2026-06-02--login-loop.md'),
+    ]);
+    assert.ok(fs.existsSync(path.join(dir, '.ledger/.inbox/.archived/bugs/2026-06-02--login-loop.md')));
+    assert.strictEqual(lastMessage(dir), 'ledger(inbox): archive 2 items');
+    // One commit for the whole set.
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s', 'HEAD~1']).trim(), 'init');
+  });
+
+  it('a set whose move throws midway puts back what moved — every file where it was, nothing committed', () => {
+    // A file where the archive's bugs folder belongs: the idea moves, the bug cannot.
+    writeFile(dir, '.ledger/.inbox/.archived/bugs', 'in the way\n');
+    const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
+    engineFails(dir, [
+      'inbox', 'archive',
+      '.ledger/.inbox/ideas/2026-06-01--smart-retry.md',
+      '.ledger/.inbox/bugs/2026-06-02--login-loop.md',
+    ]);
+    assert.ok(fs.existsSync(path.join(dir, '.ledger/.inbox/ideas/2026-06-01--smart-retry.md')));
+    assert.ok(fs.existsSync(path.join(dir, '.ledger/.inbox/bugs/2026-06-02--login-loop.md')));
+    assert.ok(!fs.existsSync(path.join(dir, '.ledger/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
+    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head);
+  });
+
+  it('restores an archived item back to its live folder', () => {
+    engine(dir, ['inbox', 'archive', '.ledger/.inbox/ideas/2026-06-01--smart-retry.md']);
+    const res = engine(dir, ['inbox', 'restore', '.ledger/.inbox/.archived/ideas/2026-06-01--smart-retry.md']);
+
+    assert.deepStrictEqual(res.restored, [path.join(dir, '.ledger/.inbox/ideas/2026-06-01--smart-retry.md')]);
+    assert.ok(fs.existsSync(path.join(dir, '.ledger/.inbox/ideas/2026-06-01--smart-retry.md')));
+    assert.ok(!fs.existsSync(path.join(dir, '.ledger/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
+    assert.strictEqual(lastMessage(dir), 'ledger(inbox): restore smart-retry');
+  });
+
+  it('deletes an archived item via git rm', () => {
+    engine(dir, ['inbox', 'archive', '.ledger/.inbox/ideas/2026-06-01--smart-retry.md']);
+    const res = engine(dir, ['inbox', 'delete', '.ledger/.inbox/.archived/ideas/2026-06-01--smart-retry.md']);
+
+    assert.deepStrictEqual(res.deleted, [path.join(dir, '.ledger/.inbox/.archived/ideas/2026-06-01--smart-retry.md')]);
+    assert.ok(!fs.existsSync(path.join(dir, '.ledger/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
+    assert.strictEqual(lastMessage(dir), 'ledger(inbox): delete smart-retry');
+    assert.strictEqual(stateGit(dir, ['status', '--porcelain']).trim(), '');
+  });
+
+  it('deletes the archived item named, never a sibling its name would match as a pattern', () => {
+    const archived = path.join(dir, '.ledger/.inbox/.archived/ideas');
+    fs.mkdirSync(archived, { recursive: true });
+    fs.writeFileSync(path.join(archived, '2026-06-01--retry[s].md'), '# Retry\n');
+    fs.writeFileSync(path.join(archived, '2026-06-01--retrys.md'), '# Retrys\n');
+    commitAll(dir, 'archive two');
+
+    const res = engine(dir, ['inbox', 'delete', '.ledger/.inbox/.archived/ideas/2026-06-01--retry[s].md']);
+
+    assert.deepStrictEqual(res.deleted, [path.join(dir, '.ledger/.inbox/.archived/ideas/2026-06-01--retry[s].md')]);
+    assert.ok(!fs.existsSync(path.join(archived, '2026-06-01--retry[s].md')));
+    assert.ok(fs.existsSync(path.join(archived, '2026-06-01--retrys.md')));
+    assert.deepStrictEqual(stateGit(dir, ['show', '--name-only', '--format=', 'HEAD']).trim().split('\n'),
+      ['.inbox/.archived/ideas/2026-06-01--retry[s].md']);
+  });
+
+  it('rejects invalid paths strictly, before anything moves', () => {
+    // Outside the inbox entirely.
+    assert.match(
+      engineFails(dir, ['inbox', 'archive', '.ledger/payments/manifest.json']).error,
+      /not a live inbox path/);
+    // Unknown folder.
+    assert.match(
+      engineFails(dir, ['inbox', 'archive', '.ledger/.inbox/notes/2026-06-01--x.md']).error,
+      /not a live inbox path/);
+    // Traversal.
+    assert.match(
+      engineFails(dir, ['inbox', 'archive', '.ledger/.inbox/ideas/../../../etc/passwd.md']).error,
+      /not a live inbox path|without ".."/);
+    // Archived path passed to archive.
+    assert.match(
+      engineFails(dir, ['inbox', 'archive', '.ledger/.inbox/.archived/ideas/2026-06-01--x.md']).error,
+      /not a live inbox path/);
+    // Live path passed to delete.
+    assert.match(
+      engineFails(dir, ['inbox', 'delete', '.ledger/.inbox/ideas/2026-06-01--smart-retry.md']).error,
+      /not an archived inbox path/);
+    // Live path passed to restore.
+    assert.match(
+      engineFails(dir, ['inbox', 'restore', '.ledger/.inbox/ideas/2026-06-01--smart-retry.md']).error,
+      /not an archived inbox path/);
+    // Missing file.
+    assert.match(
+      engineFails(dir, ['inbox', 'archive', '.ledger/.inbox/ideas/2026-06-01--ghost.md']).error,
+      /not found/);
+    // One bad path poisons the whole set — the good file did not move.
+    engineFails(dir, [
+      'inbox', 'archive',
+      '.ledger/.inbox/ideas/2026-06-01--smart-retry.md',
+      '.ledger/.inbox/ideas/2026-06-01--ghost.md',
+    ]);
+    assert.ok(fs.existsSync(path.join(dir, '.ledger/.inbox/ideas/2026-06-01--smart-retry.md')));
+    assert.match(engineFails(dir, ['inbox', 'archive']).error, /Usage: engine inbox/);
+  });
+
+  it('refuses a duplicate path in the set before any move — no half-applied state', () => {
+    const err = engineFails(dir, [
+      'inbox', 'archive',
+      '.ledger/.inbox/ideas/2026-06-01--smart-retry.md',
+      '.ledger/.inbox/ideas/2026-06-01--smart-retry.md',
+    ]);
+    assert.match(err.error, /duplicate inbox path/);
+    // The one real file never moved — the transaction refused up front.
+    assert.ok(fs.existsSync(path.join(dir, '.ledger/.inbox/ideas/2026-06-01--smart-retry.md')));
+    assert.ok(!fs.existsSync(path.join(dir, '.ledger/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
+    assert.strictEqual(stateGit(dir, ['status', '--porcelain']).trim(), '');
+  });
+});
+
+describe('inbox moveFiles rollback', () => {
+  let dir;
+  let realRename;
+  const A = { from: 'in/a.md', to: 'out/a.md' };
+  const B = { from: 'in/b.md', to: 'out/b.md' };
+  const C = { from: 'in/c.md', to: 'out/c.md' };
+  const files = world('engine-tx-commits-files-', (dir) => {
+    for (const name of ['a', 'b', 'c']) writeFile(dir, `.ledger/in/${name}.md`, `# ${name}\n`);
+  });
+  beforeEach(() => {
+    dir = files();
+    realRename = fs.renameSync;
+  });
+  afterEach(() => {
+    fs.renameSync = realRename;
+    cleanupFixture(dir);
+  });
+
+  // Fails every rename whose source ends with one of `failing`, recording
+  // each rename attempted.
+  function failRenames(failing) {
+    const attempted = [];
+    fs.renameSync = (from, to) => {
+      const rel = path.relative(path.join(dir, '.ledger'), String(from));
+      attempted.push(rel);
+      const hit = failing.find((f) => rel === f);
+      if (hit) throw new Error(`cannot rename ${hit}`);
+      return realRename(from, to);
+    };
+    return attempted;
+  }
+
+  const at = (rel) => fs.existsSync(path.join(dir, '.ledger', rel));
+  const absolute = (rel) => path.join(dir, '.ledger', rel);
+
+  it('the second of three moves throws and its reversal throws too: the original error surfaces, the stranded file attached', () => {
+    const attempted = failRenames(['in/b.md', 'out/a.md']);
+    let caught;
+    try { moveFiles(dir, [A, B, C]); } catch (err) { caught = err; }
+    assert.ok(caught instanceof Error);
+    assert.strictEqual(caught.message,
+      `cannot rename in/b.md — and a file could not be put back: "${absolute('out/a.md')}" (belongs at "${absolute('in/a.md')}")`);
+    assert.deepStrictEqual(caught.stranded.map(({ from, to }) => ({ from, to })), [{ from: absolute(A.from), to: absolute(A.to) }]);
+    assert.match(caught.stranded[0].error.message, /cannot rename out\/a\.md/);
+    assert.deepStrictEqual(attempted, ['in/a.md', 'in/b.md', 'out/a.md'], 'c never moved; a\'s reversal was attempted');
+    assert.ok(at('out/a.md') && at('in/b.md') && at('in/c.md'));
+  });
+
+  it('a reversal that throws never stops the ones after it', () => {
+    const attempted = failRenames(['in/c.md', 'out/b.md']);
+    let caught;
+    try { moveFiles(dir, [A, B, C]); } catch (err) { caught = err; }
+    assert.ok(caught.message.startsWith(`cannot rename in/c.md — and a file could not be put back: "${absolute('out/b.md')}"`), caught.message);
+    assert.deepStrictEqual(attempted.slice(3), ['out/b.md', 'out/a.md'], 'both reversals attempted, latest first');
+    assert.ok(at('in/a.md'), 'the reversal after the failing one put a back');
+    assert.ok(at('out/b.md') && at('in/c.md'));
+  });
+
+  it('a clean rollback rethrows the original error untouched', () => {
+    failRenames(['in/c.md']);
+    let caught;
+    try { moveFiles(dir, [A, B, C]); } catch (err) { caught = err; }
+    assert.strictEqual(caught.message, 'cannot rename in/c.md');
+    assert.strictEqual(caught.stranded, undefined);
+    assert.ok(at('in/a.md') && at('in/b.md') && at('in/c.md'));
+  });
+});
+
+describe('engine commit', () => {
+  const unit = world('engine-tx-commits-unit-', (dir) => {
+    writeFile(dir, '.ledger/payments/manifest.json', '{"name":"payments"}\n');
+    writeFile(dir, '.ledger/.inbox/ideas/2026-06-01--x.md', '# X\n');
+    commitAll(dir, 'init');
+  });
+  let dir;
+  beforeEach(() => { dir = unit(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('stages the work-unit scope and commits with the given message', () => {
+    writeFile(dir, '.ledger/payments/topics/auth/log.md', '# Auth\n');
+    writeFile(dir, 'unrelated.txt', 'outside the scope\n');
+
+    const res = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/auth): document decision']);
+    assert.strictEqual(res.committed, shortHead(dir));
+    assert.strictEqual(lastMessage(dir), 'discussion(payments/auth): document decision');
+    // Scoped: the unrelated file stays uncommitted.
+    assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
+  });
+
+  it('a clean tree is fine: committed null, nothing-to-commit note, exit 0', () => {
+    const res = engine(dir, ['commit', 'payments', '-m', 'noop']);
+    assert.deepStrictEqual(res, { ok: true, committed: null, note: 'nothing to commit' });
+  });
+
+  it('--inbox commits the inbox scope', () => {
+    writeFile(dir, '.ledger/.inbox/ideas/2026-06-02--y.md', '# Y\n');
+    const res = engine(dir, ['commit', '--inbox', '-m', 'ledger(inbox): capture y']);
+    assert.strictEqual(res.committed, shortHead(dir));
+    assert.strictEqual(lastMessage(dir), 'ledger(inbox): capture y');
+  });
+
+  it('rejects a missing message, missing scope, a flag it has no more — with a unit or alone, never taken for one — an argument past the unit, and bad work unit names', () => {
+    assert.match(engineFails(dir, ['commit', 'payments']).error, /Usage: engine commit/);
+    for (const args of [['payments', '-m', 'msg', '--plan', 'auth'], ['payments', '-m', 'msg', '--imports'], ['--roadmap', '-m', 'msg']]) {
+      const flag = /** @type {string} */ (args.find((arg) => /^--(plan|imports|roadmap)$/.test(arg)));
+      assert.strictEqual(engineFails(dir, ['commit', ...args]).error, `unknown flag "${flag}"`);
+    }
+    assert.strictEqual(engineFails(dir, ['commit', 'payments', 'auth', '-m', 'msg']).error, 'unexpected argument "auth"');
+    assert.match(engineFails(dir, ['commit', '-m', 'msg']).error, /Usage: engine commit/);
+    assert.match(engineFails(dir, ['commit', 'payments', '--inbox', '-m', 'msg']).error, /Usage: engine commit/);
+    assert.match(engineFails(dir, ['commit', '../escape', '-m', 'msg']).error, /invalid work unit name/);
+    assert.match(engineFails(dir, ['commit', 'ghost', '-m', 'msg']).error, /no work unit directory/);
+  });
+});
+
+describe('the knowledge store never rides an engine commit', () => {
+  const dirty = world('engine-tx-commits-dirty-', (dir) => {
+    writeFile(dir, '.ledger/payments/manifest.json', json({
+      name: 'payments', work_type: 'epic', status: 'in-progress',
+      phases: { discovery: { items: { 'auth-flow': { source: 'discovery' } } } },
+    }));
+    commitAll(dir, 'init');
+    // Store dirt beside the work — what a transaction's index or remove
+    // leaves.
+    writeFile(dir, '.ledger/.knowledge/store.bin', 'v1\n');
+  });
+  let dir;
+  beforeEach(() => { dir = dirty(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  function committedFiles() {
+    return stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
+  }
+
+  it('engine commit <wu> takes the work unit and nothing of the store', () => {
+    writeFile(dir, '.ledger/payments/topics/auth/log.md', '# Auth\n');
+    const res = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/auth): note']);
+    assert.strictEqual(res.committed, shortHead(dir));
+    assert.deepStrictEqual(committedFiles(), ['payments/topics/auth/log.md']);
+  });
+
+  it('a transaction commit takes its own paths and nothing of the store', () => {
+    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
+    assert.strictEqual(res.committed, shortHead(dir));
+    assert.deepStrictEqual(committedFiles(), ['payments/manifest.json']);
+    assert.strictEqual(stateGit(dir, ['status', '--porcelain', '--ignored', '--', '.knowledge']).trim(), '!! .knowledge/', 'the store stays out of the state');
+  });
+});
+
+// Each transaction's knowledge change against a real keyword-only store that
+// also holds chunks the change must leave alone — another work unit's — so a
+// change that wiped too much fails as surely as one that took too little.
+describe('the transactions\' knowledge changes — a real store, its other chunks alongside', () => {
+  const RECORD = layout.record('payments', 'session-model');
+  const OTHER_UNIT = layout.summary('billing');
+  // An epic with a topic still in discussion and two decided, one decided
+  // topic's record indexed; and a quick-fix beside it, its short record
+  // indexed.
+  const indexedWorld = world('engine-tx-commits-indexed-', (dir) => {
+    writeFile(dir, '.ledger/payments/manifest.json', json({
+      name: 'payments', work_type: 'epic', status: 'in-progress',
+      phases: {
+        discovery: { items: { 'auth-flow': { source: 'discovery', order: 1 }, 'session-model': { source: 'discovery', order: 2 }, 'fee-model': { source: 'discovery', order: 3 } } },
+        discussion: { items: { 'auth-flow': { status: 'in-progress' }, 'session-model': { status: 'completed' }, 'fee-model': { status: 'completed' } } },
+      },
+    }));
+    writeFile(dir, '.ledger/billing/manifest.json', json({
+      name: 'billing', work_type: 'quick-fix', status: 'in-progress',
+      phases: {},
+    }));
+    for (const file of [RECORD, OTHER_UNIT]) writeFile(dir, `.ledger/${file}`, `# ${path.basename(file, '.md')}\n\nIts notes.\n`);
+    commitAll(dir, 'init');
+    harness.keywordOnlyKnowledge(dir);
+    for (const file of [RECORD, OTHER_UNIT]) harness.output(dir, ['knowledge', 'index', path.join(dir, '.ledger', file)]);
+  });
+  let dir;
+  beforeEach(() => { dir = indexedWorld(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  const indexed = () => harness.indexedFiles(dir);
+
+  it('a Discovery-unit cancel leaves the store as it stands — a conversation indexes no artifact', () => {
+    assert.deepStrictEqual(engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']).warnings, []);
+    assert.deepStrictEqual(indexed(), [RECORD, OTHER_UNIT]);
+  });
+
+  it('a work-unit cancel takes the unit\'s chunks, and a reactivate brings back its artifacts — another unit\'s untouched', () => {
+    assert.deepStrictEqual(engine(dir, ['workunit', 'cancel', 'payments']).warnings, []);
+    assert.deepStrictEqual(indexed(), [OTHER_UNIT]);
+    assert.deepStrictEqual(engine(dir, ['workunit', 'reactivate', 'payments']).warnings, []);
+    assert.deepStrictEqual(indexed(), [RECORD, OTHER_UNIT]);
+  });
+
+  it('a work-unit complete leaves the store as it stands', () => {
+    const before = fs.readFileSync(path.join(dir, '.ledger/.knowledge/store.bin'));
+    assert.deepStrictEqual(harness.completeUnit(dir, 'payments').warnings, []);
+    assert.deepStrictEqual(fs.readFileSync(path.join(dir, '.ledger/.knowledge/store.bin')), before);
+  });
+
+});
