@@ -63,15 +63,17 @@ describe('pipeline simulation: quick-fix merged by hand', () => {
     const closing = sim.run(['board', sim.env.CLAUDE_CODE_SESSION_ID]).view;
     const unclosed = sim.handoffs.slice(handedOff);
     const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
+    const receipt = sim.sections;
     const closed = sim.run(['board', sim.env.CLAUDE_CODE_SESSION_ID]);
     const conversation = sim.conversations;
     const back = carryOn(sim);
     const row = presenceRow(sim.run(['presence', 'scan', 'product']), 'discovery', 'product');
 
     assert.deepStrictEqual([first.branch, third.branch, third.cut_again?.map((/** @type {any} */ { replayed }) => replayed)], [branch, branch, [[]]]);
-    assert.deepStrictEqual([recorded, yes.landed.map((/** @type {{repo: string, merged: string[]}} */ { repo, merged }) => [repo, merged]), yes.next], [
-      ['api'], [['api', ['1.3']], ['.', ['1.3']]], { kind: 'continue' },
-    ]);
+    assert.deepStrictEqual([recorded, yes.landed.map((/** @type {{repo: string, merged: string[]}} */ { repo, merged }) => [repo, merged]), yes.next, yes.back_to], [
+      ['api'], [['api', ['1.3']], ['.', ['1.3']]], { kind: 'invoke', skill: 'ledger-discovery', args: ['none', 'none'] }, 'product',
+    ], 'the close goes back into the product\'s conversation by its entry');
+    assert.match(receipt, /^=== DISPLAY: ended .*\n✓ Typo · quick-fix · complete$/m, 'its receipt the done line the board no longer shows (D38)');
     assert.deepStrictEqual([back.position, sim.conversations, sim.manifest('.').product_session], [{ name: 'product' }, conversation, '001'], 'the close carries on in the conversation, back in the product\'s, its talk in the session the yes left open');
     assert.strictEqual(row?.session_id, sim.env.CLAUDE_CODE_SESSION_ID, 'its presence row in the product\'s conversation stands');
     assert.deepStrictEqual(git(sim.api, ['log', '-1', '--format=%B', 'main']).match(/^Task: .*$/gm), [`Task: ${wu}-1-3`]);

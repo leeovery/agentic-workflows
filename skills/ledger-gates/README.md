@@ -226,8 +226,8 @@ the compaction that comes reuses it beneath the note.
 
 ## How it keeps each task's builder and reviewers
 
-A build runs several tasks at once, each dispatching one builder agent and its
-reviewer agents, one or two (none for a one-line task), and sends the task's
+A build runs several tasks at once, each but a one-line task dispatching one
+builder agent and its reviewer agents, one or two, and sends the task's
 later rounds — a fix to the builder, a re-review to its reviewers — to those
 same agents by their ids, so they keep what they learned. In a session that announced, in a conversation the
 engine has marked, when the main loop dispatches `ledger-builder` or

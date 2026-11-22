@@ -56,10 +56,11 @@
 // the conversation carries on there, so it leaves the unit's place whole,
 // its tasks in flight with it, the place it left kept for the board to draw
 // the close (`leaveUnit`, topic-leave.cjs) — nothing holds a commit it
-// makes afterwards. Its start keeps the place the conversation was in, the
-// product's conversation or a unit's phase and topic, beside the position
-// (`keepCameFrom`), and its close or cancel puts the conversation back
-// there (`takeCameFrom`).
+// makes afterwards. Its start, made at a project-level place — the
+// product's conversation or the roadmap — keeps that place beside the
+// position (`keepCameFrom`), and its close or cancel puts the conversation
+// back there (`takeCameFrom`); leaving the position, as boot and the start
+// menu do, or the quick-fix's move, forgets it (`forgetCameFrom`).
 //
 // The engine is the file's one writer, and writes only for a conversation
 // that runs Ledger: recording a position marks the conversation first
@@ -455,11 +456,13 @@ function keepLeft(sessionId, prior) {
  * its tasks in flight where it holds any (conversation.cjs). One that has
  * left already, sitting nowhere, keeps the place it left: a finish or a
  * cancel leaves the unit before a start's boot (`leaveUnit`), its done
- * banner kept through it.
+ * banner kept through it. The place a quick-fix was started from is
+ * forgotten: the conversation has left it.
  * @param {string|null|undefined} sessionId
  */
 function leavePosition(sessionId) {
   if (!sessionId) return;
+  forgetCameFrom(sessionId);
   underPositionLock(sessionId, (file) => {
     if (!fs.existsSync(file)) return false;
     const prior = storedPosition(sessionId);
@@ -471,11 +474,13 @@ function leavePosition(sessionId) {
 
 /**
  * The conversation `sessionId`'s position dropped, the place left as it
- * stands — but one holding tasks in flight, which is left as boot leaves it.
+ * stands — but one holding tasks in flight, which is left as boot leaves it
+ * — and the place a quick-fix was started from forgotten.
  * @param {string|null|undefined} sessionId
  */
 function dropPosition(sessionId) {
   if (!sessionId) return;
+  forgetCameFrom(sessionId);
   underPositionLock(sessionId, (file) => {
     const prior = storedPosition(sessionId);
     if (prior?.tasks === undefined) fs.rmSync(file, { force: true });
@@ -511,28 +516,41 @@ function leaveUnit(sessionId, workUnit) {
 function keepCameFrom(workUnit) {
   const own = ownConversation();
   const at = own === null ? null : readPosition(own);
-  if (own === null || at === null) return;
-  writeJsonAtomic(cameFromPath(own), { unit: workUnit, place: placeOf(at) });
+  if (own === null || at === null || !isProjectPlace(at.name, at.phase)) return;
+  try {
+    writeJsonAtomic(cameFromPath(own), { unit: workUnit, place: { name: at.name } });
+  } catch {
+    // A place that cannot be kept costs the start nothing: its close leaves the conversation at no place.
+  }
+}
+
+/** The place the conversation `sessionId` started a quick-fix from, forgotten. @param {string|null|undefined} sessionId */
+function forgetCameFrom(sessionId) {
+  if (!sessionId) return;
+  try {
+    fs.rmSync(cameFromPath(sessionId), { force: true });
+  } catch {
+    // Left behind, it names a unit no later close of another matches.
+  }
 }
 
 /**
- * The place the calling conversation started the quick-fix `workUnit` from,
- * taken: null where it kept none for that unit.
- * @param {string} workUnit @returns {Position|null}
+ * The project-level place the calling conversation started the quick-fix
+ * `workUnit` from, taken: null where it kept none for that unit.
+ * @param {string} workUnit @returns {string|null}
  */
 function takeCameFrom(workUnit) {
   const own = ownConversation();
   if (own === null) return null;
-  const file = cameFromPath(own);
   let kept;
   try {
-    kept = JSON.parse(fs.readFileSync(file, 'utf8'));
+    kept = JSON.parse(fs.readFileSync(cameFromPath(own), 'utf8'));
   } catch {
     return null;
   }
-  if (!isObject(kept) || kept.unit !== workUnit || !isObject(kept.place) || typeof kept.place.name !== 'string') return null;
-  fs.rmSync(file, { force: true });
-  return /** @type {Position} */ (kept.place);
+  if (!isObject(kept) || kept.unit !== workUnit || !isObject(kept.place) || !isProjectPlace(kept.place.name)) return null;
+  forgetCameFrom(own);
+  return kept.place.name;
 }
 
 // ---------------------------------------------------------------------------
@@ -945,6 +963,6 @@ function positionSections(reads) {
 }
 
 module.exports = {
-  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordTasksAt, recordBuilder, recordWorktree, recordStop, clearStop, clearTask, clearTasks, leavePosition, dropPosition, leaveUnit, keepCameFrom, takeCameFrom,
+  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordTasksAt, recordBuilder, recordWorktree, recordStop, clearStop, clearTask, clearTasks, leavePosition, dropPosition, leaveUnit, keepCameFrom, forgetCameFrom, takeCameFrom,
   placeLine, skillAt, positionReads, positionSections,
 };

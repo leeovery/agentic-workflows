@@ -815,19 +815,33 @@ function checkNoDesignTools(files) {
 // Check 33 — nothing Ledger ships writes the project's CLAUDE.md but the
 // keep, on the person's yes (8.9.5, 8.S27). It loads into every session and
 // subagent and is the person's: a line goes in only as theirs, agreed. No
-// prose sentence outside the keep tells a session to write, add to, change or
-// commit it — a sentence naming it with a verb of writing, not negated — and
+// prose sentence outside the keep speaks of writing, adding to, changing,
+// committing, recording, saving or keeping something in it, whether it tells
+// a session to or tells of someone doing it — a clause naming it with a verb
+// of writing no negation governs, one before the verb in that clause — and
 // the keep's own such sentence sits on an entry that waits for the person's
 // yes; no engine or mod code names it outside a comment.
 // ---------------------------------------------------------------------------
 
-const WRITE_VERB = /\b(writ(e|es|ing|ten)|wrote|append(s|ed|ing)?|add(s|ed|ing)?|insert(s|ed|ing)?|put(s|ting)?|edit(s|ed|ing)?|updat(e|es|ed|ing)|modif(y|ies|ied|ying)|chang(e|es|ed|ing)|overwrit(e|es|ing|ten)|rewrit(e|es|ing|ten)|commit(s|ted|ting)?)\b/i;
+const WRITE_VERB = /\b(writ(e|es|ing|ten)|wrote|append(s|ed|ing)?|add(s|ed|ing)?|insert(s|ed|ing)?|put(s|ting)?|edit(s|ed|ing)?|updat(e|es|ed|ing)|modif(y|ies|ied|ying)|chang(e|es|ed|ing)|overwrit(e|es|ing|ten)|rewrit(e|es|ing|ten)|commit(s|ted|ting)?|record(s|ed|ing)|sav(e|es|ed|ing)|keeps|keeping|kept)\b/gi;
+/** Record and keep, which are nouns too — the product record, the keep — as verbs where a clause opens on one or "to" comes before it. */
+const BARE_VERB = /(?:^\s*|\bto\s+)(record|keep)\b/gi;
 const NEGATED = /\b(never|not|no|nothing|nor)\b|n't\b/i;
 const KEEP_SKILL = `${path.sep}skills${path.sep}ledger-keep${path.sep}`;
 const ON_THEIR_YES = /\bon the person's yes\b/i;
 
-/** Whether a sentence tells a session to write the project's CLAUDE.md. @param {string} sentence */
-const writesClaudeMd = (sentence) => /CLAUDE\.md/.test(sentence) && WRITE_VERB.test(sentence) && !NEGATED.test(sentence);
+/** What ends a clause within a sentence: a comma, a colon, a dash, a bracket, an arrow, or a word opening a clause of its own. */
+const CLAUSE_BREAK = /[,:—–()→]|\s-\s|\b(?:before|after|while|until|unless|where|when|once|because|so|which)\b/i;
+
+/** Whether a clause writes the project's CLAUDE.md: it names it, with a write verb no negation before it governs. @param {string} clause */
+function clauseWrites(clause) {
+  if (!/CLAUDE\.md/.test(clause)) return false;
+  const verbs = [...clause.matchAll(WRITE_VERB), ...clause.matchAll(BARE_VERB)];
+  return verbs.some((verb) => !NEGATED.test(clause.slice(0, /** @type {number} */ (verb.index) + verb[0].length - verb[1].length)));
+}
+
+/** Whether a sentence writes the project's CLAUDE.md, or tells of it written, in any of its clauses. @param {string} sentence */
+const writesClaudeMd = (sentence) => sentence.split(CLAUSE_BREAK).some(clauseWrites);
 
 /** The shipped code: the engine's and the mods', comments left out. */
 function codeFiles(root = REPO) {
@@ -1147,7 +1161,7 @@ const CHECKS = [
   ['28: every allowed-tools Bash grant carries a wildcard', checkBashGrantsCarryWildcard],
   ['29: the framework\'s references load once, from framework.md alone', checkFrameworkLoadsOnce],
   ['30: no design tool is named', checkNoDesignTools],
-  ['33: nothing writes the project\'s CLAUDE.md', (files) => checkNoClaudeMdWrites(files, codeFiles())],
+  ['33: nothing writes the project\'s CLAUDE.md but the keep, on the person\'s yes', (files) => checkNoClaudeMdWrites(files, codeFiles())],
   ['34: the build\'s prose prescribes nothing the builder does unprompted', checkBuildProse],
   ['35: the start skill follows boot\'s stops as data', checkBootStops],
   ['36: a skill drawing a menu whose back is the start menu loads start-menu.md', checkBackToStartLoads],
@@ -1754,7 +1768,7 @@ test('check 30 (no design tool) — 9.S53: catches each listed tool named in a s
   });
 });
 
-test('check 33 (no CLAUDE.md writes but the keep\'s, on the person\'s yes) — 8.S27: catches a sentence outside the keep telling a session to write, add to, change or commit the project\'s CLAUDE.md, whoever it names as the writer, a keep entry writing it without the person\'s yes, and code naming it outside a comment; permits prose that reads it or names its path, a negated sentence, the keep\'s entry on the person\'s yes, and a comment', () => {
+test('check 33 (no CLAUDE.md writes but the keep\'s, on the person\'s yes) — 8.S27: catches a clause outside the keep that writes, adds to, changes, commits, records, saves or keeps something in the project\'s CLAUDE.md, telling a session to or telling of it, whoever it names as the writer, a keep entry writing it without the person\'s yes, and code naming it outside a comment; permits prose that reads it or names its path, a write verb a negation governs in its own clause, one in a clause not naming it, record and keep as nouns, the keep\'s entry on the person\'s yes, and a comment', () => {
   withTemp((dir) => {
     const writes = write(dir, 'skills/x/references/w.md', [
       '# W', '',
@@ -1766,22 +1780,35 @@ test('check 33 (no CLAUDE.md writes but the keep\'s, on the person\'s yes) — 8
       'Nothing is decided here. Then append the pointer to CLAUDE.md.',
       'The engine renders the record so a line the person adds to CLAUDE.md can point at it.',
       'Commit the person\'s line on its own, `git commit -- CLAUDE.md`, on the person\'s yes.',
+      'Write the rule to CLAUDE.md where no skill holds it.',
+      'Add the gotcha to CLAUDE.md so nothing trips on it again.',
+      'Add the rule to CLAUDE.md, not to the spec.',
+      'Write the gotcha into CLAUDE.md where no line holds it yet.',
+      'Record the rule in CLAUDE.md.',
+      'Save the gotcha to CLAUDE.md.',
+      'Keep the rule in CLAUDE.md.',
+      'The keep adds the person\'s line to CLAUDE.md on their yes.',
       '',
     ].join('\n'));
-    assert.deepStrictEqual(checkNoClaudeMdWrites([writes]).map((v) => v.line), [3, 4, 5, 6, 7, 8, 9, 10], 'outside the keep, neither the person as writer nor their yes clears a write');
+    assert.deepStrictEqual(checkNoClaudeMdWrites([writes]).map((v) => v.line), [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18], 'outside the keep, neither the person as writer nor their yes clears a write, nor a negation in another clause, and a sentence telling of the write is one');
     const keep = write(dir, 'skills/ledger-keep/SKILL.md', [
       '# K', '',
       '- **An instruction for working in this project**, on the person\'s yes → a line in its `CLAUDE.md`; commit the person\'s line on its own, `git commit -- CLAUDE.md`.',
       '- **An instruction for working in this project** → a line in its `CLAUDE.md`; commit it on its own, `git commit -- CLAUDE.md`.',
+      '- **An instruction for working in this project** → a line in its `CLAUDE.md`; else commit the line on its own, no task needed, `git commit -- CLAUDE.md`.',
+      '- **An instruction**, never padded → commit a line to `CLAUDE.md` at once.',
+      '- **An instruction** → commit it, never waiting, `git commit -- CLAUDE.md`.',
       '',
     ].join('\n'));
-    assert.deepStrictEqual(checkNoClaudeMdWrites([keep]).map((v) => v.line), [4], 'the keep writes it only on an entry that waits for the person\'s yes');
+    assert.deepStrictEqual(checkNoClaudeMdWrites([keep]).map((v) => v.line), [4, 5, 6, 7], 'the keep writes it only on an entry that waits for the person\'s yes, a negation in another clause clearing nothing');
     const reads = write(dir, 'agents/ledger-y.md', [
       'Read `CLAUDE.md` and the project skills before running anything.',
       '4. **Project conventions**: the `CLAUDE.md` path, the project skill paths.',
       'Do NOT modify commands based on other project documentation (CLAUDE.md, etc.).',
-      'The product record is not CLAUDE.md, which is the person\'s to write.',
       'Ledger never writes CLAUDE.md.',
+      'The product record is not CLAUDE.md, which is the person\'s to write.',
+      'Read CLAUDE.md before writing any code.',
+      'The product record names CLAUDE.md as the person\'s.',
       'Never change CLAUDE.md.',
       'Recorded in the product record, never in CLAUDE.md.',
       'The project\'s `CLAUDE.md` when one exists at the project root, and its address.',

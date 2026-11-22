@@ -47,8 +47,8 @@
 //   staged copy, and, for work that leaves, its presence row in the
 //   product's conversation — its place there kept, which an epic's move
 //   departs from; a window in a quick-fix stays in the conversation, and
-//   the place it was in — the product's conversation, or a unit's phase
-//   and topic — is kept for the quick-fix's close or cancel to put it back
+//   the place it was in, where that is the product's conversation or the
+//   roadmap, is kept for the quick-fix's close or cancel to put it back
 //   there (topic-leave.cjs). A failure part-way leaves no unit. One commit
 //   takes it all.
 // - What comes next: a feature into its discussion, a bugfix into its

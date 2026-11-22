@@ -101,8 +101,8 @@ const TELLS_OF_IT = (/** @type {string} */ rel, /** @type {string} */ line) => r
 
 /** What may part two words of a name: whitespace, a line break, a comment's, a quote's or a heading's marker, and the engine's string wrap, `' +`. */
 const PARTS = String.raw`(?:\s|\/\/|\*|>|#|'\s*\+\s*')+`;
-/** Not after a word, a path or the repository's name: `.workflows/`, `agentic-workflows`. */
-const FREE = String.raw`(?<![\w./-])`;
+/** Not after a word or a path: `.workflows/`. */
+const FREE = String.raw`(?<![\w./])`;
 /** The verbs a sentence that opens on the product's old name went on with. */
 const PRODUCT_VERBS = 'run|runs|can|keep|keeps|carry|carries|read|reads|write|writes|make|makes|ship|ships|own|owns|draw|draws|invoke|invokes|hand|hands|need|needs|offer|offers|ask|asks|say|says|show|shows|hold|holds|record|records|commit|commits|land|lands|give|gives|move|moves|will|never';
 
@@ -129,7 +129,6 @@ const ORDINARY = [
   'never the workflow around it',
   'Ledger is not a general workflow engine',
   'the workflow file and the workflow artifact GitHub Actions keep',
-  'Clone the agentic-workflows project',
   'the old .workflows state',
   'project: \'Agentic Engineering Workflows\'',
   'description: \'…your CI workflows\'',

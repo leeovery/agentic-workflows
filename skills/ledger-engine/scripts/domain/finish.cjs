@@ -75,7 +75,10 @@
 //   `leftUnit`) — for any unit but a quick-fix, the engine saying in a line
 //   that it is done and what waits on the person, and for a quick-fix,
 //   where the landing answered a branch here behind what it landed, that it
-//   is and how to bring it up (receipts.cjs, `finishedOf`).
+//   is and how to bring it up (receipts.cjs, `finishedOf`). A quick-fix
+//   started at a project-level place puts the conversation back there:
+//   `next` is that place's entry, `back_to` names it, and the receipt says
+//   the work completed, since the board follows the conversation there.
 // - What the yes stands on before it lands anything is `land finish`'s
 //   refusal too, and a quick-fix's `land phase`'s, which lands its one pull
 //   request whole (landing.cjs): one read, the screen's standing and no
@@ -359,9 +362,9 @@ function finishYes(cwd, unit) {
   readersDone(cwd, READERS.unit(unit));
   const completed = completeWorkUnit(cwd, unit, { message: `finish(${unit}): completed` });
   const said = [...warnings, ...(landed.warnings ?? []), ...completed.warnings];
-  leftUnit(cwd, unit);
+  const { back } = leftUnit(cwd, unit);
   /** @type {Record<string, unknown>} */
-  const result = { unit, landed: landed.repos, completed_at: completed.completed_at, committed: completed.committed, next: CONTINUE };
+  const result = { unit, landed: landed.repos, completed_at: completed.completed_at, committed: completed.committed, next: back?.entry ?? CONTINUE, ...(back === null ? {} : { back_to: back.place }) };
   if (completed.note !== undefined) result.note = completed.note;
   if (said.length > 0) result.warnings = said;
   return result;

@@ -24,7 +24,11 @@
 //   quick-fix's close from its one session (20.14.2), All work too, the
 //   banner the unit's close (D38) — while its position still names that
 //   place, or the place it left does (a finish or a close leaves it,
-//   position.cjs), until the session records a position again. While a
+//   position.cjs), until the session records a position again — a
+//   quick-fix's close that puts the conversation back at a project-level
+//   place records it at once, so the board shows that place, and the done
+//   line is the close's receipt rather than the banner (receipts.cjs,
+//   `finishedOf`). While a
 //   session carries the migration on, its row at the migration's place
 //   there (presence.cjs), a session at no position is migrating. The
 //   session's tasks in flight are read into their unit's build wherever it

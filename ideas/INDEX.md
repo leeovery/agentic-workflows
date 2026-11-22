@@ -1,6 +1,6 @@
 # Ideas Index
 
-Improvement ideas for agentic-workflows. Pending items only — completed ideas are removed from the index and their files deleted (git history is the record).
+Improvement ideas for Ledger. Pending items only — completed ideas are removed from the index and their files deleted (git history is the record).
 
 | # | Idea | Scope |
 |---|------|-------|

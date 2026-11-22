@@ -30,8 +30,10 @@
 // what waits on the person — each unit's count, the verdicts, the inbox
 // where it holds anything — and that the menu is one `/ledger` away, a
 // finish's opening on the work done, a cancel's after its own receipt
-// (`endedReceipt`). A quick-fix's close says only where a branch here
-// stands behind what it landed, and how to bring it up (`behindReceipt`).
+// (`endedReceipt`). A quick-fix's close says where a branch here stands
+// behind what it landed, and how to bring it up, and where it put the
+// conversation back at another place, the board's done line for the work,
+// D38's (`closedReceipt`).
 // ---------------------------------------------------------------------------
 
 const { PRODUCT } = require('../../kernel/manifest-schema.cjs');
@@ -210,18 +212,20 @@ function endedReceipt(opening, read) {
 }
 
 /**
- * The line a quick-fix's close says where its landing left a branch here
- * behind what it landed, its checkout in the way: for each, its repository
- * where it is nested, what stopped it there, and the host's branch a
- * fast-forward to which brings it up.
- * @param {{repo: string, into: string, branch: string, why: string}[]} behind @returns {string}
+ * What a quick-fix's close says: the work's done line, `done`, where the
+ * close put the conversation back at another place; and where its landing
+ * left a branch here behind what it landed, its checkout in the way, for
+ * each its repository where it is nested, what stopped it there, and the
+ * host's branch a fast-forward to which brings it up. Nothing where it has
+ * neither.
+ * @param {string|null} done @param {{repo: string, into: string, branch: string, why: string}[]} behind @returns {string}
  */
-function behindReceipt(behind) {
-  const lines = behind.map(({ repo, into, branch, why }) => {
+function closedReceipt(done, behind) {
+  const lines = [...(done === null ? [] : [done]), ...behind.map(({ repo, into, branch, why }) => {
     const where = repo === '.' ? '' : ` in ${repo}`;
     return `\`${into}\`${where} is behind what landed, not moved: ${why}. Once that is clear, \`git merge --ff-only ${branch}\` there brings it up.`;
-  });
-  return section('DISPLAY: ended', timedInstruction('markdown', 'after the response'), lines.join('\n'));
+  })];
+  return lines.length === 0 ? '' : section('DISPLAY: ended', timedInstruction('markdown', 'after the response'), lines.join('\n'));
 }
 
-module.exports = { typeRank, listed, startMenuScreen, startMenuSurface, endedReceipt, behindReceipt };
+module.exports = { typeRank, listed, startMenuScreen, startMenuSurface, endedReceipt, closedReceipt };

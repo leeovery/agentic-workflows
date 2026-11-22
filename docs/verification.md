@@ -37,7 +37,7 @@ Every acceptance criterion has a test, and the tests are checked by machine rath
 
 A rule held only in prose holds only for whoever read it. So a spec invariant names the check that enforces it where one can — an architecture test, a lint, an import-graph rule — and the task that adds the check goes in the phase that introduces the invariant. The project's checks run through the commit door before every code commit: its tests, then each of its linters, as the [environment setup](configuration.md#the-environment-setup) records them.
 
-Your own coding rules stay where you keep them, in the project's skills and your `CLAUDE.md`, and reach the builders and reviewers without being configured: they are subagents, they find and invoke the project's skills themselves, and Claude Code loads `CLAUDE.md` into every one. Ledger never writes your `CLAUDE.md`.
+Your own coding rules stay where you keep them, in the project's skills and your `CLAUDE.md`, and reach the builders and reviewers without being configured: they are subagents, they find and invoke the project's skills themselves, and Claude Code loads `CLAUDE.md` into every one. Ledger writes your `CLAUDE.md` only with a line you agreed to, on your yes.
 
 ## Bugs found after review
 

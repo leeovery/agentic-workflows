@@ -66,7 +66,7 @@ Settings that belong to the project live on the state branch, on the project man
 - the knowledge base's API key, stored apart and never passed through the chat;
 - `trust.jsonl` — the trust log, every answer the ask rule counts, across all your projects;
 - `person.md` — the record of you, your preferences in words and your care entries;
-- `conversations/` — each Claude Code conversation's own folder: where it is working, the buttons it was showing, the briefs it issued, its boot stamp.
+- `conversations/` — each Claude Code conversation's own folder: where it is working, where a quick-fix was started from, the buttons it was showing, the briefs it issued, its boot stamp.
 
 A conversation's folder is found wherever the conversation runs. It lasts as long as Claude Code keeps that conversation to resume, and goes at the next `/ledger` in any project once Claude Code has deleted it, unless a trust log event still waits in it. A conversation whose end the session-end hook never saw — the one whose `/ledger` first installed the hook, since Claude Code picks hooks up only as a session starts, or one that crashed — names no transcript, and its folder stays, a few bytes.
 
