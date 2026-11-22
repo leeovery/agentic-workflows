@@ -137,4 +137,4 @@ function investigationCheckInSurface(cwd, args) {
   });
 }
 
-module.exports = { investigationPlanSurface, investigationCheckInSurface, investigationStep, investigationPlace };
+module.exports = { investigationPlanSurface, investigationCheckInSurface };

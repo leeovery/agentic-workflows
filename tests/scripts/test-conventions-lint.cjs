@@ -812,20 +812,22 @@ function checkNoDesignTools(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 33 — nothing Ledger ships writes the project's CLAUDE.md
-// (8.9.5, 8.S27). It loads into every session and subagent and is the
-// person's to write: a pointer there to the product record is their line. No
-// prose sentence tells a session to write, add to or change it — a sentence
-// naming it with a verb of writing, neither negated nor with the person as
-// its writer — and no engine or mod code names it outside a comment.
+// Check 33 — nothing Ledger ships writes the project's CLAUDE.md but the
+// keep, on the person's yes (8.9.5, 8.S27). It loads into every session and
+// subagent and is the person's: a line goes in only as theirs, agreed. No
+// prose sentence outside the keep tells a session to write, add to, change or
+// commit it — a sentence naming it with a verb of writing, not negated — and
+// the keep's own such sentence sits on an entry that waits for the person's
+// yes; no engine or mod code names it outside a comment.
 // ---------------------------------------------------------------------------
 
-const WRITE_VERB = /\b(writ(e|es|ing|ten)|wrote|append(s|ed|ing)?|add(s|ed|ing)?|insert(s|ed|ing)?|put(s|ting)?|edit(s|ed|ing)?|updat(e|es|ed|ing)|modif(y|ies|ied|ying)|chang(e|es|ed|ing)|overwrit(e|es|ing|ten)|rewrit(e|es|ing|ten))\b/i;
+const WRITE_VERB = /\b(writ(e|es|ing|ten)|wrote|append(s|ed|ing)?|add(s|ed|ing)?|insert(s|ed|ing)?|put(s|ting)?|edit(s|ed|ing)?|updat(e|es|ed|ing)|modif(y|ies|ied|ying)|chang(e|es|ed|ing)|overwrit(e|es|ing|ten)|rewrit(e|es|ing|ten)|commit(s|ted|ting)?)\b/i;
 const NEGATED = /\b(never|not|no|nothing|nor)\b|n't\b/i;
-const THE_PERSON = /\b(the person|the user)\b/i;
+const KEEP_SKILL = `${path.sep}skills${path.sep}ledger-keep${path.sep}`;
+const ON_THEIR_YES = /\bon the person's yes\b/i;
 
 /** Whether a sentence tells a session to write the project's CLAUDE.md. @param {string} sentence */
-const writesClaudeMd = (sentence) => /CLAUDE\.md/.test(sentence) && WRITE_VERB.test(sentence) && !NEGATED.test(sentence) && !THE_PERSON.test(sentence);
+const writesClaudeMd = (sentence) => /CLAUDE\.md/.test(sentence) && WRITE_VERB.test(sentence) && !NEGATED.test(sentence);
 
 /** The shipped code: the engine's and the mods', comments left out. */
 function codeFiles(root = REPO) {
@@ -848,8 +850,11 @@ const uncommented = (line) => (/^\s*(\/\/|\*|\/\*)/.test(line) ? '' : line.repla
 function checkNoClaudeMdWrites(files, code = []) {
   const out = [];
   for (const file of files) {
+    const keeps = file.includes(KEEP_SKILL);
     readLines(file).forEach((line, i) => {
-      if (line.split(/(?<=[.!?;])\s+/).some(writesClaudeMd)) out.push({ file, line: i + 1, message: 'writes the project\'s CLAUDE.md — it is the person\'s to write; Ledger never changes it' });
+      if (!line.split(/(?<=[.!?;])\s+/).some(writesClaudeMd)) return;
+      if (!keeps) out.push({ file, line: i + 1, message: 'writes the project\'s CLAUDE.md — only the keep writes it, on the person\'s yes' });
+      else if (!ON_THEIR_YES.test(line)) out.push({ file, line: i + 1, message: 'writes the project\'s CLAUDE.md without the person\'s yes — the keep writes it only on their yes' });
     });
   }
   for (const file of code) {
@@ -1749,7 +1754,7 @@ test('check 30 (no design tool) — 9.S53: catches each listed tool named in a s
   });
 });
 
-test('check 33 (no CLAUDE.md writes) — 8.S27: catches a sentence telling a session to write, add to or change the project\'s CLAUDE.md, and code naming it outside a comment; permits prose that reads it or names its path, a negated sentence, one whose writer is the person, and a comment', () => {
+test('check 33 (no CLAUDE.md writes but the keep\'s, on the person\'s yes) — 8.S27: catches a sentence outside the keep telling a session to write, add to, change or commit the project\'s CLAUDE.md, whoever it names as the writer, a keep entry writing it without the person\'s yes, and code naming it outside a comment; permits prose that reads it or names its path, a negated sentence, the keep\'s entry on the person\'s yes, and a comment', () => {
   withTemp((dir) => {
     const writes = write(dir, 'skills/x/references/w.md', [
       '# W', '',
@@ -1759,9 +1764,18 @@ test('check 33 (no CLAUDE.md writes) — 8.S27: catches a sentence telling a ses
       'Write the rule in the project\'s CLAUDE.md so every session reads it.',
       'Use the Edit tool on CLAUDE.md to add the rule.',
       'Nothing is decided here. Then append the pointer to CLAUDE.md.',
+      'The engine renders the record so a line the person adds to CLAUDE.md can point at it.',
+      'Commit the person\'s line on its own, `git commit -- CLAUDE.md`, on the person\'s yes.',
       '',
     ].join('\n'));
-    assert.deepStrictEqual(checkNoClaudeMdWrites([writes]).map((v) => v.line), [3, 4, 5, 6, 7, 8]);
+    assert.deepStrictEqual(checkNoClaudeMdWrites([writes]).map((v) => v.line), [3, 4, 5, 6, 7, 8, 9, 10], 'outside the keep, neither the person as writer nor their yes clears a write');
+    const keep = write(dir, 'skills/ledger-keep/SKILL.md', [
+      '# K', '',
+      '- **An instruction for working in this project**, on the person\'s yes → a line in its `CLAUDE.md`; commit the person\'s line on its own, `git commit -- CLAUDE.md`.',
+      '- **An instruction for working in this project** → a line in its `CLAUDE.md`; commit it on its own, `git commit -- CLAUDE.md`.',
+      '',
+    ].join('\n'));
+    assert.deepStrictEqual(checkNoClaudeMdWrites([keep]).map((v) => v.line), [4], 'the keep writes it only on an entry that waits for the person\'s yes');
     const reads = write(dir, 'agents/ledger-y.md', [
       'Read `CLAUDE.md` and the project skills before running anything.',
       '4. **Project conventions**: the `CLAUDE.md` path, the project skill paths.',
@@ -1770,7 +1784,6 @@ test('check 33 (no CLAUDE.md writes) — 8.S27: catches a sentence telling a ses
       'Ledger never writes CLAUDE.md.',
       'Never change CLAUDE.md.',
       'Recorded in the product record, never in CLAUDE.md.',
-      'The engine renders the record so a line the person adds to CLAUDE.md can point at it.',
       'The project\'s `CLAUDE.md` when one exists at the project root, and its address.',
     ].join('\n'));
     assert.strictEqual(checkNoClaudeMdWrites([reads]).length, 0, `reading it and naming it are clean, got ${report(checkNoClaudeMdWrites([reads]))}`);
@@ -1911,9 +1924,9 @@ test('check 38 (no resume section) — 24.S14: catches a heading on resuming aft
   });
 });
 
-test('check 39 (no pacing) — catches a line keeping the person out of the work, running it without them, or holding a question until they say they are ready to discuss it; passes the person turning to the questions themselves, a gate set aside until they are ready to move on, and a fenced example', () => {
+test('check 39 (no pacing) — catches a line keeping the person out of the work, running it without them, or holding a question until they say they are ready to discuss it; passes the person turning to the questions themselves, a note Claude follows without the person typing, and a fenced example', () => {
   withTemp((dir) => {
-    const skill = write(dir, 'skills/ledger-x/SKILL.md', ['# X', '', 'You land what the agents find, and keep the person out of it except where the engine stops for them.', '', 'The build runs start to finish without the person.', '', 'A question is drawn only once the person says they are ready to discuss it.', '', 'The person says they are ready to talk about a waiting question.', '', 'Ask whether they are ready to move on.', '', '```markdown', 'Hold it until they are ready to talk.', '```', ''].join('\n'));
+    const skill = write(dir, 'skills/ledger-x/SKILL.md', ['# X', '', 'You land what the agents find, and keep the person out of it except where the engine stops for them.', '', 'The build runs start to finish without the person.', '', 'A question is drawn only once the person says they are ready to discuss it.', '', 'The person says they are ready to talk about a waiting question.', '', 'Claude follows the note without the person typing anything.', '', '```markdown', 'Hold it until they are ready to talk.', '```', ''].join('\n'));
     assert.deepStrictEqual(checkNoPacing([skill]).map((x) => x.line), [3, 5, 7], `got ${report(checkNoPacing([skill]))}`);
   });
 });
