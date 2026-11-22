@@ -44,8 +44,9 @@
 //   heading's shape, and a spike's naming none of the place's spikes, is
 //   passed over, said among the warnings.
 // - Beyond the lists (`beyondLists`) is what a log's closing line is read
-//   from (discovery-entry.cjs), an entry recorded after it never taken for
-//   it. A session started on the day of the first conversation its log
+//   from (discovery-entry.cjs): the lists' headings, entries and bodies left
+//   out, so an entry recorded after it is never taken for it, and the prose
+//   written under a fixed heading kept. A session started on the day of the first conversation its log
 //   names (topic-log.cjs).
 // ---------------------------------------------------------------------------
 

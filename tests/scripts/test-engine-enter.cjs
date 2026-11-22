@@ -28,7 +28,8 @@
 // product's conversation; the open log carried on, or the next opened and
 // committed, the conversation's line written into it where the log's last
 // such line is another's (8.S62, 8.S70, 8.S75); the reads — the product's two latest logs, or
-// its picture and its latest sitting by its closing line once the picture is written, the
+// once its picture is written the picture, its latest closed sitting by its closing line and
+// the open sitting carried on in full, the picture beside seeds and a type call too, the
 // roadmap, the product record and the research owed (8.S69), an epic's older
 // logs by their closing lines and two latest in full, its first log's
 // pointers, its map and the product record (8.S53) — and a log another
@@ -696,20 +697,66 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
     assert.deepStrictEqual([opened, read()], [logs('001', '002'), logs('002', '003')]);
   });
 
-  it('a return once the conversation has written its picture reads the picture in full and the latest log holding talk by its closing line, in place of the latest logs in full; a start from seeds reads the seeds and neither', () => {
-    writeState(dir, layout.productPicture, '# Where the product stands\n');
-    writeState(dir, '.inbox/ideas/2026-01-03--dark-mode.md', '# Dark mode\n');
-    const seeded = enter(['discovery', 'product', '--seeds', '.ledger/.inbox/ideas/2026-01-03--dark-mode.md']).sections;
-    assert.strictEqual(seeded.match(/^(?:picture|latest sitting|session log): .*$/gm), null);
-    assert.strictEqual(enter(['discovery', 'product']).sections, data([
-      `picture: ${at(layout.productPicture)}`,
-      `latest sitting: ${at(layout.productSession('002'))} — Pricing.`,
-      `roadmap: \`${ENGINE} roadmap state\``,
-      `product: \`${ENGINE} ledger product\``,
-      'research owed: no',
-      payloadAt('sess-1'),
-      `log: ${at(layout.productSession('003'))}`,
-    ]));
+  describe('once the conversation has written its picture', () => {
+    const PICTURE = '# Where the product stands\n';
+    beforeEach(() => writeState(dir, layout.productPicture, PICTURE));
+
+    it('a return reads the picture in full and the latest closed log by its closing line — the prose under a fixed heading its closing line, never an entry there — in place of the latest logs in full', () => {
+      writeState(dir, layout.productSession('002'), '## 2026-01-02 · session second\n\nPricing.\n\n## Not taken\n\n- A web client — the Mac is the product\n\nWhere it got to: pockets small, pricing next.\n\n## Views of the product\n\n- One-time pricing\n');
+      assert.strictEqual(enter(['discovery', 'product']).sections, data([
+        `picture: ${at(layout.productPicture)}`,
+        `latest sitting: ${at(layout.productSession('002'))} — Where it got to: pockets small, pricing next.`,
+        `roadmap: \`${ENGINE} roadmap state\``,
+        `product: \`${ENGINE} ledger product\``,
+        'research owed: no',
+        payloadAt('sess-1'),
+        `log: ${at(layout.productSession('003'))}`,
+      ]));
+    });
+
+    it('carrying on the open sitting another conversation left reads that log in full beside the picture, the latest closed log by its closing line, and the catch-up brings the picture up to date with the log', () => {
+      const first = transcript('sess-1');
+      enter(['discovery', 'product']);
+      fs.appendFileSync(at(layout.productSession('003')), '\nPricing tiers, leaning three.\n');
+      ends('sess-1');
+      assert.strictEqual(enter(['discovery', 'product'], 'sess-2').sections, data([
+        `picture: ${at(layout.productPicture)}`,
+        `latest sitting: ${at(layout.productSession('002'))} — Pricing.`,
+        `session log: ${at(layout.productSession('003'))}`,
+        `roadmap: \`${ENGINE} roadmap state\``,
+        `product: \`${ENGINE} ledger product\``,
+        'research owed: no',
+        payloadAt('sess-2'),
+        `catch up: read ${first} from the log's last write onward, and add to the log and the picture what they are missing`,
+        `log: ${at(layout.productSession('003'))}`,
+      ]));
+      ends('sess-2');
+      assert.match(enter(['discovery', 'product'], 'sess-3').sections,
+        /^catch up: the transcript of session sess-2, which last wrote the log, is gone — say so in one line, and carry on from the log, bringing the picture up to date from it$/m);
+    });
+
+    it('a start from seeds reads the seeds beside the picture, and a type call the picture with the seeds, the roadmap and the inbox, to read and never write', () => {
+      const idea = '.ledger/.inbox/ideas/2026-01-03--dark-mode.md';
+      writeState(dir, '.inbox/ideas/2026-01-03--dark-mode.md', '# Dark mode\n');
+      const seeded = enter(['discovery', 'product', '--seeds', idea]).sections;
+      const called = enter(['discovery', 'product', '--type-call', '--seeds', idea], 'caller').sections;
+      assert.deepStrictEqual([seeded, called], [data([
+        `seed: ${at('.inbox/ideas/2026-01-03--dark-mode.md')}`,
+        `picture: ${at(layout.productPicture)}`,
+        `roadmap: \`${ENGINE} roadmap state\``,
+        `product: \`${ENGINE} ledger product\``,
+        'research owed: no',
+        payloadAt('sess-1'),
+        `log: ${at(layout.productSession('003'))}`,
+      ]), data([
+        `seed: ${at('.inbox/ideas/2026-01-03--dark-mode.md')}`,
+        `picture: ${at(layout.productPicture)}`,
+        `roadmap: \`${ENGINE} roadmap state\``,
+        `inbox: ${at('.inbox')}`,
+        payloadAt('caller'),
+      ])]);
+      assert.strictEqual(readState(dir, layout.productPicture), PICTURE);
+    });
   });
 
   it('8.2.9: a piece of work\'s type call, with another live session in the product\'s conversation, asks nothing first and opens, writes, commits and records nothing — no session, no position, no presence, the other\'s hold left as it stands — and reads the roadmap and the live inbox, and the seeds where it starts from any; refused at an epic, writing nothing', () => {

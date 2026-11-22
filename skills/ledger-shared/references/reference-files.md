@@ -4,12 +4,12 @@
 
 ---
 
-Each file the person shared is read, or kept as reference. Say in one line which way you took each.
+Each file the person shared is read, or kept as reference: as they say ("for reference"), or where they don't, by your judgement — a transcript, a raw export or a long chat log is reference; a model, a decision log, a design or a brief is read. Say in one line which way you took each.
 
-- **Reference** — where the person says so ("for reference"), or, where they don't say, a transcript, a raw export or a long chat log. Never read it whole: search it when a point needs it, from a subagent where it is large, citing the part a point rests on.
-- **Read** — anything else, a model, a decision log, a design or a brief among them: markdown as prose, an image by looking at it, anything else named to the person rather than opened.
-- **Read for something** — a file shared with something to look for ("check it for decisions on X, Y and Z") is read for that, then kept as reference.
+- **A reference file** is never read whole. Search it yourself when a point needs it, reading around what you find, and cite the part the point rests on.
+- **A file read** is read when the talk needs it: the ones that carry the shape at once, the rest as the conversation reaches their area. Research is read that way, never whole as it lands. Markdown is read as prose, an image by looking at it, anything else named to the person rather than opened.
+- **A file shared with something to look for** ("check it for decisions on X, Y and Z") is read for that, then kept as reference. What it yields goes where this conversation records what it learns: in discovery the log, as input, a view once the person takes it up; in a discussion an open question on the map; for a topic already started, a message to it.
 
-The person can have a reference file read properly at any time; from then it is a file read like any other.
+The person can have a reference file read properly at any time; from then it is a file read like any other. How a file is read is apart from the status its link gives it, which is set as for any file.
 
-Where the conversation keeps a log, list each reference file in it under a heading of your own for them, each with a line on what it holds.
+List each reference file, with a line on what it holds, where a later sitting finds it: in the product's conversation in the picture's section for them; in an epic's discovery in the log, each sitting's carrying the last one's list forward; in any other conversation that keeps a log, in its log. Where the conversation keeps none, as a keep's, the finding that links the file lists it: every return to the product's conversation reads it among what discovery found of the product.

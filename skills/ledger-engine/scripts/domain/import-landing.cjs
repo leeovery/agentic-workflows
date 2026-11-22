@@ -4,6 +4,14 @@
 // Domain ring: the landing discipline every import lander shares — one
 // planner, one copy, one entry shape, so a shared file lands the same way
 // whatever door it came through.
+//
+// A shared folder lands whole: its own name by the rules a file's stem
+// takes, deduped as a file is, and its tree beneath it with every name kept,
+// so the links its files make to each other still resolve. A dotted entry in
+// it is tooling state, passed over and named as a dotfile is; a name the
+// state cannot hold — one holding a control character or a character a
+// filesystem the state may live on refuses — and anything that is neither a
+// file nor a folder refuse the whole call, by name, before anything lands.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -49,6 +57,51 @@ function normaliseBasename(basename) {
   return `${slug}.${extension === '' || MARKDOWN_EXTENSIONS.includes(extension) ? 'md' : extension}`;
 }
 
+/**
+ * Normalise a shared folder's own name as a file's stem is: lowercased, runs
+ * of non-alphanumerics collapsed to `-` and trimmed. Null for a dotted
+ * folder and for a name that normalises away.
+ * @param {string} basename
+ * @returns {string|null}
+ */
+function normaliseFolderName(basename) {
+  if (basename.startsWith('.')) return null;
+  const slug = basename.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return slug === '' ? null : slug;
+}
+
+/** A name the state cannot hold: a control character, or one a filesystem the state may live on refuses. */
+const UNHOLDABLE = /[\x00-\x1f\x7f<>:"\\|?*]/;
+
+/**
+ * A shared folder's tree as it lands, each path below the folder, in name
+ * order: its files; its dotted entries, passed over; and what the state
+ * cannot hold — a name it cannot carry, or an entry that is neither a file
+ * nor a folder.
+ * @param {string} folder absolute
+ * @returns {{files: string[], skipped: string[], refused: string[]}}
+ */
+function folderTree(folder) {
+  /** @type {{files: string[], skipped: string[], refused: string[]}} */
+  const tree = { files: [], skipped: [], refused: [] };
+  /** @param {string} rel */
+  const walk = (rel) => {
+    const entries = fs.readdirSync(path.join(folder, rel), { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1));
+    for (const entry of entries) {
+      const at = rel === '' ? entry.name : `${rel}/${entry.name}`;
+      if (entry.name.startsWith('.')) tree.skipped.push(at);
+      else if (UNHOLDABLE.test(entry.name) || !(entry.isFile() || entry.isDirectory())) tree.refused.push(at);
+      else if (entry.isDirectory()) walk(at);
+      else tree.files.push(at);
+    }
+  };
+  walk('');
+  return tree;
+}
+
+/** A source path with any trailing slash taken off. @param {string} src */
+const unslashed = (src) => src.replace(/\/+$/, '');
+
 // The grammar a document writes a link to a file of its unit's in: the
 // relative hop out of the document's own directory (`../../assets/{name}`
 // or `../../seeds/{name}` from a topic's log), the home's folder and the
@@ -73,31 +126,38 @@ function homeLinkPattern(home, names) {
   return new RegExp(`(${HOME_LINK_HOPS})${home}/(${body})${HOME_NAME_END}`, 'g');
 }
 
+/** Whether a source is a folder. @param {string} cwd @param {string} src */
+const isFolder = (cwd, src) => fs.statSync(path.resolve(cwd, src)).isDirectory();
+
 /**
- * Refuse the whole batch unless every source is an existing regular file. A
- * directory passes an existence check and then throws mid-copy, inside the
- * lock, with the files before it already on disk and unrecorded — so the
- * refusal comes here, before anything is copied. The offending paths ride
- * the error as `payload.missing_imports`, which is what the caller re-prompts
- * over.
+ * Refuse the whole batch unless every source is an existing file or folder,
+ * and every name in each folder one the state can hold — checked before
+ * anything is copied, so nothing lands half. A path naming neither rides the
+ * error as `payload.missing_imports`, which is what the caller re-prompts
+ * over; a folder holding what the state cannot is refused naming each such
+ * path.
  * @param {string} cwd project root
  * @param {string[]} paths source paths
- * @throws {Error & {payload: {missing_imports: string[]}}}
+ * @throws {Error & {payload?: {missing_imports: string[]}}}
  */
 function assertLandableSources(cwd, paths) {
   const missing = paths.filter((p) => {
     try {
-      return !fs.statSync(path.resolve(cwd, p)).isFile();
+      const stat = fs.statSync(path.resolve(cwd, p));
+      return !stat.isFile() && !stat.isDirectory();
     } catch {
       return true;
     }
   });
-  if (missing.length === 0) return;
-  const err = /** @type {Error & {payload: {missing_imports: string[]}}} */ (
-    new Error(`import path(s) not found, not a file, or unreadable: ${missing.join(', ')}`)
-  );
-  err.payload = { missing_imports: missing };
-  throw err;
+  if (missing.length > 0) {
+    const err = /** @type {Error & {payload: {missing_imports: string[]}}} */ (
+      new Error(`import path(s) not found, not a file or a folder, or unreadable: ${missing.join(', ')}`)
+    );
+    err.payload = { missing_imports: missing };
+    throw err;
+  }
+  const unholdable = paths.filter((p) => isFolder(cwd, p)).flatMap((p) => folderTree(path.resolve(cwd, p)).refused.map((rel) => `${unslashed(p)}/${rel}`));
+  if (unholdable.length > 0) throw new Error(`import: a shared folder holds what the state cannot hold — ${unholdable.join(', ')}: rename each, or share the folder without it`);
 }
 
 /**
@@ -123,49 +183,73 @@ function dedupe(name, destDir, taken) {
 }
 
 /**
+ * A planned landing: its source, its name in the destination, and for a
+ * folder the files of its tree, each by its path below it.
+ * @typedef {{src: string, dest: string, files?: string[]}} Landing
+ */
+
+/**
  * Plan a batch of sources into landing names, deduped against the
- * destination directory and the batch. Reads the directory, writes nothing —
- * the copy is a separate step, so a caller can refuse before anything lands.
+ * destination directory and the batch: a file by the filename rules, a
+ * folder by its own name's, its tree beneath it as it is. Reads the
+ * directory, writes nothing — the copy is a separate step, so a caller can
+ * refuse before anything lands. A dotfile, and a folder's dotted entries,
+ * are skipped and named.
+ * @param {string} cwd project root
  * @param {string[]} sources source paths
  * @param {string} destDir absolute destination directory
- * @returns {{planned: {src: string, dest: string}[], skipped: string[]}}
+ * @returns {{planned: Landing[], skipped: string[]}}
  */
-function planImports(sources, destDir) {
+function planImports(cwd, sources, destDir) {
   /** @type {Set<string>} */
   const taken = new Set();
-  /** @type {{src: string, dest: string}[]} */
+  /** @type {Landing[]} */
   const planned = [];
   /** @type {string[]} */
   const skipped = [];
   for (const src of sources) {
-    const name = normaliseBasename(path.basename(src));
+    const folder = isFolder(cwd, src);
+    const base = path.basename(unslashed(src));
+    const name = folder ? normaliseFolderName(base) : normaliseBasename(base);
     if (name === null) {
       skipped.push(src);
       continue;
     }
     const dest = dedupe(name, destDir, taken);
     taken.add(dest);
-    planned.push({ src, dest });
+    if (!folder) {
+      planned.push({ src, dest });
+      continue;
+    }
+    const tree = folderTree(path.resolve(cwd, src));
+    skipped.push(...tree.skipped.map((rel) => `${unslashed(src)}/${rel}`));
+    planned.push({ src, dest, files: tree.files });
   }
   return { planned, skipped };
 }
 
+/** One file copied into place, at a readable mode. @param {string} from absolute @param {string} to absolute */
+function copyFile(from, to) {
+  fs.mkdirSync(path.dirname(to), { recursive: true });
+  fs.copyFileSync(from, to);
+  fs.chmodSync(to, 0o644);
+}
+
 /**
- * Copy each planned landing into place. The mode is pinned rather than
- * inherited: a file dropped from a camera, a download, or another checkout
- * arrives with whatever bits that tool set, and the tree it joins is
- * readable.
+ * Copy each planned landing into place, a folder's tree file by file. The
+ * mode is pinned rather than inherited: a file dropped from a camera, a
+ * download, or another checkout arrives with whatever bits that tool set,
+ * and the tree it joins is readable.
  * @param {string} cwd project root
  * @param {string} destDir absolute destination directory
- * @param {{src: string, dest: string}[]} planned
+ * @param {Landing[]} planned
  */
 function copyImports(cwd, destDir, planned) {
-  if (planned.length === 0) return;
-  fs.mkdirSync(destDir, { recursive: true });
   for (const move of planned) {
+    const from = path.resolve(cwd, move.src);
     const landed = path.join(destDir, move.dest);
-    fs.copyFileSync(path.resolve(cwd, move.src), landed);
-    fs.chmodSync(landed, 0o644);
+    if (move.files === undefined) copyFile(from, landed);
+    else for (const rel of move.files) copyFile(path.join(from, rel), path.join(landed, rel));
   }
 }
 

@@ -75,7 +75,7 @@ const ADDED = [
   'reviewer pair', 'notes for later', 'stack', 'the ask rule', 'kind', 'verdict', 'blind question', 'auto and step',
   'proven and not proven', 'verify setup', 'feature map', 'driver', 'state branch',
   'convergence', 'care entry', 'the matrix', 'the verdict queue', 'the record of the person',
-  'earlier record', 'reference file', 'product picture',
+  'record from before', 'reference file', 'product picture',
 ];
 
 describe('the glossary (23.3)', () => {

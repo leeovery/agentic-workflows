@@ -18,11 +18,14 @@
 //   already is refused, so a spike carried on is never started twice.
 // - An import (9.10.5, 9.10.11): `import <unit|product> <path>…` copies the
 //   files the person shared into the unit's `assets/`, or the product's,
-//   each named by the landing's filename rules (import-landing.cjs), and
-//   answers each one's path from the state root, for the log or an entry to
-//   link. Nothing is committed: a file enters the state with what links it.
-//   A path naming no file refuses the call, naming every such path
-//   (`missing_imports`), as does a call whose every file the rules skip.
+//   each named by the landing's filename rules (import-landing.cjs), a
+//   shared folder landing whole under its own name, its tree and its names
+//   kept, and answers each one's path from the state root, a folder's its
+//   folder's, for the log or an entry to link. Nothing is committed: a file
+//   enters the state with what links it. A path naming no file or folder
+//   refuses the call, naming every such path (`missing_imports`), as do a
+//   folder holding what the state cannot hold, naming each such path, and a
+//   call whose every file the rules skip.
 // - A link is the ledger's `asset` event (ledger-events.cjs): an entry, a
 //   file's path from the state root, and the status the link gives the
 //   file, the lift it records, or both.
@@ -268,7 +271,7 @@ function importFiles(cwd, [name, ...paths]) {
   assertLandableSources(cwd, paths);
   const dir = path.join(root, owner, 'assets');
   return withStateLock(root, () => {
-    const { planned, skipped } = planImports(paths, dir);
+    const { planned, skipped } = planImports(cwd, paths, dir);
     if (planned.length === 0) throw new Error(`${said}: nothing to land — the filename rules skip every file given (${skipped.join(', ')})`);
     copyImports(cwd, dir, planned);
     return { imports: planned.map(({ dest }) => `${owner}/assets/${dest}`), skipped_imports: skipped };

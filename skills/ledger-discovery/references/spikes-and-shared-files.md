@@ -28,4 +28,4 @@ node .claude/skills/ledger-engine/scripts/engine.cjs discovery-log not-taken {ho
 
 ## A Shared File
 
-Load **[importing-shared-files.md](../../ledger-shared/references/importing-shared-files.md)** with home = `{home}`, phase = `discovery`, and follow its instructions as written. Link each file it landed from the log. A record the person brings from before is the earlier position (**Input, Never Decisions**), its points cited in the log and the briefs by its own ids and files.
+Load **[importing-shared-files.md](../../ledger-shared/references/importing-shared-files.md)** with home = `{home}`, phase = `discovery`, and follow its instructions as written. Link each file it landed from the log.

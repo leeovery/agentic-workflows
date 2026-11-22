@@ -43,7 +43,7 @@ The rigour holds — the symptoms, then the code, and the root cause settled bef
 
 ### Symptoms
 
-The brief, the seeds and discovery's log are the person's account: confirm what they already answer rather than ask it again, and ask what they leave open — what should happen and what happens instead, the exact steps, how often, where, since when, and what they have tried. A point the brief marks as earlier is where they had got to before, not yet their account: put it to them once, the earlier answer your lean. Start with what matters most and follow their answers down; never a barrage of questions. Log each symptom in their words as they give it (`investigation-log symptom`). What they don't know stays unknown, never guessed.
+The brief, the seeds and discovery's log are the person's account: confirm what they already answer rather than ask it again, and ask what they leave open — what should happen and what happens instead, the exact steps, how often, where, since when, and what they have tried. A point the brief marks as from before is where they had got to before, not yet their account: it goes on the map as an open question, the answer from before your lean. Start with what matters most and follow their answers down; never a barrage of questions. Log each symptom in their words as they give it (`investigation-log symptom`). What they don't know stays unknown, never guessed.
 
 ### The Plan
 

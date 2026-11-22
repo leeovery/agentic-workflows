@@ -9,7 +9,9 @@
 // asked for in one window never stops, reads or closes the product's talk
 // going on in another; the next
 // day's session, after the last one ended on its roadmap items, opening
-// from the picture of the product it kept; the note a
+// from the picture of the product it kept; an epic the position from before
+// bears on, its points written into the product's log where the epic's
+// discovery reads them, at its entry and after a compaction; the note a
 // compaction carries at either level; the brownfield offer's research, owed
 // from its yes until the findings land; the conversation moving between the
 // product, an epic's discovery and a topic in one session, with no handoff;
@@ -38,7 +40,7 @@ const { stateGit, statePath, commitOnState } = require('./engine-harness.cjs');
 const { highestMigration } = require(path.join(ROOT, 'skills/ledger-migrate/scripts/migration-ids.cjs'));
 const {
   Sim, startUnit, handoff, handoffBy, answerGate, typeAtGate, startPick, startNew, startBare, startWith, startMenu, epicPick, carryOn, mappedEpic, enterEntry, presenceRow, briefDraft, roadmapMenu,
-  startThisWork,
+  startThisWork, shapedInTheProduct,
 } = require('./pipeline-world.cjs');
 
 const PRODUCT = 'product';
@@ -203,6 +205,26 @@ describe('pipeline simulation: discovery\'s entry', () => {
     fs.appendFileSync(logPath(sim, PRODUCT, 2), '\nSeats before pricing.\n');
     assert.match(opened, /^1 session, last on /, 'a session nothing has been said in yet is not counted');
     assert.match(tail(), /^2 sessions, last on /, 'the start menu\'s row counts the sessions holding talk and names the last date');
+  });
+
+  it('an epic the position from before bears on: its shaped_by names the section the yes writes the points into, above the log\'s closing line, the picture thinned before the next is followed; the epic\'s entry reads the section, a compaction there re-reads it, and the epic\'s next commit takes it and the picture', () => {
+    const shaped = shapedInTheProduct(sim, 'gifting');
+    const [log] = shaped.split('#');
+    const at = statePath(sim.dir, log);
+    fs.appendFileSync(at, '\nWhere it got to: gifting is several connected things.\n');
+    const picture = sim.write('.ledger/.product/picture.md', '# Where the product stands\n\n- One gift shape — the position from before, D101 in planning/decisions/decision-log.md\n');
+    const fromBefore = `${log}#from-before-gifting`;
+    const started = startThisWork(sim, { type: 'epic', name: 'gifting', description: 'Gifting between pockets', reason: 'Its parts each need decisions.', shaped_by: [shaped, fromBefore] });
+
+    fs.writeFileSync(at, fs.readFileSync(at, 'utf8').replace('\nWhere it got to',
+      '\n## From before: gifting {#from-before-gifting}\n\n- One gift shape — from before, D101 in planning/decisions/decision-log.md\n\nWhere it got to'));
+    sim.write(picture, '# Where the product stands\n\n- Gifting — started, in gifting.\n');
+    sim.run(started.next.argv);
+
+    assert.deepStrictEqual(named(sim, 'shaped by'), [`${at}#gifting`, `${at}#from-before-gifting`]);
+    assert.deepStrictEqual(carryOn(sim).files, [logPath(sim, 'gifting', 1), `${at}#gifting`, `${at}#from-before-gifting`]);
+    sim.run(['discovery-session', 'close', 'gifting', '-m', 'discovery(gifting): end the session']);
+    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', log, '.product/picture.md']), '', 'the section and the thinned picture committed');
   });
 
   it('a compaction at either level names the skill, the open log and the log\'s transcript to catch up from (8.S67, 8.S75, 24.S19)', () => {
