@@ -70,13 +70,15 @@ const SIDECAR_NAME = new RegExp(`^(?:${TOOL_SIDECARS.map((glob) => glob.replace(
 
 /**
  * `content` in a scratch of `file`'s in `scratch`, a folder on its disk that
- * no commit takes, holding `mode` from its first byte.
+ * no commit takes, made afresh, never through what held its name before,
+ * and holding `mode` from its first byte.
  * @param {string} scratch @param {string} file @param {string|Buffer} content @param {number} [mode]
  */
 function scratchCopy(scratch, file, content, mode) {
   const temp = path.join(scratch, `reshape-${process.pid}-${path.basename(file)}`);
   fs.mkdirSync(scratch, { recursive: true });
-  fs.writeFileSync(temp, content, mode === undefined ? undefined : { mode });
+  fs.rmSync(temp, { force: true });
+  fs.writeFileSync(temp, content, { flag: 'wx', ...(mode === undefined ? {} : { mode }) });
   if (mode !== undefined) fs.chmodSync(temp, mode);
   return temp;
 }

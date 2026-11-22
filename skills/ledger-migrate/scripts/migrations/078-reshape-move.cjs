@@ -100,19 +100,9 @@
 // in the notice the move hands back, its store left where it is; one no
 // plan used left nothing behind, and is named nowhere.
 //
-// The user-level folder (21.5.19, P7): the settings and credentials of
-// `WORKFLOWS_CONFIG_DIR` or `~/.config/workflows/`, its `config.json` and
-// `credentials.json`, are copied into `LEDGER_CONFIG_DIR` or
-// `~/.config/ledger/`, read through a link where either folder is one, and
-// the old folder is left exactly as it was, so a project on the machine
-// still on today's skills keeps its own, never sharing the engine's files.
-// Each is copied only where the old folder holds it as a file of its own
-// that reads and the engine's folder holds nothing of its name, not even a
-// link to nothing: the engine's copy wins, never written over, so a later
-// project's migration copies only what the engine's folder still lacks.
-// One left behind goes unsaid: the engine's setup asks for what it lacks.
-// Nothing else in the old folder is copied — its conversations' state has
-// no use to the engine — and nothing of it is moved or removed. The old cache, the knowledge store and the old
+// The user-level folder (21.5.19, P7): its settings and credentials are
+// copied into the engine's (reshape/user-files.cjs), the old folder left
+// exactly as it was. The old cache, the knowledge store and the old
 // migrations record are left where they are (21.5.10).
 //
 // Each unit, a folder under `.workflows/` holding a manifest:
@@ -326,9 +316,6 @@
 //   - two notes of one name under different kinds keep the first, the second
 //     kept as legacy;
 //   - a roadmap source naming a file the move dropped keeps its old path;
-//   - a kill while the settings or credentials are copied leaves a
-//     temporary file beside them in the engine's folder, as private as
-//     the file it copies;
 //   - a dead-ended topic the move cancels keeps any experiment still running
 //     on it, and the wait its discussion holds on one;
 //   - a unit renamed to its lowercase name where another unit holds that
@@ -344,9 +331,10 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { carryLinters } = require('./reshape/linters.cjs');
+const { copyUserFiles } = require('./reshape/user-files.cjs');
 const { OLD_PLAN_PHASES, oldSystemFile, ENVIRONMENT_SETUP, withSetupNote } = require('./reshape/old-system.cjs');
 const {
-  OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, SIDECAR_NAME, git, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, writeNew, preLedgerStores, unreadStores,
+  OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, SIDECAR_NAME, git, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, preLedgerStores, unreadStores,
 } = require('./reshape/shared.cjs');
 
 const CODE_GITIGNORE = '.gitignore';
@@ -1930,58 +1918,6 @@ const oldUserFolder = () => process.env.WORKFLOWS_CONFIG_DIR || path.join(os.hom
 /** The user-level folder the engine reads. */
 const userFolder = () => process.env.LEDGER_CONFIG_DIR || path.join(os.homedir(), '.config', 'ledger');
 
-/** @param {string} at @returns {fs.Stats|null} */
-function lstatOf(at) {
-  try {
-    return fs.lstatSync(at);
-  } catch {
-    return null;
-  }
-}
-
-/** The files of today's user-level folder the engine reads: its settings and its credentials. */
-const USER_FILES = ['config.json', 'credentials.json'];
-
-/** `at`'s real path where it is there, else `at`. @param {string} at */
-function realOr(at) {
-  try {
-    return fs.realpathSync(at);
-  } catch {
-    return at;
-  }
-}
-
-/** What `file` holds, or null where it cannot be read. @param {string} file @returns {Buffer|null} */
-function contentOf(file) {
-  try {
-    return fs.readFileSync(file);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * The user-level folder's settings and credentials copied into the
- * engine's (21.5.19, P7), each where the old folder holds it as a file of
- * its own that reads, never written over what the engine's folder holds of
- * its name;
- * the old folder left as it was, so a project still on today's skills keeps
- * its own.
- */
-function copyUserFiles() {
-  const from = oldUserFolder();
-  if (!fs.existsSync(from) || !fs.statSync(from).isDirectory()) return;
-  const to = realOr(userFolder());
-  for (const name of USER_FILES) {
-    const file = path.join(from, name);
-    const source = lstatOf(file);
-    const content = source?.isFile() === true ? contentOf(file) : null;
-    if (source === null || content === null) continue;
-    fs.mkdirSync(to, { recursive: true });
-    writeNew(path.join(to, name), content, source.mode & 0o777);
-  }
-}
-
 /**
  * The addendum's line naming each place the move kept legacy files in, with
  * how many, never the files: a project can keep thousands, and the folders
@@ -2091,7 +2027,7 @@ function move(projectDir, reportUpdate, reportSkip) {
   renameUnits(state, renames, new Set(stores.flatMap(({ files }) => files)));
   journalCorrections(state, mistyped, renames);
   const placed = (/** @type {string} */ rel) => renamedPath(rel, renames);
-  copyUserFiles();
+  copyUserFiles(oldUserFolder(), userFolder());
   const lintersNote = carryLinters(state);
   const notes = [
     renames.size === 0 ? null : `${renames.size === 1 ? 'This unit\'s name' : 'These units\' names'} broke the rule a unit's name keeps — lowercase letters and digits, joined by single hyphens — by case alone, so ${renames.size === 1 ? 'it is' : 'each is'} carried under its lowercase name, its folder, its registry entry and every reference the move wrote to it following, its legacy files' words kept as they were: ${[...renames].map(([from, to]) => `${from} is ${to}`).join(', ')}.`,
