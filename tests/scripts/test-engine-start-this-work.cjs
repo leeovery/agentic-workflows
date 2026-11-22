@@ -131,6 +131,22 @@ describe('start this work, the screen (8.8.2, 8.S16, 8.S21)', () => {
     assert.deepStrictEqual(answer('start this work', 'y'), { kind: 'engine', argv: ['start-this-work', 'yes'] });
   });
 
+  it('lists what an epic\'s yes carries from before beneath the reason: each point by its id, and each shared file with what it holds and how it is read', () => {
+    writeState(dir(), TRANSCRIPT, '# The gifting call\n');
+    const out = screen(['start-this-work'], { ...FUMI, from_before: POINTS, shared_files: SHARED });
+    assert.strictEqual(sectionOf(out, 'DISPLAY: start this work').split('\n').slice(7).join('\n'), [
+      '',
+      'FROM BEFORE (2, into the epic)',
+      '  ├─ D101: One gift shape',
+      '  └─ B51: How a pocket pays for itself is open',
+      '',
+      'SHARED FILES (1, into the epic)',
+      '  └─ .product/assets/planning/log/2026-01-04.md — The gifting',
+      '     call with the shop owners (reference)',
+      '',
+    ].join('\n'));
+  });
+
   it('read again without --file, draws what is staged; with nothing staged, refuses', () => {
     assert.match(refusedPristine(dir(), ['render', 'start-this-work'], { env: SESSION }).error,
       /^render start-this-work: nothing is staged — render start-this-work --file <payload\.json> stages the work$/);
@@ -188,6 +204,24 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
     assert.deepStrictEqual([readState(dir(), FROM_BEFORE), readState(dir(), layout.productPicture), fs.existsSync(thinned)], [`${HELD}${HELD_FILES}`, '# Where the product stands\n\n- Gifting — started, in fumi.\n', false]);
     const committed = touched(statePath(dir()), 'HEAD').map((line) => line.split('\t')[1]);
     assert.deepStrictEqual([FROM_BEFORE, layout.productPicture].filter((rel) => !committed.includes(rel)), [], 'both in the one commit');
+  });
+
+  it('refuses a thinned picture once the picture is written after its draft — at the stage, and, staged, at the yes, writing nothing — so a draft never lands over what the picture gained since', () => {
+    const live = statePath(dir(), layout.productPicture);
+    writeState(dir(), layout.productPicture, '# Where the product stands\n');
+    inTheProduct();
+    const thinned = scratch('# Where the product stands\n\n- Gifting — started, in fumi.\n');
+    /** `file` written `minutes` from now, as its time says. @param {string} file @param {number} minutes */
+    const writtenIn = (file, minutes) => fs.utimesSync(file, new Date(Date.now() + minutes * 60_000), new Date(Date.now() + minutes * 60_000));
+    const newer = 'the picture was rewritten after its thinned draft — draft the thinning again from the picture as it stands, then stage again';
+
+    writtenIn(live, 1);
+    const atStage = refusedStage({ ...FUMI, picture: thinned });
+    writtenIn(thinned, 2);
+    screen(['start-this-work'], { ...FUMI, picture: thinned });
+    writtenIn(live, 3);
+
+    assert.deepStrictEqual([atStage, refusedPristine(dir(), ['start-this-work', 'yes'], { env: SESSION }).error], [`render start-this-work: ${newer}`, `start-this-work yes: ${newer}`]);
   });
 
   it('a type call starting an epic beside another window holding the product\'s conversation open writes its points from before into the epic, that window\'s log untouched', () => {

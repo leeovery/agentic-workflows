@@ -52,7 +52,7 @@ const DRAWN = Object.freeze({
   '.cache/.set-aside/pay/round-1/put-1/src/card.js': 'free .cache/.set-aside/{unit}',
   'pay/manifest.json': 'engine {unit}/manifest.json',
   'pay/discovery/session-001.md': 'log {unit}/discovery/session-{NNN}.md',
-  'pay/discovery/from-before.md': 'file {unit}/discovery/from-before.md',
+  'pay/discovery/from-before.md': 'engine {unit}/discovery/from-before.md',
   'pay/seeds/2026-10-30--smart-retry.md': 'free {unit}/seeds',
   'pay/topics/auth/brief.md': 'engine {unit}/topics/{topic}/brief.md',
   'pay/topics/auth/log.md': 'log {unit}/topics/{topic}/log.md',

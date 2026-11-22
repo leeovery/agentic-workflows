@@ -22,8 +22,11 @@
 //     closed log holding talk by its closing line, the open log in full
 //     where it holds talk, as a conversation carrying the sitting on from
 //     another reads it, and each unit started since that closed sitting's
-//     last conversation began — on its day or after, whichever door started
-//     it, so a return points the picture at work started without it; the
+//     first conversation began — or, with none closed, the open sitting's —
+//     on its day or after, whichever door started it, with what the work
+//     carries: an epic's points from before, else its first log, a
+//     feature's or a bugfix's brief, a quick-fix's description; so a return
+//     points the picture at work started without it; the
 //     roadmap, the product record with the code's
 //     findings, and whether the baseline's research is owed (8.2.10,
 //     8.12.13) — where it starts work from seeds, the seeds and the picture
@@ -83,6 +86,7 @@ const { beyondLists } = require('./discovery-log.cjs');
 const { assertSeeds, seedReads } = require('./seeds.cjs');
 const { fromBeforeFile } = require('./from-before.cjs');
 const { loadProjectManifest, loadManifest } = require('./reads.cjs');
+const { briefFile } = require('./derivations.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
 /** @typedef {import('./enter.cjs').Entering} Entering */
@@ -241,27 +245,44 @@ function productStanding(cwd) {
   const open = activeSession(cwd, PRODUCT);
   const openLog = open === null ? null : statePath(cwd, logAt(PRODUCT, open));
   const closed = talk.filter((log) => log !== openLog).at(-1);
+  const opened = talk.filter((log) => log === openLog);
   return [
     ...picture,
     ...(closed === undefined ? [] : [as('latest sitting')(closedBy(closed))]),
-    ...talk.filter((log) => log === openLog).map(as('session log')),
-    ...(closed === undefined ? [] : startedSince(cwd, closed)),
+    ...opened.map(as('session log')),
+    ...startedSince(cwd, closed ?? opened[0]),
   ];
 }
 
 /**
- * Each unit started on or after the day the closed sitting's last
- * conversation began, `{unit} {type}`, in the order the project registered
- * them.
- * @param {string} cwd @param {string} closed absolute @returns {Line[]}
+ * What a unit started carries, where a return points the picture at it:
+ * an epic's points from before, else its first log; a feature's or a
+ * bugfix's brief; a quick-fix's description. Null where it holds none.
+ * @param {string} cwd @param {string} unit @param {string} type @param {Record<string, any>} manifest
+ * @returns {string|null}
  */
-function startedSince(cwd, closed) {
-  const since = namedConversations(closed).at(-1)?.date;
+function carrierOf(cwd, unit, type, manifest) {
+  if (type === 'quick-fix') return typeof manifest.description === 'string' ? `its description: ${manifest.description}` : null;
+  const files = type === 'epic' ? [fromBeforeFile(cwd, unit), statePath(cwd, logAt(unit, '001'))] : [statePath(cwd, briefFile(unit, unit))];
+  return files.find((file) => fs.existsSync(file)) ?? null;
+}
+
+/**
+ * Each unit started on or after the day the sitting `since` names began,
+ * by its first conversation — the latest closed one, or with none the open
+ * one — `{unit} {type} — {what it carries}`, in the order the project
+ * registered them; none where no sitting has talked.
+ * @param {string} cwd @param {string|undefined} sitting absolute @returns {Line[]}
+ */
+function startedSince(cwd, sitting) {
+  const since = sitting === undefined ? undefined : namedConversations(sitting)[0]?.date;
   if (since === undefined) return [];
   const units = Object.entries(loadProjectManifest(cwd)?.work_units ?? {});
   return units.flatMap(([unit, { work_type: type }]) => {
-    const created = loadManifest(cwd, unit)?.created;
-    return typeof created === 'string' && created >= since ? [as('started since')(`${unit} ${type}`)] : [];
+    const manifest = loadManifest(cwd, unit);
+    if (typeof manifest?.created !== 'string' || manifest.created < since) return [];
+    const carrier = carrierOf(cwd, unit, type, manifest);
+    return [as('started since')(`${unit} ${type}${carrier === null ? '' : ` — ${carrier}`}`)];
   });
 }
 

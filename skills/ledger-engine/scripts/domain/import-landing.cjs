@@ -9,14 +9,18 @@
 // takes, deduped as a file is and never the migration's `legacy`, and its
 // tree beneath it with every name kept, so the links its files make to each
 // other still resolve. A dotted entry in it is tooling state, passed over
-// and named as a dotfile is, and a folder landing no file is skipped and
-// named. A name a filesystem the state may live on refuses is slugged by
-// the file rules and named. A file Claude Code loads as instructions once
+// and named as a dotfile is, and a folder landing no file, shared or
+// within one, is skipped and named. A shared folder's name the landing
+// changes is named. A name a filesystem the state may live on refuses is
+// slugged by the file rules and named, deduped against its folder's names
+// in any case, as a filesystem that ignores case would read them. A file Claude Code loads as instructions once
 // a file beside it is read — `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, in
 // any case — lands under a name it never loads, named, whether shared alone
 // or in a folder. A name holding a control character, an entry that is
 // neither a file nor a folder, a file that cannot be read and a folder that
-// cannot be listed refuse the whole call, by name, before anything lands.
+// cannot be listed refuse the whole call, by name, before anything lands —
+// a path shared that cannot be read or listed among the paths named
+// missing.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -90,6 +94,16 @@ const unloaded = (name) => INSTRUCTIONS[/** @type {keyof typeof INSTRUCTIONS} */
 /** The assets folder the migration's legacy files live in, which no shared folder takes. */
 const MIGRATION_FOLDER = 'legacy';
 
+/** Whether the file at `at` can be read, or the folder listed. @param {string} at absolute @param {boolean} folder */
+function readable(at, folder) {
+  try {
+    fs.accessSync(at, folder ? fs.constants.R_OK | fs.constants.X_OK : fs.constants.R_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Why an entry of a shared folder cannot land, or null where it can.
  * @param {string} at absolute @param {fs.Dirent} entry
@@ -99,26 +113,24 @@ function cannotLand(at, entry) {
   if (UNHOLDABLE.test(entry.name)) return 'a control character in its name — rename it, or share the folder without it';
   if (entry.isSymbolicLink()) return 'a link — share the folder without it';
   if (!entry.isFile() && !entry.isDirectory()) return 'neither a file nor a folder — share the folder without it';
-  try {
-    fs.accessSync(at, entry.isDirectory() ? fs.constants.R_OK | fs.constants.X_OK : fs.constants.R_OK);
-    return null;
-  } catch {
-    return `${entry.isDirectory() ? 'a folder that cannot be listed' : 'a file that cannot be read'} — make it readable, or share the folder without it`;
-  }
+  if (readable(at, entry.isDirectory())) return null;
+  return `${entry.isDirectory() ? 'a folder that cannot be listed' : 'a file that cannot be read'} — make it readable, or share the folder without it`;
 }
 
 /**
  * A shared folder's tree as it lands, in name order: each file, by its path
- * below the folder and the path it lands at; its dotted entries, passed
- * over; each name the landing changes; and what cannot land, with why.
+ * below the folder and the path it lands at; its dotted entries and each
+ * folder within it landing no file, passed over; each name the landing
+ * changes; and what cannot land, with why.
  * @typedef {{files: {from: string, to: string}[], skipped: string[], renamed: {from: string, to: string}[], refused: string[]}} Tree
  * @param {string} folder absolute @returns {Tree}
  */
 function folderTree(folder) {
   /** @type {Tree} */
   const tree = { files: [], skipped: [], renamed: [], refused: [] };
-  /** @param {string} from @param {string} to */
+  /** The files landed below `from`, at `to`. @param {string} from @param {string} to @returns {number} */
   const walk = (from, to) => {
+    const before = tree.files.length;
     const entries = fs.readdirSync(path.join(folder, from), { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1));
     /** @type {Set<string>} */
     const taken = new Set(entries.map((entry) => entry.name));
@@ -134,11 +146,22 @@ function folderTree(folder) {
           continue;
         }
         const landed = to === '' ? named : `${to}/${named}`;
-        if (named !== entry.name) tree.renamed.push({ from: at, to: landed });
-        if (entry.isDirectory()) walk(at, landed);
-        else tree.files.push({ from: at, to: landed });
+        const rename = named === entry.name ? [] : [{ from: at, to: landed }];
+        if (entry.isFile()) {
+          tree.renamed.push(...rename);
+          tree.files.push({ from: at, to: landed });
+          continue;
+        }
+        const mark = tree.renamed.length;
+        if (walk(at, landed) === 0) {
+          tree.renamed.length = mark;
+          tree.skipped.push(at);
+        } else {
+          tree.renamed.splice(mark, 0, ...rename);
+        }
       }
     }
+    return tree.files.length - before;
   };
   walk('', '');
   return tree;
@@ -148,7 +171,7 @@ function folderTree(folder) {
  * The name an entry of a shared folder lands under: its own, but slugged
  * where a filesystem the state may live on refuses it and moved off a name
  * Claude Code loads as instructions, either deduped against its folder's
- * other names; null where the rules slug it away.
+ * other names in any case; null where the rules slug it away.
  * @param {fs.Dirent} entry @param {Set<string>} taken its folder's names, each kept or landed
  * @returns {string|null}
  */
@@ -209,7 +232,7 @@ function assertLandableSources(cwd, paths) {
   const missing = paths.filter((p) => {
     try {
       const stat = fs.statSync(path.resolve(cwd, p));
-      return !stat.isFile() && !stat.isDirectory();
+      return !(stat.isFile() || stat.isDirectory()) || !readable(path.resolve(cwd, p), stat.isDirectory());
     } catch {
       return true;
     }
@@ -228,16 +251,17 @@ function assertLandableSources(cwd, paths) {
 /**
  * A collision-free destination name: suffix the stem with `-2`, `-3`, … —
  * never the extension — until unique against both the destination directory
- * and the batch so far. The batch check keeps a source path given twice from
- * silently overwriting.
+ * and the batch so far, in any case. The batch check keeps a source path
+ * given twice from silently overwriting.
  * @param {string} name normalised filename
  * @param {string|null} destDir absolute destination directory, or null for a folder not on disk yet
  * @param {Set<string>} taken names already chosen in this batch
  * @returns {string}
  */
 function dedupe(name, destDir, taken) {
+  const folded = new Set([...taken].map((n) => n.toLowerCase()));
   /** @param {string} n */
-  const clashes = (n) => taken.has(n) || (destDir !== null && fs.existsSync(path.join(destDir, n)));
+  const clashes = (n) => folded.has(n.toLowerCase()) || (destDir !== null && fs.existsSync(path.join(destDir, n)));
   if (!clashes(name)) return name;
   const { stem, ext } = splitName(name);
   const suffix = ext === '' ? '' : `.${ext}`;
@@ -262,8 +286,8 @@ function dedupe(name, destDir, taken) {
  * Reads the directory, writes nothing — the copy is a separate step, so a
  * caller can refuse before anything lands. A dotfile, a folder's dotted
  * entries and a folder landing no file are skipped and named; each name the
- * landing changes beyond the file rules is named, from its source to where
- * it lands below the destination.
+ * landing changes beyond the file rules — a shared folder's own among them
+ * — is named, from its source to where it lands below the destination.
  * @param {string} cwd project root
  * @param {string[]} sources source paths
  * @param {string} destDir absolute destination directory
@@ -295,6 +319,7 @@ function planImports(cwd, sources, destDir) {
       planned.push({ src, dest });
       continue;
     }
+    if (dest !== base) renamed.push({ from: unslashed(src), to: dest });
     skipped.push(...tree.skipped.map((rel) => `${unslashed(src)}/${rel}`));
     renamed.push(...tree.renamed.map(({ from, to }) => ({ from: `${unslashed(src)}/${from}`, to: `${dest}/${to}` })));
     planned.push({ src, dest, files: tree.files });

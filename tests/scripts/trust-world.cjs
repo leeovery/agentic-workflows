@@ -237,10 +237,10 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
     /**
      * A raise on `kind` that landed as the ledger's `entry`, answered
      * `answer` — the person's "don't care" where `dontCare`, asked blind
-     * where `blind`.
-     * @param {string} entry @param {string} answer @param {Kind} [kind] @param {{dontCare?: boolean, blind?: boolean}} [opts]
+     * where `blind`, always asked by the mark `always` names.
+     * @param {string} entry @param {string} answer @param {Kind} [kind] @param {{dontCare?: boolean, blind?: boolean, always?: string|null}} [opts]
      */
-    answered: (entry, answer, kind = 'behaviour', { dontCare = false, blind = false } = {}) => raise(kind, answer, { entry, dontCare, blind }),
+    answered: (entry, answer, kind = 'behaviour', { dontCare = false, blind = false, always = null } = {}) => raise(kind, answer, { entry, dontCare, blind, always }),
     /** The person's yes to the convergence offer on `topic` of `unit`. @param {string} unit @param {string} topic */
     converged: (unit, topic) => log('convergence', { unit, topic }),
     /**

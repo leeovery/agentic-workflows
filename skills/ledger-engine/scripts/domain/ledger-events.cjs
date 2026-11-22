@@ -18,8 +18,10 @@
 // moved whom (5.1.1, 5.3.10). Then its own:
 //
 // - asked: a question goes on a topic's map — the question, the question
-//   whose unsettled part it is (5.3.11), and what it relies on. A review's
-//   finding is a question the review asked (5.3.9).
+//   whose unsettled part it is (5.3.11), and what it relies on; and where it
+//   is a point of the record the person brought from before, its id there,
+//   `from_before`, which every raise of it always asks by (raise.cjs). A
+//   review's finding is a question the review asked (5.3.9).
 // - found: a fact, how it is known, what it relies on, and whether it is
 //   product-wide (5.2.5). How it is known is said in words, `how`, and
 //   by its kind, `known` (9.2.12): measured, or exploratory — measured in
@@ -263,6 +265,7 @@ const CONTENT = {
     field('relies_on', listOf(ID)),
     CITES,
     FOR_TASK,
+    field('from_before', nullable(TEXT), { version: 2, default: null }),
   ],
   finding: [
     field('text', TEXT),
@@ -348,7 +351,7 @@ function rehomeHolds({ lines, files }) {
 
 /** @type {Schema} */
 const SCHEMA = {
-  version: 1,
+  version: 2,
   events: {
     asked: event([...made([...PEOPLE, 'review']), ...CONTENT.question]),
     found: event([...made(PEOPLE), ...CONTENT.finding]),

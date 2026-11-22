@@ -87,7 +87,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.ledger/manifest.json` — project manifest: work-unit registry, defaults, roadmap, the brownfield offer's answer
 - `.ledger/.ledger.jsonl` — the ledger: every question, finding and decision, one event a line
 - `.ledger/{work_unit}/manifest.json` — work-unit manifest
-- `.ledger/{work_unit}/discovery/session-NNN.md` — discovery session logs; `from-before.md` an epic's points from before, kept at its start
+- `.ledger/{work_unit}/discovery/session-NNN.md` — discovery session logs; `from-before.md` an epic's points from before and the shared files that bear on it, kept at its start and joined by each point its discovery meets
 - `.ledger/{work_unit}/topics/{topic}/` — a topic's own place: `brief.md` its brief, `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it, `earlier/` the files a unit moved to another type set aside from before
 - `.ledger/{work_unit}/spec.md` — the unit's one spec
 - `.ledger/{work_unit}/summary.md` — a quick-fix's short record after the work

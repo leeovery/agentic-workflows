@@ -212,7 +212,7 @@ describe('an import (9.10.5, 9.10.11)', () => {
     assert.ok(fs.existsSync(statePath(dir, '.product', 'assets', 'market-notes.md')));
   });
 
-  it('lands a shared folder whole under its own name by the rules, deduped as a file is, its tree and its names kept so its own links still resolve, a dotted entry in it skipped and named — answering the folder\'s path with its files, nothing committed', () => {
+  it('lands a shared folder whole under its own name by the rules, deduped as a file is and named where it changes, its tree and its names kept so its own links still resolve, a dotted entry in it skipped and named — answering the folder\'s path with its files, nothing committed', () => {
     const before = head(dir);
     saved('.product/assets/planning-notes/kept.md');
     const folder = path.join(shared(), 'Planning Notes');
@@ -222,7 +222,9 @@ describe('an import (9.10.5, 9.10.11)', () => {
 
     const res = asset(['import', 'product', `${folder}/`]);
 
-    assert.deepStrictEqual(res, { ok: true, imports: ['.product/assets/planning-notes-2'], skipped_imports: [`${folder}/research/.DS_Store`], folders: [{ path: '.product/assets/planning-notes-2', files: tree }] });
+    assert.deepStrictEqual(res, {
+      ok: true, imports: ['.product/assets/planning-notes-2'], skipped_imports: [`${folder}/research/.DS_Store`], renamed_imports: [{ from: folder, to: '.product/assets/planning-notes-2' }], folders: [{ path: '.product/assets/planning-notes-2', files: tree }],
+    });
     assert.deepStrictEqual(tree.map((rel) => fs.readFileSync(statePath(dir, '.product/assets/planning-notes-2', rel), 'utf8')), tree.map((rel) => `Planning Notes/${rel}\n`));
     assert.strictEqual(fs.existsSync(statePath(dir, '.product/assets/planning-notes-2/research/.DS_Store')), false, `${hidden} landed`);
     assert.strictEqual(head(dir), before);
@@ -232,9 +234,9 @@ describe('an import (9.10.5, 9.10.11)', () => {
     assert.deepStrictEqual(committedFiles(), [layout.ledger, ...tree.map((rel) => `.product/assets/planning-notes-2/${rel}`)].sort(), 'its tree entering the state with its link');
   });
 
-  it('lands a file Claude Code would load as instructions under a name it never loads, in any case, shared alone or at any depth of a folder, and a name a filesystem refuses slugged — naming each', () => {
+  it('lands a file Claude Code would load as instructions under a name it never loads, in any case, shared alone or at any depth of a folder, and a name a filesystem refuses slugged — each deduped against its folder\'s names in any case, as a filesystem that ignores case reads them, and named', () => {
     const folder = path.join(shared(), 'Record');
-    for (const rel of ['CLAUDE.md', 'agents-md.md', 'AGENTS.md', 'notes/Claude.local.md', 'notes/What next?.md']) sharing(path.join('Record', rel));
+    for (const rel of ['CLAUDE.md', 'agents-md.md', 'AGENTS.md', 'notes/Claude.local.md', 'notes/What next?.md', 'notes/What-Next.md']) sharing(path.join('Record', rel));
     const alone = sharing('alone/claude.MD');
 
     const res = asset(['import', 'product', folder, alone]);
@@ -244,35 +246,48 @@ describe('an import (9.10.5, 9.10.11)', () => {
       imports: ['.product/assets/record', '.product/assets/claude-md.md'],
       skipped_imports: [],
       renamed_imports: [
+        { from: folder, to: '.product/assets/record' },
         { from: `${folder}/AGENTS.md`, to: '.product/assets/record/agents-md-2.md' },
         { from: `${folder}/CLAUDE.md`, to: '.product/assets/record/claude-md.md' },
         { from: `${folder}/notes/Claude.local.md`, to: '.product/assets/record/notes/claude-local-md.md' },
-        { from: `${folder}/notes/What next?.md`, to: '.product/assets/record/notes/what-next.md' },
+        { from: `${folder}/notes/What next?.md`, to: '.product/assets/record/notes/what-next-2.md' },
         { from: alone, to: '.product/assets/claude-md.md' },
       ],
-      folders: [{ path: '.product/assets/record', files: ['agents-md-2.md', 'claude-md.md', 'agents-md.md', 'notes/claude-local-md.md', 'notes/what-next.md'] }],
+      folders: [{ path: '.product/assets/record', files: ['agents-md-2.md', 'claude-md.md', 'agents-md.md', 'notes/claude-local-md.md', 'notes/what-next-2.md', 'notes/What-Next.md'] }],
     });
-    assert.strictEqual(fs.readFileSync(statePath(dir, '.product/assets/record/claude-md.md'), 'utf8'), 'Record/CLAUDE.md\n');
+    assert.deepStrictEqual(['claude-md.md', 'notes/what-next-2.md', 'notes/What-Next.md'].map((rel) => fs.readFileSync(statePath(dir, '.product/assets/record', rel), 'utf8')), [
+      'Record/CLAUDE.md\n', 'Record/notes/What next?.md\n', 'Record/notes/What-Next.md\n',
+    ]);
   });
 
-  it('skips and names a folder that lands no file, and never lands one as the migration\'s legacy folder', () => {
+  it('skips and names a folder that lands no file, shared or within one, and never lands one as the migration\'s legacy folder, naming the name it takes', () => {
     const empty = path.join(shared(), 'Empty');
     fs.mkdirSync(empty);
     const dotted = path.dirname(sharing('Dotted/.env'));
     const legacy = path.dirname(sharing('Legacy/old-plan.md'));
+    fs.mkdirSync(path.join(legacy, 'drafts'));
 
     const res = asset(['import', 'product', empty, dotted, legacy]);
 
-    assert.deepStrictEqual(res, { ok: true, imports: ['.product/assets/legacy-2'], skipped_imports: [empty, dotted, `${dotted}/.env`], folders: [{ path: '.product/assets/legacy-2', files: ['old-plan.md'] }] });
+    assert.deepStrictEqual(res, {
+      ok: true, imports: ['.product/assets/legacy-2'], skipped_imports: [empty, dotted, `${dotted}/.env`, `${legacy}/drafts`], renamed_imports: [{ from: legacy, to: '.product/assets/legacy-2' }], folders: [{ path: '.product/assets/legacy-2', files: ['old-plan.md'] }],
+    });
     assert.strictEqual(refused(['import', UNIT, empty]), `asset import: nothing to land — the filename rules skip every file given (${empty})`);
   });
 
-  it('refuses the whole call over a path naming no file or folder, naming each; over a folder holding a link, a file it cannot read, a folder it cannot list or a name with a control character, naming each with why; and over a call whose every file the rules skip — landing nothing', () => {
+  it('refuses the whole call over a path naming no file or folder, or a file it cannot read or a folder it cannot list, naming each; over a folder holding a link, a file it cannot read, a folder it cannot list or a name with a control character, naming each with why; and over a call whose every file the rules skip — landing nothing', () => {
     const real = sharing('real.md');
     const ghost = path.join(shared(), 'ghost.md');
 
-    const missing = refusedPristine(dir, ['asset', 'import', 'product', real, ghost], { env: SESSION });
-    assert.deepStrictEqual(missing, { ok: false, error: `import path(s) not found, not a file or a folder, or unreadable: ${ghost}`, missing_imports: [ghost] });
+    const locked = sharing('locked.md', 0o000);
+    const shut = path.join(shared(), 'shut');
+    fs.mkdirSync(shut, { mode: 0o000 });
+    try {
+      const missing = refusedPristine(dir, ['asset', 'import', 'product', real, ghost, locked, shut], { env: SESSION });
+      assert.deepStrictEqual(missing, { ok: false, error: `import path(s) not found, not a file or a folder, or unreadable: ${ghost}, ${locked}, ${shut}`, missing_imports: [ghost, locked, shut] });
+    } finally {
+      fs.chmodSync(shut, 0o755);
+    }
     const album = path.dirname(sharing('album/a.png'));
     sharing('album/b\u0007bell.png');
     sharing('album/locked.png', 0o000);

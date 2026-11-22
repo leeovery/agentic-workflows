@@ -99,7 +99,7 @@ function planting(root, unit = UNIT) {
   /** @param {string} topic @param {Record<string, unknown>} fields */
   const plant = (topic, fields) => /** @type {string} */ (appendEntry(root, { unit, topic, phase: 'discussion', session: SESSION_ID, ...fields }, [], newId()).id);
   /** @param {string} topic @param {string} text */
-  const asked = (topic, text) => plant(topic, { event: 'asked', ...MADE, text, part_of: null, relies_on: [], cites: [], task: null });
+  const asked = (topic, text) => plant(topic, { event: 'asked', ...MADE, text, part_of: null, relies_on: [], cites: [], task: null, from_before: null });
   /** @param {string} topic @param {string} question @param {number} n */
   const decided = (topic, question, n) => plant(topic, {
     event: 'decided', by: 'person', who_moved_whom: 'none', answers: question, text: `Answer ${n}.`, why: 'They said so.', rules_out: [], relies_on: [],
@@ -136,7 +136,7 @@ afterEach(() => {
   cleanupFixture(dir);
 });
 
-const { entries } = ledgerHelpers(() => dir);
+const { entries, write, full } = ledgerHelpers(() => dir);
 const { conversation, inFolder, project, answer, raised } = raiseHelpers(() => dir, config, { sort: 'several', lean: '1' });
 const { logEvents } = trustLogHelpers(() => dir, config);
 
@@ -245,6 +245,17 @@ describe('the run (16.8.7)', () => {
       agreeing(h, 4);
       h.answered(made.here[4], '1', 'behaviour', { dontCare: true, blind: true });
       agreeing(h, 4, 5);
+    });
+
+    assert.strictEqual(due(), 8);
+  });
+
+  it('the person\'s answer to a point from before, which always comes to them, neither extends nor breaks it, whether Claude\'s lean or another', () => {
+    logOf((h) => {
+      agreeing(h, 4);
+      h.answered(made.here[4], '1', 'behaviour', { always: 'from-before' });
+      h.answered(made.here[5], '2', 'behaviour', { always: 'from-before' });
+      agreeing(h, 4, 6);
     });
 
     assert.strictEqual(due(), 8);
@@ -479,6 +490,22 @@ describe('settling (16.8.5)', () => {
 
     assert.deepStrictEqual([forecastFor(out, 'opens'), forecastFor(out, 'scrolls'), measured.decision, measured.reason], [
       `open ${shortOf('opens')}: yours, behaviour`, `open ${shortOf('scrolls')}: mine, behaviour`, 'ask', `Experiment ${experiment}, still running, measures this question, so it comes to you.`,
+    ]);
+  });
+});
+
+describe('a point from before', () => {
+  it('always comes to the person: the forecast counts it theirs however quiet its kind, as every raise of it asks', (t) => {
+    undrawn(t);
+    logOf((h) => h.agree(30, 'behaviour'));
+    const text = 'Does a gift expire?';
+    const point = full(write('ask', NOTE, [], { ...MADE, text, from_before: 'D5' }).id);
+
+    const out = offer(['--asked'], { CLAUDE_STUB_ANSWERS: JSON.stringify({ [text]: labelAnswers('behaviour'), ...JSON.parse(LABELS) }) });
+
+    const short = shortIds(entries().map(({ id }) => id)).get(point);
+    assert.deepStrictEqual([sectionOf(out, 'DATA').split('\n').find((line) => line.startsWith(`open ${short}: `)), forecastFor(out, 'opens')], [
+      `open ${short}: yours, behaviour`, `open ${shortOf('opens')}: mine, behaviour`,
     ]);
   });
 });

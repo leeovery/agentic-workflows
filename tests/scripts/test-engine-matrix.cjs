@@ -66,7 +66,7 @@ function addCare(dir, kind) {
 const on = (topic = 'note-window') => ({ unit: UNIT, topic, phase: 'discussion', session: SESSION });
 
 /** A question asked by `by`, as its line holds it. @param {string} text @param {string} [by] @param {string} [topic] */
-const asked = (text, by = 'review', topic = undefined) => ({ event: 'asked', ...on(topic), by, who_moved_whom: 'none', text, part_of: null, relies_on: [], cites: [], task: null });
+const asked = (text, by = 'review', topic = undefined) => ({ event: 'asked', ...on(topic), by, who_moved_whom: 'none', text, part_of: null, relies_on: [], cites: [], task: null, from_before: null });
 
 /** An answer to `question`, as its line holds it: decided by `by`, given `given`. @param {string} question @param {string} by @param {string} [given] */
 const answered = (question, by, given = 'own') => ({

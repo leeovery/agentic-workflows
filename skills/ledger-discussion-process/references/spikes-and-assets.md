@@ -29,9 +29,3 @@ A design spike ends in a lock: "which design?" is a question on the map, closed 
 ## Lifting Spike Code
 
 A piece of spike code lifted into the product is recorded, never drift: `asset lift {work_unit} {path} --into {path_in_project} --entry {id}`.
-
-## A Shared File
-
-A file the person shares is saved to `.ledger/{work_unit}/assets/` and linked from the entry it informs. A design living in an outside tool is kept as both: its exported image saved and linked, its live link in the linking entry. A path that names no file is asked about again, to be corrected or skipped, before anything lands; an image pasted with no file behind it is asked for as a saved file.
-
-Load **[reference-files.md](../../ledger-shared/references/reference-files.md)** and follow its instructions as written.

@@ -513,8 +513,9 @@ function leaveUnit(sessionId, workUnit) {
 // roadmap name their skill alone; the laboratory's, what its entry reads
 // of the experiment the position holds, named in a line, and until its
 // approval the spawning topic's record and log (experiment-entry.cjs);
-// discussion's names the topic's record and its log (24.2.1–24.2.3), and a
-// bugfix investigation's the same, its log the investigation (19.4.3);
+// discussion's names the topic's record, its brief and its log (24.2.1–
+// 24.2.3), and a bugfix investigation's the same, its log the
+// investigation (19.4.3);
 // discovery's, at an epic, the unit's map, the open log, each section of
 // the product's sessions its first log points at and the points from before
 // it carries (from-before.cjs), and at the product's

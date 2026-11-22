@@ -68,7 +68,7 @@
 const fs = require('fs');
 const { loadWorkUnitManifest, saveWorkUnitManifest, readProjectManifest, writeProjectManifestAtomic, withProjectLock } = require('../kernel/manifest.cjs');
 const { assertLegalName } = require('../kernel/manifest-schema.cjs');
-const { statePath } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { unitInProgress, discoveryStanding } = require('./topic-standing.cjs');
 const { computeTopicLifecycle, CLOSED_LIFECYCLES, dismissedNames, itemOf, topicKey, topicTitle, roadmapItems, itemJoin, briefFile } = require('./derivations.cjs');
 const {
@@ -84,6 +84,9 @@ const { filled, shaped, listed, readPayload, stage, stagedAt, refusing } = requi
 const { approveMapScreen, sweptMapScreen, sweptStrikePick } = require('./projections/discovery-gates.cjs');
 const { counted } = require('./projections/map.cjs');
 const { uncarried } = require('./from-before.cjs');
+const { placeHeard } = require('./discovery-log.cjs');
+const { waitingMessages } = require('./mail.cjs');
+const { ID_FACTS, foldLedger } = require('./ledger-fold.cjs');
 const { ontoEpic } = require('./topic-leave.cjs');
 
 /**
@@ -434,13 +437,38 @@ function briefsOf(cwd, unit, topics) {
 }
 
 /**
+ * Every text that places a point from before of the epic, by citing its
+ * id: each staged topic's brief, each park's summary, each direction not
+ * taken in the epic's logs, each message waiting in a topic of the map, and
+ * the id of each point the epic's questions were asked as. What the read
+ * passes over is the logs' and the ledger's own to say, never this
+ * screen's.
+ * @param {string} cwd @param {string} unit @param {Staged} staged @returns {string[]}
+ */
+function placing(cwd, unit, { topics, parks }) {
+  const root = stateRoot(cwd);
+  /** @type {string[]} */
+  const passed = [];
+  const asked = [...foldLedger(root, ID_FACTS, passed).values()].filter((facts) => facts.unit === unit && facts.from_before !== null);
+  return [
+    ...briefsOf(cwd, unit, topics),
+    ...parks.map(({ summary }) => summary),
+    ...placeHeard(root, unit, passed).notTaken.map(({ direction, why }) => `${direction} — ${why}`),
+    ...topics.flatMap(({ name }) => waitingMessages(cwd, unit, name).map(({ title, body }) => `${title}\n${body}`)),
+    ...asked.map(({ from_before: id }) => /** @type {string} */ (id)),
+  ];
+}
+
+/**
  * The map as the screen draws it: each topic by its title, marked on a
  * re-shape — a map approved before, its topics holding their order — each
- * park, and each point from before the epic carries that no brief cites.
+ * park, and each point from before the epic carries that nothing staged
+ * places (`placing`).
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {Staged} staged
  * @returns {import('./projections/discovery-gates.cjs').MapView}
  */
-function mapView(cwd, unit, manifest, { topics, parks }) {
+function mapView(cwd, unit, manifest, staged) {
+  const { topics, parks } = staged;
   const items = manifest.phases?.discovery?.items ?? {};
   const approved = liveInOrder(manifest).filter((key) => Number.isInteger(items[key].order));
   const names = topics.map(({ name }) => name);
@@ -449,7 +477,7 @@ function mapView(cwd, unit, manifest, { topics, parks }) {
     unit,
     topics: names.map((name) => ({ title: topicTitle(manifest, name), mark: marks.get(name) ?? null })),
     parks: parks.map(({ summary, horizon }) => ({ summary, horizon })),
-    uncarried: uncarried(cwd, unit, briefsOf(cwd, unit, topics)),
+    uncarried: uncarried(cwd, unit, placing(cwd, unit, staged)),
   };
 }
 

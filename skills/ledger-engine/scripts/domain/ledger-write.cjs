@@ -545,7 +545,7 @@ const MEASURED = Object.freeze(['measured', 'exploratory']);
 
 /** The content a write may leave out, and what it takes instead. @type {Readonly<Record<string, unknown>>} */
 const DEFAULTS = Object.freeze({
-  rules_out: [], product_wide: false, sealed: null, alternatives: [], evidence: [], given: 'own', command: null, result: null, cites: [],
+  rules_out: [], product_wide: false, sealed: null, alternatives: [], evidence: [], given: 'own', command: null, result: null, cites: [], from_before: null,
 });
 
 /** @param {Flag} flag */

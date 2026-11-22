@@ -47,6 +47,7 @@ const { labelling } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
+const { LEDGER_VERSION } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { recordReviewer, roundReportPath, settlementPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { freedAt } = require(path.join(SCRIPTS, 'domain/task-parks.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
@@ -199,7 +200,7 @@ describe('task close takes the task off its questions', () => {
 
     assert.deepStrictEqual([closed.task, closed.unparked], ['2.3', ['Q1', 'Q2']]);
     const { id: _id, ...line } = lastEntry();
-    assert.deepStrictEqual(line, { v: 1, event: 'unparked', unit: UNIT, topic: null, phase: 'review', session: SESSION, task: '2.3', parks: [full(q1), full(q2)] });
+    assert.deepStrictEqual(line, { v: LEDGER_VERSION, event: 'unparked', unit: UNIT, topic: null, phase: 'review', session: SESSION, task: '2.3', parks: [full(q1), full(q2)] });
     assert.deepStrictEqual(waiting(), [['Q1', ['2.4']], ['Q2', []]]);
     const { res, sections } = okSections(dir, ['raise', 'draw', UNIT, 'Q2'], { env: conversation() });
     assert.deepStrictEqual([res.parks, sections.split('\n')[2]], [[], 'Q2 · Fumi']);

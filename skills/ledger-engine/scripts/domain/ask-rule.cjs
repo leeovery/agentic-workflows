@@ -16,7 +16,9 @@
 //   may close meanwhile (9.1.11); and a question Claude marks as a design
 //   problem (19.4.22), testing against a live server (19.4.20), or code
 //   built otherwise than a decision from before Ledger (21.6.16), a mark
-//   that can only make it ask.
+//   that can only make it ask; and a question that is a point of the
+//   record the person brought from before, its own mark (raise.cjs), so it
+//   comes to them once.
 // - With no label — the labeller's call failed, or no login serves it —
 //   ask (16.19.8).
 // - Always ask where the label tells: a danger question, read from the

@@ -47,6 +47,7 @@ Some calls reach you whatever the counts say:
 - **Danger**: an option that could destroy, overwrite or expose your data or secrets, or weaken permissions or security. No count loosens it, and it is the fixed point the rest of the arithmetic cannot drift past.
 - **A care entry**: a kind you have said always asks in one project, written like "Aircon: look". What you care about depends on what the project is for, so an entry never covers every project. Your answers under it still count, so dropping it later leaves the counts knowing how Claude does on that kind.
 - **Replacing your own decision**: a call that would change an answer you gave comes back to you.
+- **A point from before**: a point of the [record from before](discovery.md#what-you-bring-from-before) comes to you once, with your answer from before as Claude's lean. That lean was yours, so your answer tells nothing of how Claude judges and counts for nothing.
 - **The authority gates**: start this work, approve the map, decided, ready to build and finish. They are not calls at all, and stop in both of the build's positions.
 
 ## How a question reaches you

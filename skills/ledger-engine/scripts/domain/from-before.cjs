@@ -13,11 +13,15 @@
 //   epic's own place, `discovery/from-before.md`, the files in a section of
 //   their own, whichever way the work started — the product's conversation
 //   or a type call, which holds no place there and so never writes into the
-//   product's logs (start-this-work.cjs).
+//   product's logs (start-this-work.cjs). A point from before the epic's own
+//   discovery meets joins them, after the last (`keepPoint`, discovery-
+//   log.cjs). The engine alone writes the file.
 // - The epic's discovery reads the file on every entry and after a
 //   compaction (discovery-entry.cjs, position.cjs), and approve the map's
-//   screen names each point no brief of the map carries — a brief carries a
-//   point by citing its id (approve-map.cjs).
+//   screen names each point nothing staged places (`uncarried`): a point is
+//   placed by any text that cites its id — a brief of the map, a park's
+//   summary, a direction not taken in the epic's logs, a message the epic
+//   sent a topic (approve-map.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -50,14 +54,14 @@ function oneLineEach(given, what) {
 
 /**
  * The points the payload gives, checked: each `{id, point, file}`, a line
- * apiece, an id once.
- * @param {unknown} given @returns {PointFromBefore[]}
+ * apiece, an id once; each named in a refusal as `named` says.
+ * @param {unknown} given @param {(at: number) => string} [named] @returns {PointFromBefore[]}
  */
-function pointsFromBefore(given) {
+function pointsFromBefore(given, named = (at) => `from_before ${at + 1}`) {
   const points = listed(given, 'from_before').map((point, at) => {
-    const fields = shaped(point, `from_before ${at + 1}`, ['id', 'point', 'file']);
-    oneLineEach(fields, `from_before ${at + 1}`);
-    if (/[\s:]/.test(/** @type {string} */ (fields.id))) throw new Error(`from_before ${at + 1}'s id is the record's own, as it writes it — no space or colon: got ${JSON.stringify(fields.id)}`);
+    const fields = shaped(point, named(at), ['id', 'point', 'file']);
+    oneLineEach(fields, named(at));
+    if (/[\s:]/.test(/** @type {string} */ (fields.id))) throw new Error(`${named(at)}'s id is the record's own, as it writes it — no space or colon: got ${JSON.stringify(fields.id)}`);
     return /** @type {PointFromBefore} */ (fields);
   });
   const twice = points.find(({ id }, at) => points.findIndex((p) => p.id === id) !== at);
@@ -84,11 +88,14 @@ function sharedFiles(cwd, given) {
   return files;
 }
 
+/** A point as the file writes it, its bullet left off. @param {PointFromBefore} point */
+const pointLine = ({ id, point, file }) => `${id}: ${point} (${file})`;
+
 /** The file's text. @param {FromBefore} held @returns {string} */
 function fromBeforeText({ points, files }) {
   return [
     '# From before\n',
-    ...(points.length === 0 ? [] : [`\n${points.map(({ id, point, file }) => `- ${id}: ${point} (${file})\n`).join('')}`]),
+    ...(points.length === 0 ? [] : [`\n${points.map((point) => `- ${pointLine(point)}\n`).join('')}`]),
     ...(files.length === 0 ? [] : [`\n${FILES_HEADING}\n\n${files.map(({ path, holds, kind }) => `- ${path} — ${holds} (${kind})\n`).join('')}`]),
   ].join('');
 }
@@ -116,19 +123,51 @@ function pointsOf(cwd, unit) {
   });
 }
 
+/**
+ * `text` with the point `line` written after the last point it holds, or as
+ * its first, above the shared files.
+ * @param {string} text @param {string} line
+ */
+function withPoint(text, line) {
+  const lines = text.replace(/\n$/, '').split('\n');
+  const files = lines.indexOf(FILES_HEADING);
+  const end = files === -1 ? lines.length : files;
+  const last = lines.slice(0, end).map((at) => POINT.test(at)).lastIndexOf(true);
+  if (last !== -1) lines.splice(last + 1, 0, `- ${line}`);
+  else if (files === -1) lines.push('', `- ${line}`);
+  else lines.splice(files, 0, `- ${line}`, '');
+  return `${lines.join('\n')}\n`;
+}
+
+/**
+ * The point from before `given` names, `{id, point, file}`, put in the
+ * unit's file after the points it holds — the file begun where it has none
+ * — answering its line; refused, writing nothing, out of a point's shape or
+ * where the unit carries its id already.
+ * @param {string} cwd @param {string} unit @param {unknown} given @returns {string}
+ */
+function keepPoint(cwd, unit, given) {
+  const [point] = pointsFromBefore([given], () => 'the point');
+  if (pointsOf(cwd, unit).some(({ id }) => id === point.id)) throw new Error(`${unit} carries ${point.id} from before already — its line is in ${unit}/${FROM_BEFORE}`);
+  const file = fromBeforeFile(cwd, unit);
+  const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : fromBeforeText({ points: [], files: [] });
+  fs.writeFileSync(file, withPoint(text, pointLine(point)));
+  return pointLine(point);
+}
+
 /** Whether `text` cites `id` as a word of its own. @param {string} text @param {string} id */
 function cites(text, id) {
   return new RegExp(`(?<![\\w-])${id.replace(/[\\^$.*+?()[\]{}|/]/g, '\\$&')}(?![\\w-])`).test(text);
 }
 
 /**
- * The points from before the unit carries that none of `briefs` cites, as
+ * The points from before the unit carries that none of `placing` cites, as
  * written in the file.
- * @param {string} cwd @param {string} unit @param {string[]} briefs the briefs' texts
+ * @param {string} cwd @param {string} unit @param {string[]} placing the texts that place a point (the header's)
  * @returns {string[]}
  */
-function uncarried(cwd, unit, briefs) {
-  return pointsOf(cwd, unit).filter(({ id }) => !briefs.some((brief) => cites(brief, id))).map(({ line }) => line);
+function uncarried(cwd, unit, placing) {
+  return pointsOf(cwd, unit).filter(({ id }) => !placing.some((text) => cites(text, id))).map(({ line }) => line);
 }
 
-module.exports = { FROM_BEFORE, pointsFromBefore, sharedFiles, fromBeforeText, fromBeforeFile, uncarried };
+module.exports = { FROM_BEFORE, pointsFromBefore, sharedFiles, fromBeforeText, fromBeforeFile, keepPoint, uncarried };

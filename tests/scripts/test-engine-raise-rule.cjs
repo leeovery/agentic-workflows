@@ -124,7 +124,7 @@ afterEach(() => {
 });
 
 const { write, ledgerText, full, entries } = ledgerHelpers(() => dir);
-const { conversation, inFolder, seals, logText, project, lastEntry, answer, quietOn, labelledAs, raised } = raiseHelpers(() => dir, config, CALL);
+const { conversation, inFolder, seals, logText, logged, project, lastEntry, answer, quietOn, labelledAs, raised } = raiseHelpers(() => dir, config, CALL);
 
 /** The conversation's record of what it sent to check. @returns {Record<string, string>|null} */
 const sentToCheck = () => (fs.existsSync(inFolder('raise-checked.json')) ? JSON.parse(fs.readFileSync(inFolder('raise-checked.json'), 'utf8')) : null);
@@ -356,7 +356,20 @@ describe('the rule\'s decisions as a raise meets them', () => {
     ]);
   });
 
-  it('refuses --always given twice, with no mark or one of none, and on a fact, which always asks — writing and sealing nothing', async () => {
+  it('a point from before, marked as it is asked, asks on every raise however quiet its kind, in a later wording too, Claude giving no mark, and its answer is logged under the mark', async () => {
+    quietOn('behaviour');
+    const checkable = labelledAs(CALL, 'behaviour', { yes: ['checkable'] });
+    const point = write('ask', NOTE, [], { ...MADE, text: 'Does a gift expire?', from_before: 'D5' }).id;
+    const reworded = write('replace', NOTE, ['--replaces', point, '--reason', 'changed-mind'], { ...MADE, drops: [], text: 'When does a gift expire?' }).id;
+    const plain = (await raised(NOTE, ['--answers', made.note], CALL, checkable)).res;
+
+    const { res } = await raised(NOTE, ['--answers', reworded], CALL, checkable);
+    answer(res.raise, ['--pick', '1']);
+
+    assert.deepStrictEqual([plain.decision, res.decision, res.reason, logged().at(-1)?.always], ['check', 'ask', 'It was where you had got to before, so it comes to you once.', 'from-before']);
+  });
+
+  it('refuses --always given twice, with no mark, one of none or the question\'s own, from-before, and on a fact, which always asks — writing and sealing nothing', async () => {
     const refused = async (/** @type {string[]} */ flags, /** @type {unknown} */ call = CALL) => {
       const before = { tree: treeSnapshot(dir), head: head(dir) };
       const { error } = await refusesAsync(dir, ['raise', NOTE, '--answers', made.note, ...flags], { env: conversation(), stdin: JSON.stringify(call) });
@@ -367,12 +380,13 @@ describe('the rule\'s decisions as a raise meets them', () => {
 
     assert.deepStrictEqual([
       await refused(['--always', 'live-server', '--always', 'design-problem']), await refused(['--always']), await refused(['--always', 'urgent']),
-      (await refused(['--fact', '--always', 'live-server'], fact)).replace(/ — Usage: .*/, ''),
+      (await refused(['--fact', '--always', 'live-server'], fact)).replace(/ — Usage: .*/, ''), await refused(['--always', 'from-before']),
     ], [
-      'raise takes --always once — Usage: engine raise <work-unit>.<phase>[.<topic>] --answers <id> [--relies-on <id> …] [--parks <phase>.<n>] [--always design-problem|live-server|from-before]   (the call as JSON on stdin)',
-      'raise: --always takes design-problem, live-server, built-otherwise or from-before — not nothing',
-      'raise: --always takes design-problem, live-server, built-otherwise or from-before — not "urgent"',
+      'raise takes --always once — Usage: engine raise <work-unit>.<phase>[.<topic>] --answers <id> [--relies-on <id> …] [--parks <phase>.<n>] [--always design-problem|live-server]   (the call as JSON on stdin)',
+      'raise: --always takes design-problem, live-server or built-otherwise — not nothing',
+      'raise: --always takes design-problem, live-server or built-otherwise — not "urgent"',
       'raise --fact takes no --always: a fact always asks',
+      'raise: --always takes no from-before — a point from before is marked as it is asked, its id from before in the question\'s from_before, and every raise of it always asks by it',
     ]);
   });
 

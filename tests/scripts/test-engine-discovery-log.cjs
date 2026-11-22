@@ -6,7 +6,8 @@
 // entry put in its fixed shape under its fixed heading in the log of the
 // open session — after the last entry of the last heading of its name, or
 // under the heading added at the log's end — and every refusal writing
-// nothing; at the product, from any conversation, the session opened where
+// nothing; a point from before an epic's discovery meets put in the epic's
+// points from before, above its shared files, that file alone committed; at the product, from any conversation, the session opened where
 // none is, no conversation's line written, and the line committed, a
 // spike's folder with it; and the product's lists as `ledger product` reads
 // them for every opening (8.9.15). How the board reads an epic's lists is
@@ -88,8 +89,8 @@ describe('discovery-log (20.11.1, 20.11.3)', () => {
     ok(dir(), ['asset', 'spike', EPIC, 'frame']);
     const usage = 'Usage: engine discovery-log not-taken <epic|product> --direction "<direction>" --why "<why>"';
     const refusals = /** @type {[string[], string|RegExp][]} */ ([
-      [[], /^Usage: engine discovery-log <not-taken\|view\|spike> …\ndiscovery-log not-taken/],
-      [['aside', EPIC], /^Usage: engine discovery-log <not-taken\|view\|spike> …/],
+      [[], /^Usage: engine discovery-log <not-taken\|view\|spike\|from-before> …\ndiscovery-log not-taken/],
+      [['aside', EPIC], /^Usage: engine discovery-log <not-taken\|view\|spike\|from-before> …/],
       [['not-taken', EPIC, '--direction', 'Stickies'], usage],
       [['not-taken', EPIC, '--direction', 'Stickies', '--why', 'no', '--text', 'x'], usage],
       [['not-taken', EPIC, 'extra', '--direction', 'Stickies', '--why', 'no'], usage],
@@ -114,6 +115,29 @@ describe('discovery-log (20.11.1, 20.11.3)', () => {
       if (typeof refusal === 'string') assert.strictEqual(error, refusal, args.join(' '));
       else assert.match(error, refusal, args.join(' '));
     }
+  });
+
+  it('a point from before the epic\'s discovery meets joins its points from before after the last, above its shared files — the file begun where it has none — and that file alone is committed; refused, writing nothing, at the product, out of a point\'s shape, or with its id there already', () => {
+    const file = layout.fromBefore(EPIC);
+    const point = (/** @type {string} */ id) => ['from-before', EPIC, '--id', id, '--point', `Point ${id}`, '--file', 'planning/decision-log.md'];
+
+    const first = log(point('D5'));
+    const begun = readState(dir(), file);
+    writeState(dir(), file, `${begun}\n## Shared files\n\n- .product/assets/planning/log.md — The calls (reference)\n`);
+    log(point('D7'));
+
+    assert.deepStrictEqual([first, begun, readState(dir(), file), stateGit(dir(), ['show', '--name-only', '--format=', 'HEAD']).trim()], [
+      { ok: true, file, line: '- D5: Point D5 (planning/decision-log.md)', committed: first.committed },
+      '# From before\n\n- D5: Point D5 (planning/decision-log.md)\n',
+      '# From before\n\n- D5: Point D5 (planning/decision-log.md)\n- D7: Point D7 (planning/decision-log.md)\n\n## Shared files\n\n- .product/assets/planning/log.md — The calls (reference)\n',
+      file,
+    ]);
+    for (const [args, refusal] of /** @type {[string[], string][]} */ ([
+      [['from-before', 'product', '--id', 'D9', '--point', 'P', '--file', 'f'], 'discovery-log: from-before is an epic\'s — the product\'s points from before are its picture\'s'],
+      [['from-before', EPIC, '--id', 'D 9', '--point', 'P', '--file', 'f'], 'discovery-log: the point\'s id is the record\'s own, as it writes it — no space or colon: got "D 9"'],
+      [['from-before', EPIC, '--id', 'D9', '--point', 'P'], 'Usage: engine discovery-log from-before <epic> --id "<id>" --point "<point>" --file "<file>"'],
+      [point('D7'), `discovery-log: fumi carries D7 from before already — its line is in ${file}`],
+    ])) assert.strictEqual(refusedPristine(dir(), ['discovery-log', ...args]).error, refusal, args.join(' '));
   });
 
   it('refuses an epic with no session open, writing nothing', () => {

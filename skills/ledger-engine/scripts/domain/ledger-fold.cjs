@@ -190,6 +190,7 @@ const { PRODUCT, entryKind, decidedBy, claudesCall, roadmapItemOf } = require('.
  *   relies_on: readonly string[],
  *   replaces: string|null,
  *   product_wide: boolean|null,
+ *   from_before: string|null,
  *   question: string|null,
  *   to: string|null,
  *   into: string|null,
@@ -266,6 +267,17 @@ function linkBack(facts, to, back, id) {
   else /** @type {string[]} */ (linked[back]).push(id);
 }
 
+/**
+ * The id from before of the point a question is, null for none: a
+ * rewording's its own, or else the wording's it replaces, so every wording
+ * of the point keeps it.
+ * @param {Map<string, IdFacts>} facts @param {Record<string, unknown>} event @returns {string|null}
+ */
+function fromBeforeOf(facts, event) {
+  const own = idOrNull(event.from_before);
+  return own ?? (event.event === 'replaced' ? named(facts, event.replaces).from_before : null);
+}
+
 /** The facts of every id, by id, in the ledger's order. @type {Fold<Map<string, IdFacts>>} */
 const ID_FACTS = {
   start: () => new Map(),
@@ -289,6 +301,7 @@ const ID_FACTS = {
       relies_on: Array.isArray(event.relies_on) && event.relies_on.length > 0 ? event.relies_on : NONE,
       replaces: idOrNull(event.replaces),
       product_wide: typeof event.product_wide === 'boolean' ? event.product_wide : null,
+      from_before: fromBeforeOf(facts, event),
       question: idOrNull(event.question),
       to: idOrNull(event.to),
       into: event.event === 'merged' ? idOrNull(event.into) : null,

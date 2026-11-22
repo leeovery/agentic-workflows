@@ -54,7 +54,7 @@ describe('the write verbs (6.1.4)', () => {
     const res = write('ask', NOTE, ['--part-of', parent, '--relies-on', finding], { by: 'person', who_moved_whom: 'none', text: 'Does a note snap to the grid?' });
 
     const id = assertLast('asked', AT_NOTE, {
-      by: 'person', who_moved_whom: 'none', text: 'Does a note snap to the grid?', part_of: full(parent), relies_on: [full(finding)], cites: [], task: null,
+      by: 'person', who_moved_whom: 'none', text: 'Does a note snap to the grid?', part_of: full(parent), relies_on: [full(finding)], cites: [], task: null, from_before: null,
     });
     assertAnswered(res, id);
   });
@@ -135,7 +135,7 @@ describe('the write verbs (6.1.4)', () => {
     write('replace', NOTE, ['--replaces', child, '--reason', 'new-fact', '--cause', finding], { ...MADE, drops: ['Spaces'], text: 'Which display does a new note open on?' });
     assertLast('replaced', AT_NOTE, {
       ...MADE, replaces: full(child), reason: 'new-fact', cause: full(finding), drops: ['Spaces'], of: 'question',
-      text: 'Which display does a new note open on?', part_of: full(parent), relies_on: [], cites: [], task: null,
+      text: 'Which display does a new note open on?', part_of: full(parent), relies_on: [], cites: [], task: null, from_before: null,
     });
 
     write('replace', NOTE, ['--replaces', finding, '--reason', 'was-wrong', '--relies-on', parent], { ...MADE, drops: ['across restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike', known: 'spike' });

@@ -22,7 +22,9 @@
 //   (8.1.6); an epic also the points from before and the shared files that
 //   bear on it, where any do (from-before.cjs); and, in the product's
 //   conversation, the picture thinned as the work leaves it, a draft in the
-//   cache, which a type call, only reading the picture, never gives. The
+//   cache, which a type call, only reading the picture, never gives, and
+//   which is refused, at the stage and at the yes, once the picture is
+//   written after it, so the draft never lands over what it gained. The
 //   screen draws from the staged payload again without `--file`.
 // - The name is Claude's to derive, with no question (8.8.10): a name a unit
 //   has already is refused, and so is a taken name with a number appended,
@@ -209,14 +211,20 @@ function epicCarries(cwd, type, fields) {
 
 /**
  * The picture thinned as the work leaves the product's conversation, a
- * draft in the cache; refused from a type call, which only reads it.
+ * draft in the cache; refused from a type call, which only reads it, and
+ * where the picture was written after the draft, which would land over
+ * what the picture gained since — at the stage and again at the yes.
  * @param {string} cwd @param {unknown} picture @returns {string|undefined}
  */
 function thinnedPicture(cwd, picture) {
   if (picture === undefined) return undefined;
   if (!inTheProduct()) throw new Error('a type call only reads the picture — drop picture: the next return to the product\'s conversation brings it up to date');
   if (!filled(picture)) throw new Error('picture names the thinned picture\'s draft');
-  draftIn(cwd, picture, 'the picture');
+  const { scratch } = draftIn(cwd, picture, 'the picture');
+  const live = statePath(cwd, PRODUCT_PICTURE);
+  if (fs.existsSync(live) && fs.statSync(live).mtimeMs > fs.statSync(scratch).mtimeMs) {
+    throw new Error('the picture was rewritten after its thinned draft — draft the thinning again from the picture as it stands, then stage again');
+  }
   return /** @type {string} */ (picture);
 }
 

@@ -5,7 +5,9 @@
 // drawn from Claude's staged payload (start-this-work.cjs, approve-map.cjs),
 // each a screen the spec draws (8.8.2, 8.8.4):
 // - start this work: the work's title and type, its description, and the
-//   one-line reason for the type beneath; then the gate, whose yes creates
+//   one-line reason for the type beneath; for an epic, FROM BEFORE, each
+//   point from before the yes carries into it, and SHARED FILES, each file
+//   it carries with what it holds and how it is read; then the gate, whose yes creates
 //   the unit and says what comes next — for an epic, shaping its topics and
 //   approving the map; for the others, the phase it opens in. A unit moved
 //   to a feature or a bugfix (workunit-move.cjs) is drawn the same, its yes
@@ -13,9 +15,10 @@
 //   keeps unlanded named in one line beneath the reason;
 // - approve the map: THE MAP, the topics numbered in their order, a re-shape
 //   marking each topic that is new and each that moved (8.8.21); TO THE
-//   ROADMAP, each park with the horizon the person gave it; then the gate,
-//   whose yes puts the topics on the epic in that order and the parks on the
-//   roadmap;
+//   ROADMAP, each park with the horizon the person gave it; FROM BEFORE, IN
+//   NO BRIEF YET, each point from before the epic carries that nothing
+//   staged places (approve-map.cjs); then the gate, whose yes puts the
+//   topics on the epic in that order and the parks on the roadmap;
 // - approve the map after the sweep before the spec: THE MAP, each topic
 //   numbered in its order and ticked where decided; FOUND BY THE SWEEP, each
 //   candidate with its reason beneath, a struck one marked; then the gate,
@@ -32,16 +35,18 @@ const { counted } = require('./map.cjs');
 
 /**
  * The work as start this work draws it: its name, type, description and
- * reason, and for a move, the type it moves from, the branch it leaves a
+ * reason; an epic's points from before and shared files, where it carries
+ * any; and for a move, the type it moves from, the branch it leaves a
  * quick-fix's commits unlanded on, where it keeps one, and the words for
  * each fix's work it keeps set aside.
- * @typedef {{name: string, type: string, description: string, reason: string, moves?: {from: string, branches: string[], aside: string[]}}} StartView
+ * @typedef {{name: string, type: string, description: string, reason: string, from_before?: import('../from-before.cjs').PointFromBefore[], shared_files?: import('../from-before.cjs').SharedFile[], moves?: {from: string, branches: string[], aside: string[]}}} StartView
  */
 
 /**
  * The map as approve the map draws it: the epic, each topic by its title in
- * the order staged — marked new or moved on a re-shape — and each park by
- * its summary and the horizon the person gave it.
+ * the order staged — marked new or moved on a re-shape — each park by its
+ * summary and the horizon the person gave it, and each point from before
+ * nothing staged places, by its line in the epic's record of them.
  * @typedef {{unit: string, topics: {title: string, mark: 'new'|'moved'|null}[], parks: {summary: string, horizon: string}[], uncarried: string[]}} MapView
  */
 
@@ -77,19 +82,39 @@ function keptLine(branches) {
 /** An advisory line, wrapped. @param {string} text */
 const flagged = (text) => wrapWithPrefix(`⚑ ${text}`, { width: TREE_WIDTH, hang: 2 });
 
+/** A block headed `heading`, each of `titles` a branch of its tree. @param {string} heading @param {string[]} titles */
+function treeBlock(heading, titles) {
+  return `${heading}\n${renderTree(titles.map((title) => ({ title })), { width: TREE_WIDTH, wrapTitles: true }).replace(/\n+$/, '')}`;
+}
+
 /**
- * The work as start this work shows it: its title and type, its
- * description, the reason for the type, and a move's branches left
- * unlanded and each fix's work it keeps set aside.
+ * What the yes carries into an epic from before, each block after a blank
+ * line: FROM BEFORE, each point by its id, and SHARED FILES, each file with
+ * what it holds and how it is read; none where it carries nothing.
  * @param {StartView} view
  */
-function startDisplay({ name, type, description, reason, moves }) {
+function carriedBlocks({ from_before: points = [], shared_files: files = [] }) {
+  return [
+    ...(points.length === 0 ? [] : ['', treeBlock(`FROM BEFORE (${points.length}, into the epic)`, points.map(({ id, point }) => `${id}: ${point}`))]),
+    ...(files.length === 0 ? [] : ['', treeBlock(`SHARED FILES (${files.length}, into the epic)`, files.map(({ path, holds, kind }) => `${path} — ${holds} (${kind})`))]),
+  ];
+}
+
+/**
+ * The work as start this work shows it: its title and type, its
+ * description, the reason for the type, a move's branches left unlanded and
+ * each fix's work it keeps set aside, and what an epic carries from before.
+ * @param {StartView} view
+ */
+function startDisplay(view) {
+  const { name, type, description, reason, moves } = view;
   return [
     `${titlecase(name)} (${type})`,
     ...wrapWithPrefix(description, { width: TREE_WIDTH }),
     ...wrapWithPrefix(`↳ ${reason}`, { width: TREE_WIDTH, hang: 2 }),
     ...keptLine(moves?.branches ?? []),
     ...(moves?.aside ?? []).flatMap(flagged),
+    ...carriedBlocks(view),
   ].join('\n');
 }
 
@@ -123,10 +148,9 @@ function parksBlock(parks) {
   return `TO THE ROADMAP (${parks.length}, with the map)\n${tree.replace(/\n+$/, '')}`;
 }
 
-/** FROM BEFORE: each point from before the epic carries that no brief cites. @param {string[]} points */
+/** FROM BEFORE: each point from before the epic carries that nothing staged places. @param {string[]} points */
 function uncarriedBlock(points) {
-  const tree = renderTree(points.map((point) => ({ title: point })), { width: TREE_WIDTH, wrapTitles: true });
-  return `FROM BEFORE, IN NO BRIEF (${points.length}, each placed at your word)\n${tree.replace(/\n+$/, '')}`;
+  return treeBlock(`FROM BEFORE, IN NO BRIEF YET (${points.length}, each to place at your word)`, points);
 }
 
 /**

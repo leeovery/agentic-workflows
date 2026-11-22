@@ -714,14 +714,39 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
       ]));
     });
 
-    it('a return names each unit started since the latest closed sitting\'s last conversation began — on its day or after, whichever door started it — and none from before it', () => {
+    /** Each of `units`, `[name, type, created]`, made and registered. @param {[string, string, string][]} units */
+    function started(units) {
       const project = JSON.parse(readState(dir, layout.projectManifest));
-      for (const [unit, type, created] of [['old-work', 'feature', '2026-01-01'], ['gifting', 'epic', '2026-01-02'], ['pricing-page', 'quick-fix', '2026-01-05']]) {
+      for (const [unit, type, created] of units) {
         createManifest(dir, unit, { work_type: type, created });
         project.work_units = { ...project.work_units, [unit]: { work_type: type } };
       }
       writeState(dir, layout.projectManifest, JSON.stringify(project, null, 2));
-      assert.deepStrictEqual(enter(['discovery', 'product']).sections.match(/^started since: .*$/gm), ['started since: gifting epic', 'started since: pricing-page quick-fix']);
+    }
+
+    it('a return names each unit started since the latest closed sitting\'s first conversation began — on its day or after, whichever door started it — with what it carries, and none from before it', () => {
+      writeState(dir, layout.productSession('002'), '## 2026-01-02 · session second\n\nPricing.\n\n## 2026-01-04 · session third\n\nGifting.\n');
+      started([['old-work', 'feature', '2026-01-01'], ['gifting', 'epic', '2026-01-03'], ['payouts', 'epic', '2026-01-04'], ['saved-filters', 'feature', '2026-01-04'], ['pricing-page', 'quick-fix', '2026-01-05']]);
+      writeState(dir, layout.fromBefore('gifting'), '# From before\n\n- D5: Gifts expire (planning/decision-log.md)\n');
+      writeState(dir, layout.session('payouts', '001'), '## 2026-01-04 · session one\n');
+      writeState(dir, layout.brief('saved-filters', 'saved-filters'), '# Saved filters\n');
+
+      assert.deepStrictEqual(enter(['discovery', 'product']).sections.match(/^started since: .*$/gm), [
+        `started since: gifting epic — ${at(layout.fromBefore('gifting'))}`,
+        `started since: payouts epic — ${at(layout.session('payouts', '001'))}`,
+        `started since: saved-filters feature — ${at(layout.brief('saved-filters', 'saved-filters'))}`,
+        'started since: pricing-page quick-fix — its description: Test: pricing-page',
+      ]);
+    });
+
+    it('with no sitting closed, a return to the one held open names each unit started since its first conversation began, one that carries nothing yet by its name alone', () => {
+      writeState(dir, layout.productSession('001'), '## 2026-01-01 · session first\n');
+      writeState(dir, layout.productSession('002'), '## 2026-01-01 · session second\n');
+      withFrozenClock(() => enter(['discovery', 'product']));
+      fs.appendFileSync(at(layout.productSession('003')), '\nGifting, sent between shops.\n');
+      started([['old-work', 'feature', '2025-12-31'], ['gifting', 'epic', TODAY]]);
+
+      assert.deepStrictEqual(enter(['discovery', 'product'], 'sess-2').sections.match(/^started since: .*$/gm), ['started since: gifting epic']);
     });
 
     it('carrying on the open sitting another conversation left reads that log in full beside the picture, the latest closed log by its closing line, and the catch-up brings the picture up to date with the log', () => {

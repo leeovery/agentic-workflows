@@ -45,7 +45,8 @@
 //   answer, or moved to the roadmap as later — after a `/clear` or a
 //   compaction Claude can raise one again — whether or not the conversation
 //   holds its seal; an entry replaced that is no decision, whose answer the
-//   rows give; `--always` given twice, naming no mark, or with `--fact`;
+//   rows give; `--always` given twice, naming no mark, naming
+//   `from-before`, the question's own, or with `--fact`;
 //   `--always built-otherwise` on a question's answer, or on a replacement of
 //   a decision made in Ledger; a call of another shape; fewer than two rows —
 //   on a replacement, no proposal; a key the trust log cannot key, one two
@@ -123,7 +124,10 @@
 //   where a keep of theirs stands on it since (16.5.7); the mark Claude gives
 //   a question that always asks, `--always design-problem`, `--always
 //   live-server` or `--always built-otherwise` (19.4.22, 19.4.20, 21.6.16),
-//   which a fact, always asked, never takes; the experiment of the unit still
+//   which a fact, always asked, never takes — or the question's own, where
+//   it is a point from before, `from-before`, read from the question in any
+//   of its wordings (`markOf`) and never given at a raise, standing over a
+//   mark Claude gives; the experiment of the unit still
 //   running that measures the question it answers (9.1.11); the question's id
 //   the blind draw hashes, the first entry of its chain, none for a
 //   replacement (16.17.4); whether the conversation sent the raise to check
@@ -370,7 +374,7 @@ const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdi
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
 const { labelledBeside, questionText, kindOf, hardToUndo } = require('./labeller.cjs');
 const { readOnRaise } = require('./answer-reader.cjs');
-const { type, TEXT, LINE, ALWAYS_MARKS, listOf } = require('./event-fields.cjs');
+const { type, TEXT, LINE, ALWAYS_MARKS, FROM_BEFORE_MARK, listOf } = require('./event-fields.cjs');
 const { isShownTask, parseShownTask } = require('./task-id.cjs');
 const { markChanged, beingRead } = require('./round-report.cjs');
 const { stepTurn } = require('./task-verbs.cjs');
@@ -515,8 +519,10 @@ const PARKS = '--parks';
 const PARKS_USAGE = `[${PARKS} <phase>.<n>]`;
 const ALWAYS = '--always';
 const BUILT_OTHERWISE = 'built-otherwise';
-const ALWAYS_USAGE = `[${ALWAYS} ${ALWAYS_MARKS.join('|')}]`;
-const QUESTION_ALWAYS_USAGE = `[${ALWAYS} ${ALWAYS_MARKS.filter((mark) => mark !== BUILT_OTHERWISE).join('|')}]`;
+// The marks a raise is given: a point from before is marked as it is asked.
+const GIVEN_MARKS = Object.freeze(ALWAYS_MARKS.filter((mark) => mark !== FROM_BEFORE_MARK));
+const ALWAYS_USAGE = `[${ALWAYS} ${GIVEN_MARKS.join('|')}]`;
+const QUESTION_ALWAYS_USAGE = `[${ALWAYS} ${GIVEN_MARKS.filter((mark) => mark !== BUILT_OTHERWISE).join('|')}]`;
 const QUESTION_USAGE = `${verbUsage('decide', SAID, NO_TASK)} ${PARKS_USAGE} ${QUESTION_ALWAYS_USAGE}   (the call as JSON on stdin)`;
 const REPLACE_USAGE = `${verbUsage('replace', SAID, NO_TASK)} ${PARKS_USAGE} ${ALWAYS_USAGE}   (the call as JSON on stdin)`;
 const FACT = '--fact';
@@ -685,8 +691,8 @@ function parksFlag(args) {
 
 /**
  * The draw's argv without `--always` and its mark, and the mark, or null
- * where it is not given. Refuses it given twice, with no mark or one of
- * none, and on a fact, which always asks.
+ * where it is not given. Refuses it given twice, with no mark, one of none
+ * or the question's own, `from-before`, and on a fact, which always asks.
  * @param {string[]} args @param {boolean} fact
  * @returns {{always: Always|null, rest: string[]}}
  */
@@ -696,7 +702,8 @@ function alwaysFlag(args, fact) {
   if (fact) throw new Error(`raise ${FACT} takes no ${ALWAYS}: a fact always asks — Usage: engine ${FACT_USAGE}`);
   if (args.indexOf(ALWAYS, at + 1) !== -1) throw new Error(`raise takes ${ALWAYS} once — Usage: engine ${QUESTION_USAGE}`);
   const mark = /** @type {Always} */ (args[at + 1]);
-  if (!ALWAYS_MARKS.includes(mark)) throw new Error(`raise: ${ALWAYS} takes ${ALWAYS_MARKS.slice(0, -1).join(', ')} or ${ALWAYS_MARKS.at(-1)} — not ${mark === undefined ? 'nothing' : `"${mark}"`}`);
+  if (mark === FROM_BEFORE_MARK) throw new Error(`raise: ${ALWAYS} takes no ${FROM_BEFORE_MARK} — a point from before is marked as it is asked, its id from before in the question's from_before, and every raise of it always asks by it`);
+  if (!GIVEN_MARKS.includes(mark)) throw new Error(`raise: ${ALWAYS} takes ${GIVEN_MARKS.slice(0, -1).join(', ')} or ${GIVEN_MARKS.at(-1)} — not ${mark === undefined ? 'nothing' : `"${mark}"`}`);
   return { always: mark, rest: [...args.slice(0, at), ...args.slice(at + 2)] };
 }
 
@@ -1262,6 +1269,16 @@ function placedRaise(cwd, args, warnings, fact, always) {
 }
 
 /**
+ * The question's own mark that it always asks, `from-before`, where the
+ * raise about `target` answers a point from before in any of its wordings;
+ * null otherwise, and for a replacement.
+ * @param {Folded} read @param {Target} target @returns {Always|null}
+ */
+function markOf(read, { answers }) {
+  return answers !== null && factsOf(read, answers).from_before !== null ? FROM_BEFORE_MARK : null;
+}
+
+/**
  * The id a blind draw hashes for a raise about `target` (16.17.4): the
  * root of its question's chain, so a rewording draws as the question did;
  * none on a replacement, which is never drawn blind.
@@ -1525,8 +1542,9 @@ async function drawRaise(cwd, args, stdin) {
   const warnings = [];
   const { fact, rest: unfact } = factFlag(args);
   const { parks, rest: unparked } = parksFlag(unfact);
-  const { always, rest } = alwaysFlag(unparked, fact);
-  const { place, target, replacedBy, short, read } = placedRaise(cwd, rest, warnings, fact, always);
+  const { always: marked, rest } = alwaysFlag(unparked, fact);
+  const { place, target, replacedBy, short, read } = placedRaise(cwd, rest, warnings, fact, marked);
+  const always = markOf(read, target) ?? marked;
   const raising = { session, place, target, replacedBy, always, task: parks, model: modelOf(cwd), chain: questionId(read, target), measured: measuredOn(cwd, place, read, target) };
   const inBuild = checkBuildPlace(cwd, place, parks);
   if (!inBuild) questions.checkUnparked(read, subjectOf(target), SAID);

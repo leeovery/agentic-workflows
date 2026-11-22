@@ -6,7 +6,8 @@
 // trust log holds and where it stands — a raise answered with Claude's
 // sealed answer, or in the person's own words read as it, an agreement, with
 // another row or the person's own words read as another or as none a
-// departure, one not followed no weight, a call Claude's call — but one a
+// departure, one not followed or answering a point from before no weight,
+// a call Claude's call — but one a
 // blind draw names no weight — a reversal a
 // departure cancelling the answer whose entry it reverses, that answer's
 // event as written — each answer's question, its kind and Claude's sort, a
@@ -76,13 +77,14 @@ const raised = (dir, entry, fields) => record('raise', { ...fields, entry }, fro
 const reversal = (dir, entry, reverses) => record('reversal', { entry, reverses }, from(dir));
 
 describe('where each answer stands (16.12.1, 16.10.1)', () => {
-  it('stands a raise answered with Claude\'s sealed answer, in the person\'s own words read as it, or with their "don\'t care", as an agreement, with another row or in the person\'s own words read as another or as none as a departure, one not followed as no weight, and a call as Claude\'s call; the departures their entries; a gate, a verdict, a blind draw, a learned gate run as a step and a care entry dropped no answer', () => {
+  it('stands a raise answered with Claude\'s sealed answer, in the person\'s own words read as it, or with their "don\'t care", as an agreement, with another row or in the person\'s own words read as another or as none as a departure, one not followed and any answer to a point from before, its raise always asked by the question\'s mark, as no weight, and a call as Claude\'s call; the departures their entries; a gate, a verdict, a blind draw, a learned gate run as a step and a care entry dropped no answer', () => {
     const dir = project('fumi');
-    const [agreed, departed, own, ownAgreed, ownDeparted, called, careless] = ['Agreed', 'Departed', 'Own', 'OwnAgreed', 'OwnDeparted', 'Called', 'Careless'].map(idOf);
+    const [agreed, departed, own, ownAgreed, ownDeparted, called, careless, before, beforeChanged] = ['Agreed', 'Departed', 'Own', 'OwnAgreed', 'OwnDeparted', 'Called', 'Careless', 'Before', 'BeforeChanged'].map(idOf);
     const answers = [
       raised(dir, agreed, AGREES), raised(dir, departed, DEPARTS), raised(dir, own, OWN_WORDS), raised(dir, ownAgreed, OWN_WORDS_AGREEING), raised(dir, ownDeparted, OWN_WORDS_DEPARTING),
       record('raise', NOT_FOLLOWED, from(dir)), record('call', { entry: called, kind: null, label: null, sort: 'one', blocks_build: false }, from(dir)),
       raised(dir, careless, { ...AGREES, via: 'typed', dont_care: true }),
+      raised(dir, before, { ...AGREES, always: 'from-before' }), raised(dir, beforeChanged, { ...DEPARTS, always: 'from-before' }),
     ];
     record('gate', { gate: 'state lost gate', recommended: 'y', picked: 'n', via: 'pressed', with_text: false, reading: null, showing: null }, from(dir));
     record('verdict', { entry: departed, verdict: 'skip', point: 'decided' }, from(dir));
@@ -93,7 +95,7 @@ describe('where each answer stands (16.12.1, 16.10.1)', () => {
     const read = evidence(dir);
 
     assert.deepStrictEqual(read.answers, answers.map((event, i) => ({
-      event, standing: ['agreement', 'departure', 'departure', 'agreement', 'departure', 'no-weight', 'call', 'agreement'][i], cancelled_by: null, kind: null, sort: i === 6 ? 'one' : 'several', model: null,
+      event, standing: ['agreement', 'departure', 'departure', 'agreement', 'departure', 'no-weight', 'call', 'agreement', 'no-weight', 'no-weight'][i], cancelled_by: null, kind: null, sort: i === 6 ? 'one' : 'several', model: null,
     })));
     assert.deepStrictEqual(read.departures, new Set([departed, own, ownDeparted]));
   });

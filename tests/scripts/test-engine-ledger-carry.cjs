@@ -42,6 +42,7 @@ const { SESSION, recordsMigration, stateUnborn, refusedUntouched, refusedKeeping
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { carriedPath, composedPath, findingsPath, rulingsPath, handbackPath, checkedPath, verifyingPath, roundsPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { LEDGER_VERSION } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 
 const LICENSING = 'fumi.discussion.licensing';
 const QUESTION = { ref: 'q1', event: 'asked', text: 'How long is the trial?', by: 'person', map_item: 'trial-length', cites: [{ path: 'fumi/topics/licensing/log.md', section: 'Trial Length' }] };
@@ -119,11 +120,11 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     const res = carry(LICENSING, [QUESTION, DECISION, FINDING]);
     const entries = ledgerEntries(statePath(dir));
     const [q, d, , f] = entries;
-    const tags = { v: 1, unit: 'fumi', topic: 'licensing', phase: 'discussion', session: 'migration' };
+    const tags = { v: LEDGER_VERSION, unit: 'fumi', topic: 'licensing', phase: 'discussion', session: 'migration' };
 
     assert.deepStrictEqual(res, { ok: true, carried: 3, ids: { q1: q.id.slice(0, res.ids.q1.length), d1: d.id.slice(0, res.ids.d1.length), f1: f.id.slice(0, res.ids.f1.length) }, committed: null, note: 'held for the migration\'s commit' });
     assert.deepStrictEqual(lines(), [
-      { ...tags, event: 'asked', by: 'person', who_moved_whom: 'none', text: QUESTION.text, part_of: null, relies_on: [], cites: QUESTION.cites, task: null },
+      { ...tags, event: 'asked', by: 'person', who_moved_whom: 'none', text: QUESTION.text, part_of: null, relies_on: [], cites: QUESTION.cites, task: null, from_before: null },
       {
         ...tags, event: 'decided', by: 'claude', who_moved_whom: 'none', answers: q.id, text: 'Fourteen days.', why: 'The person set it.', rules_out: [], relies_on: [], product_wide: false,
         sealed: null, alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: true, given: 'carried', cites: DECISION.cites, task: null,
@@ -505,10 +506,10 @@ describe('the refusals, nothing written', () => {
       broken('entry q1: raise marks a question to raise, true'),
       broken('entry q1: is marked to raise, and a decision of the record answers it — raise refuses a question answered already, so a point to raise is an open question'),
       broken('entry q1: the content\'s text is not non-empty text'),
-      broken('entry q1: the content has no field why — it holds by, text, cites'),
+      broken('entry q1: the content has no field why — it holds by, text, cites, from_before'),
       broken('entry d1: the person\'s decision is given carried — the person\'s own is given own, and what they hand over, or what is carried over, is Claude\'s line, by claude'),
       broken('entry d1: the person\'s decision is given your-call — the person\'s own is given own, and what they hand over, or what is carried over, is Claude\'s line, by claude'),
-      broken('entry q1: the content has no field product_wide — it holds by, text, cites'),
+      broken('entry q1: the content has no field product_wide — it holds by, text, cites, from_before'),
       broken('entry f1: a measured finding records the command run and its result — the content needs command and result'),
     ]);
   });

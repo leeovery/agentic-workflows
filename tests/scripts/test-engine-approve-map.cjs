@@ -34,6 +34,8 @@ const { EPIC, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp 
 
 const { epicMenuScreen } = require('../../skills/ledger-engine/scripts/domain/projections/epic-menu.cjs');
 const { NBSP } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+const { appendEntry } = require('../../skills/ledger-engine/scripts/domain/ledger.cjs');
+const { SESSION_ID } = require('./ledger-world.cjs');
 
 const dir = useGatesWorld('epic');
 const { scratch, payload, screen, answer, run } = gatesHelpers(dir);
@@ -119,17 +121,34 @@ describe('approve the map, the screen (8.8.4, 8.S17)', () => {
     const topics = [{ name: 'note-model' }, { name: 'storage-and-sync' }, { name: 'sharing' }, { name: 'search' }];
     const named = (given) => sectionOf(screen(['approve-map', EPIC], given), 'DISPLAY: approve the map').split('\n\n').find((block) => block.startsWith('FROM BEFORE')) ?? null;
     assert.strictEqual(named({ topics: [...topics, { name: 'gifting', summary: 'Gifting', brief: scratch('# Gifting\n\nD101 from before, and D1010 apart.\n') }] }), [
-      'FROM BEFORE, IN NO BRIEF (1, each placed at your word)',
+      'FROM BEFORE, IN NO BRIEF YET (1, each to place at your word)',
       '  └─ R1: Payments research (planning/research/r1.md)',
       '',
     ].join('\n'));
     assert.strictEqual(named({ topics: [...topics, { name: 'gifting', summary: 'Gifting', brief: scratch('# Gifting\n\nD1010 alone; R1-ish.\n') }] }), [
-      'FROM BEFORE, IN NO BRIEF (2, each placed at your word)',
+      'FROM BEFORE, IN NO BRIEF YET (2, each to place at your word)',
       '  ├─ D101: One gift shape (planning/decision-log.md)',
       '  └─ R1: Payments research (planning/research/r1.md)',
       '',
     ].join('\n'), 'an id inside a longer word cites nothing');
     assert.strictEqual(named({ topics: [...topics, { name: 'gifting', summary: 'Gifting', brief: scratch('# Gifting\n\nD101 and R1.\n') }] }), null);
+  });
+
+  it('counts a point placed wherever the person put it: a park\'s summary, a direction not taken in the epic\'s log, a message waiting in a topic of the map and a question asked as the point, each citing its id; one placed nowhere is still named', () => {
+    writeState(dir(), layout.fromBefore(EPIC), '# From before\n\n- D5: Gifts expire (planning/decision-log.md)\n- D7: Search by sender (planning/decision-log.md)\n- D9: No refunds (planning/decision-log.md)\n- D11: A gift card (planning/decision-log.md)\n- D12: Shops pause (planning/model.md)\n');
+    fourApproved();
+    fs.appendFileSync(statePath(dir(), LOG), '\n## Not taken\n\n- Refunds on gifts (D9) — they never refund a gift\n');
+    writeState(dir(), layout.mailbox(EPIC, 'search', '001-sender.md'), '# Search by sender\nFrom: note-model\n\nD7 bears on search.\n');
+    appendEntry(statePath(dir()), { event: 'asked', unit: EPIC, topic: 'sharing', phase: 'discussion', session: SESSION_ID, by: 'claude', who_moved_whom: 'none', text: 'Is there a gift card?', part_of: null, relies_on: [], cites: [], task: null, from_before: 'D11' }, []);
+    const topics = [{ name: 'note-model' }, { name: 'storage-and-sync' }, { name: 'sharing' }, { name: 'search' }];
+
+    const out = screen(['approve-map', EPIC], { topics, parks: [park('gift-expiry', 'Gift expiry (D5)', 'later')] });
+
+    assert.strictEqual(sectionOf(out, 'DISPLAY: approve the map').split('\n\n').find((block) => block.startsWith('FROM BEFORE')), [
+      'FROM BEFORE, IN NO BRIEF YET (1, each to place at your word)',
+      '  └─ D12: Shops pause (planning/model.md)',
+      '',
+    ].join('\n'));
   });
 
   it('refuses a park with no horizon: the person is asked first, Claude naming none (8.S49)', () => {

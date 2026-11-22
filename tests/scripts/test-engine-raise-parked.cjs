@@ -52,6 +52,7 @@ const { labelAnswers } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { DISCUSSING } = require(path.join(SCRIPTS, 'domain/questions.cjs'));
+const { LEDGER_VERSION } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { shortIds } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { SURFACES } = require(path.join(SCRIPTS, 'domain/render.cjs'));
@@ -92,7 +93,7 @@ const FRAMED = Object.freeze({
 });
 
 /** A question's content beyond its text, asked for no task. */
-const ASKED = Object.freeze({ part_of: null, relies_on: [], cites: [], task: null });
+const ASKED = Object.freeze({ part_of: null, relies_on: [], cites: [], task: null, from_before: null });
 
 /** A decision's content beyond what it answers, its text and its why: Claude's own call, made for no task. */
 const DECIDED = Object.freeze({
@@ -239,7 +240,7 @@ function parkedLine(own = {}) {
   const task = Object.hasOwn(own, 'task') ? own.task : '2.3';
   const question = Object.hasOwn(own, 'question') ? own.question : made.where;
   return {
-    v: 1, event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
+    v: LEDGER_VERSION, event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
     question, replaces: null, reason: null, cause: null, relies_on: [], task, went_ahead: null, number: 1,
     call: CALL, rows_judged: [], why_asking: UNLABELLED, asked_by: 'rule', label: null, model: null, blocks_build: task !== null, replaced_by: null, always: null, measured: null, chain: question, blind: false, ...own,
   };
