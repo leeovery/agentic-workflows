@@ -100,17 +100,20 @@
 // in the notice the move hands back, its store left where it is; one no
 // plan used left nothing behind, and is named nowhere.
 //
-// The user-level folder (21.5.19, P7): what `WORKFLOWS_CONFIG_DIR` or
-// `~/.config/workflows/` holds is copied into `LEDGER_CONFIG_DIR` or
-// `~/.config/ledger/`, and the old folder is left exactly as it was, so a
-// project on the machine still on today's skills keeps its own settings,
-// credentials and conversations, never sharing the engine's files. The
-// engine's copy wins: an entry its folder holds already, at any depth, is
-// never overwritten, and a folder both hold is merged entry by entry, so a
-// later project's migration copies only what is new. An old folder that is
-// itself a link elsewhere — a dotfiles link — is read through, the link
-// left as it is. The old cache, the knowledge store and the old migrations
-// record are left where they are (21.5.10).
+// The user-level folder (21.5.19, P7): the settings and credentials of
+// `WORKFLOWS_CONFIG_DIR` or `~/.config/workflows/`, its `config.json` and
+// `credentials.json`, are copied into `LEDGER_CONFIG_DIR` or
+// `~/.config/ledger/`, read through a link where either folder is one, and
+// the old folder is left exactly as it was, so a project on the machine
+// still on today's skills keeps its own, never sharing the engine's files.
+// Each is copied only where the old folder holds it as a file of its own
+// that reads and the engine's folder holds nothing of its name, not even a
+// link to nothing: the engine's copy wins, never written over, so a later
+// project's migration copies only what the engine's folder still lacks.
+// One left behind goes unsaid: the engine's setup asks for what it lacks.
+// Nothing else in the old folder is copied — its conversations' state has
+// no use to the engine — and nothing of it is moved or removed. The old cache, the knowledge store and the old
+// migrations record are left where they are (21.5.10).
 //
 // Each unit, a folder under `.workflows/` holding a manifest:
 //   - every old document a log takes — a topic's, a discovery session's, the
@@ -323,8 +326,9 @@
 //   - two notes of one name under different kinds keep the first, the second
 //     kept as legacy;
 //   - a roadmap source naming a file the move dropped keeps its old path;
-//   - a kill while a file of the user-level folder is copied leaves its
-//     temporary file beside it in the engine's folder;
+//   - a kill while the settings or credentials are copied leaves a
+//     temporary file beside them in the engine's folder, as private as
+//     the file it copies;
 //   - a dead-ended topic the move cancels keeps any experiment still running
 //     on it, and the wait its discussion holds on one;
 //   - a unit renamed to its lowercase name where another unit holds that
@@ -342,7 +346,7 @@ const crypto = require('crypto');
 const { carryLinters } = require('./reshape/linters.cjs');
 const { OLD_PLAN_PHASES, oldSystemFile, ENVIRONMENT_SETUP, withSetupNote } = require('./reshape/old-system.cjs');
 const {
-  OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, SIDECAR_NAME, git, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, preLedgerStores, unreadStores,
+  OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, SIDECAR_NAME, git, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, writeNew, preLedgerStores, unreadStores,
 } = require('./reshape/shared.cjs');
 
 const CODE_GITIGNORE = '.gitignore';
@@ -1935,35 +1939,47 @@ function lstatOf(at) {
   }
 }
 
-/**
- * What `from` holds that `to` lacks copied into it, read through any link:
- * an entry `to` holds already, at any depth, is the engine's and kept as it
- * is, and a folder both hold is merged entry by entry. Each file is written
- * whole, its mode kept.
- * @param {string} from @param {string} to
- */
-function copyAbsent(from, to) {
-  const source = fs.statSync(from);
-  const held = lstatOf(to);
-  if (!source.isDirectory()) {
-    if (held === null) writeWhole(path.dirname(to), to, fs.readFileSync(from), source.mode & 0o777);
-    return;
+/** The files of today's user-level folder the engine reads: its settings and its credentials. */
+const USER_FILES = ['config.json', 'credentials.json'];
+
+/** `at`'s real path where it is there, else `at`. @param {string} at */
+function realOr(at) {
+  try {
+    return fs.realpathSync(at);
+  } catch {
+    return at;
   }
-  if (held !== null && !held.isDirectory()) return;
-  fs.mkdirSync(to, { recursive: true, mode: source.mode & 0o777 });
-  for (const name of fs.readdirSync(from)) copyAbsent(path.join(from, name), path.join(to, name));
+}
+
+/** What `file` holds, or null where it cannot be read. @param {string} file @returns {Buffer|null} */
+function contentOf(file) {
+  try {
+    return fs.readFileSync(file);
+  } catch {
+    return null;
+  }
 }
 
 /**
- * The user-level folder's contents copied into the engine's, where it lacks
- * them, so the engine starts with the machine's settings, credentials and
- * conversations (21.5.19, P7) and a project still on today's skills keeps
- * its own folder, never sharing the engine's files: a later project's
- * migration copies only what is new.
+ * The user-level folder's settings and credentials copied into the
+ * engine's (21.5.19, P7), each where the old folder holds it as a file of
+ * its own that reads, never written over what the engine's folder holds of
+ * its name;
+ * the old folder left as it was, so a project still on today's skills keeps
+ * its own.
  */
-function copyUserFolder() {
+function copyUserFiles() {
   const from = oldUserFolder();
-  if (fs.existsSync(from) && fs.statSync(from).isDirectory()) copyAbsent(from, userFolder());
+  if (!fs.existsSync(from) || !fs.statSync(from).isDirectory()) return;
+  const to = realOr(userFolder());
+  for (const name of USER_FILES) {
+    const file = path.join(from, name);
+    const source = lstatOf(file);
+    const content = source?.isFile() === true ? contentOf(file) : null;
+    if (source === null || content === null) continue;
+    fs.mkdirSync(to, { recursive: true });
+    writeNew(path.join(to, name), content, source.mode & 0o777);
+  }
 }
 
 /**
@@ -2075,7 +2091,7 @@ function move(projectDir, reportUpdate, reportSkip) {
   renameUnits(state, renames, new Set(stores.flatMap(({ files }) => files)));
   journalCorrections(state, mistyped, renames);
   const placed = (/** @type {string} */ rel) => renamedPath(rel, renames);
-  copyUserFolder();
+  copyUserFiles();
   const lintersNote = carryLinters(state);
   const notes = [
     renames.size === 0 ? null : `${renames.size === 1 ? 'This unit\'s name' : 'These units\' names'} broke the rule a unit's name keeps — lowercase letters and digits, joined by single hyphens — by case alone, so ${renames.size === 1 ? 'it is' : 'each is'} carried under its lowercase name, its folder, its registry entry and every reference the move wrote to it following, its legacy files' words kept as they were: ${[...renames].map(([from, to]) => `${from} is ${to}`).join(', ')}.`,
@@ -2092,8 +2108,8 @@ function move(projectDir, reportUpdate, reportSkip) {
 
 module.exports = {
   id: '078',
-  description: 'move the project from .workflows/ into the layout in .ledger/, the state worktree on an unborn ledger-state — each topic\'s log, mail, brief and experiments in its own folder, imports as assets, specs as reference, the old system\'s own files in the unit\'s cache, the retired state dropped; the roadmap as the product, the baseline docs as its assets, the tracker\'s store and the knowledge config in the state, the user-level folder copied to ~/.config/ledger/, and the project\'s files to the new names',
-  info: 'The reshape moves the project\'s state out of .workflows/ into .ledger/, a worktree of its own unborn branch, ledger-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s, and a legacy split\'s superseded copies to the unit\'s assets as reference; imports become assets; every moved document\'s links follow the files they name; specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; a unit whose name breaks the kebab-case rule by its case alone is carried under its lowercase name, every reference the move writes following; the old engine\'s caches and the retired manifest state go; every file the old system\'s own agents and trackers wrote — the plans, the build\'s tracking and analysis, the reviews\' tracking and reports — is copied, as the old cache\'s reports are, into its unit\'s earlier/ in the state\'s ignored cache; and every other file with no place of its own is kept as it was under its unit\'s assets/legacy/, or the product\'s. A registry entry typed otherwise than its unit\'s manifest takes the manifest\'s type, listed among the review\'s corrections. The roadmap becomes .product/, its imports its assets, its sessions naming them there, and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer, and with none, when the old state first entered git recorded, so the offer\'s judgment reads the history before then; the plan format and project skills defaults go, the session-label opt-in is renamed session_labels, and no driver is set, so the defaults serve; the old environment setup file\'s words become a note among the steps that prepare the environment, unconfirmed, for the first ready to build to show; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder\'s contents are copied into ~/.config/ledger/ where it lacks them, the engine\'s own entries kept, and the old folder is left as it was for projects still on today\'s skills. The code tree\'s .gitignore gains .ledger/, the settings hooks name the engine\'s new path, and .worktreeinclude loses its .workflows/ lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
+  description: 'move the project from .workflows/ into the layout in .ledger/, the state worktree on an unborn ledger-state — each topic\'s log, mail, brief and experiments in its own folder, imports as assets, specs as reference, the old system\'s own files in the unit\'s cache, the retired state dropped; the roadmap as the product, the baseline docs as its assets, the tracker\'s store and the knowledge config in the state, the user-level settings and credentials copied to ~/.config/ledger/, and the project\'s files to the new names',
+  info: 'The reshape moves the project\'s state out of .workflows/ into .ledger/, a worktree of its own unborn branch, ledger-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s, and a legacy split\'s superseded copies to the unit\'s assets as reference; imports become assets; every moved document\'s links follow the files they name; specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; a unit whose name breaks the kebab-case rule by its case alone is carried under its lowercase name, every reference the move writes following; the old engine\'s caches and the retired manifest state go; every file the old system\'s own agents and trackers wrote — the plans, the build\'s tracking and analysis, the reviews\' tracking and reports — is copied, as the old cache\'s reports are, into its unit\'s earlier/ in the state\'s ignored cache; and every other file with no place of its own is kept as it was under its unit\'s assets/legacy/, or the product\'s. A registry entry typed otherwise than its unit\'s manifest takes the manifest\'s type, listed among the review\'s corrections. The roadmap becomes .product/, its imports its assets, its sessions naming them there, and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer, and with none, when the old state first entered git recorded, so the offer\'s judgment reads the history before then; the plan format and project skills defaults go, the session-label opt-in is renamed session_labels, and no driver is set, so the defaults serve; the old environment setup file\'s words become a note among the steps that prepare the environment, unconfirmed, for the first ready to build to show; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level settings and credentials are copied into ~/.config/ledger/ where it lacks them, the engine\'s own kept, and the old folder is left as it was for projects still on today\'s skills. The code tree\'s .gitignore gains .ledger/, the settings hooks name the engine\'s new path, and .worktreeinclude loses its .workflows/ lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
   run({ projectDir, reportUpdate, reportSkip }) {
     return move(projectDir, reportUpdate, reportSkip);
   },

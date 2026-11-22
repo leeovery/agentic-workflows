@@ -28,9 +28,9 @@
 // following their files; the roadmap as the product, the baseline's docs its
 // assets; the store and the knowledge config, never the knowledge store, in
 // the state; the hooks naming the engine's new path and the `.workflows/` lines
-// gone from `.worktreeinclude`; the user-level folder copied, left as it
-// was, and copied again for the machine's next project only where the
-// engine's lacks an entry;
+// gone from `.worktreeinclude`; the user-level settings and credentials
+// copied, nothing else, the old folder left as it was, and copied for the
+// machine's next project only where the engine's folder lacks one;
 // every file written in a place the layout holds; the environment setup
 // file's words a note among the steps that prepare the environment,
 // unconfirmed, the file kept nowhere; every file the layout has no other
@@ -72,8 +72,12 @@
 // read for its task driver after, two task drivers' folders whose
 // declaration does not read, one whose tracker a plan used and one none
 // did, a `.worktreeinclude` of `.workflows/` lines alone,
-// settings that do not parse, and a user-level folder that is a link
-// elsewhere. The
+// settings that do not parse, user-level folders that are links
+// elsewhere, and an old one holding a link, a broken link, a FIFO, a
+// folder or a file it cannot read where the settings or credentials would
+// be. The scratch the
+// copies are written through is private from its first byte, and never
+// written over what is there. The
 // tracker's store is where its driver's frozen declaration says a project
 // from before Ledger keeps it, read as the move reads it. The mail holds
 // messages as today's sessions wrote them, the sender's line under the title
@@ -100,6 +104,7 @@ const { execFileSync } = require('child_process');
 
 const { git, initRepo, cleanupFixture } = require('./engine-harness.cjs');
 const MIGRATION = require('../../skills/ledger-migrate/scripts/migrations/078-reshape-move.cjs');
+const { writeNew } = require('../../skills/ledger-migrate/scripts/migrations/reshape/shared.cjs');
 const { carryLinters } = require('../../skills/ledger-migrate/scripts/migrations/reshape/linters.cjs');
 const { setupNote } = require('../../skills/ledger-migrate/scripts/migrations/reshape/old-system.cjs');
 const { setupOf } = require('../../skills/ledger-engine/scripts/domain/environment.cjs');
@@ -885,34 +890,33 @@ describe('migration 078: the move into the layout in .ledger/', () => {
   });
 
   describe('the user-level folder (21.5.19, P7, 21.S52)', () => {
-    /** Each file under `dir` with its words. @param {string} dir */
-    const held = (dir) => Object.fromEntries(tree(dir).map((rel) => [rel, fs.readFileSync(path.join(dir, rel), 'utf8')]));
+    /** Each file under `dir` with its words, each a file of its own, never a link. @param {string} dir */
+    const held = (dir) => Object.fromEntries(tree(dir).map((rel) => {
+      assert.ok(fs.lstatSync(path.join(dir, rel)).isFile(), `${rel} a file of its own`);
+      return [rel, fs.readFileSync(path.join(dir, rel), 'utf8')];
+    }));
+    const LEDGER_OWN = { 'conversations/s1/position.json': USER_FOLDER['conversations/s1/position.json'], 'conversations/s2/position.json': '{"at":"ledger"}\n', '.DS_Store': 'the engine side\'s own sidecar\n' };
 
-    it('copies today\'s folder\'s contents into the engine\'s, beside what the engine already wrote there, its own copy of a file both hold kept, and leaves today\'s folder exactly as it was, a folder of its own', () => {
-      assert.deepStrictEqual(held(user.current), {
-        ...USER_FOLDER, '.DS_Store': 'the engine side\'s own sidecar\n', 'conversations/s2/position.json': '{"at":"ledger"}\n',
-      });
+    it('copies today\'s settings and credentials into the engine\'s folder, nothing else, beside what the engine already wrote there, and leaves today\'s folder exactly as it was, a folder of its own', () => {
+      assert.deepStrictEqual(held(user.current), { ...LEDGER_OWN, 'config.json': USER_FOLDER['config.json'], 'credentials.json': USER_FOLDER['credentials.json'] });
       assert.strictEqual(fs.statSync(path.join(user.current, 'credentials.json')).mode & 0o777, 0o600, 'the credentials kept private');
       assert.ok(fs.lstatSync(user.old).isDirectory(), 'a folder still, never a link');
       assert.deepStrictEqual(held(user.old), USER_FOLDER);
       assert.strictEqual(fs.statSync(path.join(user.old, 'credentials.json')).mode & 0o777, 0o600);
     });
 
-    it('copies for the machine\'s next project only what the engine\'s folder lacks, down a folder both hold, never overwriting the engine\'s own, and says nothing of it', () => {
+    it('copies for the machine\'s next project only what the engine\'s folder lacks, never overwriting the engine\'s own, and says nothing of it', () => {
       const next = tempProject('migration-078-next-');
       try {
         write(user.current, 'config.json', '{"provider":"ollama"}\n');
-        write(user.old, 'conversations/s1/position.json', '{"at":"workflows, later"}\n');
+        fs.rmSync(path.join(user.current, 'credentials.json'));
         write(user.old, 'conversations/s3/position.json', '{"at":"workflows"}\n');
         const old = held(user.old);
         write(next, '.workflows/manifest.json', json({ work_units: {} }));
         commitAll(next);
         const { returned } = run(next);
         assert.strictEqual(returned, undefined);
-        assert.deepStrictEqual(held(user.current), {
-          ...USER_FOLDER, '.DS_Store': 'the engine side\'s own sidecar\n', 'config.json': '{"provider":"ollama"}\n',
-          'conversations/s2/position.json': '{"at":"ledger"}\n', 'conversations/s3/position.json': '{"at":"workflows"}\n',
-        });
+        assert.deepStrictEqual(held(user.current), { ...LEDGER_OWN, 'config.json': '{"provider":"ollama"}\n', 'credentials.json': USER_FOLDER['credentials.json'] });
         assert.ok(fs.lstatSync(user.old).isDirectory(), 'a folder still, never a link');
         assert.deepStrictEqual(held(user.old), old);
       } finally {
@@ -1780,22 +1784,60 @@ describe('migration 078: a small project', () => {
     }
   });
 
-  it('reads an old user-level folder that is a link elsewhere through, copying what it holds, and leaves the link as it is', () => {
+  it('reads either user-level folder through where it is a link elsewhere, copying into the engine\'s real folder, and leaves both links as they are', () => {
     dir = tempProject('migration-078-dotfiles-');
     const user = homes('dotfiles');
     const dotfiles = path.join(HOMES, 'dotfiles', 'dotfiles-workflows');
+    const ledger = path.join(HOMES, 'dotfiles', 'dotfiles-ledger');
     try {
       write(dotfiles, 'config.json', USER_FOLDER['config.json']);
+      write(ledger, 'credentials.json', '{"openai":"sk-ledger"}\n');
       fs.symlinkSync(dotfiles, user.old);
+      fs.symlinkSync(ledger, user.current);
       feature();
       const { returned } = run(dir);
       assert.strictEqual(returned, undefined);
-      assert.deepStrictEqual([fs.readlinkSync(user.old), tree(dotfiles)], [dotfiles, ['config.json']]);
-      assert.strictEqual(fs.readFileSync(path.join(user.current, 'config.json'), 'utf8'), USER_FOLDER['config.json']);
-      assert.ok(fs.lstatSync(path.join(user.current, 'config.json')).isFile(), 'a copy, never a link');
+      assert.deepStrictEqual([fs.readlinkSync(user.old), tree(dotfiles), fs.readlinkSync(user.current)], [dotfiles, ['config.json'], ledger]);
+      assert.deepStrictEqual(tree(ledger), ['config.json', 'credentials.json']);
+      assert.strictEqual(fs.readFileSync(path.join(ledger, 'config.json'), 'utf8'), USER_FOLDER['config.json']);
+      assert.ok(fs.lstatSync(path.join(ledger, 'config.json')).isFile(), 'a copy, never a link');
     } finally {
       homes('none');
       cleanupFixture(dir);
+    }
+  });
+
+  it('copies neither, and never throws, where the old folder holds a link to a file, a broken link, a FIFO, a folder or a file it cannot read in place of the settings or the credentials, saying nothing', () => {
+    const elsewhere = path.join(HOMES, 'odd', 'elsewhere.json');
+    write(path.dirname(elsewhere), path.basename(elsewhere), USER_FOLDER['config.json']);
+    /** @type {[string, (old: string) => void, string[]][]} */
+    const cases = [
+      ['links', (old) => {
+        fs.symlinkSync(elsewhere, path.join(old, 'config.json'));
+        fs.symlinkSync(path.join(old, 'gone.json'), path.join(old, 'credentials.json'));
+      }, []],
+      ['fifo', (old) => {
+        execFileSync('mkfifo', [path.join(old, 'config.json')]);
+        write(old, 'credentials.json/held.json', USER_FOLDER['credentials.json']);
+      }, []],
+      ['unreadable', (old) => {
+        write(old, 'config.json', USER_FOLDER['config.json']);
+        fs.chmodSync(path.join(old, 'config.json'), 0o000);
+        write(old, 'credentials.json', USER_FOLDER['credentials.json']);
+      }, ['credentials.json']],
+    ];
+    for (const [name, odd, copied] of cases) {
+      dir = tempProject(`migration-078-odd-${name}-`);
+      const user = homes(`odd-${name}`, { 'conversations/s1/position.json': USER_FOLDER['conversations/s1/position.json'] });
+      try {
+        odd(user.old);
+        feature();
+        assert.strictEqual(run(dir).returned, undefined, name);
+        assert.deepStrictEqual(tree(user.current), copied, name);
+      } finally {
+        homes('none');
+        cleanupFixture(dir);
+      }
     }
   });
 
@@ -2140,5 +2182,35 @@ describe('migration 078: the linters carried onto the project\'s environment (re
     assert.strictEqual(carryLinters(state), null);
     assert.strictEqual(fs.readFileSync(path.join(state, 'pay/manifest.json'), 'utf8'), '{ not json');
     assert.deepStrictEqual(readState('manifest.json'), { project_id: 'p1', defaults: { project_skills: [] } });
+  });
+});
+
+describe('migration 078: the copies of the user-level files written (reshape/shared.cjs, writeNew)', () => {
+  const folder = path.join(HOMES, 'write-new');
+  before(() => { fs.mkdirSync(folder, { recursive: true }); });
+
+  it('writes the file whole, private from its scratch\'s first byte, and leaves no scratch behind', () => {
+    const file = path.join(folder, 'credentials.json');
+    /** @type {number[]} */
+    const modes = [];
+    const chmod = fs.chmodSync;
+    fs.chmodSync = (at, mode) => { modes.push(fs.statSync(at).mode & 0o777); chmod(at, mode); };
+    try {
+      writeNew(file, USER_FOLDER['credentials.json'], 0o600);
+    } finally {
+      fs.chmodSync = chmod;
+    }
+    assert.deepStrictEqual(modes, [0o600], 'the scratch never readable by others');
+    assert.deepStrictEqual([fs.readFileSync(file, 'utf8'), fs.statSync(file).mode & 0o777, fs.readdirSync(folder)], [USER_FOLDER['credentials.json'], 0o600, ['credentials.json']]);
+  });
+
+  it('never writes over what holds the name — a file, or a link to nothing — and leaves no scratch behind', () => {
+    const at = path.join(folder, 'held');
+    write(at, 'config.json', '{"provider":"ollama"}\n');
+    fs.symlinkSync(path.join(at, 'gone.json'), path.join(at, 'credentials.json'));
+    writeNew(path.join(at, 'config.json'), USER_FOLDER['config.json'], 0o644);
+    writeNew(path.join(at, 'credentials.json'), USER_FOLDER['credentials.json'], 0o600);
+    assert.deepStrictEqual([fs.readFileSync(path.join(at, 'config.json'), 'utf8'), fs.readlinkSync(path.join(at, 'credentials.json')), fs.readdirSync(at).sort()],
+      ['{"provider":"ollama"}\n', path.join(at, 'gone.json'), ['config.json', 'credentials.json']]);
   });
 });

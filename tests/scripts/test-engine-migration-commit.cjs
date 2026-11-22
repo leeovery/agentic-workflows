@@ -386,7 +386,7 @@ describe('the person\'s own git between the finish stop and the yes', () => {
   });
 
   it('a commit of the person\'s own taking .workflows/ off the code branch by hand leaves the migration under way: every boot answers finish with the handbacks journaled, and the yes makes both commits', () => {
-    const notice = { id: '078', description: 'move the project', notice: 'The user-level folder moved.' };
+    const notice = { id: '078', description: 'move the project', notice: 'The task driver folder skills/ledger-engine/scripts/drivers/task/board holds no pre-ledger-store.json that reads, so the store this project\'s plans kept for its tracker stays where it is, outside the state.' };
     writeState(dir, `${JOURNALS}/pending-notices.json`, `${JSON.stringify([notice])}\n`);
     git(dir, ['rm', '-r', '-q', '--cached', '--', '.workflows']);
     git(dir, ['commit', '-q', '-m', 'the old state off the branch']);

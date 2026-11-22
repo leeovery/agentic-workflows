@@ -93,9 +93,9 @@ verification addendum and notice.
   label's resume position into its conversation's folder at user level.
   066 edits the user's own Claude Code settings, and its verification
   addendum names the change, since the review diff cannot show it. 078
-  copies the user-level folder's contents into `~/.config/ledger/` where
-  it lacks them, never overwriting what is there, and leaves the old
-  folder as it was.
+  copies the user-level settings and credentials, `config.json` and
+  `credentials.json`, into `~/.config/ledger/` where it lacks them, never
+  overwriting what is there, and leaves the old folder as it was.
 - Its suite is `tests/scripts/test-migration-NNN.cjs`, registered in
   `package.json`'s `test` script. Like its siblings it drives `run()`
   against a temp `projectDir` with counting `reportUpdate`/`reportSkip`
