@@ -69,18 +69,46 @@ const TOOL_SIDECARS = [
 const SIDECAR_NAME = new RegExp(`^(?:${TOOL_SIDECARS.map((glob) => glob.replace(/[^\w*]/g, '\\$&').replace(/\*/g, '.*')).join('|')})$`);
 
 /**
+ * `content` in a scratch of `file`'s in `scratch`, a folder on its disk that
+ * no commit takes, made afresh, never through what held its name before,
+ * and holding `mode` from its first byte.
+ * @param {string} scratch @param {string} file @param {string|Buffer} content @param {number} [mode]
+ */
+function scratchCopy(scratch, file, content, mode) {
+  const temp = path.join(scratch, `reshape-${process.pid}-${path.basename(file)}`);
+  fs.mkdirSync(scratch, { recursive: true });
+  fs.rmSync(temp, { force: true });
+  fs.writeFileSync(temp, content, { flag: 'wx', ...(mode === undefined ? {} : { mode }) });
+  if (mode !== undefined) fs.chmodSync(temp, mode);
+  return temp;
+}
+
+/**
  * `file` written whole or not at all, for a step run again reads it back:
- * through a scratch in `scratch`, a folder on its disk that no commit takes,
- * renamed into place.
+ * through a scratch in `scratch`, renamed into place.
  * @param {string} scratch @param {string} file @param {string|Buffer} content @param {number} [mode]
  */
 function writeWhole(scratch, file, content, mode) {
-  const temp = path.join(scratch, `reshape-${process.pid}-${path.basename(file)}`);
-  fs.mkdirSync(scratch, { recursive: true });
-  fs.writeFileSync(temp, content);
-  if (mode !== undefined) fs.chmodSync(temp, mode);
+  const temp = scratchCopy(scratch, file, content, mode);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.renameSync(temp, file);
+}
+
+/**
+ * `file` written whole where nothing holds its name, never over what does:
+ * a scratch beside it linked into place, which fails where the name is
+ * taken, then removed.
+ * @param {string} file @param {string|Buffer} content @param {number} [mode]
+ */
+function writeNew(file, content, mode) {
+  const temp = scratchCopy(path.dirname(file), file, content, mode);
+  try {
+    fs.linkSync(temp, file);
+  } catch (error) {
+    if (/** @type {NodeJS.ErrnoException} */ (error).code !== 'EEXIST') throw error;
+  } finally {
+    fs.unlinkSync(temp);
+  }
 }
 
 /** The process's environment, less the variables that point git at a repository. @returns {NodeJS.ProcessEnv} */
@@ -223,5 +251,5 @@ function unreadStores(unread, cost) {
 
 module.exports = {
   OLD_STATE, STATE_DIR, STATE_GITIGNORE, SIDECAR_NAME, TASK_DRIVERS,
-  git, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, preLedgerStores, unreadStores,
+  git, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, writeNew, preLedgerStores, unreadStores,
 };
