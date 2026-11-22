@@ -6,11 +6,11 @@ Every question, finding and decision lands on the ledger as it is made. The topi
 
 ## The opening
 
-Before it says anything, Claude reads what the topic starts from: its brief, and for a feature the discovery logs and the seeds; the record of every topic decided so far, never their logs; the product record, with what discovery found of the product; each spike; and earlier work in the topic's area, from the [knowledge base](knowledge-base.md). A topic that waited on the roadmap, or a piece of work that moved here from another kind, also reads what it left from before, as input it never changes.
+Before it says anything, Claude reads what the topic starts from: its brief, and for a feature the discovery logs and the seeds; the record of every topic decided so far, never their logs; the product record, with what discovery found of the product; each spike; and earlier work in the topic's area, from the [knowledge base](knowledge-base.md). A topic that waited on the roadmap, or a piece of work that moved here from another kind, also reads the record it left in its first place, as input it never changes.
 
-The opening fits the topic: the shape of what has been said, a perspective from the brief or beyond it, what earlier decisions already settle and where from, and the open questions, with Claude's lean on any where a logical one exists. Each open question it names goes on the map. The opening decides nothing.
+The opening fits the topic: the shape of what has been said, a perspective from the brief or beyond it, what decisions already made settle and where from, and the open questions, with Claude's lean on any where a logical one exists. Each open question it names goes on the map. The opening decides nothing.
 
-What you settled on in discovery is working ground, never asked again. It moves when something here contradicts it, or when you reopen it yourself.
+What you settled on in discovery is working ground, never asked again. It moves when something here contradicts it, or when you reopen it yourself. A point the brief carries from the [record from before](discovery.md#what-you-bring-from-before) is not: it goes on the map as an open question, with the answer from before as Claude's lean, and always comes to you, however quiet its kind.
 
 ## The conversation
 

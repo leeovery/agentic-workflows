@@ -33,15 +33,15 @@ node .claude/skills/ledger-engine/scripts/engine.cjs enter discussion {work_unit
 
 A refusal names the way on: say it in a line. Where another session holds the topic, the entry asks first; carrying on from it ends the turn. Waiting mail is the conversation's first business (**Mail**).
 
-Then read what the DATA names, each in full, an `earlier` one as input never changed. Take in each `landed` report as **[reviews.md](references/reviews.md)** or **[deep-dives.md](references/deep-dives.md)** says, loading the one it needs, and close each `lost` one with `agent incorporate`. Each `affected` entry is confirmed in the conversation (`ledger hold`) or replaced; a topic the DATA says `stays decided` is entered for those alone, and once each is confirmed or replaced it leaves: bring the log up to date, then load **[handing-off.md](../ledger-shared/references/handing-off.md)** with route = `/ledger-continue-epic {work_unit}`. Search earlier work units' entries in the topic's area with `knowledge query`.
+Then read what the DATA names, each in full, an `earlier` one as input never changed. Where the brief lists shared files, load **[reference-files.md](../ledger-shared/references/reference-files.md)** and follow its instructions as written. Take in each `landed` report as **[reviews.md](references/reviews.md)** or **[deep-dives.md](references/deep-dives.md)** says, loading the one it needs, and close each `lost` one with `agent incorporate`. Each `affected` entry is confirmed in the conversation (`ledger hold`) or replaced; a topic the DATA says `stays decided` is entered for those alone, and once each is confirmed or replaced it leaves: bring the log up to date, then load **[handing-off.md](../ledger-shared/references/handing-off.md)** with route = `/ledger-continue-epic {work_unit}`. Search earlier work units' entries in the topic's area with `knowledge query`.
 
 Then open the conversation; never stop in silence once you have read. The opening names each `kept branch` and `kept work` to the person, a piece of work with the calls its line gives.
 
 ## The Opening
 
-What you say is your own and fits the topic: the shape of what has been said, a perspective from the brief or beyond it, what earlier decisions already settle and where from — the product record cited — the open questions with your lean on any where a logical one exists, and perhaps where to start. A principle the person stated in the product's conversation is your position in the first topic it bears on. Each open question you name goes on the map (`ledger ask`) in the same turn. The opening decides nothing.
+What you say is your own and fits the topic: the shape of what has been said, a perspective from the brief or beyond it, what decisions already made settle and where from — the product record cited — the open questions with your lean on any where a logical one exists, and perhaps where to start. A principle the person stated in the product's conversation is your position in the first topic it bears on. Each open question you name goes on the map (`ledger ask`) in the same turn. The opening decides nothing.
 
-The brief, the seeds and discovery's log are the inherited position: what the person settled on in discovery is working ground to build on, never asked again. It moves when something here contradicts it, or when the person reopens it. With nothing to open from, open on the problem, its constraints and the code worth reading.
+The brief, the seeds and discovery's log are the inherited position: what the person settled on in discovery is working ground to build on, never asked again. It moves when something here contradicts it, or when the person reopens it. A point the brief marks as from before is not inherited: it goes on the map as an open question asked with its id from before, so every raise of it comes to the person, the answer from before your lean — most are a quick yes. With nothing to open from, open on the problem, its constraints and the code worth reading.
 
 ## The Conversation
 
@@ -83,7 +83,7 @@ Draw it (`render map {work_unit}.{topic}`) at natural pauses, at your judgement,
 
 ### Mail
 
-At natural pauses, check `topic mailbox {work_unit} {topic}`: a message landing while the topic is in session is raised from there. A message is another topic's reasoning about something this topic owns, decided here in this topic's frame. Put the question it raises on the map — a moved question is there already — then remove the message: `topic answered {work_unit} {topic} {NNN-slug} --entry {question}`.
+At natural pauses, check `topic mailbox {work_unit} {topic}`: a message landing while the topic is in session is raised from there. A message is another topic's reasoning about something this topic owns, decided here in this topic's frame. Put the question it raises on the map — a moved question is there already — asked with its id from before where the message carries a point from before, then remove the message: `topic answered {work_unit} {topic} {NNN-slug} --entry {question}`.
 
 ### Research
 
@@ -107,7 +107,7 @@ The DATA's `log`, `topics/{topic}/log.md`, is the topic's journey: the options w
 
 Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic}`.
 
-- A question → `ledger ask {place} [--part-of {id}]`, `{"text", "by": "person|claude|review", "who_moved_whom": "none"}`.
+- A question → `ledger ask {place} [--part-of {id}]`, `{"text", "by": "person|claude|review", "who_moved_whom": "none"}`, adding `"from_before": "{id}"` for a point from before.
 - A finding → `ledger find {place} [--relies-on {id} …]`, adding `"how"`, `"known"`, and `"command"` and `"result"` where measured or exploratory.
 - A decision → `ledger decide {place} --answers {id} [--relies-on {id} …]`, `{"text", "why", "rules_out", "by", "given", "who_moved_whom": "none"}` — `given` `your-call` or `dont-care` with `"by": "claude"`.
 - A changed answer → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|other-topic|changed-mind|was-wrong]} [--cause {id}]`, the content of the kind it replaces with `"drops"`, a line for each part of the old it drops; an entry that still holds after it → `ledger hold {place} --entry {id} --after {id}`, `{"by", "who_moved_whom"}`.
@@ -115,7 +115,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 - A call you lean on → `raise {place} --answers {id}`; a fact only the person holds → the same with `--fact`; a decision you would replace → `raise {place} --replaces {id} --reason {reason}`.
 - Settling the rest → `render convergence {work_unit}.{topic} [--asked]`, whose rows run `convergence accept|decline`.
 - The topic as it stands → `ledger record|map|since|affected|product {work_unit} {topic}`, `render map {work_unit}.{topic}`.
-- A spike, and the files an entry links → `asset spike|add|status|lift`.
+- A spike, and the files an entry links → `asset spike|add|status|lift`; a shared file → `asset import`, `render import-reprompt`.
 - Mail → `topic mailbox`, `topic answered`; a message out → `topic send`; a single-topic unit's point of its own → `workunit pivot`, `topic add`.
 - An agent → `agent dispatch`, then `brief {role}`, then the Agent call with the agent and the pointer it answers; its report → `agent scan|ack|surface|incorporate`.
 - Earlier work → `knowledge query "{term}" …`; a search in depth after one → `brief plain-search`.
@@ -200,7 +200,7 @@ A refusal names the way on: say it in a line. Otherwise invoke `/ledger-discover
 
 ## A Shared File
 
-The person shares a file, a path or an image. Load **[spikes-and-assets.md](references/spikes-and-assets.md)** and follow its instructions as written.
+The person shares a file, a path or an image. Load **[importing-shared-files.md](../ledger-shared/references/importing-shared-files.md)** with home = `{work_unit}`, phase = `discussion`, topic = `{topic}`, and follow its instructions as written. Link each path it answered from the entry it informs, `asset add {work_unit} {path} --entry {id} --status {status:[canonical|reference]}`: canonical from a decision the spec carries, reference otherwise. The log's line for a folder names what the import renamed in it.
 
 ## An Experiment
 

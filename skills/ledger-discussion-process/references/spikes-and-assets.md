@@ -18,18 +18,14 @@ A spike is evidence only for what the person reviewed in it: scaffolding nobody 
 
 `asset add {work_unit} {path} --entry {id} [--status {status:[canonical|reference]}]` links a file to an entry, with the status you propose:
 - **canonical** — the spec carries it and the builder builds to it: linked from a decision.
-- **reference** — the builder consults it before re-solving anything it covers: linked from a finding, or for what the log tells. A spike's file is reference unless said.
+- **reference** — the builder consults it before re-solving anything it covers: linked from a finding, or for what the log tells. A spike's file takes this status unless another is said.
 
-The person changes a status in their own words, any time: `asset status {work_unit} {path} {status}`. Your own spike's files are linked as reference to the call they settled, so what you decided without the person shows how you found out.
+The person changes a status in their own words, any time: `asset status {work_unit} {path} {status}`. Your own spike's files are linked with the status reference to the call they settled, so what you decided without the person shows how you found out.
 
 ## A Design Lock
 
-A design spike ends in a lock: "which design?" is a question on the map, closed by the person's choice — a decision linking the chosen design canonical where it lies, never a copy. The designs that lost stay reference, the reason they lost in the log. Nothing tracked is deleted; only the cache's output may go. A later spike that challenges the lock states its hypothesis, and a decision replacing the lock gives its reason.
+A design spike ends in a lock: "which design?" is a question on the map, closed by the person's choice — a decision linking the chosen design canonical where it lies, never a copy. The designs that lost keep the status reference, the reason they lost in the log. Nothing tracked is deleted; only the cache's output may go. A later spike that challenges the lock states its hypothesis, and a decision replacing the lock gives its reason.
 
 ## Lifting Spike Code
 
 A piece of spike code lifted into the product is recorded, never drift: `asset lift {work_unit} {path} --into {path_in_project} --entry {id}`.
-
-## A Shared File
-
-A file the person shares is saved to `.ledger/{work_unit}/assets/` and linked from the entry it informs. A design living in an outside tool is kept as both: its exported image saved and linked, its live link in the linking entry. A path that names no file is asked about again, to be corrected or skipped, before anything lands; an image pasted with no file behind it is asked for as a saved file.

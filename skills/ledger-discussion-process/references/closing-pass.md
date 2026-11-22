@@ -21,7 +21,7 @@ Where the pass changed what the topic decides — a question opened, an answer r
 
 ## Your Own Reads
 
-- `decisions-entered` — the conversation and the log read against the record: every decision made in the conversation has its entry, and every answer the person gave landed.
+- `decisions-entered` — the conversation and the log read against the record: every decision made in the conversation has its entry, and every answer the person gave landed. The brief read against it too: a point it marks as from before that never reached the map goes on it, open, asked with its id from before.
 - `replacements-checked` — each replacement on the topic holds up against what it replaced, and its why says why.
 - `conflicts-read` — no two current answers on the topic contradict each other.
 - `findings-rerun` — each measured or exploratory finding a decision rests on is run again by its command. A value that has changed is replaced, `--reason was-wrong`, with the new result; each decision relying on it is then confirmed (`ledger hold`) or replaced — a decision of the person's through `raise --replaces`.

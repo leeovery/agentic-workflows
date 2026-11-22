@@ -4,7 +4,7 @@
 
 ---
 
-The conversation goes where the talk has gone, in this session: from the product's conversation into an epic whose map is still open, or from an epic's discovery out to the product. Say so in one line, re-read the log against the conversation and add what is missing, then move — `{to}` is the epic, or `product`:
+The conversation goes where the talk has gone, in this session: from the product's conversation into an epic whose map is still open, or from an epic's discovery out to the product. Say so in one line, re-read the log against the conversation and add what is missing — from the product's conversation, bringing the picture up to date — then move — `{to}` is the epic, or `product`:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs enter discovery {to} --move

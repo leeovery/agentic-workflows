@@ -18,11 +18,16 @@
 //   already is refused, so a spike carried on is never started twice.
 // - An import (9.10.5, 9.10.11): `import <unit|product> <path>…` copies the
 //   files the person shared into the unit's `assets/`, or the product's,
-//   each named by the landing's filename rules (import-landing.cjs), and
-//   answers each one's path from the state root, for the log or an entry to
+//   each named by the landing's filename rules (import-landing.cjs), a
+//   shared folder landing whole under its own name, its tree and its names
+//   kept, and answers each one's path from the state root, a folder's its
+//   folder's with its files listed (`folders`), and each name it changed
+//   beyond the file rules (`renamed_imports`), for the log or an entry to
 //   link. Nothing is committed: a file enters the state with what links it.
-//   A path naming no file refuses the call, naming every such path
-//   (`missing_imports`), as does a call whose every file the rules skip.
+//   A path naming no file or folder refuses the call, naming every such
+//   path (`missing_imports`), as do a folder holding what cannot land,
+//   naming each such path with why, and a call whose every file the rules
+//   skip.
 // - A link is the ledger's `asset` event (ledger-events.cjs): an entry, a
 //   file's path from the state root, and the status the link gives the
 //   file, the lift it records, or both.
@@ -268,10 +273,17 @@ function importFiles(cwd, [name, ...paths]) {
   assertLandableSources(cwd, paths);
   const dir = path.join(root, owner, 'assets');
   return withStateLock(root, () => {
-    const { planned, skipped } = planImports(paths, dir);
+    const { planned, skipped, renamed } = planImports(cwd, paths, dir);
     if (planned.length === 0) throw new Error(`${said}: nothing to land — the filename rules skip every file given (${skipped.join(', ')})`);
     copyImports(cwd, dir, planned);
-    return { imports: planned.map(({ dest }) => `${owner}/assets/${dest}`), skipped_imports: skipped };
+    const at = (/** @type {string} */ dest) => `${owner}/assets/${dest}`;
+    const folders = planned.flatMap(({ dest, files }) => (files === undefined ? [] : [{ path: at(dest), files: files.map(({ to }) => to) }]));
+    return {
+      imports: planned.map(({ dest }) => at(dest)),
+      skipped_imports: skipped,
+      ...(renamed.length === 0 ? {} : { renamed_imports: renamed.map(({ from, to }) => ({ from, to: at(to) })) }),
+      ...(folders.length === 0 ? {} : { folders }),
+    };
   });
 }
 
@@ -318,7 +330,7 @@ function firstStatus(said, root, unit, rel, status) {
     const units = unit === PRODUCT ? '' : `${unit}/assets/, a spike of ${unit}'s, ${unit}/spikes/NNN-{slug}/, or `;
     throw new Error(`${said}: ${rel} is not where an asset lives — ${units}the product's .product/assets/ or .product/spikes/NNN-{slug}/`);
   }
-  if (!fs.existsSync(path.join(root, rel))) throw new Error(`${said}: ${rel} names no file — save it there first, or correct the path`);
+  if (!fs.existsSync(path.join(root, rel))) throw new Error(`${said}: ${rel} names no file — land the file shared first, asset import ${unit} '<path>', and link the path it answers, or correct the path`);
   if (status !== undefined) return checkedStatus(said, status);
   if (!SPIKE_HOMES.includes(home)) throw new Error(`${said}: a first link gives the file its status — --status <${ASSET_STATUSES.join('|')}>`);
   return 'reference';

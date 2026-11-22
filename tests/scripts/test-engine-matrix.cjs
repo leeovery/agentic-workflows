@@ -66,7 +66,7 @@ function addCare(dir, kind) {
 const on = (topic = 'note-window') => ({ unit: UNIT, topic, phase: 'discussion', session: SESSION });
 
 /** A question asked by `by`, as its line holds it. @param {string} text @param {string} [by] @param {string} [topic] */
-const asked = (text, by = 'review', topic = undefined) => ({ event: 'asked', ...on(topic), by, who_moved_whom: 'none', text, part_of: null, relies_on: [], cites: [], task: null });
+const asked = (text, by = 'review', topic = undefined) => ({ event: 'asked', ...on(topic), by, who_moved_whom: 'none', text, part_of: null, relies_on: [], cites: [], task: null, from_before: null });
 
 /** An answer to `question`, as its line holds it: decided by `by`, given `given`. @param {string} question @param {string} by @param {string} [given] */
 const answered = (question, by, given = 'own') => ({
@@ -161,7 +161,7 @@ function drawnHistory(project) {
 /** The decision point's ruling on a behaviour question in the project at `dir`, blocking build work where `blocks`, its id one the blind draw never takes. @param {string} dir @param {boolean} blocks */
 function behaviourRuled(dir, blocks) {
   return withFrozenClock(() => decide(/** @type {any} */ ({ sort: 'several' }), {
-    label: labelled('behaviour'), place: { unit: UNIT, phase: 'implementation', topic: null }, blocks_build: blocks, replaced_by: null, always: null, measured: null, checked: false,
+    label: labelled('behaviour'), place: { unit: UNIT, phase: 'implementation', topic: null }, blocks_build: blocks, replaced_by: null, always: null, from_before: false, measured: null, checked: false,
     project: { root: statePath(dir), name: 'Fumi' }, model: MODEL, now: FROZEN_MS, chain: UNDRAWN,
   }));
 }
@@ -251,7 +251,7 @@ describe('the matrix (16.15.1, 17.1.2, 17.1.3)', () => {
     logHolding(h.events);
 
     const reason = withFrozenClock(() => decide(/** @type {any} */ ({ sort: 'several' }), {
-      label: labelled('behaviour'), place: { unit: UNIT, phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, always: null, measured: null, checked: false,
+      label: labelled('behaviour'), place: { unit: UNIT, phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, always: null, from_before: false, measured: null, checked: false,
       project: { root: statePath(dir), name: 'Fumi' }, model: null, now: FROZEN_MS,
     }).reason);
 

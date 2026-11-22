@@ -34,6 +34,7 @@ const { auditGate } = require('./gate-audit.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
+const { LEDGER_VERSION } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 
 const ONLY_YOU_KNOW = 'Only you know this: it\'s a fact I can\'t check.';
 
@@ -140,7 +141,7 @@ function screen(id, fact, { technical = false } = {}) {
  */
 function entryOf(id, question, own = {}) {
   return {
-    v: 1, id, event: 'decided', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
+    v: LEDGER_VERSION, id, event: 'decided', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
     by: 'person', who_moved_whom: 'none', answers: full(question), text: MONDAY.text, why: WHY, rules_out: [LATER.text],
     relies_on: [], product_wide: true, sealed: null, alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: true, given: 'own', cites: [], task: null, ...own,
   };

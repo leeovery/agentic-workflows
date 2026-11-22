@@ -16,7 +16,9 @@
 //   may close meanwhile (9.1.11); and a question Claude marks as a design
 //   problem (19.4.22), testing against a live server (19.4.20), or code
 //   built otherwise than a decision from before Ledger (21.6.16), a mark
-//   that can only make it ask.
+//   that can only make it ask; and a question that is a point of the
+//   record the person brought from before, as the question says
+//   (`from_before`, raise.cjs), so it comes to them once.
 // - With no label — the labeller's call failed, or no login serves it —
 //   ask (16.19.8).
 // - Always ask where the label tells: a danger question, read from the
@@ -72,6 +74,7 @@ const { HARD_TO_UNDO, ASK_AGAIN, buildRaised, midBuild } = require('./trust-sett
  * @property {DecidedBy|null} replaced_by whose the entry the call would replace is — who decided it, or as the person's keep of it since was given, theirs or their "don't care" — null where it replaces none
  * @property {string|null} measured the experiment still running that measures the question the call answers, null for none
  * @property {Always|null} always the mark it always asks by, null for none
+ * @property {boolean} from_before whether its question is a point of the record the person brought from before
  * @property {boolean} checked sent to check once already
  * @property {{id: string, name: string}} project the project the call is made in
  * @property {Counts} counts the counts on the project, for the session's model, as of now
@@ -86,6 +89,8 @@ const ALWAYS = Object.freeze({
   'live-server': 'It means testing against a live server, so it always comes to you.',
   'built-otherwise': 'The code was built otherwise than a decision from before Ledger, so it always comes to you.',
 });
+
+const FROM_BEFORE = 'It was where you had got to before, so it comes to you once.';
 
 const UNLABELLED = 'I couldn\'t tell what kind of question this is, so it comes to you.';
 const CHECK_IT = 'You can find this out: check it — read the code or the record, or run something — and raise it again only if checking can\'t settle it.';
@@ -139,14 +144,15 @@ function lineOf({ settings, blocks_build: blocks }, hard) {
 
 /**
  * Why the call asks before its label is read — replacing an entry of the
- * person's, on a question an experiment still running measures, under
- * Claude's mark, or with no label — or null.
- * @param {Pick<Context, 'replaced_by'|'measured'|'always'|'label'>} context
+ * person's, on a question an experiment still running measures, on a point
+ * from before, under Claude's mark, or with no label — or null.
+ * @param {Pick<Context, 'replaced_by'|'measured'|'from_before'|'always'|'label'>} context
  * @returns {string|null}
  */
-function asksUnread({ replaced_by: by, measured, always, label }) {
+function asksUnread({ replaced_by: by, measured, from_before: fromBefore, always, label }) {
   if (by === 'person') return YOURS;
   if (measured !== null) return `Experiment ${measured}, still running, measures this question, so it comes to you.`;
+  if (fromBefore) return FROM_BEFORE;
   if (always !== null) return ALWAYS[always];
   return label === null ? UNLABELLED : null;
 }

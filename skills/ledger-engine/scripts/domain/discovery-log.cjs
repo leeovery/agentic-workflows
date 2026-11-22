@@ -35,6 +35,13 @@
 //   holding ` — `, a tool `[` or `]` — a live link that is no web address,
 //   and a spike the place does not hold, named by the folder `asset spike`
 //   answered as `spike`.
+// - A point from before the epic's discovery meets (`discovery-log
+//   from-before <epic> --id … --point … --file …`) goes in no log: it joins
+//   the epic's points from before, `discovery/from-before.md` (from-
+//   before.cjs), where approve the map reads them, and that file alone is
+//   committed. An epic's alone, with its session open; refused, writing
+//   nothing, at the product, whose points from before its picture holds,
+//   out of a point's shape, or with its id there already.
 // - The reader takes every session's log in order, and in each every line
 //   under a fixed heading that is an entry, at the margin outside a fenced
 //   block, as one entry, wherever it stands; an indented line and prose
@@ -44,8 +51,9 @@
 //   heading's shape, and a spike's naming none of the place's spikes, is
 //   passed over, said among the warnings.
 // - Beyond the lists (`beyondLists`) is what a log's closing line is read
-//   from (discovery-entry.cjs), an entry recorded after it never taken for
-//   it. A session started on the day of the first conversation its log
+//   from (discovery-entry.cjs): the lists' headings, entries and bodies left
+//   out, so an entry recorded after it is never taken for it, and the prose
+//   written under a fixed heading kept. A session started on the day of the first conversation its log
 //   names (topic-log.cjs).
 // ---------------------------------------------------------------------------
 
@@ -60,6 +68,7 @@ const { PRODUCT_DIR } = require('./layout.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { listedIn, beyondListsOf, withEntry, oneLine, unbroken, fitsShape } = require('./log-lists.cjs');
 const { conversationsIn } = require('./topic-log.cjs');
+const { FROM_BEFORE, keepPoint } = require('./from-before.cjs');
 
 const SAID = 'discovery-log';
 
@@ -149,6 +158,18 @@ function heardIn(logs, spikes, warnings) {
 const spikesHome = (name) => (name === PRODUCT ? PRODUCT_DIR : name);
 
 /**
+ * What a place's logs say under their fixed headings, every session's in
+ * order: an epic's, or the product's. What is passed over is said in
+ * `warnings`.
+ * @param {string} root @param {string} name an epic, or `product` @param {string[]} warnings @returns {Heard}
+ */
+function placeHeard(root, name, warnings) {
+  const folder = sessionLogsAt(name);
+  const logs = sessionLogs(path.join(root, folder)).map(({ file }) => ({ rel: path.posix.join(folder, file), text: fs.readFileSync(path.join(root, folder, file), 'utf8') }));
+  return heardIn(logs, spikesOf(root, spikesHome(name)), warnings);
+}
+
+/**
  * What the product's logs say under their fixed headings (8.9.15), every
  * session's in order: each list that holds an entry. What is passed over is
  * said in `warnings`.
@@ -156,9 +177,7 @@ const spikesHome = (name) => (name === PRODUCT ? PRODUCT_DIR : name);
  * @returns {{not_taken?: {direction: string, why: string}[], views?: string[], spikes?: ({spike: string} & SpikeSaid)[]}}
  */
 function productHeard(root, warnings) {
-  const folder = sessionLogsAt(PRODUCT);
-  const logs = sessionLogs(path.join(root, folder)).map(({ file }) => ({ rel: path.posix.join(folder, file), text: fs.readFileSync(path.join(root, folder, file), 'utf8') }));
-  const heard = heardIn(logs, spikesOf(root, PRODUCT_DIR), warnings);
+  const heard = placeHeard(root, PRODUCT, warnings);
   const lists = { not_taken: heard.notTaken, views: heard.views, spikes: [...heard.spikes].map(([spike, said]) => ({ spike, ...said })) };
   return Object.fromEntries(Object.entries(lists).filter(([, list]) => list.length > 0));
 }
@@ -207,9 +226,12 @@ const ENTRIES = Object.freeze({
   },
 });
 
-const LOG_USAGE = Object.values(ENTRIES).map(({ usage }) => `discovery-log ${usage}`).join('\n');
+/** A point from before, kept in the epic's points from before rather than its log. */
+const POINT_ENTRY = Object.freeze({ usage: 'from-before <epic> --id "<id>" --point "<point>" --file "<file>"', takes: 0, flags: ['id', 'point', 'file'] });
 
-/** Refuses arguments out of an entry's shape, with its usage. @param {typeof ENTRIES[string]} entry @param {string[]} positional @param {Record<string, string>} opts */
+const LOG_USAGE = [...Object.values(ENTRIES), POINT_ENTRY].map(({ usage }) => `discovery-log ${usage}`).join('\n');
+
+/** Refuses arguments out of an entry's shape, with its usage. @param {{usage: string, takes: number, flags: string[], may?: string[]}} entry @param {string[]} positional @param {Record<string, string>} opts */
 function checkShape(entry, positional, opts) {
   if (!fitsShape(entry, positional, opts)) throw new Error(`Usage: engine discovery-log ${entry.usage}`);
 }
@@ -229,6 +251,33 @@ function epicSession(cwd, root, unit) {
 }
 
 /**
+ * `discovery-log from-before <epic> …` (the header's): the point put in the
+ * epic's points from before and that file committed alone. Answers the
+ * file, from the state root, the point's line and the commit.
+ * @param {string} cwd @param {string[]} positional @param {Record<string, string>} opts
+ */
+function pointHeard(cwd, positional, opts) {
+  checkShape(POINT_ENTRY, positional, opts);
+  const [unit] = positional;
+  if (unit === PRODUCT) throw new Error(`${SAID}: from-before is an epic's — the product's points from before are its picture's`);
+  epicSession(cwd, stateRoot(cwd), unit);
+  let line;
+  try {
+    line = keepPoint(cwd, unit, { id: opts.id, point: opts.point, file: opts.file });
+  } catch (err) {
+    throw new Error(`${SAID}: ${/** @type {Error} */ (err).message}`);
+  }
+  const rel = path.posix.join(unit, FROM_BEFORE);
+  /** @type {string[]} */
+  const warnings = [];
+  const outcome = commitStateTail(cwd, [rel], `discovery(${unit}): a point from before kept`, warnings);
+  /** @type {Record<string, any>} */
+  const result = { file: rel, line: `- ${line}`, committed: outcome.committed, ...(warnings.length > 0 ? { warnings } : {}) };
+  noteCommitOutcome(result, outcome, `${unit} --discovery`);
+  return result;
+}
+
+/**
  * `discovery-log <entry> <epic|product> …` (the header's): the entry's line
  * put in the log of the open session — the product's opened where none is —
  * and at the product committed alone, onto the log as the branch holds it,
@@ -237,7 +286,8 @@ function epicSession(cwd, root, unit) {
  * @param {string} cwd @param {string|undefined} kind @param {string[]} positional @param {Record<string, string>} opts
  */
 function logHeard(cwd, kind, positional, opts) {
-  if (kind === undefined || !Object.hasOwn(ENTRIES, kind)) throw new Error(`Usage: engine discovery-log <${Object.keys(ENTRIES).join('|')}> …\n${LOG_USAGE}`);
+  if (kind === 'from-before') return pointHeard(cwd, positional, opts);
+  if (kind === undefined || !Object.hasOwn(ENTRIES, kind)) throw new Error(`Usage: engine discovery-log <${[...Object.keys(ENTRIES), 'from-before'].join('|')}> …\n${LOG_USAGE}`);
   const entry = ENTRIES[kind];
   checkShape(entry, positional, opts);
   const [name, ...rest] = positional;
@@ -260,4 +310,4 @@ function logHeard(cwd, kind, positional, opts) {
   return result;
 }
 
-module.exports = { LOG_USAGE, heardIn, productHeard, beyondLists, sessionStarted, logHeard };
+module.exports = { LOG_USAGE, heardIn, placeHeard, productHeard, beyondLists, sessionStarted, logHeard };

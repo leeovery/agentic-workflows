@@ -532,7 +532,7 @@ describe('task account (12.14.4, 6.3.13)', () => {
 
   it('13.4.6: a task a question waiting parks, its last round passed, naming the question\'s raise', () => {
     const tags = { unit: UNIT, topic: null, phase: 'implementation', session: SESSION.CLAUDE_CODE_SESSION_ID };
-    const { id: question } = appendEntry(statePath(dir), { event: 'asked', ...tags, by: 'claude', who_moved_whom: 'none', text: 'Does a receipt show the tax?', part_of: null, relies_on: [], cites: [], task: '1.2' }, []);
+    const { id: question } = appendEntry(statePath(dir), { event: 'asked', ...tags, by: 'claude', who_moved_whom: 'none', text: 'Does a receipt show the tax?', part_of: null, relies_on: [], cites: [], task: '1.2', from_before: null }, []);
     const rows = [{ key: '1', name: 'Shown', text: 'The receipt shows the tax', notice: 'a line for tax' }, { key: '2', name: 'Folded', text: 'The total holds the tax', notice: 'no tax line' }];
     appendEntry(statePath(dir), {
       event: 'parked', ...tags, question, replaces: null, reason: null, cause: null, relies_on: [], task: '1.2', went_ahead: null, number: 1,

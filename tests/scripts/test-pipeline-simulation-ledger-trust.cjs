@@ -188,17 +188,19 @@ describe('pipeline simulation: the trust log', () => {
     assert.ok(sim.sections.includes(`\nperson: ${path.join(sim.configDir, 'person.md')}\n`), 'the entry names no record of the person');
   });
 
-  it('convergence: eight of the person\'s answers in a row taking Claude\'s lean on a topic with questions open, the eighth cueing the offer; the offer drawn, its forecast the rule\'s, and accepted, its yes in the trust log; the last three of the run on behaviour, which the person\'s other projects trust, so it goes quiet here; then each open question raised as any call under the rule — a behaviour point settled as Claude\'s call and standing on the map and in the ledger, a danger point and a contract point each coming to the person in a raise of its own (16.S25, 16.S29, 9.S45)', async (t) => {
+  it('convergence: eight of the person\'s answers in a row taking Claude\'s lean on a topic with questions open, the eighth cueing the offer, a quick yes to a point from before before them counting for nothing; the offer drawn, its forecast the rule\'s, and accepted, its yes in the trust log; the last three of the run on behaviour, which the person\'s other projects trust, so it goes quiet here; then each open question raised as any call under the rule — a behaviour point settled as Claude\'s call and standing on the map and in the ledger, a danger point, a contract point and a behaviour point from before each coming to the person in a raise of its own (16.S25, 16.S29, 9.S45)', async (t) => {
     const wu = 'sora';
     const FLOAT = 'Does a note float over the rest?';
     const BIN = 'Does deleting a note skip the bin?';
     const SYNC = 'Does a note sync before it is saved?';
+    const EXPIRES = 'Does a note expire after a year?';
     sim.env = {
       ...sim.env,
       CLAUDE_STUB_ANSWERS: JSON.stringify({
         [FLOAT]: labelAnswers('behaviour'),
         [BIN]: labelAnswers('danger'),
         [SYNC]: labelAnswers('contract'),
+        [EXPIRES]: labelAnswers('behaviour'),
         ...Object.fromEntries([6, 7, 8].map((n) => [`Settled point ${n}`, labelAnswers('behaviour')])),
         'Settled point': labelAnswers('words'),
         '': 'no-login',
@@ -208,24 +210,25 @@ describe('pipeline simulation: the trust log', () => {
     mappedEpic(sim, wu, ['note-window']);
     startItem(sim.dir, wu, 'discussion', 'note-window');
     const note = `${wu}.discussion.note-window`;
-    /** Claude's question `text`, asked: its short id. @param {string} text */
-    const ask = (text) => sim.run(['ledger', 'ask', note], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text })).id;
+    /** Claude's question `text`, asked, a point from before where `fromBefore` names its id: its short id. @param {string} text @param {string|null} [fromBefore] */
+    const ask = (text, fromBefore = null) => sim.run(['ledger', 'ask', note], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text, from_before: fromBefore })).id;
     /** Claude's lean on `question`, worded `text`, raised: the raise's answer. @param {string} question @param {string} text */
     const raise = (question, text) => sim.runAsync(['raise', note, '--answers', question], null, JSON.stringify({ ...leaningCall('It floats.', 'It stays put.'), question: text }));
     /** The person's pick of the lean on the raise `id`: the answer. @param {string} id */
     const lean = (id) => sim.run(['raise', 'answer', id, '--pick', '1'], null, JSON.stringify({ why: 'The person said why.' }));
-    const open = { float: ask(FLOAT), bin: ask(BIN), sync: ask(SYNC) };
+    const open = { float: ask(FLOAT), bin: ask(BIN), sync: ask(SYNC), expires: ask(EXPIRES, 'D12') };
+    const before = 'Does a note keep its colour? (from before)';
 
     /** @type {unknown[]} */
-    const cues = [];
+    const cues = [lean((await raise(ask(before, 'D3'), before)).raise).convergence ?? null];
     for (let n = 1; n <= 8; n += 1) {
       const text = `Settled point ${n}: does a note snap to the grid?`;
       cues.push(lean((await raise(ask(text), text)).raise).convergence ?? null);
     }
-    assert.deepStrictEqual(cues, [...Array(7).fill(null), { unit: wu, topic: 'note-window', agreements: 8 }]);
+    assert.deepStrictEqual(cues, [...Array(8).fill(null), { unit: wu, topic: 'note-window', agreements: 8 }]);
 
     const offered = sim.render(['convergence', `${wu}.note-window`], { expect: 'content' });
-    assert.ok(offered.includes('\n3 open: I\'d settle 1; 2 come to you — 1 danger, 1 contract.\n'), `the forecast is not the rule's:\n${offered}`);
+    assert.ok(offered.includes('\n4 open: I\'d settle 1; 3 come to you — 1 danger, 1 contract, 1 behaviour.\n'), `the forecast is not the rule's:\n${offered}`);
     sim.run(answerGate(sim, 'convergence offer', '--pick', 'y').next.argv);
     assert.deepStrictEqual(trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'convergence').map(({ unit, topic }) => `${unit}.${topic}`), [`${wu}.note-window`]);
 
@@ -235,7 +238,9 @@ describe('pipeline simulation: the trust log', () => {
     lean(danger.raise);
     const synced = await raise(open.sync, SYNC);
     lean(synced.raise);
-    assert.deepStrictEqual([settled.decision, danger.decision, synced.decision], ['proceed', 'ask', 'ask']);
+    const expires = await raise(open.expires, EXPIRES);
+    lean(expires.raise);
+    assert.deepStrictEqual([settled.decision, danger.decision, synced.decision, expires.decision], ['proceed', 'ask', 'ask', 'ask']);
     assert.deepStrictEqual(sim.run(['ledger', 'since', wu, 'note-window']).calls.map((/** @type {{id: string}} */ { id }) => id), [settled.id]);
     assert.match(sim.render(['map', `${wu}.note-window`], { expect: 'content' }), /^SINCE YOU LAST LOOKED \(1 call by Claude\)\n.*Does a note float over the rest\?/m);
   });

@@ -193,6 +193,10 @@ _Avoid_: stale, input moved
 **carried over**:
 A decision brought into Ledger from a project's documents from before it, where they do not show who made it. It is drawn apart from the person's decisions and Claude's calls and counts as neither.
 
+**record from before**:
+A record the person brings from before — notes, a decision log, a model of the product, research. Its points are **the points from before**: where they had got to, cited by its own ids and files, its own open questions still open. A point of it becomes their view only once they take it up in discovery; otherwise each topic's brief carries the points that bear on it, marked as from before, and its discussion puts each on its map as an open question, the answer from before Claude's lean.
+_Avoid_: earlier record (a postponed topic's), carried over (the migration's decisions), decisions, for its points before a discussion decides them
+
 ## Gates and trust
 
 **gate**:
@@ -256,6 +260,10 @@ _Avoid_: promote
 **views of the product**:
 What the person has said of the product as a whole, in any conversation — a principle, a direction, who it is for, a constraint, a lean — kept as their input beside the directions they dropped, each with why. Every topic's opening reads them beside the product record, which speaks where both do, and a view is decided in the first topic it bears on.
 
+**product picture**:
+The product's conversation's one view of where the product stands, rewritten in place as the talk moves on: the log is the journey, the picture where things stand now. Each point in it is the person's view, a point from before, an open question with the leans on it, or a pointer to the product record once a discussion has decided it; a section of its own lists the shared files not read in full. It decides nothing and holds the product's level, what no started work holds yet, thinning as work starts; a return to the product's conversation opens from it.
+_Avoid_: the current model, the product summary
+
 **backlog**:
 Putting something aside from any conversation, whichever phase it is in. It covers both homes: a line on the roadmap, saying where it belongs, when the person has decided to do it, an inbox note when they haven't yet — and they are asked where it should wait when their words leave it open. A topic already on an epic's map is postponed instead. The roadmap's backlog is whichever horizon they name for it, such as Backlog or Later.
 
@@ -275,6 +283,9 @@ An inbox or roadmap item a piece of work was started from, kept with the work as
 **asset**:
 A file shared with or made for a piece of work — notes, a design document, a screenshot, an error report, what a spike showed — kept with the work and linked from the entry it informs.
 _Avoid_: import, attachment
+
+**reference file**:
+A shared file kept to be searched rather than read: one the person shares for reference, or one Claude judges is, such as a transcript, a raw export or a long chat log. It is listed with what it holds where a later sitting finds it — in the product's conversation, the product picture, and in an epic and a topic's brief the ones that bear on them — searched when a point needs it, and read properly whenever the person asks.
 
 **legacy files**:
 The files a piece of work had from before Ledger that the migration found no place for — old plans, agent reports, research — set aside with the work, or with the product, until each is sorted. The start menu shows them on one row, *Sort the legacy files from the migration*, and an epic's menu shows its own. Each file or folder is kept among the work's assets, everything that names it following it, or discarded; a file brought in becomes findings on the record, citing it where it was kept.

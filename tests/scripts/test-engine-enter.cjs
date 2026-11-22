@@ -27,7 +27,9 @@
 // quick-fix refused for manage (8.S12) and an epic past its spec for the
 // product's conversation; the open log carried on, or the next opened and
 // committed, the conversation's line written into it where the log's last
-// such line is another's (8.S62, 8.S70, 8.S75); the reads — the product's two latest logs, the
+// such line is another's (8.S62, 8.S70, 8.S75); the reads — the product's two latest logs, or
+// once its picture is written the picture, its latest closed sitting by its closing line and
+// the open sitting carried on in full, the picture beside seeds and a type call too, the
 // roadmap, the product record and the research owed (8.S69), an epic's older
 // logs by their closing lines and two latest in full, its first log's
 // pointers, its map and the product record (8.S53) — and a log another
@@ -695,6 +697,103 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
     assert.deepStrictEqual([opened, read()], [logs('001', '002'), logs('002', '003')]);
   });
 
+  describe('once the conversation has written its picture', () => {
+    const PICTURE = '# Where the product stands\n';
+    beforeEach(() => writeState(dir, layout.productPicture, PICTURE));
+
+    it('a return reads the picture in full and the latest closed log by its closing line — the prose under a fixed heading its closing line, never an entry there — in place of the latest logs in full', () => {
+      writeState(dir, layout.productSession('002'), '## 2026-01-02 · session second\n\nPricing.\n\n## Not taken\n\n- A web client — the Mac is the product\n\nWhere it got to: pockets small, pricing next.\n\n## Views of the product\n\n- One-time pricing\n');
+      assert.strictEqual(enter(['discovery', 'product']).sections, data([
+        `picture: ${at(layout.productPicture)}`,
+        `latest sitting: ${at(layout.productSession('002'))} — Where it got to: pockets small, pricing next.`,
+        `roadmap: \`${ENGINE} roadmap state\``,
+        `product: \`${ENGINE} ledger product\``,
+        'research owed: no',
+        payloadAt('sess-1'),
+        `log: ${at(layout.productSession('003'))}`,
+      ]));
+    });
+
+    /** Each of `units`, `[name, type, created]`, made and registered. @param {[string, string, string][]} units */
+    function started(units) {
+      const project = JSON.parse(readState(dir, layout.projectManifest));
+      for (const [unit, type, created] of units) {
+        createManifest(dir, unit, { work_type: type, created });
+        project.work_units = { ...project.work_units, [unit]: { work_type: type } };
+      }
+      writeState(dir, layout.projectManifest, JSON.stringify(project, null, 2));
+    }
+
+    it('a return names each unit started since the latest closed sitting\'s first conversation began — on its day or after, whichever door started it — with what it carries, and none from before it', () => {
+      writeState(dir, layout.productSession('002'), '## 2026-01-02 · session second\n\nPricing.\n\n## 2026-01-04 · session third\n\nGifting.\n');
+      started([['old-work', 'feature', '2026-01-01'], ['gifting', 'epic', '2026-01-03'], ['payouts', 'epic', '2026-01-04'], ['saved-filters', 'feature', '2026-01-04'], ['pricing-page', 'quick-fix', '2026-01-05']]);
+      writeState(dir, layout.fromBefore('gifting'), '# From before\n\n- D5: Gifts expire (planning/decision-log.md)\n');
+      writeState(dir, layout.session('payouts', '001'), '## 2026-01-04 · session one\n');
+      writeState(dir, layout.brief('saved-filters', 'saved-filters'), '# Saved filters\n');
+
+      assert.deepStrictEqual(enter(['discovery', 'product']).sections.match(/^started since: .*$/gm), [
+        `started since: gifting epic — ${at(layout.fromBefore('gifting'))}`,
+        `started since: payouts epic — ${at(layout.session('payouts', '001'))}`,
+        `started since: saved-filters feature — ${at(layout.brief('saved-filters', 'saved-filters'))}`,
+        'started since: pricing-page quick-fix — its description: Test: pricing-page',
+      ]);
+    });
+
+    it('with no sitting closed, a return to the one held open names each unit started since its first conversation began, one that carries nothing yet by its name alone', () => {
+      writeState(dir, layout.productSession('001'), '## 2026-01-01 · session first\n');
+      writeState(dir, layout.productSession('002'), '## 2026-01-01 · session second\n');
+      withFrozenClock(() => enter(['discovery', 'product']));
+      fs.appendFileSync(at(layout.productSession('003')), '\nGifting, sent between shops.\n');
+      started([['old-work', 'feature', '2025-12-31'], ['gifting', 'epic', TODAY]]);
+
+      assert.deepStrictEqual(enter(['discovery', 'product'], 'sess-2').sections.match(/^started since: .*$/gm), ['started since: gifting epic']);
+    });
+
+    it('carrying on the open sitting another conversation left reads that log in full beside the picture, the latest closed log by its closing line, and the catch-up brings the picture up to date with the log', () => {
+      const first = transcript('sess-1');
+      enter(['discovery', 'product']);
+      fs.appendFileSync(at(layout.productSession('003')), '\nPricing tiers, leaning three.\n');
+      ends('sess-1');
+      assert.strictEqual(enter(['discovery', 'product'], 'sess-2').sections, data([
+        `picture: ${at(layout.productPicture)}`,
+        `latest sitting: ${at(layout.productSession('002'))} — Pricing.`,
+        `session log: ${at(layout.productSession('003'))}`,
+        `roadmap: \`${ENGINE} roadmap state\``,
+        `product: \`${ENGINE} ledger product\``,
+        'research owed: no',
+        payloadAt('sess-2'),
+        `catch up: read ${first} from the log's last write onward, and add to the log and the picture what they are missing`,
+        `log: ${at(layout.productSession('003'))}`,
+      ]));
+      ends('sess-2');
+      assert.match(enter(['discovery', 'product'], 'sess-3').sections,
+        /^catch up: the transcript of session sess-2, which last wrote the log, is gone — say so in one line, and carry on from the log, bringing the picture up to date from it$/m);
+    });
+
+    it('a start from seeds reads the seeds beside the picture, and a type call the picture with the seeds, the roadmap and the inbox, to read and never write', () => {
+      const idea = '.ledger/.inbox/ideas/2026-01-03--dark-mode.md';
+      writeState(dir, '.inbox/ideas/2026-01-03--dark-mode.md', '# Dark mode\n');
+      const seeded = enter(['discovery', 'product', '--seeds', idea]).sections;
+      const called = enter(['discovery', 'product', '--type-call', '--seeds', idea], 'caller').sections;
+      assert.deepStrictEqual([seeded, called], [data([
+        `seed: ${at('.inbox/ideas/2026-01-03--dark-mode.md')}`,
+        `picture: ${at(layout.productPicture)}`,
+        `roadmap: \`${ENGINE} roadmap state\``,
+        `product: \`${ENGINE} ledger product\``,
+        'research owed: no',
+        payloadAt('sess-1'),
+        `log: ${at(layout.productSession('003'))}`,
+      ]), data([
+        `seed: ${at('.inbox/ideas/2026-01-03--dark-mode.md')}`,
+        `picture: ${at(layout.productPicture)}`,
+        `roadmap: \`${ENGINE} roadmap state\``,
+        `inbox: ${at('.inbox')}`,
+        payloadAt('caller'),
+      ])]);
+      assert.strictEqual(readState(dir, layout.productPicture), PICTURE);
+    });
+  });
+
   it('8.2.9: a piece of work\'s type call, with another live session in the product\'s conversation, asks nothing first and opens, writes, commits and records nothing — no session, no position, no presence, the other\'s hold left as it stands — and reads the roadmap and the live inbox, and the seeds where it starts from any; refused at an epic, writing nothing', () => {
     runAs(dir, ['presence', 'beat', 'product', 'discovery', 'product'], 'peer', PEER);
     const held = presence('product', 'product', 'discovery', 'peer');
@@ -857,7 +956,8 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
 });
 
 describe('discovery: an epic\'s (8.6.7)', () => {
-  it('four logs, the fourth open: the older two by their closing lines, never an entry of the fixed lists recorded after one, the latest two in full, the first log\'s pointers into the product\'s sessions, the map and the product record; the open log carried on, and the conversation that last wrote it named for catch-up (8.S53, 8.S62)', () => {
+  it('four logs, the fourth open: the older two by their closing lines, never an entry of the fixed lists recorded after one, the latest two in full, the first log\'s pointers into the product\'s sessions, the points from before it carries, the map and the product record; the open log carried on, and the conversation that last wrote it named for catch-up (8.S53, 8.S62)', () => {
+    writeState(dir, layout.fromBefore(EPIC), '# From before\n\n- D101: One gift shape (planning/decision-log.md)\n');
     const four = transcript('four');
     const { res, sections } = withFrozenClock(() => enter(['discovery', EPIC]));
     assert.deepStrictEqual(res, { ok: true, phase: 'discovery', unit: EPIC, entered: true, started: false });
@@ -867,6 +967,7 @@ describe('discovery: an epic\'s (8.6.7)', () => {
       `session log: ${at(layout.session(EPIC, '003'))}`,
       `session log: ${at(layout.session(EPIC, '004'))}`,
       `shaped by: ${at(layout.productSession('001'))}#pricing`,
+      `from before: ${at(layout.fromBefore(EPIC))}`,
       `map: \`${ENGINE} render discovery-map ${EPIC}\``,
       `product: \`${ENGINE} ledger product ${EPIC}\``,
       `catch up: read ${four} from the log's last write onward, and add to the log what it is missing`,

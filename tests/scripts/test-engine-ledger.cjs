@@ -71,7 +71,7 @@ const FUMI = Object.freeze({ name: 'fumi', state: true });
 
 /** A question's fields. @param {Record<string, unknown>} [fields] */
 function question(fields = {}) {
-  return { event: 'asked', ...TAGS, ...MADE, text: 'What is a fumi, at its most basic?', part_of: null, relies_on: [], cites: [], task: null, ...fields };
+  return { event: 'asked', ...TAGS, ...MADE, text: 'What is a fumi, at its most basic?', part_of: null, relies_on: [], cites: [], task: null, from_before: null, ...fields };
 }
 
 /** A finding's fields. @param {Record<string, unknown>} [fields] */
@@ -148,7 +148,7 @@ function stopped(root) {
 describe('the events and their schemas', () => {
   const HEADER = ['v', 'id', 'event', 'unit', 'topic', 'phase', 'session', 'at'];
   const BY = ['by', 'who_moved_whom'];
-  const QUESTION = ['text', 'part_of', 'relies_on', 'cites', 'task'];
+  const QUESTION = ['text', 'part_of', 'relies_on', 'cites', 'task', 'from_before'];
   const FINDING = ['text', 'how', 'relies_on', 'product_wide', 'known', 'command', 'result', 'cites', 'task'];
   const DECISION = ['answers', 'text', 'why', 'rules_out', 'relies_on', 'product_wide', 'sealed', 'alternatives', 'evidence', 'kind', 'hard_to_undo', 'unchecked', 'given', 'cites', 'task'];
 
@@ -278,9 +278,18 @@ describe('the events and their schemas', () => {
     for (const [value, message] of cases) assert.throws(() => validEvent(value), (err) => err instanceof LedgerLineError && message.test(err.message), `${JSON.stringify(value)} was not refused as ${message}`);
   });
 
+  it('reads a question written at version 1, before from_before — asked, and reworded — as no point from before, from_before null', () => {
+    const lines = [
+      '{"v":1,"id":"g8JBSgaWIycDdYBUIEBNa","event":"asked","unit":"fumi","topic":"note-window","phase":"discussion","session":"session-1","at":"2026-10-27T09:00:00Z","by":"claude","who_moved_whom":"none","text":"Where does a note go?","part_of":null,"relies_on":[],"cites":[],"task":null}',
+      '{"v":1,"id":"LeXlFMASv48yrFE1oAr8d","event":"replaced","unit":"fumi","topic":"note-window","phase":"discussion","session":"session-1","at":"2026-10-27T09:05:00Z","by":"claude","who_moved_whom":"none","replaces":"g8JBSgaWIycDdYBUIEBNa","reason":"changed-mind","cause":null,"drops":[],"of":"question","text":"Where does a new note go?","part_of":null,"relies_on":[],"cites":[],"task":null}',
+    ];
+
+    assert.deepStrictEqual(lines.map((line) => validEvent(JSON.parse(line)).from_before), [null, null]);
+  });
+
   it('carries in a replacement the content of what it replaces: a question\'s, a finding\'s or a decision\'s', () => {
     const shapes = {
-      question: { text: 'Where does a note go?', part_of: null, relies_on: [], cites: [], task: null },
+      question: { text: 'Where does a note go?', part_of: null, relies_on: [], cites: [], task: null, from_before: null },
       finding: { text: 'Spaces keep their ids.', how: 'seen in a spike', relies_on: [], product_wide: true, known: 'spike', command: null, result: null, cites: [], task: null },
     };
     for (const [of, content] of Object.entries(shapes)) {

@@ -61,7 +61,7 @@ describe('tags (5.2.3)', () => {
   it('tags an entry made at the unit\'s level with its unit, phase and session, and no topic', () => {
     const res = write('ask', `${UNIT}.specification`, [], { ...MADE, text: 'Which macOS releases does the spec cover?' });
 
-    const id = assertLast('asked', { phase: 'specification', topic: null }, { ...MADE, text: 'Which macOS releases does the spec cover?', part_of: null, relies_on: [], cites: [], task: null });
+    const id = assertLast('asked', { phase: 'specification', topic: null }, { ...MADE, text: 'Which macOS releases does the spec cover?', part_of: null, relies_on: [], cites: [], task: null, from_before: null });
     assertAnswered(res, id);
   });
 
@@ -138,7 +138,7 @@ describe('content and links', () => {
     refused('replace', NOTE, ['--replaces', question, '--reason', 'changed-mind'], { ...MADE, text: 'Q?' }, /^ledger replace: the content needs drops$/);
     refused('decide', NOTE, flags, { ...decision, rules_out: 'a title bar' }, /^ledger decide: the content's rules_out is not a list of non-empty text$/);
     refused('decide', NOTE, flags, { ...decision, by: 'review' }, /^ledger decide: the content's by is not one of person, claude$/);
-    refused('replace', NOTE, ['--replaces', question, '--reason', 'changed-mind'], { ...MADE, drops: [], text: 'Q?', why: 'A question has no why.' }, /^ledger replace: the content has no field why — it holds by, who_moved_whom, drops, text, cites$/);
+    refused('replace', NOTE, ['--replaces', question, '--reason', 'changed-mind'], { ...MADE, drops: [], text: 'Q?', why: 'A question has no why.' }, /^ledger replace: the content has no field why — it holds by, who_moved_whom, drops, text, cites, from_before$/);
   });
 
   it('takes the links as flags: refuses a flag the verb does not take, one with no value, one given twice that takes one, a required one left out, and anything but one dot-path', () => {
@@ -224,7 +224,7 @@ describe('scenarios', () => {
 
   it('records a review\'s finding as a question the review asked, and links the later answer to it (5.S14)', () => {
     const raised = write('ask', `${UNIT}.review`, [], { by: 'review', who_moved_whom: 'none', text: 'The note window leaks its frame on hover — is that intended?' });
-    assertLast('asked', { phase: 'review', topic: null }, { by: 'review', who_moved_whom: 'none', text: 'The note window leaks its frame on hover — is that intended?', part_of: null, relies_on: [], cites: [], task: null });
+    assertLast('asked', { phase: 'review', topic: null }, { by: 'review', who_moved_whom: 'none', text: 'The note window leaks its frame on hover — is that intended?', part_of: null, relies_on: [], cites: [], task: null, from_before: null });
 
     write('decide', `${UNIT}.review`, ['--answers', raised.id], { ...MADE, text: 'No: the frame stays hidden on hover.', why: 'The design is frameless.' });
 

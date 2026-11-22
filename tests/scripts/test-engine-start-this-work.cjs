@@ -6,7 +6,9 @@
 // Claude's payload and drawing the screen the spec draws, creating nothing
 // (8.S16), with no name question (8.S21), staged apart for each
 // conversation; `start-this-work yes` creating the unit from the staged copy
-// as one transaction, its first log pointing into the product's sessions
+// as one transaction, its first log pointing into the product's sessions, an
+// epic's points from before written into its own place whichever way it
+// started, a type call never touching the product's conversation
 // (8.S64), the product's session closed where the work leaves the
 // conversation's place there — never at a quick-fix's yes or a type call's,
 // nor while another live window holds the product's conversation — and what
@@ -72,6 +74,18 @@ const FUMI = Object.freeze({
   shaped_by: [`${PRODUCT_LOG}#notes`],
 });
 
+/** An epic's points from before, as the payload gives them and as its own place holds them. */
+const POINTS = Object.freeze([
+  { id: 'D101', point: 'One gift shape', file: '.product/assets/planning/decisions/decision-log.md' },
+  { id: 'B51', point: 'How a pocket pays for itself is open', file: '.product/assets/planning/model/current.md' },
+]);
+const FROM_BEFORE = layout.fromBefore('fumi');
+const HELD = '# From before\n\n- D101: One gift shape (.product/assets/planning/decisions/decision-log.md)\n- B51: How a pocket pays for itself is open (.product/assets/planning/model/current.md)\n';
+/** A transcript shared in the product's conversation, as the payload names it and as the epic's own place holds it. */
+const TRANSCRIPT = '.product/assets/planning/log/2026-01-04.md';
+const SHARED = Object.freeze([{ path: TRANSCRIPT, holds: 'The gifting call with the shop owners', kind: 'reference' }]);
+const HELD_FILES = `\n## Shared files\n\n- ${TRANSCRIPT} — The gifting call with the shop owners (reference)\n`;
+
 /** A one-topic unit's payload, its brief drafted. @param {string} type @param {string} name */
 function oneTopic(type, name) {
   return { type, name, description: `The ${name} work.`, reason: `A ${type}: one piece of work.`, shaped_by: [`${PRODUCT_LOG}#pricing`], brief: scratch(`# ${name}\n\nWhat discovery heard.\n`) };
@@ -115,6 +129,22 @@ describe('start this work, the screen (8.8.2, 8.S16, 8.S21)', () => {
     assert.deepStrictEqual([head(dir()), fs.existsSync(statePath(dir(), 'fumi')), JSON.parse(readState(dir(), STAGED)).name], [before, false, 'fumi'],
       'nothing is created or committed before the yes; the payload waits in the product\'s cache');
     assert.deepStrictEqual(answer('start this work', 'y'), { kind: 'engine', argv: ['start-this-work', 'yes'] });
+  });
+
+  it('lists what an epic\'s yes carries from before beneath the reason: each point by its id, and each shared file with what it holds and how it is read', () => {
+    writeState(dir(), TRANSCRIPT, '# The gifting call\n');
+    const out = screen(['start-this-work'], { ...FUMI, from_before: POINTS, shared_files: SHARED });
+    assert.strictEqual(sectionOf(out, 'DISPLAY: start this work').split('\n').slice(7).join('\n'), [
+      '',
+      'FROM BEFORE (2, into the epic)',
+      '  ├─ D101: One gift shape',
+      '  └─ B51: How a pocket pays for itself is open',
+      '',
+      'SHARED FILES (1, into the epic)',
+      '  └─ .product/assets/planning/log/2026-01-04.md — The gifting',
+      '     call with the shop owners (reference)',
+      '',
+    ].join('\n'));
   });
 
   it('read again without --file, draws what is staged; with nothing staged, refuses', () => {
@@ -163,6 +193,44 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
     assert.deepStrictEqual([res.product_session_closed, readManifest(dir(), '.').product_session, readState(dir(), layout.session('fumi', '001')), res.next],
       [null, '001', '', { kind: 'engine', argv: ['enter', 'discovery', 'fumi'] }]);
     assert.ok(!touched(statePath(dir()), 'HEAD').some((line) => line.includes('.product/')), 'the product\'s sessions are not the yes\'s to commit');
+  });
+
+  it('writes an epic\'s points from before and the shared files bearing on it once into its own place, and lands the picture thinned from its draft, all in the yes\'s one commit', () => {
+    writeState(dir(), TRANSCRIPT, '# The gifting call\n');
+    writeState(dir(), layout.productPicture, '# Where the product stands\n\n- One gift shape — from before, D101\n');
+    inTheProduct();
+    const thinned = scratch('# Where the product stands\n\n- Gifting — started, in fumi.\n');
+    started({ ...FUMI, from_before: POINTS, shared_files: SHARED, picture: thinned });
+    assert.deepStrictEqual([readState(dir(), FROM_BEFORE), readState(dir(), layout.productPicture), fs.existsSync(thinned)], [`${HELD}${HELD_FILES}`, '# Where the product stands\n\n- Gifting — started, in fumi.\n', false]);
+    const committed = touched(statePath(dir()), 'HEAD').map((line) => line.split('\t')[1]);
+    assert.deepStrictEqual([FROM_BEFORE, layout.productPicture].filter((rel) => !committed.includes(rel)), [], 'both in the one commit');
+  });
+
+  it('refuses a thinned picture once the picture is written after its draft — at the stage, and, staged, at the yes, writing nothing — so a draft never lands over what the picture gained since', () => {
+    const live = statePath(dir(), layout.productPicture);
+    writeState(dir(), layout.productPicture, '# Where the product stands\n');
+    inTheProduct();
+    const thinned = scratch('# Where the product stands\n\n- Gifting — started, in fumi.\n');
+    /** `file` written `minutes` from now, as its time says. @param {string} file @param {number} minutes */
+    const writtenIn = (file, minutes) => fs.utimesSync(file, new Date(Date.now() + minutes * 60_000), new Date(Date.now() + minutes * 60_000));
+    const newer = 'the picture was rewritten after its thinned draft — draft the thinning again from the picture as it stands, then stage again';
+
+    writtenIn(live, 1);
+    const atStage = refusedStage({ ...FUMI, picture: thinned });
+    writtenIn(thinned, 2);
+    screen(['start-this-work'], { ...FUMI, picture: thinned });
+    writtenIn(live, 3);
+
+    assert.deepStrictEqual([atStage, refusedPristine(dir(), ['start-this-work', 'yes'], { env: SESSION }).error], [`render start-this-work: ${newer}`, `start-this-work yes: ${newer}`]);
+  });
+
+  it('a type call starting an epic beside another window holding the product\'s conversation open writes its points from before into the epic, that window\'s log untouched', () => {
+    peerInTheProduct();
+    const log = readState(dir(), PRODUCT_LOG);
+    const { shaped_by: _shaped, ...called } = FUMI;
+    started({ ...called, from_before: POINTS });
+    assert.deepStrictEqual([readState(dir(), FROM_BEFORE), readState(dir(), PRODUCT_LOG), readManifest(dir(), '.').product_session], [HELD, log, '001']);
+    assert.ok(!touched(statePath(dir()), 'HEAD').some((line) => line.includes('.product/')), 'nothing of the product\'s conversation is the yes\'s');
   });
 
   it('8.14.11: a quick-fix started in the product\'s conversation never ends its session; a feature started there ends it as the work leaves the conversation', () => {
@@ -339,6 +407,27 @@ describe('start this work, refused (8.2.4, 8.8.18)', () => {
     withEnv(SESSION, () => leavePosition(SESSION.CLAUDE_CODE_SESSION_ID));
     const { shaped_by: _shaped, ...called } = FUMI;
     assert.match(screen(['start-this-work'], called), /^Fumi \(epic\)$/m);
+  });
+
+  it('refuses shared files for any type but an epic, and one off disk, outside an asset home, of no kind it knows, or named twice; and a thinned picture from a type call', () => {
+    writeState(dir(), TRANSCRIPT, '# The gifting call\n');
+    assert.strictEqual(refusedStage({ ...oneTopic('feature', 'saved-filters'), shared_files: SHARED }), 'render start-this-work: shared_files is an epic\'s — a feature\'s brief carries them: drop shared_files');
+    assert.strictEqual(refusedStage({ ...FUMI, shared_files: [{ ...SHARED[0], path: '.product/assets/gone.md' }] }), 'render start-this-work: shared_files 1: .product/assets/gone.md is no shared file on disk — a path from the state root, below an assets folder or a spike');
+    assert.strictEqual(refusedStage({ ...FUMI, shared_files: [{ ...SHARED[0], path: PRODUCT_LOG }] }), `render start-this-work: shared_files 1: ${PRODUCT_LOG} is no shared file on disk — a path from the state root, below an assets folder or a spike`);
+    assert.strictEqual(refusedStage({ ...FUMI, shared_files: [{ ...SHARED[0], kind: 'skim' }] }), 'render start-this-work: shared_files 1\'s kind is "reference" or "to read" — got "skim"');
+    assert.strictEqual(refusedStage({ ...FUMI, shared_files: [SHARED[0], SHARED[0]] }), `render start-this-work: shared_files names ${TRANSCRIPT} twice`);
+    const { shaped_by: _shaped, ...called } = FUMI;
+    assert.strictEqual(refusedStage({ ...called, picture: scratch('# Thinned\n') }), 'render start-this-work: a type call only reads the picture — drop picture: the next return to the product\'s conversation brings it up to date');
+  });
+
+  it('refuses points from before for any type but an epic, and a point that is not one line apiece, an id written with a space, or an id twice', () => {
+    assert.strictEqual(refusedStage({ ...oneTopic('feature', 'saved-filters'), from_before: POINTS }), 'render start-this-work: from_before is an epic\'s — a feature\'s brief carries them: drop from_before');
+    const { brief: _brief, ...quick } = oneTopic('quick-fix', 'typo-fix');
+    assert.strictEqual(refusedStage({ ...quick, from_before: POINTS }), 'render start-this-work: from_before is an epic\'s — a quick-fix\'s stay in the picture: drop from_before');
+    assert.strictEqual(refusedStage({ ...FUMI, from_before: [{ ...POINTS[0], point: 'One\ngift' }] }), 'render start-this-work: from_before 1\'s point is one line of text');
+    assert.strictEqual(refusedStage({ ...FUMI, from_before: [{ ...POINTS[0], id: 'D 101' }] }), 'render start-this-work: from_before 1\'s id is the record\'s own, as it writes it — no space or colon: got "D 101"');
+    assert.strictEqual(refusedStage({ ...FUMI, from_before: [POINTS[0], POINTS[0]] }), 'render start-this-work: from_before names D101 twice');
+    assert.strictEqual(refusedStage({ ...FUMI, from_before: [{ id: 'D101' }] }), 'render start-this-work: from_before 1 must be {id, point, file}');
   });
 
   it('refuses a one-topic unit without its brief, and a brief for an epic or a quick-fix', () => {

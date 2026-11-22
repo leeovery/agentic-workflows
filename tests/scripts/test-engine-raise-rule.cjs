@@ -124,7 +124,7 @@ afterEach(() => {
 });
 
 const { write, ledgerText, full, entries } = ledgerHelpers(() => dir);
-const { conversation, inFolder, seals, logText, project, lastEntry, answer, quietOn, labelledAs, raised } = raiseHelpers(() => dir, config, CALL);
+const { conversation, inFolder, seals, logText, logged, project, lastEntry, answer, quietOn, labelledAs, raised } = raiseHelpers(() => dir, config, CALL);
 
 /** The conversation's record of what it sent to check. @returns {Record<string, string>|null} */
 const sentToCheck = () => (fs.existsSync(inFolder('raise-checked.json')) ? JSON.parse(fs.readFileSync(inFolder('raise-checked.json'), 'utf8')) : null);
@@ -165,7 +165,7 @@ const logEvents = () => logText().split('\n').slice(0, -1).map((line) => JSON.pa
 const cleanFor = (kind, model) => stateOf(countsFrom(logEvents(), { project: project(), model, now: Date.now() }).kinds[kind], 0.2).clean;
 
 describe('what the decision point is given (E1)', () => {
-  it('beside the call: its label, where it is made and whether it blocks build work — made in the build for a task, never with none — whose the entry it would replace is, Claude\'s mark, whether it was sent to check, the project, the session\'s model — none where its transcript names none — the time, and the id a blind draw hashes, the question\'s, none on a replacement, which is never drawn blind (E3); and the rule\'s decision answered — a look call, none of its kind answered, and the person\'s decision replaced, each asking', async (t) => {
+  it('beside the call: its label, where it is made and whether it blocks build work — made in the build for a task, never with none — whose the entry it would replace is, Claude\'s mark, whether its question is a point from before, whether it was sent to check, the project, the session\'s model — none where its transcript names none — the time, and the id a blind draw hashes, the question\'s, none on a replacement, which is never drawn blind (E3); and the rule\'s decision answered — a look call, none of its kind answered, and the person\'s decision replaced, each asking', async (t) => {
     const decide = t.mock.method(decisionPoint, 'decide');
     const claude = path.join(config(), 'claude');
     const transcript = path.join(claude, 'projects', '-Users-me-fumi', `${SESSION}.jsonl`);
@@ -185,9 +185,9 @@ describe('what the decision point is given (E1)', () => {
     const look = { labeller: LABELLER, answers: labelled('look').answers };
     const inBuild = { unit: BUILT, phase: 'implementation', topic: null };
     assert.deepStrictEqual(given.map(([call, { now: _now, ...rest }]) => [call, rest]), [
-      [CALL, { ...common, label: look, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, always: null, model: MODEL, chain: full(made.note) }],
-      [FRAMED, { ...common, label: { labeller: LABELLER, answers: labelled('contract', { hardToUndo: true }).answers }, place: inBuild, blocks_build: true, replaced_by: 'person', always: 'live-server', model: null, chain: null }],
-      [CALL, { ...common, label: look, place: inBuild, blocks_build: false, replaced_by: null, always: null, model: null, chain: full(made.size) }],
+      [CALL, { ...common, label: look, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, always: null, from_before: false, model: MODEL, chain: full(made.note) }],
+      [FRAMED, { ...common, label: { labeller: LABELLER, answers: labelled('contract', { hardToUndo: true }).answers }, place: inBuild, blocks_build: true, replaced_by: 'person', always: 'live-server', from_before: false, model: null, chain: null }],
+      [CALL, { ...common, label: look, place: inBuild, blocks_build: false, replaced_by: null, always: null, from_before: false, model: null, chain: full(made.size) }],
     ]);
     const none = `It's look, and you haven't answered any look questions in ${projectName(dir)} yet, so it comes to you.`;
     assert.deepStrictEqual([topic.res.decision, topic.res.reason, build.res.decision, build.res.reason, build.res.parked, taskless.res.parked, taskless.res.task], ['ask', none, 'ask', 'You decided this yourself, so changing it always comes to you.', 'Q1', 'Q2', null]);
@@ -356,7 +356,21 @@ describe('the rule\'s decisions as a raise meets them', () => {
     ]);
   });
 
-  it('refuses --always given twice, with no mark or one of none, and on a fact, which always asks — writing and sealing nothing', async () => {
+  it('a point from before, marked as it is asked, asks on every raise however quiet its kind, in a later wording too, Claude giving no mark, and its answer is logged as one, under no mark of Claude\'s', async () => {
+    quietOn('behaviour');
+    const checkable = labelledAs(CALL, 'behaviour', { yes: ['checkable'] });
+    const point = write('ask', NOTE, [], { ...MADE, text: 'Does a gift expire?', from_before: 'D5' }).id;
+    const reworded = write('replace', NOTE, ['--replaces', point, '--reason', 'changed-mind'], { ...MADE, drops: [], text: 'When does a gift expire?' }).id;
+    const plain = (await raised(NOTE, ['--answers', made.note], CALL, checkable)).res;
+
+    const { res } = await raised(NOTE, ['--answers', reworded], CALL, checkable);
+    answer(res.raise, ['--pick', '1']);
+
+    const event = logged().at(-1);
+    assert.deepStrictEqual([plain.decision, res.decision, res.reason, event?.from_before, event?.always], ['check', 'ask', 'It was where you had got to before, so it comes to you once.', true, null]);
+  });
+
+  it('refuses --always given twice, with no mark, one of none — a point from before\'s among them, which is the question\'s and no mark — and on a fact, which always asks — writing and sealing nothing', async () => {
     const refused = async (/** @type {string[]} */ flags, /** @type {unknown} */ call = CALL) => {
       const before = { tree: treeSnapshot(dir), head: head(dir) };
       const { error } = await refusesAsync(dir, ['raise', NOTE, '--answers', made.note, ...flags], { env: conversation(), stdin: JSON.stringify(call) });
@@ -367,12 +381,13 @@ describe('the rule\'s decisions as a raise meets them', () => {
 
     assert.deepStrictEqual([
       await refused(['--always', 'live-server', '--always', 'design-problem']), await refused(['--always']), await refused(['--always', 'urgent']),
-      (await refused(['--fact', '--always', 'live-server'], fact)).replace(/ — Usage: .*/, ''),
+      (await refused(['--fact', '--always', 'live-server'], fact)).replace(/ — Usage: .*/, ''), await refused(['--always', 'from-before']),
     ], [
       'raise takes --always once — Usage: engine raise <work-unit>.<phase>[.<topic>] --answers <id> [--relies-on <id> …] [--parks <phase>.<n>] [--always design-problem|live-server]   (the call as JSON on stdin)',
       'raise: --always takes design-problem, live-server or built-otherwise — not nothing',
       'raise: --always takes design-problem, live-server or built-otherwise — not "urgent"',
       'raise --fact takes no --always: a fact always asks',
+      'raise: --always takes design-problem, live-server or built-otherwise — not "from-before"',
     ]);
   });
 

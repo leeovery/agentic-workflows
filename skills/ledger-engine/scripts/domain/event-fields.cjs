@@ -112,7 +112,9 @@ const CARE_KINDS = Object.freeze(/** @type {Kind[]} */ (['contract', 'scope', 'b
 // The marks Claude gives a question that always asks, as `raise --always`
 // takes them: a design problem (19.4.22), testing against a live server
 // (19.4.20), or code built otherwise than a decision from before Ledger
-// (21.6.16).
+// (21.6.16). A point of the record the person brought from before is no
+// mark of Claude's: the question carries it, its id in `from_before`
+// (ledger-events.cjs), and the rule reads it apart (ask-rule.cjs).
 const ALWAYS_MARKS = Object.freeze(['design-problem', 'live-server', 'built-otherwise']);
 
 /** A mark that only makes a question ask. @typedef {'design-problem'|'live-server'|'built-otherwise'} Always */

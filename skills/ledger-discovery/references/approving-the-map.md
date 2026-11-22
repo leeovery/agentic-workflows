@@ -4,7 +4,7 @@
 
 ---
 
-The map is the epic's topics in their order, and what the shaping put beyond the epic, parked on the roadmap. Shape it from the picture as a whole — the log, the conversation and the map as it stands — never from the order things were said. Re-read the log against the conversation first.
+The map is the epic's topics in their order, and what the shaping put beyond the epic, parked on the roadmap. Shape it from the whole of what was explored — the log, the conversation and the map as it stands — never from the order things were said. Re-read the log against the conversation first.
 
 ## The Topics
 
@@ -23,6 +23,10 @@ A topic on the map already is named alone. Each roadmap item the epic was starte
 ## The Parks
 
 What the shaping put beyond this epic — the person placed it later, or the log reads that way — goes on the roadmap with the map, never as a topic: `{"name", "summary", "horizon", "sources"}`, at capability grain, `sources` the log's path from the state root, and `"kind": "bug"` or `"quick-fix"` for those. The horizon is the person's.
+
+## The Points from Before
+
+Where the epic carries points from before (`from before`), each brief cites by its id each point it carries. The screen names every point nothing places yet, no brief, park, direction not taken, message or question citing its id: name each to the person and put it where their word places it — a brief, a message to a started topic (**A Message to a Topic**), a park, or a direction not taken — citing its id there. The record's own superseded entries and false paths are directions it already left, never points to carry, and a reference file is searched, never read whole.
 
 ## The Screen
 

@@ -885,7 +885,8 @@ function runDiscoverySession(call, argv) {
 // discovery-log — an entry under one of the fixed headings of the log of an
 // epic's open discovery session, or the product's (domain/discovery-log.cjs):
 // at an epic never committed, every state commit taking the log along; at
-// the product committed with its scope.
+// the product committed with its scope. A point from before an epic's
+// discovery meets is kept in the epic's points from before, and committed.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -2398,8 +2399,8 @@ function runCommit(call, argv) {
     } else if (inbox) {
       scope = '.inbox';
     } else if (productScope) {
-      // The product's conversation's commit: its session logs and the project
-      // manifest, where its marker and the roadmap are.
+      // The product's conversation's commit: its session logs, its picture
+      // and the project manifest, where its marker and the roadmap are.
       scope = [...PRODUCT_SCOPE];
     } else {
       const wu = /** @type {string} */ (workUnit);

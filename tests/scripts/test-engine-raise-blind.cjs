@@ -53,6 +53,7 @@ const { fixture } = require('./board-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
+const { LEDGER_VERSION } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { decide } = decisionPoint;
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
@@ -124,7 +125,7 @@ const world = fixtureFrom('raise-blind-', (template) => {
   /** @param {string} at @param {string} id @param {string} text */
   const plant = (at, id, text) => {
     const [unit, phase, topic = null] = at.split('.');
-    appendEntry(statePath(template), { event: 'asked', unit, topic, phase, session: SESSION_ID, ...MADE, text, part_of: null, relies_on: [], cites: [], task: null }, [], id);
+    appendEntry(statePath(template), { event: 'asked', unit, topic, phase, session: SESSION_ID, ...MADE, text, part_of: null, relies_on: [], cites: [], task: null, from_before: null }, [], id);
   };
   plant(NOTE, ASKED.note, 'Where does a new note open?');
   plant(BUILD, ASKED.where, 'Where does a new note open on a second screen?');
@@ -463,7 +464,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
     assert.deepStrictEqual([decided.event, decided.by, decided.answers, decided.text, decided.task, decided.relies_on, full(res.landed.id)], ['decided', 'claude', ASKED.where, CURSOR.text, '2.3', [full(made.mine)], decided.id]);
     const { id: _id, at: _at, session: _session, label: _label, number: _number, ...parked } = park;
     assert.deepStrictEqual(parked, {
-      v: 1, event: 'parked', unit: BUILT, topic: null, phase: 'implementation',
+      v: LEDGER_VERSION, event: 'parked', unit: BUILT, topic: null, phase: 'implementation',
       question: null, replaces: decided.id, reason: 'asked-blind', cause: null, relies_on: [full(made.mine)], task: null, went_ahead: '2.3',
       call: MAIN_FIRST, rows_judged: [], why_asking: BLIND, asked_by: 'counts', model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: ASKED.where, blind: true,
     });
@@ -490,7 +491,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
 
     const { id: _id, at: _at, session: _session, ...kept } = entries().at(-1);
     assert.deepStrictEqual(kept, {
-      v: 1, event: 'kept', unit: BUILT, topic: null, phase: 'implementation',
+      v: LEDGER_VERSION, event: 'kept', unit: BUILT, topic: null, phase: 'implementation',
       by: 'person', who_moved_whom: 'none', entry: full(landed.id), reason: 'asked-blind', cause: null, why: WHY, sealed: CURSOR.text, given: 'own',
     });
     assert.strictEqual(res.receipt, 'Q1 answered · task 2.3 stands as built · nothing waiting on you');

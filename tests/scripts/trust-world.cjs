@@ -198,13 +198,13 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
    * replacing a decision of `replacedBy`'s, or the entry `replaces` names;
    * under Claude's mark `always`; its question measured by the experiment
    * `measured`; its question's id `chain`, one never drawn blind unless
-   * given, none for a replacement; raised at `raised`, else as it is
-   * answered: its entry.
-   * @param {Kind|null} kind @param {string} answer @param {{sort?: string, dontCare?: boolean, blind?: boolean, entry?: string, blocksBuild?: boolean, replacedBy?: string|null, replaces?: string|null, always?: string|null, measured?: string|null, chain?: string|null, raised?: number}} [opts] @param {Where} [where]
+   * given, none for a replacement; a point from before where `fromBefore`;
+   * raised at `raised`, else as it is answered: its entry.
+   * @param {Kind|null} kind @param {string} answer @param {{sort?: string, dontCare?: boolean, blind?: boolean, entry?: string, blocksBuild?: boolean, replacedBy?: string|null, replaces?: string|null, always?: string|null, measured?: string|null, chain?: string|null, fromBefore?: boolean, raised?: number}} [opts] @param {Where} [where]
    */
-  const raise = (kind, answer, { sort = 'several', dontCare = false, blind = false, entry = newId(), blocksBuild = false, replacedBy = null, replaces = null, always = null, measured = null, chain = replacedBy === null ? UNDRAWN : null, raised } = {}, where = {}) => /** @type {string} */ (log('raise', (at) => ({
+  const raise = (kind, answer, { sort = 'several', dontCare = false, blind = false, entry = newId(), blocksBuild = false, replacedBy = null, replaces = null, always = null, measured = null, chain = replacedBy === null ? UNDRAWN : null, fromBefore = false, raised } = {}, where = {}) => /** @type {string} */ (log('raise', (at) => ({
     entry, replaces, kind, label: label(kind), sort, sealed: '1', answer, via: dontCare ? 'typed' : 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: dontCare, blocks_build: blocksBuild, replaced_by: replacedBy, always, measured, chain,
-    raised: raised === undefined ? at : new Date(raised).toISOString(), blind,
+    raised: raised === undefined ? at : new Date(raised).toISOString(), blind, from_before: fromBefore,
   }), where).entry);
   const h = {
     events,
@@ -237,10 +237,10 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
     /**
      * A raise on `kind` that landed as the ledger's `entry`, answered
      * `answer` — the person's "don't care" where `dontCare`, asked blind
-     * where `blind`.
-     * @param {string} entry @param {string} answer @param {Kind} [kind] @param {{dontCare?: boolean, blind?: boolean}} [opts]
+     * where `blind`, a point from before where `fromBefore`.
+     * @param {string} entry @param {string} answer @param {Kind} [kind] @param {{dontCare?: boolean, blind?: boolean, fromBefore?: boolean}} [opts]
      */
-    answered: (entry, answer, kind = 'behaviour', { dontCare = false, blind = false } = {}) => raise(kind, answer, { entry, dontCare, blind }),
+    answered: (entry, answer, kind = 'behaviour', { dontCare = false, blind = false, fromBefore = false } = {}) => raise(kind, answer, { entry, dontCare, blind, fromBefore }),
     /** The person's yes to the convergence offer on `topic` of `unit`. @param {string} unit @param {string} topic */
     converged: (unit, topic) => log('convergence', { unit, topic }),
     /**
@@ -251,11 +251,11 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
     call: (sort, kind = 'behaviour', where = {}, { blocksBuild = false, entry = newId() } = {}) => /** @type {string} */ (log('call', {
       entry, kind, label: label(kind), sort, blocks_build: sort === null ? null : blocksBuild,
     }, where).entry),
-    /** The person's reversal of `entry`: its own. @param {string} entry @param {Where} [where] */
-    reverse: (entry, where = {}) => /** @type {string} */ (log('reversal', { entry: newId(), reverses: entry }, where).entry),
+    /** The person's reversal of `entry` as `own`, its own entry: that entry. @param {string} entry @param {Where} [where] @param {string} [own] */
+    reverse: (entry, where = {}, own = newId()) => /** @type {string} */ (log('reversal', { entry: own, reverses: entry }, where).entry),
     /** A raise on `kind` Claude sorted `sort`, which the person didn't follow. @param {string} sort @param {Kind} [kind] */
     unfollowed: (sort, kind = 'behaviour') => {
-      log('raise', (at) => ({ entry: null, replaces: null, kind, label: label(kind), sort, sealed: '1', answer: null, via: 'pressed', with_text: false, reading: null, didnt_follow: true, dont_care: false, blocks_build: false, replaced_by: null, always: null, measured: null, chain: UNDRAWN, raised: at, blind: false }));
+      log('raise', (at) => ({ entry: null, replaces: null, kind, label: label(kind), sort, sealed: '1', answer: null, via: 'pressed', with_text: false, reading: null, didnt_follow: true, dont_care: false, blocks_build: false, replaced_by: null, always: null, measured: null, chain: UNDRAWN, raised: at, blind: false, from_before: false }));
     },
     /** @param {string} entry @param {string} verdict @param {Where} [where] */
     verdict: (entry, verdict, where = {}) => log('verdict', { entry, verdict, point: 'decided' }, { project: where.project }),

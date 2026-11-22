@@ -17,20 +17,31 @@
 // What it reads, as it found the home before writing anything:
 //   - the product's: its two latest logs holding talk in full — a log a
 //     conversation opened and said nothing in never pushes the talk out of
-//     what a return reads — the roadmap, the product
-//     record with the code's findings, and whether the baseline's research
-//     is owed (8.2.10, 8.12.13) — where it starts work from seeds, the seeds
-//     in place of the logs, and only those (18.8.15, seeds.cjs) — and where
-//     this conversation writes start this work's payload, a file of its own
-//     (`conversationFile`, start-this-work.cjs);
+//     what a return reads — or, once the conversation has written its
+//     picture of where the product stands, the picture in full, the latest
+//     closed log holding talk by its closing line, the open log in full
+//     where it holds talk, as a conversation carrying the sitting on from
+//     another reads it, and each unit started since that closed sitting's
+//     first conversation began — or, with none closed, the open sitting's —
+//     on its day or after, whichever door started it, with what the work
+//     carries: an epic's points from before, else its first log, a
+//     feature's or a bugfix's brief, a quick-fix's description; so a return
+//     points the picture at work started without it; the
+//     roadmap, the product record with the code's
+//     findings, and whether the baseline's research is owed (8.2.10,
+//     8.12.13) — where it starts work from seeds, the seeds and the picture
+//     in place of the logs, and only those (18.8.15, seeds.cjs) — and
+//     where this conversation writes start this work's payload, a file of
+//     its own (`conversationFile`, start-this-work.cjs);
 //   - an epic's: its older logs by their closing lines, its two latest
 //     holding talk in full, the pointers its first log keeps into the product's sessions
-//     (8.14.3), its map, and the product record with what discovery found of
+//     (8.14.3), the points from before it carries (from-before.cjs), its map, and the product record with what discovery found of
 //     the unit (8.6.7) — and, from seeds, each roadmap idea to take in
 //     (18.8.4);
 //   - either, where the open log was last written by another conversation:
 //     that conversation's transcript, to catch the log up from its last write
-//     onward, or one line that the transcript is gone (8.14.9) — none where
+//     onward, and at the product the picture with it, or one line that the
+//     transcript is gone (8.14.9) — none where
 //     the log ends on a level move's pointer, its talk carried on elsewhere,
 //     nor where that conversation still holds the place live, writing its
 //     own (18.4.21).
@@ -42,8 +53,8 @@
 // written or recorded: the conversation holds no place, so another window
 // talking product is never asked about nor its session closed, and the
 // call answers only what the type call reads — the roadmap, the live inbox,
-// and the seeds where the work starts from any — and where the payload is
-// written.
+// the seeds where the work starts from any, and the product's picture where
+// it has one, to read and never write — and where the payload is written.
 //
 // The start menu's count of the product's conversation is of its logs
 // holding talk too (`productConversation`, 18.2.13), with the date of the
@@ -63,6 +74,7 @@ const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { ENGINE_COMMAND } = require('../kernel/call.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
+const { PRODUCT_PICTURE } = require('./layout.cjs');
 const { sessionLogs, activeSession, sessionLogsAt, openSession } = require('./discovery-session.cjs');
 const { discoveryStanding } = require('./topic-standing.cjs');
 const { readPosition, placeLine } = require('./position.cjs');
@@ -72,6 +84,9 @@ const { researchOwed } = require('./brownfield.cjs');
 const { productCall, mapCall, namedConversations, isHeader, appendLine, topicLog } = require('./topic-log.cjs');
 const { beyondLists } = require('./discovery-log.cjs');
 const { assertSeeds, seedReads } = require('./seeds.cjs');
+const { fromBeforeFile } = require('./from-before.cjs');
+const { loadProjectManifest, loadManifest } = require('./reads.cjs');
+const { briefFile } = require('./derivations.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
 /** @typedef {import('./enter.cjs').Entering} Entering */
@@ -204,19 +219,81 @@ function catchUp({ cwd, unit, started }) {
   if (last === undefined || last.session === handedSession() || endsOnPointer(log)) return [];
   if (holdsLive(cwd, unit, 'discovery', unit, last.session)) return [];
   const transcript = last.transcript !== null && fs.existsSync(last.transcript) ? last.transcript : runningTranscript(last.session);
+  const pictured = unit === PRODUCT && pictureOf(cwd).length > 0;
   return [as('catch up')(transcript === null
-    ? `the transcript of session ${last.session}, which last wrote the log, is gone — say so in one line, and carry on from the log`
-    : `read ${transcript} from the log's last write onward, and add to the log what it is missing`)];
+    ? `the transcript of session ${last.session}, which last wrote the log, is gone — say so in one line, and carry on from the log${pictured ? ', bringing the picture up to date from it' : ''}`
+    : `read ${transcript} from the log's last write onward, and add to the log${pictured ? ' and the picture what they are' : ' what it is'} missing`)];
+}
+
+/** The product's picture, where its conversation has written one. @param {string} cwd @returns {Line[]} */
+function pictureOf(cwd) {
+  const picture = statePath(cwd, PRODUCT_PICTURE);
+  return fs.existsSync(picture) ? [as('picture')(picture)] : [];
+}
+
+/**
+ * Where the product's conversation had got to (the header's): with its
+ * picture, the picture, its latest closed sitting by its closing line, and
+ * its open sitting in full where it holds talk; else its latest logs in
+ * full.
+ * @param {string} cwd @returns {Line[]}
+ */
+function productStanding(cwd) {
+  const talk = talkLogs(cwd, PRODUCT);
+  const picture = pictureOf(cwd);
+  if (picture.length === 0) return talk.slice(-RECENT).map(as('session log'));
+  const open = activeSession(cwd, PRODUCT);
+  const openLog = open === null ? null : statePath(cwd, logAt(PRODUCT, open));
+  const closed = talk.filter((log) => log !== openLog).at(-1);
+  const opened = talk.filter((log) => log === openLog);
+  return [
+    ...picture,
+    ...(closed === undefined ? [] : [as('latest sitting')(closedBy(closed))]),
+    ...opened.map(as('session log')),
+    ...startedSince(cwd, closed ?? opened[0]),
+  ];
+}
+
+/**
+ * What a unit started carries, where a return points the picture at it:
+ * an epic's points from before, else its first log; a feature's or a
+ * bugfix's brief; a quick-fix's description. Null where it holds none.
+ * @param {string} cwd @param {string} unit @param {string} type @param {Record<string, any>} manifest
+ * @returns {string|null}
+ */
+function carrierOf(cwd, unit, type, manifest) {
+  if (type === 'quick-fix') return typeof manifest.description === 'string' ? `its description: ${manifest.description}` : null;
+  const files = type === 'epic' ? [fromBeforeFile(cwd, unit), statePath(cwd, logAt(unit, '001'))] : [statePath(cwd, briefFile(unit, unit))];
+  return files.find((file) => fs.existsSync(file)) ?? null;
+}
+
+/**
+ * Each unit started on or after the day the sitting `since` names began,
+ * by its first conversation — the latest closed one, or with none the open
+ * one — `{unit} {type} — {what it carries}`, in the order the project
+ * registered them; none where no sitting has talked.
+ * @param {string} cwd @param {string|undefined} sitting absolute @returns {Line[]}
+ */
+function startedSince(cwd, sitting) {
+  const since = sitting === undefined ? undefined : namedConversations(sitting)[0]?.date;
+  if (since === undefined) return [];
+  const units = Object.entries(loadProjectManifest(cwd)?.work_units ?? {});
+  return units.flatMap(([unit, { work_type: type }]) => {
+    const manifest = loadManifest(cwd, unit);
+    if (typeof manifest?.created !== 'string' || manifest.created < since) return [];
+    const carrier = carrierOf(cwd, unit, type, manifest);
+    return [as('started since')(`${unit} ${type}${carrier === null ? '' : ` — ${carrier}`}`)];
+  });
 }
 
 /**
  * What the product's conversation reads (8.2.10): from seeds, the seeds in
- * place of its latest logs (18.8.15).
+ * place of its logs, beside its picture (18.8.15).
  * @param {Entering} at @returns {Line[]}
  */
 function productReads(at) {
   return [
-    ...(at.seeds === null ? talkLogs(at.cwd, PRODUCT).slice(-RECENT).map(as('session log')) : seedReads(at.cwd, PRODUCT, at.seeds)),
+    ...(at.seeds === null ? productStanding(at.cwd) : [...seedReads(at.cwd, PRODUCT, at.seeds), ...pictureOf(at.cwd)]),
     as('roadmap')(`\`${ENGINE_COMMAND} roadmap state\``),
     as('product')(`\`${productCall()}\``),
     as('research owed')(researchOwed(at.manifest) ? 'yes' : 'no'),
@@ -232,6 +309,7 @@ function epicReads(at) {
     ...talk.slice(0, -RECENT).map((log) => as('older log')(closedBy(log))),
     ...talk.slice(-RECENT).map(as('session log')),
     ...shapedBy(homeLogs(at.cwd, at.unit)[0]).map(as('shaped by')),
+    ...[fromBeforeFile(at.cwd, at.unit)].filter((file) => fs.existsSync(file)).map(as('from before')),
     as('map')(`\`${mapCall(at.unit)}\``),
     as('product')(`\`${productCall(at.unit)}\``),
     ...(at.seeds === null ? [] : seedReads(at.cwd, at.unit, at.seeds)),
@@ -241,14 +319,16 @@ function epicReads(at) {
 
 /**
  * What the type call reads (the header's): the seeds where the work starts
- * from any, the roadmap and the live inbox — refused at an epic, whose
- * discovery shapes work already started.
+ * from any, the product's picture where it has one, the roadmap and the
+ * live inbox — refused at an epic, whose discovery shapes work already
+ * started.
  * @param {Standing} at @param {string|null} seeds @returns {Line[]}
  */
 function typeCallReads({ cwd, unit }, seeds) {
   if (unit !== PRODUCT) throw new Error(`the type call is the product's, for work not yet started — "${unit}" is started: enter discovery ${unit}`);
   return [
     ...(seeds === null ? [] : seedReads(cwd, PRODUCT, seeds)),
+    ...pictureOf(cwd),
     as('roadmap')(`\`${ENGINE_COMMAND} roadmap state\``),
     as('inbox')(statePath(cwd, '.inbox')),
     payloadLine(cwd),
@@ -341,4 +421,4 @@ const DISCOVERY = Object.freeze({
   typeCall: typeCallReads,
 });
 
-module.exports = { DISCOVERY, SHAPED_BY, productConversation, conversationFile, payloadFile };
+module.exports = { DISCOVERY, SHAPED_BY, productConversation, conversationFile, payloadFile, shapedBy };

@@ -86,10 +86,21 @@ function listedIn(text, headings) {
   return listed;
 }
 
-/** A log's lines outside its fixed lists, their headings left out with them. @param {string[]} lines @param {readonly string[]} headings */
+/**
+ * A log's lines outside its fixed lists: each fixed heading, each entry and
+ * the body beneath it left out, the prose written under a fixed heading
+ * kept.
+ * @param {string[]} lines @param {readonly string[]} headings
+ */
 function beyondListsOf(lines, headings) {
-  const { under } = linesUnder(lines, headings);
-  return lines.filter((_, at) => under[at] === null);
+  const read = linesUnder(lines, headings);
+  const listed = lines.map((line, at) => read.under[at] !== null && !read.fenced[at] && HEADING.exec(line)?.[1] === read.under[at]);
+  lines.forEach((_, at) => {
+    if (!isEntry(read, lines, at)) return;
+    listed[at] = true;
+    for (let next = at + 1; next < lines.length && read.under[next] !== null && INDENTED.test(lines[next]); next += 1) listed[next] = true;
+  });
+  return lines.filter((_, at) => !listed[at]);
 }
 
 /**

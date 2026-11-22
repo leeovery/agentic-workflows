@@ -87,7 +87,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.ledger/manifest.json` — project manifest: work-unit registry, defaults, roadmap, the brownfield offer's answer
 - `.ledger/.ledger.jsonl` — the ledger: every question, finding and decision, one event a line
 - `.ledger/{work_unit}/manifest.json` — work-unit manifest
-- `.ledger/{work_unit}/discovery/session-NNN.md` — discovery session logs
+- `.ledger/{work_unit}/discovery/session-NNN.md` — discovery session logs; `from-before.md` an epic's points from before and the shared files that bear on it, kept at its start and joined by each point its discovery meets
 - `.ledger/{work_unit}/topics/{topic}/` — a topic's own place: `brief.md` its brief, `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it, `earlier/` the files a unit moved to another type set aside from before
 - `.ledger/{work_unit}/spec.md` — the unit's one spec
 - `.ledger/{work_unit}/summary.md` — a quick-fix's short record after the work
@@ -103,7 +103,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.ledger/.cache/migrate/` — the migration's staging: the split's plans (`split/`), each topic's record as composed (`records/`) and as carried (`carried/`), each building unit's pieces and plan (`cut-and-merges/{unit}/`), the cut's and the closed plans' marks (`cut/`, `closed/`), and the finish's drops (`finish.json`)
 - `.ledger/.cache/.set-aside/{work_unit}/round-{N}/put-{k}/` — what the review's put back set aside; outlives the unit
 - `.ledger/.inbox/{ideas,bugs,quickfixes}/` — undecided captures; `.archived/` the declined ones
-- `.ledger/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `notes/{YYYY-MM-DD}--{slug}.md` the roadmap items' notes, `assets/` the files shared and, as `assets/{unit}/`, each retired unit's folder kept whole as reference, `assets/legacy/` the files from before Ledger of no unit's the migration had no other place for, each at its path from `.workflows/`, and in `assets/legacy/{unit}/` a retired unit's legacy files, `spikes/{NNN}-{slug}/` its spikes
+- `.ledger/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `picture.md` its picture of where the product stands, rewritten in place, `notes/{YYYY-MM-DD}--{slug}.md` the roadmap items' notes, `assets/` the files shared and, as `assets/{unit}/`, each retired unit's folder kept whole as reference, `assets/legacy/` the files from before Ledger of no unit's the migration had no other place for, each at its path from `.workflows/`, and in `assets/legacy/{unit}/` a retired unit's legacy files, `spikes/{NNN}-{slug}/` its spikes
 - `.ledger/.knowledge/` — the checkout-local knowledge store and config, gitignored
 - `.claude/worktrees/ledger-{work_unit}` — in the main checkout, a quick-fix's worktree on `fix/{work_unit}`, where its fixes are built: laid out at its first fix's start, taken apart at its close, cancel or move
 - `refs/ledger/aside/{work_unit}/{task_id}` — in each code repository, the work a quick-fix's fix had not committed, set aside when a question parked it or the quick-fix moved

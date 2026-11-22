@@ -46,7 +46,7 @@ const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { PENDING } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { RAISE_SHOWN, PRESSED } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
-const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
+const { LEDGER, LEDGER_VERSION } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { ORDER } = require(path.join(SCRIPTS, 'domain/labeller.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 
@@ -132,7 +132,7 @@ function refusedAnswer(args, given = { why: WHY }, env = {}) {
  */
 function entryOf(id, question, own = {}) {
   return {
-    v: 1, id, event: 'decided', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
+    v: LEDGER_VERSION, id, event: 'decided', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
     by: 'person', who_moved_whom: 'none', answers: full(question), text: CURSOR.text, why: WHY, rules_out: [MAIN.text, LAST.text],
     relies_on: [], product_wide: false, sealed: CURSOR.text, alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: true, given: 'own', cites: [], task: null, ...own,
   };

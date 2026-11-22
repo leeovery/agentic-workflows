@@ -147,6 +147,9 @@ const EVENT_WRITES = Object.freeze({ asked: 'ask', found: 'find', decided: 'deci
 /** The kind of entry each event writes, as the write's own checks name it. @type {Readonly<Record<string, import('./ledger-events.cjs').EntryKind>>} */
 const EVENT_KINDS = Object.freeze({ asked: 'question', found: 'finding', decided: 'decision' });
 
+/** What a carried entry never holds: the migration's record is carried as it stands, never asked as a point from before. */
+const CARRIED_WITHOUT = Object.freeze(['from_before']);
+
 /** What a record holds: its entries, and the line saying what its topic is about. */
 const RECORD_FIELDS = Object.freeze(['entries', 'description']);
 
@@ -426,7 +429,7 @@ function markFaults(entry, event, fault) {
  */
 function entryContent(faults, said, event, entry) {
   const given = Object.fromEntries(Object.entries(entry).filter(([key]) => !RECORD_KEYS.includes(key)));
-  const read = contentFaults(said, WRITES[EVENT_WRITES[event]], { ...given, who_moved_whom: 'none' }, null, ['who_moved_whom']);
+  const read = contentFaults(said, WRITES[EVENT_WRITES[event]], { ...given, who_moved_whom: 'none' }, null, ['who_moved_whom'], CARRIED_WITHOUT);
   const all = [...read.faults, ...unsealedFaults(said, read.content), ...saidFaults(said, EVENT_KINDS[event], read.content)];
   faults.push(...all);
   return all.length === 0 ? read.content : null;

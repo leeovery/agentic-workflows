@@ -4,7 +4,8 @@
 // lists here. No entry's term names a retired one, in any form; the words
 // naming what the release retired appear in no definition; the phases and
 // stages are the engine's own (23.S8). Every term 23.3.2 adds has an entry
-// that says something, with the trust machinery's own; review is three
+// that says something, with the trust machinery's own and the earlier
+// record's, its reference files and the product picture; review is three
 // terms, never one (23.S9); the inbox is the place and triage the act, and
 // messages between topics are mail (23.S10); the legacy files are named by
 // the row the menus draw for them. The answering rule's half of
@@ -74,6 +75,7 @@ const ADDED = [
   'reviewer pair', 'notes for later', 'stack', 'the ask rule', 'kind', 'verdict', 'blind question', 'auto and step',
   'proven and not proven', 'verify setup', 'feature map', 'driver', 'state branch',
   'convergence', 'care entry', 'the matrix', 'the verdict queue', 'the record of the person',
+  'record from before', 'reference file', 'product picture',
 ];
 
 describe('the glossary (23.3)', () => {
@@ -97,7 +99,7 @@ describe('the glossary (23.3)', () => {
     assert.deepStrictEqual(stages.sort(), Object.entries(PHASE_STAGES).map(([phase, stage]) => `${phase} ${stage}`).sort());
   });
 
-  it('23.S8: has an entry for every term 23.3.2 adds, and the trust machinery\'s', () => {
+  it('23.S8: has an entry for every term 23.3.2 adds, the trust machinery\'s, and the record from before\'s with the product picture', () => {
     assert.deepStrictEqual(ADDED.filter((term) => !entries.some((e) => e.term === term && e.definition)), []);
   });
 

@@ -37,14 +37,14 @@ node .claude/skills/ledger-engine/scripts/engine.cjs enter discovery {home} [--t
 
 A refusal names the way on: say it in a line. Where another session holds an epic's home, the entry asks first; carrying on from it ends the turn.
 
-Then read what the DATA names that this conversation does not hold already: each `session log` in full; each `older log` by the closing line it carries; each `shaped by` section of the product's sessions; the `map`, the `roadmap` and the `product` record, by running each call; the `inbox`'s items by their titles; each `seed` in full; and for each `roadmap seed`, its `note` in full and the parts of the logs its `source` lines point at — and where its row in `roadmap state` carries `earlier`, the record the topic left in the epic that postponed it: its brief, log and mail in full and its record by running the call, as input never changed. Do what `catch up` says. The `log` is this conversation's (**The Log**). Where `research owed` is `yes`, load **[researching-the-code.md](references/researching-the-code.md)** and follow its instructions as written before you open.
+Then read what the DATA names that this conversation does not hold already: each `session log` and the `picture` in full — in the type call the picture is read, never written; each `older log` and the `latest sitting` by the closing line it carries; each `shaped by` section of the product's sessions; `from before` in full: the points from before the epic carries, and its shared files, each read as its mark says; each `started since`, work started since the last sitting, by what it names it carries; the `map`, the `roadmap` and the `product` record, by running each call; the `inbox`'s items by their titles; each `seed` in full; and for each `roadmap seed`, its `note` in full and the parts of the logs its `source` lines point at — and where its row in `roadmap state` carries `earlier`, the record the topic left in the epic that postponed it: its brief, log and mail in full and its record by running the call, as input never changed. Where `from before` lists shared files, load **[reference-files.md](../ledger-shared/references/reference-files.md)** and follow its instructions as written. Do what `catch up` says. The `log` is this conversation's (**The Log**). Where `research owed` is `yes`, load **[researching-the-code.md](references/researching-the-code.md)** and follow its instructions as written before you open.
 
 Then open the conversation; never stop in silence once you have read.
 
 ## The Opening
 
 What you say is your own, and the way in decides what it opens on:
-- **A return** — `none`, or any way into an epic's discovery — opens with a short account of where the conversation had got to: the threads it was circling, the person's leans, what was left open. Then ask where they want to take it. A first session, with no logs, asks what is on their mind the way it sits in their head.
+- **A return** — `none`, or any way into an epic's discovery — opens with a short account of where the conversation had got to: the threads it was circling, the person's leans, what was left open. Then ask where they want to take it. A first session, with no logs, asks what is on their mind the way it sits in their head. An epic's discovery opening for the first time on a `from before` says, in a line or a short list, what came across: each point by its id and a few words, and the shared files.
 - **A roadmap idea to take in**, each `take in`, opens an epic's discovery on it: talk it through as a new topic of the map, taken in as **Changing the Map** says, `--from-roadmap {item}`.
 - **A work type or seeds** open on that piece of work, whatever the history. A type is a hint to trust: confirm it lightly once the description fits, and reconsider only on a clear, strong signal. Seeds open on one sketch across them all and a question that pulls on its shape, but an inbox item that already names its cause and fix is confirmed in one line, not shaped again. With nothing to read, ask the person to describe the work the way it sits in their head, and invite any notes, screenshots or files that frame it.
 - **`start`** takes what the person brings with no announcement, asking for it only where they have said nothing yet: a piece of work goes to the type call; talk about the product carries the product's conversation on — enter it as **Entering** says, without `--type-call`, read what its DATA names, and answer from where its sessions had got to.
@@ -61,7 +61,7 @@ Two senior engineers throwing an idea around: opinionated, willing to disagree, 
 
 ### Input, Never Decisions
 
-What the person says is their view: a lean, a rejected path with why, an open question. A point they leave open stays open, its lean recorded as theirs, and a suggestion of yours they never took up is not theirs. A principle they state is carried as input and decided in the first topic it bears on. What you read in the code is a finding saying how it is known (`ledger find`). Never ask to fill the product record.
+What the person says is their view: a lean, a rejected path with why, an open question. A point they leave open stays open, its lean recorded as theirs, and a suggestion of yours they never took up is not theirs. A record they bring from before — notes, a decision log, a model, research — is the record from before, and its points the points from before: where they had got to, cited by its own ids and files, its own open questions still open. A point of it becomes their view only once they take it up here, restated, changed or dropped; one dropped is a direction not taken, with why. A principle they state is carried as input and decided in the first topic it bears on. What you read in the code is a finding saying how it is known (`ledger find`). Never ask to fill the product record.
 
 ### Research and Spikes
 
@@ -87,14 +87,28 @@ As new work takes shape, match it against the waiting roadmap items and the live
 
 ### The Log
 
-The DATA's `log` is the record everything here comes back to, and nothing talked about is lost. The type call keeps none: what the person said reaches the work through start this work's payload. Keep it as the conversation goes: what was explored at whatever depth, the person's leans, the false paths and why they were dropped, the open questions, the research with its sources, and a link to every spike and file. Write it in sections under headings named for what they cover, so a brief, a roadmap item or a unit's first log can point at a part by its anchor. Three headings are the engine's — `## Not taken`, `## Views of the product` and `## Spikes` — written only through `discovery-log`, nothing of Claude's under them, each entry recorded through its door as the conversation reaches it: each path dropped and why, there and nowhere else; each thing the person said of the product as a whole; and what each spike showed, with the tool it was made in and its live link where it lives in an outside tool. Before the session closes — at start this work for work that leaves this conversation, approve the map or the session's end — end it on a line saying where the conversation got to: a later return reads it.
+The DATA's `log` is the record everything here comes back to, and nothing talked about is lost. The type call keeps none: what the person said reaches the work through start this work's payload. Keep it as the conversation goes: what was explored at whatever depth, the person's leans, each point from before they take up cited by its id, the false paths and why they were dropped, the open questions, the research with its sources, and a link to every spike and file. Write it in sections under headings named for what they cover, so a brief, a roadmap item or a unit's first log can point at a part by its anchor. Three headings are the engine's — `## Not taken`, `## Views of the product` and `## Spikes` — written only through `discovery-log`, nothing of Claude's under them, each entry recorded through its door as the conversation reaches it: each path dropped and why, there and nowhere else; each thing the person said of the product as a whole; and what each spike showed, with the tool it was made in and its live link where it lives in an outside tool. Before the session closes — at start this work for work that leaves this conversation, approve the map or the session's end — end it on a line saying where the conversation got to: a later return reads it.
+
+### The Product Picture
+
+In the product's conversation, `.ledger/.product/picture.md` is where the product stands now; the log is the journey there. Rewrite it in place as the talk moves on, never appending, re-reading it before each rewrite, as another window may have rewritten it since: when a view, a lean or an open question changes, its line is replaced, and the log keeps how it changed. Each point in it says which of four it is:
+- the person's view, linked to where they said it in the log;
+- a point from before, with its id and file;
+- an open question, with the leans on it;
+- decided, a pointer to its entry in the product record, never the decision restated.
+
+On a return, a point the product record now decides becomes its pointer, and one a piece of work `started since` now carries, a pointer to the work by its name. A section of its own lists the shared files not read in full:
+
+Load **[reference-files.md](../ledger-shared/references/reference-files.md)** and follow its instructions as written.
+
+It decides nothing, and holds the product's level: what no started work holds yet — an epic has its map and its briefs, a topic its record. Where the DATA names no `picture` there is none yet: write it as the conversation goes. A record from before's model of the product is its first version, every point of it a point from before, its open questions open questions. Where the person asks to see it, show it as it stands.
 
 ## Doors
 
 - A finding read in the code → `ledger find {home}.discovery`, `{"text", "how", "known": "read", "by": "claude", "who_moved_whom": "none"}` on stdin.
 - The code read for the product's first conversation → `brief product-researcher`, then the Agent call; its findings in → `brownfield record completed`.
 - A spike, a shared file → `asset spike {home} {slug}`, `asset import {home} '{path}' …`, `render import-reprompt`.
-- A direction dropped, a view of the product, what a spike showed → `discovery-log not-taken {home} --direction '…' --why '…'`, `discovery-log view {home} --text '…'`, `discovery-log spike {home} {spike} --tool '…' --showed '…' [--link {live link}]`, each value single-quoted, a single quote inside one written `'\''`.
+- A direction dropped, a view of the product, what a spike showed → `discovery-log not-taken {home} --direction '…' --why '…'`, `discovery-log view {home} --text '…'`, `discovery-log spike {home} {spike} --tool '…' --showed '…' [--link {live link}]`, each value single-quoted, a single quote inside one written `'\''`; a point from before met in an epic's discovery → `discovery-log from-before {home} --id '…' --point '…' --file '…'`.
 - The work committed to → `render start-this-work --file`, then `gate`.
 - The waiting roadmap items → `roadmap state`.
 - The map as it stands → `render discovery-map {home}`; changed at the person's word → `topic add|add-batch|edit|rename|remove|order|brief`, `topic postpone|reactivate`, `roadmap pull-forward`, `render cancel-gate`; each lifecycle verb answers its receipt.
@@ -125,7 +139,7 @@ In an epic's discovery the person calls for the map, or a session in which you c
 
 ## A Message to a Topic
 
-In an epic's discovery, something found bears on a topic that has started: it reaches the topic as a message, decided there in its frame, never a rewritten brief. One message is one ask: what was found, the reasoning, and what the topic is asked to decide. Write it to `.ledger/.cache/{home}/discovery/{home}/message-{slug}.md`, its first line the title, and send it:
+In an epic's discovery, something found bears on a topic that has started: it reaches the topic as a message, decided there in its frame, never a rewritten brief. One message is one ask: what was found, the reasoning, and what the topic is asked to decide, a point from before named as one, by its id. Write it to `.ledger/.cache/{home}/discovery/{home}/message-{slug}.md`, its first line the title, and send it:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs topic send {home} {topic} --from {home}.discovery --content .ledger/.cache/{home}/discovery/{home}/message-{slug}.md --slug {slug}

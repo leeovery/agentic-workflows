@@ -5,10 +5,10 @@
 // `engine discovery-session close <work-unit|product>`, at either of its
 // places (8.1.4): an epic's logs in `{unit}/discovery/session-NNN.md`, its
 // marker on the unit's manifest; the product's conversation's in
-// `.product/sessions/session-NNN.md`, its marker `product_session` on the
-// project manifest. close clears the marker and commits the place's scope
-// with the caller's message, indexing nothing (8.14.7); every refusal
-// writes and commits nothing. The open is the entry's
+// `.product/sessions/session-NNN.md`, its picture beside them, its marker
+// `product_session` on the project manifest. close clears the marker and
+// commits the place's scope with the caller's message, indexing nothing
+// (8.14.7); every refusal writes and commits nothing. The open is the entry's
 // (test-engine-enter.cjs); what a commit takes with a log — the files it
 // links — is test-engine-state-commit-layout.cjs's; `commit --discovery`
 // and `--product` are test-engine-commit-door-state.cjs's.
@@ -104,9 +104,10 @@ describe('an epic\'s session (8.1.4, 8.S40)', () => {
 });
 
 describe('the product\'s conversation (8.1.4, 4.11.16, 8.14.3)', () => {
-  it('close clears the marker and commits its logs and the project manifest with the caller\'s message — never a unit\'s brief', () => {
+  it('close clears the marker and commits its logs, its picture and the project manifest with the caller\'s message — never a unit\'s brief', () => {
     productOpen();
     writeState(dir, layout.productSession('005'), '## 2026-01-06 · session five\n');
+    writeState(dir, layout.productPicture, '# Where the product stands\n');
     writeState(dir, layout.topic(EPIC, 'fees', 'brief.md'), '# Fees\n');
 
     const res = session(['close', 'product', '-m', 'product: session 005']);
@@ -114,7 +115,7 @@ describe('the product\'s conversation (8.1.4, 4.11.16, 8.14.3)', () => {
     assert.strictEqual(res.session, '005');
     assert.strictEqual('product_session' in JSON.parse(readState(dir, layout.projectManifest)), false);
     assert.strictEqual(lastMessage(dir), 'product: session 005');
-    assert.deepStrictEqual(committed(), [`M\t${layout.productSession('005')}`, `M\t${layout.projectManifest}`].sort());
+    assert.deepStrictEqual(committed(), [`M\t${layout.productSession('005')}`, `A\t${layout.productPicture}`, `M\t${layout.projectManifest}`].sort());
   });
 
   it('refuses a close with none open', () => {

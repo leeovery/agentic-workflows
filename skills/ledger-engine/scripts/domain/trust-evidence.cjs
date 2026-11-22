@@ -23,14 +23,19 @@
 //   - a raise answered with another row — on a replacement, keeping the
 //     decision as it stands among them (raise.cjs) — or in the person's own
 //     words read as another row or as none: a departure (16.10.1);
-//   - a raise the person didn't follow: no weight (16.12.3); and their
+//   - a raise the person didn't follow: no weight (16.12.3); their
 //     "don't care" on a blind question, Claude's answer never shown them,
-//     so it tells nothing of Claude's judgement: no weight (16.17.1);
+//     so it tells nothing of Claude's judgement: no weight (16.17.1); and
+//     any answer to a point from before, its raise saying so
+//     (`from_before`, raise.cjs): Claude's lean there is the person's own
+//     answer from before, so it too tells nothing of Claude's judgement: no
+//     weight;
 //   - a call: Claude's own call — but one a blind question was drawn on, a
 //     blind draw naming its entry, which went ahead while the question
 //     waits mid-build (16.17.6): no weight, the person's answer to the
 //     question its evidence, so the call is never counted beside it;
-//   - a reversal: a departure (16.10.10). It cancels the answer whose entry
+//   - a reversal: a departure (16.10.10) — but of an answer to a point from
+//     before, no weight, as that answer is. It cancels the answer whose entry
 //     it reverses, an agreement or a call — the person's keep of Claude's
 //     call gone ahead among them, its event naming the call it kept
 //     (raise.cjs) — and rewrites nothing: that answer's event stays as it
@@ -77,16 +82,16 @@ const { readProjectEvents } = require('./trust-log.cjs');
  * @typedef {{answers: Answer[], departures: Set<string>, verdicts: Map<string, Given[]>, judged: Set<string>, asked: Map<string, number>}} Evidence
  */
 
-/** @typedef {(event: Record<string, unknown>, drawn: Set<unknown>) => AnswerStanding} StandsBy */
+/** @typedef {(event: Record<string, unknown>, drawn: Set<unknown>, answered: Map<unknown, Record<string, unknown>>) => AnswerStanding} StandsBy */
 
-/** Where an answer stands, by its event's type, `drawn` the entries blind questions were drawn on. @type {Readonly<Record<string, StandsBy>>} */
+/** Where an answer stands, by its event's type, `drawn` the entries blind questions were drawn on and `answered` each answer's event by its entry. @type {Readonly<Record<string, StandsBy>>} */
 const STANDING = Object.freeze(/** @type {Record<string, StandsBy>} */ ({
-  raise: ({ didnt_follow: didntFollow, dont_care: dontCare, blind, answer, reading, sealed }) => {
-    if (didntFollow || (blind && dontCare)) return 'no-weight';
+  raise: ({ didnt_follow: didntFollow, dont_care: dontCare, blind, from_before: fromBefore, answer, reading, sealed }) => {
+    if (didntFollow || (blind && dontCare) || fromBefore) return 'no-weight';
     return (answer ?? reading) === sealed ? 'agreement' : 'departure';
   },
   call: ({ entry }, drawn) => (drawn.has(entry) ? 'no-weight' : 'call'),
-  reversal: () => 'departure',
+  reversal: ({ reverses }, _drawn, answered) => (answered.get(reverses)?.from_before === true ? 'no-weight' : 'departure'),
 }));
 
 /** An event's time. @param {Record<string, unknown>} event @returns {number} */
@@ -158,7 +163,7 @@ function evidenceIn(events) {
   const corrected = correctedKinds(ordered.filter(({ type }) => type === 'correction'));
   const answers = read.map((event) => ({
     event,
-    standing: STANDING[/** @type {string} */ (event.type)](event, drawn),
+    standing: STANDING[/** @type {string} */ (event.type)](event, drawn, questions),
     cancelled_by: cancels.get(event.entry) ?? null,
     ...questionOf(event, event.type === 'reversal' ? questions.get(event.reverses) : event, corrected),
   }));

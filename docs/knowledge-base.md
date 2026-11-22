@@ -13,6 +13,7 @@ It remembers what is current. When a decision is replaced, the topic's record is
 Some things are deliberately left out:
 
 - **Logs.** A conversation's log is its journey — the options weighed, the false paths, why minds changed — and it is read by the topic's own sessions, never searched. Discovery's sessions and the product's are reached through the pointers into them.
+- **The product picture.** It is discovery talk, where the product stands in its own conversation, never decisions: what a discussion decides of it reaches the knowledge base through that topic's record.
 - **The ledger itself.** It holds every entry ever made, the replaced ones among them; the records hold what stands.
 - **The specification.** It is assembled from the records, which are indexed in its place.
 - **The build.** Its log, its notes for later, each task's account and its reports describe how the work got done, not what was decided. Indexing them would flood every search with task ids and diffs instead of decisions.
