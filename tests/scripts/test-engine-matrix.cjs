@@ -161,7 +161,7 @@ function drawnHistory(project) {
 /** The decision point's ruling on a behaviour question in the project at `dir`, blocking build work where `blocks`, its id one the blind draw never takes. @param {string} dir @param {boolean} blocks */
 function behaviourRuled(dir, blocks) {
   return withFrozenClock(() => decide(/** @type {any} */ ({ sort: 'several' }), {
-    label: labelled('behaviour'), place: { unit: UNIT, phase: 'implementation', topic: null }, blocks_build: blocks, replaced_by: null, always: null, measured: null, checked: false,
+    label: labelled('behaviour'), place: { unit: UNIT, phase: 'implementation', topic: null }, blocks_build: blocks, replaced_by: null, always: null, from_before: false, measured: null, checked: false,
     project: { root: statePath(dir), name: 'Fumi' }, model: MODEL, now: FROZEN_MS, chain: UNDRAWN,
   }));
 }
@@ -251,7 +251,7 @@ describe('the matrix (16.15.1, 17.1.2, 17.1.3)', () => {
     logHolding(h.events);
 
     const reason = withFrozenClock(() => decide(/** @type {any} */ ({ sort: 'several' }), {
-      label: labelled('behaviour'), place: { unit: UNIT, phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, always: null, measured: null, checked: false,
+      label: labelled('behaviour'), place: { unit: UNIT, phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, always: null, from_before: false, measured: null, checked: false,
       project: { root: statePath(dir), name: 'Fumi' }, model: null, now: FROZEN_MS,
     }).reason);
 

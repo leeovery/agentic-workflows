@@ -485,6 +485,7 @@ describe('the refusals, nothing written', () => {
       refused([QUESTION, { ...decision, by: 'person' }]),
       refused([QUESTION, { ...decision, by: 'person', given: 'your-call' }]),
       refused([{ ...QUESTION, product_wide: false }]),
+      refused([{ ...QUESTION, from_before: 'D5' }]),
       refused([{ ...FINDING, relies_on: [], known: 'measured' }]),
     ], [
       broken('entry 1: gives no ref, the name the record links it by'),
@@ -506,10 +507,11 @@ describe('the refusals, nothing written', () => {
       broken('entry q1: raise marks a question to raise, true'),
       broken('entry q1: is marked to raise, and a decision of the record answers it — raise refuses a question answered already, so a point to raise is an open question'),
       broken('entry q1: the content\'s text is not non-empty text'),
-      broken('entry q1: the content has no field why — it holds by, text, cites, from_before'),
+      broken('entry q1: the content has no field why — it holds by, text, cites'),
       broken('entry d1: the person\'s decision is given carried — the person\'s own is given own, and what they hand over, or what is carried over, is Claude\'s line, by claude'),
       broken('entry d1: the person\'s decision is given your-call — the person\'s own is given own, and what they hand over, or what is carried over, is Claude\'s line, by claude'),
-      broken('entry q1: the content has no field product_wide — it holds by, text, cites, from_before'),
+      broken('entry q1: the content has no field product_wide — it holds by, text, cites'),
+      broken('entry q1: the content has no field from_before — it holds by, text, cites'),
       broken('entry f1: a measured finding records the command run and its result — the content needs command and result'),
     ]);
   });

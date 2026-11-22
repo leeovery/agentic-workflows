@@ -243,7 +243,7 @@ describe('the events and their schemas', () => {
       [{ ...labelled, label: { ...labelled.label, answers: Array(11).fill(false) } }, /its label is not a label/],
       [{ ...park, blocks_build: null }, /its blocks_build is not true or false$/],
       [{ ...park, replaced_by: 'builder' }, /its replaced_by is not one of person, claude, your-call, dont-care, carried, or null$/],
-      [{ ...park, always: 'urgent' }, /its always is not one of design-problem, live-server, built-otherwise, from-before, or null$/],
+      [{ ...park, always: 'urgent' }, /its always is not one of design-problem, live-server, built-otherwise, or null$/],
       [{ ...park, measured: 'the timing experiment' }, /its measured is not an experiment's id, or null$/],
       [{ ...park, chain: 'Q1' }, /its chain is not an entry id, or null$/],
       [{ ...fact, call: { ...fact.call, why: 'A note follows the person.' } }, /its call has a lean, a why and a sort, or, a fact, none of them/],
@@ -276,6 +276,15 @@ describe('the events and their schemas', () => {
       [{ ...carry, files: [['mint/a.png', 'fumi/a.png'], ['mint/a.png', 'fumi/b.png']] }, /a carry names each file it moved once/],
     ];
     for (const [value, message] of cases) assert.throws(() => validEvent(value), (err) => err instanceof LedgerLineError && message.test(err.message), `${JSON.stringify(value)} was not refused as ${message}`);
+  });
+
+  it('reads a question written at version 1, before from_before — asked, and reworded — as no point from before, from_before null', () => {
+    const lines = [
+      '{"v":1,"id":"g8JBSgaWIycDdYBUIEBNa","event":"asked","unit":"fumi","topic":"note-window","phase":"discussion","session":"session-1","at":"2026-10-27T09:00:00Z","by":"claude","who_moved_whom":"none","text":"Where does a note go?","part_of":null,"relies_on":[],"cites":[],"task":null}',
+      '{"v":1,"id":"LeXlFMASv48yrFE1oAr8d","event":"replaced","unit":"fumi","topic":"note-window","phase":"discussion","session":"session-1","at":"2026-10-27T09:05:00Z","by":"claude","who_moved_whom":"none","replaces":"g8JBSgaWIycDdYBUIEBNa","reason":"changed-mind","cause":null,"drops":[],"of":"question","text":"Where does a new note go?","part_of":null,"relies_on":[],"cites":[],"task":null}',
+    ];
+
+    assert.deepStrictEqual(lines.map((line) => validEvent(JSON.parse(line)).from_before), [null, null]);
   });
 
   it('carries in a replacement the content of what it replaces: a question\'s, a finding\'s or a decision\'s', () => {

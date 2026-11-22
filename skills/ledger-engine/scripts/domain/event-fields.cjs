@@ -109,17 +109,15 @@ const KINDS = Object.freeze(['process', 'danger', 'contract', 'scope', 'look', '
 // (16.5.6, F3): danger is left out, as it always asks.
 const CARE_KINDS = Object.freeze(/** @type {Kind[]} */ (['contract', 'scope', 'behaviour', 'look', 'words', 'process', 'internals']));
 
-// The marks a question that always asks carries: those Claude gives, as
-// `raise --always` takes them — a design problem (19.4.22), testing against
-// a live server (19.4.20), code built otherwise than a decision from before
-// Ledger (21.6.16) — and the question's own, a point of the record the
-// person brought from before, which comes to them once: given as the
-// question is asked, its id from before in its `from_before`, never at a
-// raise.
-const FROM_BEFORE_MARK = 'from-before';
-const ALWAYS_MARKS = Object.freeze(['design-problem', 'live-server', 'built-otherwise', FROM_BEFORE_MARK]);
+// The marks Claude gives a question that always asks, as `raise --always`
+// takes them: a design problem (19.4.22), testing against a live server
+// (19.4.20), or code built otherwise than a decision from before Ledger
+// (21.6.16). A point of the record the person brought from before is no
+// mark of Claude's: the question carries it, its id in `from_before`
+// (ledger-events.cjs), and the rule reads it apart (ask-rule.cjs).
+const ALWAYS_MARKS = Object.freeze(['design-problem', 'live-server', 'built-otherwise']);
 
-/** A mark that only makes a question ask. @typedef {'design-problem'|'live-server'|'built-otherwise'|'from-before'} Always */
+/** A mark that only makes a question ask. @typedef {'design-problem'|'live-server'|'built-otherwise'} Always */
 
 const ALWAYS_MARK = oneOf(...ALWAYS_MARKS);
 
@@ -173,4 +171,4 @@ function readFields(value, fields, v, name) {
   return { event };
 }
 
-module.exports = { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, CARE_KINDS, ALWAYS_MARKS, ALWAYS_MARK, FROM_BEFORE_MARK, EXPERIMENT, MODEL, LABEL, oneOf, nullable, listOf, shaped, field, event, addedIn, readFields };
+module.exports = { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, CARE_KINDS, ALWAYS_MARKS, ALWAYS_MARK, EXPERIMENT, MODEL, LABEL, oneOf, nullable, listOf, shaped, field, event, addedIn, readFields };

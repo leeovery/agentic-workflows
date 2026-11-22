@@ -48,7 +48,7 @@ const { logPath, logText, project } = useTrustWorld('trust-evidence-');
 // row 2 — or not followed.
 const RAISE = Object.freeze({
   replaces: null, kind: null, label: null, sort: 'several', sealed: '1', via: 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: false, blocks_build: false, replaced_by: null, always: null,
-  measured: null, chain: idOf('Asked'), raised: '2026-01-01T00:00:00.000Z', blind: false,
+  measured: null, chain: idOf('Asked'), raised: '2026-01-01T00:00:00.000Z', blind: false, from_before: false,
 });
 const AGREES = Object.freeze({ ...RAISE, answer: '1' });
 const DEPARTS = Object.freeze({ ...RAISE, answer: '2' });
@@ -77,14 +77,14 @@ const raised = (dir, entry, fields) => record('raise', { ...fields, entry }, fro
 const reversal = (dir, entry, reverses) => record('reversal', { entry, reverses }, from(dir));
 
 describe('where each answer stands (16.12.1, 16.10.1)', () => {
-  it('stands a raise answered with Claude\'s sealed answer, in the person\'s own words read as it, or with their "don\'t care", as an agreement, with another row or in the person\'s own words read as another or as none as a departure, one not followed and any answer to a point from before, its raise always asked by the question\'s mark, as no weight, and a call as Claude\'s call; the departures their entries; a gate, a verdict, a blind draw, a learned gate run as a step and a care entry dropped no answer', () => {
+  it('stands a raise answered with Claude\'s sealed answer, in the person\'s own words read as it, or with their "don\'t care", as an agreement, with another row or in the person\'s own words read as another or as none as a departure, one not followed and any answer to a point from before, as its raise says, as no weight, and a call as Claude\'s call; the departures their entries; a gate, a verdict, a blind draw, a learned gate run as a step and a care entry dropped no answer', () => {
     const dir = project('fumi');
     const [agreed, departed, own, ownAgreed, ownDeparted, called, careless, before, beforeChanged] = ['Agreed', 'Departed', 'Own', 'OwnAgreed', 'OwnDeparted', 'Called', 'Careless', 'Before', 'BeforeChanged'].map(idOf);
     const answers = [
       raised(dir, agreed, AGREES), raised(dir, departed, DEPARTS), raised(dir, own, OWN_WORDS), raised(dir, ownAgreed, OWN_WORDS_AGREEING), raised(dir, ownDeparted, OWN_WORDS_DEPARTING),
       record('raise', NOT_FOLLOWED, from(dir)), record('call', { entry: called, kind: null, label: null, sort: 'one', blocks_build: false }, from(dir)),
       raised(dir, careless, { ...AGREES, via: 'typed', dont_care: true }),
-      raised(dir, before, { ...AGREES, always: 'from-before' }), raised(dir, beforeChanged, { ...DEPARTS, always: 'from-before' }),
+      raised(dir, before, { ...AGREES, from_before: true }), raised(dir, beforeChanged, { ...DEPARTS, from_before: true }),
     ];
     record('gate', { gate: 'state lost gate', recommended: 'y', picked: 'n', via: 'pressed', with_text: false, reading: null, showing: null }, from(dir));
     record('verdict', { entry: departed, verdict: 'skip', point: 'decided' }, from(dir));
@@ -150,6 +150,18 @@ describe('where each answer stands (16.12.1, 16.10.1)', () => {
     ]);
     assert.deepStrictEqual(evidence(dir).departures, new Set([reversedAgreement, reversedCall]));
     assert.deepStrictEqual([logText(), fs.readFileSync(waitingPath(), 'utf8')], written);
+  });
+
+  it('stands a reversal of an answer to a point from before as no weight, as that answer is, though it cancels it: the person changing their mind from before tells nothing of Claude\'s judgement', () => {
+    const dir = project('fumi');
+    const [before, plain, reversedBefore, reversedPlain] = ['Before', 'Plain', 'RevBefore', 'RevPlain'].map(idOf);
+    const answers = [raised(dir, before, { ...AGREES, from_before: true }), raised(dir, plain, AGREES)];
+    const [first, second] = [reversal(dir, reversedBefore, before), reversal(dir, reversedPlain, plain)];
+
+    assert.deepStrictEqual(standings(dir), [
+      [answers[0].id, 'no-weight', first.id], [answers[1].id, 'agreement', second.id], [first.id, 'no-weight', null], [second.id, 'departure', null],
+    ]);
+    assert.deepStrictEqual(evidence(dir).departures, new Set([reversedPlain]));
   });
 });
 

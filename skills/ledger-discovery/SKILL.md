@@ -139,7 +139,7 @@ In an epic's discovery the person calls for the map, or a session in which you c
 
 ## A Message to a Topic
 
-In an epic's discovery, something found bears on a topic that has started: it reaches the topic as a message, decided there in its frame, never a rewritten brief. One message is one ask: what was found, the reasoning, and what the topic is asked to decide. Write it to `.ledger/.cache/{home}/discovery/{home}/message-{slug}.md`, its first line the title, and send it:
+In an epic's discovery, something found bears on a topic that has started: it reaches the topic as a message, decided there in its frame, never a rewritten brief. One message is one ask: what was found, the reasoning, and what the topic is asked to decide, a point from before named as one, by its id. Write it to `.ledger/.cache/{home}/discovery/{home}/message-{slug}.md`, its first line the title, and send it:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs topic send {home} {topic} --from {home}.discovery --content .ledger/.cache/{home}/discovery/{home}/message-{slug}.md --slug {slug}

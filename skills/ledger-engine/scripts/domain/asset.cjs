@@ -330,7 +330,7 @@ function firstStatus(said, root, unit, rel, status) {
     const units = unit === PRODUCT ? '' : `${unit}/assets/, a spike of ${unit}'s, ${unit}/spikes/NNN-{slug}/, or `;
     throw new Error(`${said}: ${rel} is not where an asset lives — ${units}the product's .product/assets/ or .product/spikes/NNN-{slug}/`);
   }
-  if (!fs.existsSync(path.join(root, rel))) throw new Error(`${said}: ${rel} names no file — save it there first, or correct the path`);
+  if (!fs.existsSync(path.join(root, rel))) throw new Error(`${said}: ${rel} names no file — land the file shared first, asset import ${unit} '<path>', and link the path it answers, or correct the path`);
   if (status !== undefined) return checkedStatus(said, status);
   if (!SPIKE_HOMES.includes(home)) throw new Error(`${said}: a first link gives the file its status — --status <${ASSET_STATUSES.join('|')}>`);
   return 'reference';

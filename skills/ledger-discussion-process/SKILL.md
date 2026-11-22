@@ -83,7 +83,7 @@ Draw it (`render map {work_unit}.{topic}`) at natural pauses, at your judgement,
 
 ### Mail
 
-At natural pauses, check `topic mailbox {work_unit} {topic}`: a message landing while the topic is in session is raised from there. A message is another topic's reasoning about something this topic owns, decided here in this topic's frame. Put the question it raises on the map — a moved question is there already — then remove the message: `topic answered {work_unit} {topic} {NNN-slug} --entry {question}`.
+At natural pauses, check `topic mailbox {work_unit} {topic}`: a message landing while the topic is in session is raised from there. A message is another topic's reasoning about something this topic owns, decided here in this topic's frame. Put the question it raises on the map — a moved question is there already — asked with its id from before where the message carries a point from before, then remove the message: `topic answered {work_unit} {topic} {NNN-slug} --entry {question}`.
 
 ### Research
 
@@ -200,7 +200,7 @@ A refusal names the way on: say it in a line. Otherwise invoke `/ledger-discover
 
 ## A Shared File
 
-The person shares a file, a path or an image. Load **[importing-shared-files.md](../ledger-shared/references/importing-shared-files.md)** with home = `{work_unit}`, phase = `discussion`, and follow its instructions as written. Link each path it answered from the entry it informs, `asset add {work_unit} {path} --entry {id} --status {status:[canonical|reference]}`: canonical from a decision the spec carries, reference otherwise.
+The person shares a file, a path or an image. Load **[importing-shared-files.md](../ledger-shared/references/importing-shared-files.md)** with home = `{work_unit}`, phase = `discussion`, topic = `{topic}`, and follow its instructions as written. Link each path it answered from the entry it informs, `asset add {work_unit} {path} --entry {id} --status {status:[canonical|reference]}`: canonical from a decision the spec carries, reference otherwise. The log's line for a folder names what the import renamed in it.
 
 ## An Experiment
 

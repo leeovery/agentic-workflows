@@ -885,7 +885,8 @@ function runDiscoverySession(call, argv) {
 // discovery-log — an entry under one of the fixed headings of the log of an
 // epic's open discovery session, or the product's (domain/discovery-log.cjs):
 // at an epic never committed, every state commit taking the log along; at
-// the product committed with its scope.
+// the product committed with its scope. A point from before an epic's
+// discovery meets is kept in the epic's points from before, and committed.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */

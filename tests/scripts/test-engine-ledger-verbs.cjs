@@ -279,6 +279,22 @@ describe('refusals', () => {
     decide(timing, { text: 'In 4 ms.', why: 'E1 measured it.' });
   });
 
+  it('refuses the close of a question asked as a point from before, in a later wording too, with a call of Claude\'s own — its decision, or a merge into a decision standing as Claude\'s call — naming its raise, while the person\'s answer, one they hand Claude and a merge into theirs land, and a question asked as no point takes Claude\'s', () => {
+    const point = write('ask', NOTE, [], { ...MADE, text: 'Does a gift expire?', from_before: 'D5' }).id;
+    const reworded = change(point, { text: 'When does a gift expire?' }).id;
+    const [handed, theirs, merging] = ['Is a gift wrapped?', 'Is a gift noted?', 'Is a gift boxed?'].map((text) => write('ask', NOTE, [], { ...MADE, text, from_before: 'D7' }).id);
+    const [plain, other] = [ask().id, ask('Is a note pinned?').id];
+    const held = (/** @type {string} */ verb) => new RegExp(`^ledger ${verb}: ${reworded} is D5, a point from before — Claude never closes one with a call of its own; it comes to the person: raise ${NOTE.replaceAll('.', '\\.')} --answers ${reworded}$`);
+    const claudes = decide(plain).id;
+
+    refused('decide', NOTE, ['--answers', reworded], { ...MADE, text: 'After a year.', why: 'Usual.' }, held('decide'));
+    refused('merge', NOTE, ['--question', reworded, '--into', claudes], MADE, held('merge'));
+    decide(handed, { given: 'your-call' });
+    const persons = decide(theirs, { by: 'person', given: 'own' }).id;
+    write('merge', NOTE, ['--question', merging, '--into', persons], MADE);
+    write('merge', NOTE, ['--question', other, '--into', claudes], MADE);
+  });
+
   it('refuses a move to a topic the unit does not have, and a move made at the unit\'s level, from no topic', () => {
     const question = ask().id;
     refused('move', NOTE, ['--question', question, '--to', 'dock-icon'], MADE, /^ledger move: fumi has no topic "dock-icon" to move the question to$/);

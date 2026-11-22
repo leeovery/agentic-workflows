@@ -343,7 +343,7 @@ describe('a first link (9.10.5–9.10.7, 9.10.22)', () => {
 
   it('9.S65: refuses a path naming no file, to be corrected or skipped before anything lands', () => {
     assert.strictEqual(refused(['add', UNIT, `${UNIT}/assets/pasted.png`, '--entry', made.frameless, '--status', 'reference']),
-      `asset add: ${UNIT}/assets/pasted.png names no file — save it there first, or correct the path`);
+      `asset add: ${UNIT}/assets/pasted.png names no file — land the file shared first, asset import ${UNIT} '<path>', and link the path it answers, or correct the path`);
   });
 
   it('9.S33: refuses a file anywhere but below a home — the unit\'s imports/, another unit\'s assets, a folder in spikes/ that is no spike, a topic\'s folder, the assets folder itself — and a path not written plain', () => {
@@ -463,7 +463,7 @@ describe('what a link commits (9.10.4)', () => {
       asset(['add', UNIT, otherCase, '--entry', made.frameless, '--status', 'reference']);
       assert.deepStrictEqual([links(), committedFiles()], [[[full(made.frameless), MOCK, 'reference', null]], [layout.ledger, MOCK].sort()]);
     } else {
-      assert.strictEqual(refused(['add', UNIT, otherCase, '--entry', made.frameless, '--status', 'reference']), `asset add: ${otherCase} names no file — save it there first, or correct the path`);
+      assert.strictEqual(refused(['add', UNIT, otherCase, '--entry', made.frameless, '--status', 'reference']), `asset add: ${otherCase} names no file — land the file shared first, asset import ${UNIT} '<path>', and link the path it answers, or correct the path`);
     }
   });
 });

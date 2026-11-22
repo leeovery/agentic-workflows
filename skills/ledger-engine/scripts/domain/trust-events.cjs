@@ -45,7 +45,9 @@
 //   would replace was — who decided it, or as the person's keep of it since
 //   was given, theirs or their "don't care" — null for a question's answer
 //   (16.5.7); Claude's mark that it always asks, null for none (19.4.20,
-//   19.4.22); the experiment still running that measured its question, by
+//   19.4.22); whether its question is a point of the record the person
+//   brought from before (`from_before`, added at version 2, false on a line
+//   before it), whose answer weighs nothing (trust-evidence.cjs); the experiment still running that measured its question, by
 //   its id, null for none (9.1.11); and the question's id its blind draw
 //   hashes, the first entry of its chain — on a blind question drawn on
 //   Claude's call gone ahead, the chain of the question that call answers —
@@ -188,7 +190,7 @@ const HOW_ANSWERED = [
 
 /** @type {Schema} */
 const SCHEMA = {
-  version: 1,
+  version: 2,
   events: {
     gate: event([
       field('gate', GATE),
@@ -215,6 +217,7 @@ const SCHEMA = {
       field('chain', nullable(ID)),
       field('raised', TIME),
       field('blind', FLAG),
+      field('from_before', FLAG, { version: 2, default: false }),
     ]),
     call: event([field('entry', ID), field('kind', KIND), field('label', LABEL), field('sort', SORT), field('blocks_build', nullable(FLAG))]),
     verdict: event([field('entry', ID), field('verdict', oneOf(...VERDICTS)), field('point', oneOf(...VERDICT_POINTS))]),

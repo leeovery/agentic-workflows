@@ -134,19 +134,27 @@ describe('approve the map, the screen (8.8.4, 8.S17)', () => {
     assert.strictEqual(named({ topics: [...topics, { name: 'gifting', summary: 'Gifting', brief: scratch('# Gifting\n\nD101 and R1.\n') }] }), null);
   });
 
-  it('counts a point placed wherever the person put it: a park\'s summary, a direction not taken in the epic\'s log, a message waiting in a topic of the map and a question asked as the point, each citing its id; one placed nowhere is still named', () => {
-    writeState(dir(), layout.fromBefore(EPIC), '# From before\n\n- D5: Gifts expire (planning/decision-log.md)\n- D7: Search by sender (planning/decision-log.md)\n- D9: No refunds (planning/decision-log.md)\n- D11: A gift card (planning/decision-log.md)\n- D12: Shops pause (planning/model.md)\n');
-    fourApproved();
+  it('counts a point placed wherever the person put it: a park\'s summary, staged now or on the roadmap from an approval before, a direction not taken in the epic\'s log, a message waiting in a topic of the map, and a question asked as the point — a message the topic took in among them — that is answered or on a topic of the map, each citing its id; one placed nowhere, or only by a question left open on a topic the map does not hold, is still named', () => {
+    const points = ['D3: Gifts are free', 'D5: Gifts expire', 'D7: Search by sender', 'D9: No refunds', 'D11: A gift card', 'D12: Shops pause', 'D13: Gift wrap', 'D14: Gift notes'];
+    writeState(dir(), layout.fromBefore(EPIC), `# From before\n\n${points.map((point) => `- ${point} (planning/decision-log.md)\n`).join('')}`);
+    const topics = [{ name: 'note-model' }, { name: 'storage-and-sync' }, { name: 'sharing' }, { name: 'search' }];
+    approved({ topics: topics.map(({ name }) => fresh(name, name)), parks: [park('gift-expiry', 'Gift expiry (D5)', 'later')] });
     fs.appendFileSync(statePath(dir(), LOG), '\n## Not taken\n\n- Refunds on gifts (D9) — they never refund a gift\n');
     writeState(dir(), layout.mailbox(EPIC, 'search', '001-sender.md'), '# Search by sender\nFrom: note-model\n\nD7 bears on search.\n');
-    appendEntry(statePath(dir()), { event: 'asked', unit: EPIC, topic: 'sharing', phase: 'discussion', session: SESSION_ID, by: 'claude', who_moved_whom: 'none', text: 'Is there a gift card?', part_of: null, relies_on: [], cites: [], task: null, from_before: 'D11' }, []);
-    const topics = [{ name: 'note-model' }, { name: 'storage-and-sync' }, { name: 'sharing' }, { name: 'search' }];
+    const ask = (/** @type {string} */ topic, /** @type {string} */ point) => /** @type {string} */ (appendEntry(statePath(dir()), { event: 'asked', unit: EPIC, topic, phase: 'discussion', session: SESSION_ID, by: 'claude', who_moved_whom: 'none', text: `About ${point}?`, part_of: null, relies_on: [], cites: [], task: null, from_before: point }, []).id);
+    ask('sharing', 'D11');
+    ask('gift-wrap', 'D13');
+    appendEntry(statePath(dir()), {
+      event: 'decided', unit: EPIC, topic: 'gift-wrap', phase: 'discussion', session: SESSION_ID, by: 'person', who_moved_whom: 'none', answers: ask('gift-wrap', 'D14'), text: 'A note on every gift.', why: 'They asked.', rules_out: [], relies_on: [],
+      product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: true, given: 'own', cites: [], task: null,
+    }, []);
 
-    const out = screen(['approve-map', EPIC], { topics, parks: [park('gift-expiry', 'Gift expiry (D5)', 'later')] });
+    const out = screen(['approve-map', EPIC], { topics, parks: [park('gift-free', 'Free gifts (D3)', 'later')] });
 
     assert.strictEqual(sectionOf(out, 'DISPLAY: approve the map').split('\n\n').find((block) => block.startsWith('FROM BEFORE')), [
-      'FROM BEFORE, IN NO BRIEF YET (1, each to place at your word)',
-      '  └─ D12: Shops pause (planning/model.md)',
+      'FROM BEFORE, IN NO BRIEF YET (2, each to place at your word)',
+      '  ├─ D12: Shops pause (planning/decision-log.md)',
+      '  └─ D13: Gift wrap (planning/decision-log.md)',
       '',
     ].join('\n'));
   });

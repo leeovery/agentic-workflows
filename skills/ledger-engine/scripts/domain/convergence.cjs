@@ -69,14 +69,13 @@ const { countsOf } = require('./trust-counts.cjs');
 const { trustSettings, CONVERGENCE_RUN } = require('./trust-settings.cjs');
 const { careEntries } = require('./person.cjs');
 const { labelsAtOnce, questionText, kindOf } = require('./labeller.cjs');
-const { FROM_BEFORE_MARK } = require('./event-fields.cjs');
 const { rule } = require('./ask-rule.cjs');
 const { answeredTo, lastShown } = require('./gate.cjs');
 const { offerScreen, nothingToSettle, OFFER_GATE } = require('./projections/convergence.cjs');
 
 /** @typedef {import('./event-fields.cjs').Kind} Kind */
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
-/** An open question on the topic: its id, its short form, its wording, the experiment still running that measures it, null for none, and the mark it always asks by, a point from before's, null for none. @typedef {{id: string, short: string, text: string, measured: string|null, always: import('./event-fields.cjs').Always|null}} Open */
+/** An open question on the topic: its id, its short form, its wording, the experiment still running that measures it, null for none, and whether it is a point from before. @typedef {{id: string, short: string, text: string, measured: string|null, from_before: boolean}} Open */
 /** The topic as it stands: the run of agreements, its open questions, and whether one of them was open at the person's latest yes. @typedef {{run: number, open: Open[], settling: boolean}} Standing */
 /** What the rule forecasts for an open question: its short id, its kind, and whether Claude would settle it. @typedef {{short: string, kind: Kind|null, mine: boolean}} Forecast */
 
@@ -167,7 +166,7 @@ function topicStanding(cwd, unit, topic, warnings) {
     const askedAt = (/** @type {string} */ id) => Date.parse(String(entryAt(fact(fact(id).root).place).at));
     return {
       run: runIn(events, facts, unit, topic, latest(yes, declinedAt(cwd, unit, topic))),
-      open: ids.map((id) => ({ id, short: /** @type {string} */ (shorts.get(id)), text: String(entryAt(fact(id).place).text), measured: measuredBy(manifest, facts, id), always: fact(id).from_before === null ? null : FROM_BEFORE_MARK })),
+      open: ids.map((id) => ({ id, short: /** @type {string} */ (shorts.get(id)), text: String(entryAt(fact(id).place).text), measured: measuredBy(manifest, facts, id), from_before: fact(id).from_before !== null })),
       // The ledger keeps whole seconds: a question asked in the yes's own second counts as open at it.
       settling: yes !== null && ids.some((id) => askedAt(id) <= yes),
     };
@@ -207,10 +206,10 @@ function forecastOf(cwd, unit, topic, open) {
   const project = { id: projectId(root), name: projectName(cwd) };
   const counts = countsOf(root, { model: modelOf(cwd), now: Date.now() });
   const labels = labelsAtOnce(open.map(({ text }) => questionText(text, [])));
-  return open.map(({ short, measured, always }, i) => {
+  return open.map(({ short, measured, from_before: fromBefore }, i) => {
     const label = labels[i];
     const { decision } = rule({ sort: 'several' }, {
-      label, place: { unit, phase: PHASE, topic }, blocks_build: false, replaced_by: null, measured, always, checked: false, project, counts, settings, care,
+      label, place: { unit, phase: PHASE, topic }, blocks_build: false, replaced_by: null, measured, always: null, from_before: fromBefore, checked: false, project, counts, settings, care,
     });
     return { short, kind: kindOf(label), mine: decision !== 'ask' };
   });

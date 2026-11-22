@@ -110,7 +110,7 @@ Once the fix is decided, log the fix direction (`investigation-log fix-direction
 
 ### Mail
 
-At natural pauses, check `topic mailbox {work_unit} {work_unit}`: a message is what was found elsewhere for this investigation to settle, such as one carried into its mailbox from before Ledger. Put the question it raises on the map, then remove the message: `topic answered {work_unit} {work_unit} {NNN-slug} --entry {question}`.
+At natural pauses, check `topic mailbox {work_unit} {work_unit}`: a message is what was found elsewhere for this investigation to settle, such as one carried into its mailbox from before Ledger. Put the question it raises on the map, asked with its id from before where the message carries a point from before, then remove the message: `topic answered {work_unit} {work_unit} {NNN-slug} --entry {question}`.
 
 ### The Log
 
@@ -173,7 +173,7 @@ The cancel takes the unit's cache, its agents' rows with it: stop every task you
 
 ## A Shared File
 
-The person shares a file, a path or an image — a log, an export, a screenshot of the failure. Load **[importing-shared-files.md](../ledger-shared/references/importing-shared-files.md)** with home = `{work_unit}`, phase = `investigation`, and follow its instructions as written. What a file shows is evidence like any other: link each from the finding it informs, `asset add {work_unit} {path} --entry {finding} --status reference`, or from the log.
+The person shares a file, a path or an image — a log, an export, a screenshot of the failure. Load **[importing-shared-files.md](../ledger-shared/references/importing-shared-files.md)** with home = `{work_unit}`, phase = `investigation`, topic = `{work_unit}`, and follow its instructions as written. What a file shows is evidence like any other: link each from the finding it informs, `asset add {work_unit} {path} --entry {finding} --status reference`, or from the log. The log's line for a folder names what the import renamed in it.
 
 ## Reworking It as a Feature
 

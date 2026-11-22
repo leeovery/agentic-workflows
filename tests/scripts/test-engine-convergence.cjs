@@ -253,8 +253,19 @@ describe('the run (16.8.7)', () => {
   it('the person\'s answer to a point from before, which always comes to them, neither extends nor breaks it, whether Claude\'s lean or another', () => {
     logOf((h) => {
       agreeing(h, 4);
-      h.answered(made.here[4], '1', 'behaviour', { always: 'from-before' });
-      h.answered(made.here[5], '2', 'behaviour', { always: 'from-before' });
+      h.answered(made.here[4], '1', 'behaviour', { fromBefore: true });
+      h.answered(made.here[5], '2', 'behaviour', { fromBefore: true });
+      agreeing(h, 4, 6);
+    });
+
+    assert.strictEqual(due(), 8);
+  });
+
+  it('the person\'s later change of their answer to a point from before neither extends nor breaks it, as that answer did not', () => {
+    logOf((h) => {
+      agreeing(h, 4);
+      h.answered(made.here[4], '1', 'behaviour', { fromBefore: true });
+      h.reverse(made.here[4], {}, made.here[5]);
       agreeing(h, 4, 6);
     });
 

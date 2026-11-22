@@ -213,6 +213,7 @@ function asks(event, settings, { project, counts, care }) {
     blocks_build: event.blocks_build === true,
     replaced_by: event.replaced_by ?? null,
     always: event.always ?? null,
+    from_before: event.from_before === true,
     measured: event.measured ?? null,
     checked: false,
     project,

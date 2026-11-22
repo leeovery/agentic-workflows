@@ -66,7 +66,7 @@ const SAMPLES = Object.freeze({
   gate: { gate: 'state lost gate', recommended: 'y', picked: 'n', via: 'pressed', with_text: false, reading: null, showing: 'ec91f2a928f07b80' },
   raise: {
     entry: ENTRY, replaces: null, kind: 'behaviour', label: { labeller: 'claude-sonnet-5', answers: ANSWERS }, sort: null, sealed: '1', answer: '2', via: 'pressed', with_text: false, reading: null, didnt_follow: false, dont_care: false,
-    blocks_build: false, replaced_by: null, always: null, measured: 'E1.2', chain: QUESTION, raised: '2026-10-28T09:58:00.000Z', blind: false,
+    blocks_build: false, replaced_by: null, always: null, measured: 'E1.2', chain: QUESTION, raised: '2026-10-28T09:58:00.000Z', blind: false, from_before: false,
   },
   call: { entry: ENTRY, kind: null, label: null, sort: 'one', blocks_build: false },
   verdict: { entry: ENTRY, verdict: 'skip', point: 'decided' },
@@ -92,7 +92,7 @@ function readAll(dir) {
 }
 
 describe('record (16.13.4)', () => {
-  it('records every event, a line each ended by LF, its own fields in the schema\'s order after the fields the engine sets', () => {
+  it('records every event, a line each ended by LF, its own fields in the schema\'s order after the fields the engine sets, at the version its shape last changed in — a raise\'s at 2, which added from_before, every other at 1', () => {
     assert.deepStrictEqual(Object.keys(SAMPLES), Object.keys(SCHEMA.events), 'a sample of every event the schema holds');
     const dir = project('fumi');
 
@@ -105,7 +105,7 @@ describe('record (16.13.4)', () => {
       const { id, at, ...rest } = recorded[i];
       assert.ok(isId(id), `${type}: ${id}`);
       assert.match(/** @type {string} */ (at), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/, `${type}: to the millisecond`);
-      assert.deepStrictEqual(rest, { v: 1, type, project: PROJECT_ID, project_name: 'fumi', model: null, session: null, ...fields }, type);
+      assert.deepStrictEqual(rest, { v: type === 'raise' ? 2 : 1, type, project: PROJECT_ID, project_name: 'fumi', model: null, session: null, ...fields }, type);
       assert.deepStrictEqual(Object.keys(recorded[i]), [...HEADER_FIELDS, ...Object.keys(fields)], `${type}: in the schema's order`);
     }
     assert.strictEqual(new Set(recorded.map((event) => event.id)).size, recorded.length, 'each its own id');
@@ -120,7 +120,7 @@ describe('record (16.13.4)', () => {
       ['verdict', { ...SAMPLES.verdict, verdict: 'maybe' }, 'a verdict event cannot be recorded: its verdict is not one of nothing, fix, loss, skip'],
       ['raise', { ...SAMPLES.raise, blocks_build: null }, 'a raise event cannot be recorded: its blocks_build is not true or false'],
       ['raise', { ...SAMPLES.raise, replaced_by: 'builder' }, 'a raise event cannot be recorded: its replaced_by is not one of person, claude, your-call, dont-care, carried, or null'],
-      ['raise', { ...SAMPLES.raise, always: 'urgent' }, 'a raise event cannot be recorded: its always is not one of design-problem, live-server, built-otherwise, from-before, or null'],
+      ['raise', { ...SAMPLES.raise, always: 'urgent' }, 'a raise event cannot be recorded: its always is not one of design-problem, live-server, built-otherwise, or null'],
       ['raise', { ...SAMPLES.raise, raised: 'last week' }, 'a raise event cannot be recorded: its raised is not a UTC time'],
       ['raise', { ...SAMPLES.raise, replaces: 'Q1' }, 'a raise event cannot be recorded: its replaces is not an entry id, or null'],
       ['raise', { ...SAMPLES.raise, measured: 'E0' }, 'a raise event cannot be recorded: its measured is not an experiment\'s id, or null'],
@@ -359,7 +359,7 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
       const waiting = record('call', SAMPLES.call, from(dir));
       failing.mock.restore();
       const duplicate = { ...waiting, id: idOf('Duplicate') };
-      const later = JSON.stringify({ ...waiting, v: 2, id: idOf('Later') });
+      const later = JSON.stringify({ ...waiting, v: SCHEMA.version + 1, id: idOf('Later') });
       fs.appendFileSync(waitingPath(), [
         'not even JSON',
         JSON.stringify({ ...waiting, id: idOf('Misshapen'), sort: 'many' }),
@@ -573,7 +573,7 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
     fs.writeFileSync(path.join(root, '.ledger.jsonl'), `${JSON.stringify({ id: entry })}\n`);
     const event = newEvent('call', { ...SAMPLES.call, entry }, dir);
     const awaits = { ledger: root, entry };
-    const waiting = lines({ after: awaits, event }, { v: 2, awaits, event }, { v: 1, awaits, event: { ...event, v: 2 } });
+    const waiting = lines({ after: awaits, event }, { v: 2, awaits, event }, { v: 1, awaits, event: { ...event, v: SCHEMA.version + 1 } });
     fs.mkdirSync(path.dirname(waitingPath()), { recursive: true });
     fs.writeFileSync(waitingPath(), waiting);
     const was = fs.statSync(waitingPath()).ino;
@@ -587,11 +587,20 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
 });
 
 describe('reading', () => {
+  it('reads a raise written before version 2 as no point from before, from_before false, and one at version 2 as it holds it; never a version-2 field on a version-1 line', () => {
+    const dir = project('fumi');
+    const raise = record('raise', { ...SAMPLES.raise, from_before: true }, from(dir));
+    const { from_before: _added, ...before } = { ...raise, v: 1, id: idOf('Before') };
+    fs.appendFileSync(logPath(), lines(before, { ...before, id: idOf('Stray'), from_before: true }));
+
+    assert.deepStrictEqual(readAll(dir), [raise, { ...before, from_before: false }]);
+  });
+
   it('skips each line it cannot read — a newer release\'s version, a type it does not know, a line no event, one of the wrong shape, a time that is none, a session that is no session id, one followed by words or one in capitals, words for a model, an unterminated last line — and never stops', () => {
     const dir = project('fumi');
     const first = record('call', SAMPLES.call, from(dir));
     const unreadable = [
-      { ...first, v: 2 },
+      { ...first, v: SCHEMA.version + 1 },
       { ...first, type: 'labelled' },
       'not an event',
       { ...first, sort: 'many' },

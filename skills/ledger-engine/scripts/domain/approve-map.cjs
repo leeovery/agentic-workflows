@@ -437,10 +437,28 @@ function briefsOf(cwd, unit, topics) {
 }
 
 /**
+ * The id of each point from before the epic's questions were asked as,
+ * in any wording, where the question is answered or its topic is on the
+ * map staged: a question left open in a topic the map no longer holds
+ * places nothing.
+ * @param {string} root @param {string} unit @param {StagedTopic[]} topics @param {string[]} passed
+ * @returns {string[]}
+ */
+function askedPoints(root, unit, topics, passed) {
+  const staged = new Set(topics.map(({ name }) => name));
+  const facts = foldLedger(root, ID_FACTS, passed);
+  const answered = (/** @type {string} */ id) => (facts.get(id)?.answered_by.length ?? 0) > 0;
+  return [...facts.values()]
+    .filter((fact) => fact.unit === unit && fact.from_before !== null && (answered(fact.root) || staged.has(/** @type {string} */ (fact.topic))))
+    .map(({ from_before: id }) => /** @type {string} */ (id));
+}
+
+/**
  * Every text that places a point from before of the epic, by citing its
- * id: each staged topic's brief, each park's summary, each direction not
- * taken in the epic's logs, each message waiting in a topic of the map, and
- * the id of each point the epic's questions were asked as. What the read
+ * id: each staged topic's brief, each park's summary — staged now, or on
+ * the roadmap from an approval before — each direction not taken in the
+ * epic's logs, each message waiting in a topic of the map, and the point
+ * each of the epic's questions was asked as (`askedPoints`). What the read
  * passes over is the logs' and the ledger's own to say, never this
  * screen's.
  * @param {string} cwd @param {string} unit @param {Staged} staged @returns {string[]}
@@ -449,13 +467,13 @@ function placing(cwd, unit, { topics, parks }) {
   const root = stateRoot(cwd);
   /** @type {string[]} */
   const passed = [];
-  const asked = [...foldLedger(root, ID_FACTS, passed).values()].filter((facts) => facts.unit === unit && facts.from_before !== null);
+  const parked = Object.values(roadmapItems(readProjectManifest(cwd))).filter(({ origin }) => origin === `park:${unit}`);
   return [
     ...briefsOf(cwd, unit, topics),
-    ...parks.map(({ summary }) => summary),
+    ...[...parks, ...parked].map(({ summary }) => String(summary)),
     ...placeHeard(root, unit, passed).notTaken.map(({ direction, why }) => `${direction} — ${why}`),
     ...topics.flatMap(({ name }) => waitingMessages(cwd, unit, name).map(({ title, body }) => `${title}\n${body}`)),
-    ...asked.map(({ from_before: id }) => /** @type {string} */ (id)),
+    ...askedPoints(root, unit, topics, passed),
   ];
 }
 
