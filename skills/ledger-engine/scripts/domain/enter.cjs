@@ -24,9 +24,11 @@
 // writes that line itself, the line written; what a read of the ledger said
 // on the way rides the response as warnings. The reading comes after the
 // question (2.10.3). Between the row's reads and the log, the DATA names the
-// record of the person wherever its file stands (16.18.4, person.cjs) —
-// none while the person has kept nothing — never reading it, so no record
-// refuses an entry.
+// place's legacy folder where it holds files — what the migration kept from
+// before Ledger with no other place, there to look in — and the record of
+// the person wherever its file stands (16.18.4, person.cjs) — none while the
+// person has kept nothing — never reading either, so neither refuses an
+// entry.
 //
 // A phase enters through its row of `ENTRIES`: its level — at a topic, or at
 // the work unit — whether the product's conversation enters through it too,
@@ -116,6 +118,7 @@ const { REVIEW } = require('./review-entry.cjs');
 const { experimentRow } = require('./experiment-entry.cjs');
 const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
 const { recordToRead } = require('./person.cjs');
+const { PRODUCT_DIR } = require('./layout.cjs');
 const { ontoEpic } = require('./topic-leave.cjs');
 
 /** @typedef {[string, string]} Line a DATA line, its key and its value */
@@ -652,7 +655,7 @@ function enterThrough(entries, cwd, argv) {
   held.arrive(worked);
   beatQuietly(cwd, unit, phase, place);
   recordEntry(cwd, unit, phase, place);
-  const lines = [...reads, ...personLines(), ...logLines(cwd, entry, entering)];
+  const lines = [...reads, ...legacyLines(cwd, unit), ...personLines(), ...logLines(cwd, entry, entering)];
   const warnings = [...entering.notes, ...(commit.warnings ?? [])];
   return {
     response: { phase, unit, ...atTopic, entered: true, started: entering.started, ...commit, ...(warnings.length > 0 ? { warnings } : {}) },
@@ -669,6 +672,18 @@ function enterThrough(entries, cwd, argv) {
 function typeCalled(entry, at, seeds) {
   const lines = /** @type {NonNullable<Entry['typeCall']>} */ (entry.typeCall)(at, seeds);
   return { response: { phase: at.phase, unit: at.unit, entered: true, started: false }, sections: entrySections([], lines) };
+}
+
+/**
+ * The DATA's line naming the place's legacy folder, where it holds files
+ * (the header's); none where it holds none.
+ * @param {string} cwd @param {string} unit a unit, or `product`
+ * @returns {Line[]}
+ */
+function legacyLines(cwd, unit) {
+  const folder = statePath(cwd, `${unit === PRODUCT ? PRODUCT_DIR : unit}/assets/legacy`);
+  if (!fs.existsSync(folder) || fs.readdirSync(folder).length === 0) return [];
+  return [['legacy', `${folder} — files from before Ledger the migration had no other place for; look in it when the work needs them`]];
 }
 
 /**

@@ -140,8 +140,7 @@
 //   the one topic it now has and the new type's first phase (19.5.9,
 //   19.4.22); the migration's — a split's topics, at the new epic's topic,
 //   each at its own phase, and a retired unit's lines, at the
-//   product's place, each at its own phase; a legacy file kept, the lines
-//   naming it at the place each is read at (follow-moves.cjs); and `files`,
+//   product's place, each at its own phase; and `files`,
 //   each file those lines name that the move took elsewhere, `[from, to]`.
 //   Every read takes a line it lists as made here from then on, live while
 //   this place is, however the unit it came from stands, and naming each

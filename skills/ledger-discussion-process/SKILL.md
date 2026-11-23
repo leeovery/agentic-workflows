@@ -33,7 +33,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs enter discussion {work_unit
 
 A refusal names the way on: say it in a line. Where another session holds the topic, the entry asks first; carrying on from it ends the turn. Waiting mail is the conversation's first business (**Mail**).
 
-Then read what the DATA names, each in full, an `earlier` one as input never changed. Where the brief lists shared files, load **[reference-files.md](../ledger-shared/references/reference-files.md)** and follow its instructions as written. Take in each `landed` report as **[reviews.md](references/reviews.md)** or **[deep-dives.md](references/deep-dives.md)** says, loading the one it needs, and close each `lost` one with `agent incorporate`. Each `affected` entry is confirmed in the conversation (`ledger hold`) or replaced; a topic the DATA says `stays decided` is entered for those alone, and once each is confirmed or replaced it leaves: bring the log up to date, then load **[handing-off.md](../ledger-shared/references/handing-off.md)** with route = `/ledger-continue-epic {work_unit}`. Search earlier work units' entries in the topic's area with `knowledge query`.
+Then read what the DATA names, each in full, an `earlier` one as input never changed. Take in each `landed` report as **[reviews.md](references/reviews.md)** or **[deep-dives.md](references/deep-dives.md)** says, loading the one it needs, and close each `lost` one with `agent incorporate`. Each `affected` entry is confirmed in the conversation (`ledger hold`) or replaced; a topic the DATA says `stays decided` is entered for those alone, and once each is confirmed or replaced it leaves: bring the log up to date, then load **[handing-off.md](../ledger-shared/references/handing-off.md)** with route = `/ledger-continue-epic {work_unit}`. Search earlier work units' entries in the topic's area with `knowledge query`.
 
 Then open the conversation; never stop in silence once you have read. The opening names each `kept branch` and `kept work` to the person, a piece of work with the calls its line gives.
 
@@ -45,7 +45,7 @@ The brief, the seeds and discovery's log are the inherited position: what the pe
 
 ## The Conversation
 
-A conversation, never a conveyor belt of decisions. The map tracks what is open and never sets the order: follow where the talk goes, circle back, throw ideas around. Before arguing a side you don't hold, load **[devils-advocate.md](../ledger-shared/references/devils-advocate.md)** and follow its instructions as written.
+A conversation, never a conveyor belt of decisions. The map tracks what is open and never sets the order: follow where the talk goes, circle back, throw ideas around.
 
 ### Questions and Answers
 
@@ -113,6 +113,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 - A changed answer → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|other-topic|changed-mind|was-wrong]} [--cause {id}]`, the content of the kind it replaces with `"drops"`, a line for each part of the old it drops; an entry that still holds after it → `ledger hold {place} --entry {id} --after {id}`, `{"by", "who_moved_whom"}`.
 - A question moved → `ledger move {place} --question {id} --to {target:[topic|roadmap:item]}`; one already answered → `ledger merge {place} --question {id} --into {id}`; each `{"by", "who_moved_whom"}`.
 - A call you lean on → `raise {place} --answers {id}`; a fact only the person holds → the same with `--fact`; a decision you would replace → `raise {place} --replaces {id} --reason {reason}`.
+- A raise's call, on stdin → `{"question", "rows": [{"key", "name", "text", "notice"}], "lean", "why", "sort": "one|several", "mechanism", "product_wide"}`; a `--fact` takes no `lean`, `why` or `sort`.
 - Settling the rest → `render convergence {work_unit}.{topic} [--asked]`, whose rows run `convergence accept|decline`.
 - The topic as it stands → `ledger record|map|since|affected|product {work_unit} {topic}`, `render map {work_unit}.{topic}`.
 - A spike, and the files an entry links → `asset spike|add|status|lift`; a shared file → `asset import`, `render import-reprompt`.

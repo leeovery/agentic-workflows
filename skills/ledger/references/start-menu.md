@@ -16,14 +16,6 @@ A `next` that moves into work — a handoff, or a unit's Continue, `handoff unit
 
 Load **[handing-off.md](../../ledger-shared/references/handing-off.md)** with route = `/{skill} {args}` for a handoff, or `unit {work_unit}` for a Continue.
 
-## Legacy Files
-
-The row of legacy files leads to `asset legacy`. Run it, then sort them:
-
-Load **[legacy-files.md](../../ledger-shared/references/legacy-files.md)** and follow its instructions as written.
-
-On return, run **The Menu** again.
-
 ## The Walk
 
 **w/walk**, on the start menu's help, carries on here: Load **[walk.md](walk.md)** with origin = `help`. On return, draw the start menu's help again, and carry on there:

@@ -16,10 +16,6 @@
 //   its door, read once with what waits in every unit (waits.cjs): the
 //   authority gates, the questions, a decided topic a changed answer holds;
 //   a topic a wait is about is that wait's row alone, never listed again.
-//   While the epic's legacy folder holds files from the migration, one row
-//   after them — "Sort the legacy files from the migration — 41" — never
-//   the recommended one, whose next reads them, `asset legacy`, for the pass
-//   that sorts them (legacy-files.cjs).
 //   The verdicts waiting on the epic's departures are one row among them,
 //   e/verdicts, its door the verdict page, drawn after the numbered waits.
 // - Then the topics by what they need (18.4.3): those in progress, then
@@ -62,8 +58,6 @@ const { waitsOf } = require('../waits.cjs');
 const { scanPresence, fmtAge } = require('../presence.cjs');
 const { phaseSkill } = require('../handoff.cjs');
 const { MENUS, drawMenu } = require('../menus.cjs');
-const { stateRoot } = require('../../kernel/state-root.cjs');
-const { legacyFiles } = require('../legacy-files.cjs');
 
 /** @typedef {import('../epic-detail.cjs').EpicDetail} EpicDetail */
 /** @typedef {import('../epic-detail.cjs').MapRow} MapRow */
@@ -174,12 +168,6 @@ function waitRows(detail, waits) {
     next: wait.next,
     ...(wait.topic === null ? {} : { topic: wait.topic, heldIn: TOPIC_PHASE }),
   }));
-}
-
-/** The row of the epic's legacy files, while its folder holds any (the header's). @param {string} cwd @param {string} epic @returns {Row[]} */
-function legacyRows(cwd, epic) {
-  const count = legacyFiles(stateRoot(cwd), epic).length;
-  return count === 0 ? [] : [{ label: { head: 'Sort the legacy files from the migration', tail: String(count) }, next: { kind: 'engine', argv: ['asset', 'legacy', epic] } }];
 }
 
 /** A topic's row (the header's): into the laboratory where experiments wait for it, else Start or Continue. @param {string} epic @param {EpicDetail} detail @param {MapRow} row @returns {Row} */
@@ -317,7 +305,7 @@ function epicMenuScreen(cwd, manifest, waits) {
   return {
     title,
     shows: shown(detail, waiting),
-    rows: ordered([...waitsDrawn, ...legacyRows(cwd, epic), ...verdictRows(waits), ...topics, ...onward.numbered, ...onward.spec, ...discovery], recommended),
+    rows: ordered([...waitsDrawn, ...verdictRows(waits), ...topics, ...onward.numbered, ...onward.spec, ...discovery], recommended),
     back: BACK,
   };
 }

@@ -239,7 +239,7 @@ A line in the record of the person naming one project and one kind, such as "Air
 The project's screen of how the ask rule stands: for each kind, how often the person changed Claude's lean, how often Claude's answer would have cost the product, its rate, and whether it asks or has gone quiet, with Claude's one-answer calls on a row of their own. A new project starts from the person's answers across their other projects, at most ten answers' worth a kind. The threshold, the threshold mid-build and the care entries are set from it, and a kind or verdict found wrong is corrected in words.
 
 **the record of the person**:
-The person's preferences in words, each with its reason and examples, kept across all their projects; the care entries are part of it. Claude proposes an entry when it sees a pattern or the person states a preference, and an entry steers nothing until the person says yes. The screens call it the record of you.
+The person's preferences in words, each with its reason and examples, kept across all their projects; the care entries are part of it. An entry Claude proposes steers nothing until the person says yes. The screens call it the record of you.
 _Avoid_: profile, rules
 
 ## The product layer
@@ -261,7 +261,7 @@ _Avoid_: promote
 What the person has said of the product as a whole, in any conversation — a principle, a direction, who it is for, a constraint, a lean — kept as their input beside the directions they dropped, each with why. Every topic's opening reads them beside the product record, which speaks where both do, and a view is decided in the first topic it bears on.
 
 **product picture**:
-The product's conversation's one view of where the product stands, rewritten in place as the talk moves on: the log is the journey, the picture where things stand now. Each point in it is the person's view, a point from before, an open question with the leans on it, or a pointer to the product record once a discussion has decided it; a section of its own lists the shared files not read in full. It decides nothing and holds the product's level, what no started work holds yet, thinning as work starts; a return to the product's conversation opens from it.
+The product's conversation's one view of where the product stands: the log is the journey, the picture where things stand now. It decides nothing, and thins as work starts; a return to the product's conversation can open from it.
 _Avoid_: the current model, the product summary
 
 **backlog**:
@@ -285,10 +285,10 @@ A file shared with or made for a piece of work — notes, a design document, a s
 _Avoid_: import, attachment
 
 **reference file**:
-A shared file kept to be searched rather than read: one the person shares for reference, or one Claude judges is, such as a transcript, a raw export or a long chat log. It is listed with what it holds where a later sitting finds it — in the product's conversation, the product picture, and in an epic and a topic's brief the ones that bear on them — searched when a point needs it, and read properly whenever the person asks.
+A shared file kept to be searched rather than read: one the person shares for reference, or one Claude judges is, such as a transcript, a raw export or a long chat log. It is read properly whenever the person asks.
 
 **legacy files**:
-The files a piece of work had from before Ledger that the migration found no place for — old plans, agent reports, research — set aside with the work, or with the product, until each is sorted. The start menu shows them on one row, *Sort the legacy files from the migration*, and an epic's menu shows its own. Each file or folder is kept among the work's assets, everything that names it following it, or discarded; a file brought in becomes findings on the record, citing it where it was kept.
+The files a piece of work had from before Ledger that the migration found no place for — old plans, agent reports, research — kept with the work, or with the product, for Claude to look in when the work needs them.
 
 **mail**:
 The messages waiting for a discussion or investigation: from another topic of the same epic, from a later phase that met a question only that conversation can settle, or from a conversation outside the work that found something bearing on it. Its next session raises each one, and it cannot close while one waits; the menus show it as *mail waiting*.

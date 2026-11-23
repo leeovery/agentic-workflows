@@ -45,7 +45,7 @@ Improvement ideas live in `ideas/`, indexed by `ideas/INDEX.md`. The index holds
 
 The phases group into three **stages**, the top-level grouping of the epic dashboard: **Discovery** (discovery, experiment, discussion, investigation) — explore and decide; **Definition** (specification) — specify and cut into phases; **Delivery** (implementation, review) — build and verify.
 
-1. **Discovery** (`ledger-discovery`) — one conversation at two levels, where nothing is decided: the product's, which finds each piece of work's type and creates its unit at start this work, its other output the roadmap; and an epic's, whose map of topics lands with each topic's brief at approve the map.
+1. **Discovery** (`ledger-discovery`) — one conversation at two levels, not where decisions are made, though none is banned: the product's, which finds each piece of work's type and creates its unit at start this work, its other output the roadmap; and an epic's, whose map of topics lands with each topic's brief at approve the map.
 2. **Experiment** (`ledger-experiment-process`) — the laboratory a discussion spawns to measure what a decision rests on; never a topic's first phase.
 3. **Discussion** (`ledger-discussion-process`) — one conversation per topic, research one of its tools: every question, finding and decision on the ledger, the decided checklist closing it; topics send each other messages through mailboxes.
 4. **Investigation** (`ledger-investigation-process`) — bugfix: symptoms and code analysis to a root cause.

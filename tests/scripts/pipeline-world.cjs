@@ -1002,9 +1002,8 @@ function startMenu(sim) {
 
 // A row of the start menu picked, as start-menu.md takes it: the menu drawn,
 // the answer through `gate`, and its next followed — a handoff, a unit's
-// Continue, `handoff unit`, a place's legacy files read for the pass that
-// sorts them, `asset legacy`, or another of the project's menus drawn — or
-// carrying on in the conversation. Answers the move's payload, or the read,
+// Continue, `handoff unit`, or another of the project's menus drawn — or
+// carrying on in the conversation. Answers the move's payload,
 // null for a row that draws a menu or carries on.
 /** @param {Sim} sim @param {string} key */
 function startPick(sim, key) {
@@ -1016,7 +1015,6 @@ function startPick(sim, key) {
     sim.render(next.argv.slice(1), { expect: 'content' });
     return null;
   }
-  if (next.argv[0] === 'asset') return sim.run(next.argv);
   assert.deepStrictEqual(next.argv.slice(0, 2), ['handoff', 'unit'], 'the start menu\'s one move into work is a unit\'s Continue');
   return handoffBy(sim, next.argv).payload;
 }

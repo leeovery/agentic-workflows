@@ -7,8 +7,7 @@
 // a numbered row with its door, the first recommended; a topic a wait is
 // about drawn as that wait alone, off DECIDED; the verdicts waiting as one
 // row, e/verdicts, after the numbered waits and before the topics, the
-// verdict page its door; the epic's legacy files from the migration one row
-// after the other waits, never recommended, while its folder holds any; a wait about a topic another conversation holds
+// verdict page its door; a wait about a topic another conversation holds
 // struck and never recommended; the spec's and the build's rows never
 // recommended while a wait stands; every topic decided, the spec not
 // entered, the epic in its specification, an affected topic's door the
@@ -99,27 +98,6 @@ describe('what waits, drawn first (18.4.2)', () => {
       'h/help      → What this menu is for, row by row',
       'b/back      → Back to the start menu',
     ], { kind: 'handoff', skill: 'ledger-discovery', args: ['none', FUMI] }, VERDICTS]);
-  });
-
-  it('the epic\'s legacy files from the migration are one row after the other waits, never recommended, leading to their read, and gone once the folder is empty', () => {
-    const legacy = `${FUMI}/assets/legacy`;
-    writeState(dir(), `${legacy}/plan.md`, 'a plan\n');
-    writeState(dir(), `${legacy}/research/notes.md`, 'notes\n');
-    output(dir(), ['render', 'approve-map', FUMI, '--file', payload({ topics: [{ name: 'note-window' }, { name: 'space-homing' }], parks: [] })], { env: SESSION });
-    const behindTheGate = rowsOf(menu()).slice(0, 3);
-    const read = answer('epic menu', '2');
-    const alone = composed([]).slice(0, 2);
-    ok(dir(), ['asset', 'discard', FUMI, legacy]);
-
-    assert.deepStrictEqual([behindTheGate, read, alone], [[
-      '1           → Approve the map — the map waits on your yes',
-      '              (recommended)',
-      '2           → Sort the legacy files from the migration — 2',
-    ], { kind: 'engine', argv: ['asset', 'legacy', FUMI] }, [
-      ['1', 'Continue "Note Window" — *in progress* (recommended)', { kind: 'engine', argv: ['handoff', 'topic', FUMI, 'note-window'] }],
-      ['2', 'Sort the legacy files from the migration — *2*', { kind: 'engine', argv: ['asset', 'legacy', FUMI] }],
-    ]]);
-    assert.ok(!composed([]).some(([, label]) => label.startsWith('Sort the legacy files')), 'the row goes once the folder is empty');
   });
 
   it('a topic whose decided waits is drawn as that wait alone, its door the topic; the board at the menu lists it too, opening the topic (20.8.5)', () => {
