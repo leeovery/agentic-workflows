@@ -1,0 +1,19 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <rect width="256" height="256" rx="58" fill="#10131C" />
+  <rect x="53" y="53" width="30" height="30" rx="7" fill="#F2F3F7" />
+  <rect x="94.5" y="54.5" width="27" height="27" rx="6" fill="none" stroke="#F2F3F7" stroke-width="3" />
+  <rect x="134.5" y="54.5" width="27" height="27" rx="6" fill="none" stroke="#F2F3F7" stroke-width="3" />
+  <rect x="174.5" y="54.5" width="27" height="27" rx="6" fill="none" stroke="#F2F3F7" stroke-width="3" />
+  <rect x="53" y="93" width="30" height="30" rx="7" fill="#F2F3F7" />
+  <rect x="93" y="93" width="30" height="30" rx="7" fill="#F2F3F7" />
+  <rect x="134.5" y="94.5" width="27" height="27" rx="6" fill="none" stroke="#F2F3F7" stroke-width="3" />
+  <rect x="174.5" y="94.5" width="27" height="27" rx="6" fill="none" stroke="#F2F3F7" stroke-width="3" />
+  <rect x="53" y="133" width="30" height="30" rx="7" fill="#F2F3F7" />
+  <rect x="93" y="133" width="30" height="30" rx="7" fill="#F2F3F7" />
+  <rect x="133" y="133" width="30" height="30" rx="7" fill="#F2F3F7" />
+  <rect x="174.5" y="134.5" width="27" height="27" rx="6" fill="none" stroke="#F2F3F7" stroke-width="3" />
+  <rect x="53" y="173" width="30" height="30" rx="7" fill="#F2F3F7" />
+  <rect x="93" y="173" width="30" height="30" rx="7" fill="#F2F3F7" />
+  <rect x="133" y="173" width="30" height="30" rx="7" fill="#F2F3F7" />
+  <rect x="173" y="173" width="30" height="30" rx="7" fill="#F2F3F7" />
+</svg>
