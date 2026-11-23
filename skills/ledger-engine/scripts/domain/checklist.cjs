@@ -366,7 +366,6 @@ const POINTS = Object.freeze({
       { key: 'questions-closed', text: 'every question of the person\'s closed', check: questionsClosed },
       { key: 'closing-pass', text: 'the closing pass run, and its last re-read changing nothing' },
       { key: 'decisions-entered', text: 'every decision in the conversation has an entry' },
-      { key: 'replacements-checked', text: 'each replacement checked against what it replaced' },
       { key: 'conflicts-read', text: 'the read for conflicting answers run within the topic' },
       { key: 'findings-rerun', text: 'each measured finding the topic\'s decisions rest on re-run' },
       { key: 'mailbox-empty', text: 'the topic\'s mailbox empty: every message raised and answered', check: mailboxEmpty },

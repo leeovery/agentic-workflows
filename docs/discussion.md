@@ -2,13 +2,13 @@
 
 A discussion is one topic, talked through with you until what the product does there is decided. A feature has one; an epic has one for each topic on its map. Claude takes part as a senior engineer and product partner: it brings evidence, challenges, pushes back, and looks for the edges the product's user would meet. Research is one of the conversation's tools, never a phase of its own: a deep dive to learn, a spike to see and feel, an [experiment](experiments.md) to measure. Nothing here plans or builds; code enters only as evidence.
 
-Every question, finding and decision lands on the ledger as it is made. The topic's **record**, its current decisions, and its **map**, what is being decided and where each point stands, are views drawn from it. The topic's **log** keeps the journey.
+Every question, finding and decision lands on the ledger, every answer you give among them. The topic's **record**, its current decisions, and its **map**, what is being decided and where each point stands, are views drawn from it. The topic's **log** keeps the journey.
 
 ## The opening
 
-Before it says anything, Claude reads what the topic starts from: its brief, and for a feature the discovery logs and the seeds; the record of every topic decided so far, never their logs; the product record, with what discovery found of the product; each spike; and earlier work in the topic's area, from the [knowledge base](knowledge-base.md). A topic that waited on the roadmap, or a piece of work that moved here from another kind, also reads the record it left in its first place, as input it never changes.
+The topic starts from its brief, and for a feature the discovery logs and the seeds; the record of every topic decided so far, never their logs; the product record, with what discovery found of the product; each spike; and earlier work in the topic's area, from the [knowledge base](knowledge-base.md). A topic that waited on the roadmap, or a piece of work that moved here from another kind, also has the record it left in its first place, as input it never changes. Claude reads what the work needs of it.
 
-The opening fits the topic: the shape of what has been said, a perspective from the brief or beyond it, what decisions already made settle and where from, and the open questions, with Claude's lean on any where a logical one exists. Each open question it names goes on the map. The opening decides nothing.
+The opening is short: what the brief covers and what came across into the topic, then where you want to start. The opening decides nothing.
 
 What you settled on in discovery is working ground, never asked again. It moves when something here contradicts it, or when you reopen it yourself. A point the brief carries from the [record from before](discovery.md#what-you-bring-from-before) is not: it goes on the map as an open question, with the answer from before as Claude's lean, and always comes to you, however quiet its kind.
 
@@ -29,7 +29,7 @@ A claim about the code, a number or the platform is checked before it is said. W
 
 ### Claude's calls
 
-Until the topic's shape is agreed, what it covers and how it broadly works, Claude makes no call of intent or taste on it alone. Where several ways are open it puts ideas forward and asks what you think; where one way is clear it sets out how it sees it working and invites you to pull it apart.
+Until the topic's shape is agreed, what it covers and how it broadly works, Claude makes no call of intent or taste on it alone: each is worked through with you. The shape you agree lands on the ledger as your decision, so the map shows where the topic turned.
 
 Once the shape is agreed, Claude fills in the rest. A call it leans on goes on the map as a question and is raised at a natural pause; whether it reaches you is decided by the ask rule, from how often Claude's answers on calls of that kind would have cost the product, read from your verdicts, never by Claude's own confidence. A call that reaches you usually shows Claude's lean beside it, sealed before you answer; now and then one is asked blind, Claude's answer held back until you have given yours. One that does not is recorded on the ledger as Claude's, and shows first on the map the next time you look. A fact only you hold, such as a deadline or an outside constraint, is always asked. [Trust](trust.md) covers the rule.
 
@@ -76,7 +76,7 @@ A feature has no other topic. A point of its own that needs decisions of its own
 
 After eight agreements in a row, or on your word, Claude offers to settle the rest: how many points are open, how many it would settle, and which still come to you by the rule, by kind. On yes its points go on the ledger, yours come one at a time, and the topic moves to its close. Declined, the offer waits for the next run of agreements. Where it would settle none of the open points, no offer is made.
 
-A topic closes once nothing of yours is open on its map, through a **closing pass** with two readers. A fresh agent, unanchored by the conversation, reads the topic's entries and log against the other topics' records and the product record, looking for a question with no answer, a contradiction with another record, and work the decision creates that no topic owns. Claude, who was in the conversation, checks that every decision made in it has its entry, that each replacement holds up against what it replaced, that no two current answers contradict each other, and runs again each measurement a decision rests on. Anything the pass finds lands somewhere, and where it changed what the topic decides, another pass reads what changed, until one changes nothing.
+A topic closes once nothing of yours is open on its map, through a **closing pass** with two readers. A fresh agent, unanchored by the conversation, reads the topic's entries and log against the other topics' records and the product record, looking for a question with no answer, a contradiction with another record, a replacement that does not hold up against what it replaced, and work the decision creates that no topic owns. Claude, who was in the conversation, checks that every decision made in it has its entry and that no two current answers contradict each other, and runs again each measurement a decision rests on. Anything the pass finds lands somewhere, and where it changed what the topic decides, another pass reads what changed, until one changes nothing.
 
 Where no review has read the topic since its last decision, as on a quick topic whose background review never started, the fresh reader carries the gap review too: the same hunt as under [Reviews](#reviews), held to what a spec built from the record would get wrong or stall on.
 
@@ -93,4 +93,4 @@ A decided topic stays decided until something it relies on moves. When a decisio
 
 ## The log
 
-The topic's log, `topics/{topic}/log.md`, is its journey: the options weighed, the false paths, the reversals, your thinking and why minds changed. It is written as the conversation goes, appended and never rewritten, enough for a fresh session to carry on alone, and it points at entries by their short ids rather than restating them. [How it fits together](how-it-fits-together.md#the-record-and-the-logs) says how a log names the conversations that wrote it.
+The topic's log, `topics/{topic}/log.md`, is its journey: the options weighed, the false paths, the reversals, your thinking and why minds changed. It is appended and never rewritten, enough for a fresh session to carry on alone, and it points at entries by their short ids rather than restating them. [How it fits together](how-it-fits-together.md#the-record-and-the-logs) says how a log names the conversations that wrote it.

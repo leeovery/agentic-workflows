@@ -189,7 +189,6 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
         'questions-closed engine done: every question of the person\'s closed',
         'closing-pass claude open: the closing pass run, and its last re-read changing nothing',
         'decisions-entered claude open: every decision in the conversation has an entry',
-        'replacements-checked claude open: each replacement checked against what it replaced',
         'conflicts-read claude open: the read for conflicting answers run within the topic',
         'findings-rerun claude open: each measured finding the topic\'s decisions rest on re-run',
         'mailbox-empty engine done: the topic\'s mailbox empty: every message raised and answered',
@@ -238,7 +237,6 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
         { key: 'questions-closed', text: 'every question of the person\'s closed', by: 'engine', state: 'done' },
         { key: 'closing-pass', text: 'the closing pass run, and its last re-read changing nothing', by: 'claude', state: 'open' },
         { key: 'decisions-entered', text: 'every decision in the conversation has an entry', by: 'claude', state: 'open' },
-        { key: 'replacements-checked', text: 'each replacement checked against what it replaced', by: 'claude', state: 'open' },
         { key: 'conflicts-read', text: 'the read for conflicting answers run within the topic', by: 'claude', state: 'open' },
         { key: 'findings-rerun', text: 'each measured finding the topic\'s decisions rest on re-run', by: 'claude', state: 'open' },
         { key: 'mailbox-empty', text: 'the topic\'s mailbox empty: every message raised and answered', by: 'engine', state: 'done' },
@@ -486,7 +484,7 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     checklist(['done', 'decided', UNIT, 'cards', 'findings-rerun']);
     checklist(['close', 'decided', UNIT, 'cards']);
 
-    assert.deepStrictEqual(Object.keys(records().decided.cards.items), ['closing-pass', 'decisions-entered', 'replacements-checked', 'conflicts-read', 'product-lines-shown', 'findings-rerun']);
+    assert.deepStrictEqual(Object.keys(records().decided.cards.items), ['closing-pass', 'decisions-entered', 'conflicts-read', 'product-lines-shown', 'findings-rerun']);
   });
 });
 
@@ -525,11 +523,11 @@ describe('the close, refused while any item is open (6.4.4, 6.S26)', () => {
     const first = checklist(['close', ...named]).closed;
     const reopened = show(...named);
 
-    assert.strictEqual(refused(['close', ...named]), 'checklist close: decided.cards has items open: closing-pass, decisions-entered, replacements-checked, conflicts-read, findings-rerun, product-lines-shown');
+    assert.strictEqual(refused(['close', ...named]), 'checklist close: decided.cards has items open: closing-pass, decisions-entered, conflicts-read, findings-rerun, product-lines-shown');
     doneAll(named);
     const second = checklist(['close', ...named]).closed;
 
-    assert.deepStrictEqual([reopened.closed, reopened.items.filter((/** @type {any} */ item) => item.state === 'open').length, second > first], [first, 6, true]);
+    assert.deepStrictEqual([reopened.closed, reopened.items.filter((/** @type {any} */ item) => item.state === 'open').length, second > first], [first, 5, true]);
     assert.strictEqual(records().decided.cards.closed, second);
   });
 });

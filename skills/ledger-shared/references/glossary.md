@@ -65,11 +65,11 @@ One step of a piece of work's journey: discovery, discussion, experiment, invest
 Both the first phase of every piece of work and the name of the first stage. As a phase it settles what the work is, from a conversation where nothing is decided, and never starts solving the problem; it runs at two levels, the product's own conversation, where new work starts and the roadmap is shaped, and an epic's, where its map is drawn. When the two meanings could collide, say "the discovery phase" or "the Discovery stage".
 
 **discussion**:
-The deciding phase, one conversation per topic. Research, deep dives, spikes and experiments are its tools, never phases of their own: every question, finding and decision lands on the ledger as it is made, and the topic's map shows what is still open. Once nothing of the person's is open, the closing pass runs and the topic reaches decided.
+The deciding phase, one conversation per topic. Research, deep dives, spikes and experiments are its tools, never phases of their own: every question, finding and decision lands on the ledger, and the topic's map shows what is still open. Once nothing of the person's is open, the closing pass runs and the topic reaches decided.
 _Avoid_: research (as a phase), the discussion document
 
 **closing pass**:
-The final review of a topic's discussion, run once nothing of the person's is open: a fresh reader goes over the topic's entries and log against the other topics' records and the product record, and the Claude that was in the conversation checks that every decision made in it has an entry. It looks for a question with no answer, a contradiction with another record, and work the decision creates that no topic owns.
+The final review of a topic's discussion, run once nothing of the person's is open: a fresh reader goes over the topic's entries and log against the other topics' records and the product record, and the Claude that was in the conversation checks that every decision made in it has an entry. It looks for a question with no answer, a contradiction with another record, a replacement that does not hold up against what it replaced, and work the decision creates that no topic owns.
 
 **decided**:
 The authority gate that closes a topic, after its closing pass: the person signs off on what was decided, with the ledger in view, and gives a verdict on each call they changed. A feature's decided shares one screen with its ready to build.

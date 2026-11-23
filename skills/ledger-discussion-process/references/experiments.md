@@ -1,4 +1,4 @@
-# Spawning an Experiment
+# Experiments
 
 *Reference for **[ledger-discussion-process](../SKILL.md)***
 
@@ -8,7 +8,7 @@ The laboratory measures what a decision rests on. This conversation states the p
 
 ## The Offer
 
-Offer it in the conversation, never as a menu: the question a controlled experiment would settle, what a dependable answer takes off the table, and that a measurement here is a fine alternative. A declined offer is that measurement: what it shows is an `exploratory` finding, with its command and result.
+Offer it in the conversation, never as a menu. Declined, a measurement here stands in for it: what it shows is an `exploratory` finding, with its command and result.
 
 ## The Spawn
 
@@ -20,12 +20,16 @@ Record it under a kebab-case slug drawn from the problem:
 node .claude/skills/ledger-engine/scripts/engine.cjs experiment create {work_unit} {topic} --slug {slug} --from discussion --problem .ledger/.cache/{work_unit}/discussion/{topic}/problem.md --question {question}
 ```
 
-A refused create: say why in a line. Otherwise its `id` is the experiment.
-
-## Now or Later
-
-Working it now would leave the topic, so ready it before asking: bring the log up to date. Then fetch the gate:
+A refused create: say why in a line. Otherwise its `id` is the experiment. Working it now would leave the topic, so bring the log up to date, then fetch the gate:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render experiment-spawn-gate {work_unit}.discussion.{topic} --id {id}
 ```
+
+## A Report Back
+
+A question the map shows waiting on an experiment that has reported takes its `report.md` in: its result is a `measured` finding, with its command and result, and the question goes back to the conversation, which reads the report as evidence.
+
+## One No One Will Run
+
+`experiment abandon {work_unit} {topic} {id} --reason "{reason}"`. Its question opens again.

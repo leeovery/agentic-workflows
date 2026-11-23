@@ -33,7 +33,7 @@ const NO_PAYLOAD = Object.freeze({ lines: [], candidates: [] });
 const PINNED = /** @type {string} */ (process.env.LEDGER_CONFIG_DIR);
 
 /** Claude's items of the decided checklist, but the closing pass. */
-const MARKED = ['decisions-entered', 'replacements-checked', 'conflicts-read', 'findings-rerun', 'product-lines-shown'];
+const MARKED = ['decisions-entered', 'conflicts-read', 'findings-rerun', 'product-lines-shown'];
 
 /** The decided checklist items of `topic` marked but for the closing pass, at `at`. @param {string} at */
 function markedItems(at) {

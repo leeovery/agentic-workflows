@@ -656,7 +656,7 @@ The checklist of a closing point: Claude works its items in any order, each done
 
 | Point | Items (the engine's in italics) |
 |---|---|
-| `decided <wu> <topic>` | *`questions-closed`*, `closing-pass`, `decisions-entered`, `replacements-checked`, `conflicts-read`, `findings-rerun`, *`mailbox-empty`*, `product-lines-shown` |
+| `decided <wu> <topic>` | *`questions-closed`*, `closing-pass`, `decisions-entered`, `conflicts-read`, `findings-rerun`, *`mailbox-empty`*, `product-lines-shown` |
 | `ready-to-build <wu>` | *`topics-settled`*, *`sweep-run`*, `replacements-checked`, *`statements-traced`*, *`review-settled`*, *`phases-complete`*, `invariants-checked`, *`sections-drawn`*, *`assets-linked`*, *`environment-recorded`* |
 | `phase-start <wu> <N>` | *`tasks-written`*, `design-settled`, *`relies-on-done`* |
 | `phase-close <wu> <N>` | *`tasks-passed`*, *`phase-review-passed`*, *`scenarios-reported`*, *`notes-consolidated`*, *`stack-merged`* |
