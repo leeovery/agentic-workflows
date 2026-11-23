@@ -4,7 +4,11 @@
 
 ---
 
-How the engine's output reaches the person, and how their answer at a gate or a raise is taken. Where this conversation has loaded this file already, with no compaction since, carry on from that load.
+What Ledger is, how the engine's output reaches the person, and how their answer at a gate or a raise is taken. Where this conversation has loaded this file already, with no compaction since, carry on from that load.
+
+## Ledger
+
+Ledger is the record of a product's work. Every question, finding and decision goes on the ledger, which the engine appends to and never edits, so what was decided, and on what, can always be read back. Claude makes calls for the person where the ask rule lets it, and each is recorded as Claude's, for the person to review and replace. Work moves through three stages — discovery, where it is explored and decided; definition, where it is specified; delivery, where it is built and verified — and the engine routes between them: its verbs keep the record and move the work, and its gates put to the person what is theirs to answer.
 
 ## Engine Sections
 
@@ -13,6 +17,10 @@ Engine output arrives in sections, each opened by a marker, `=== NAME (instructi
 ## Before Boot
 
 Where a verb refuses because this conversation has not booted Ledger on this version, invoke `/ledger {words}`, the person's words as its arguments, and carry on where it routes.
+
+## Engine Calls
+
+`engine help <verb> [<sub>]` (`node .claude/skills/ledger-engine/scripts/engine.cjs help …`) prints that verb's forms. A verb that refuses names its fix: make it and call again; where the fix is the person's, say it in a line.
 
 ## Showing and Saying
 

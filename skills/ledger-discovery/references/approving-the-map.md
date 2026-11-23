@@ -9,10 +9,8 @@ The map is the epic's topics in their order, foundations first, and what the sha
 - `parks` — `{"name", "summary", "horizon", "sources", "kind"?}`, `sources` the log's path from the state root, the horizon the person's, and `"kind": "bug"` or `"quick-fix"` for those.
 - `binds` — each roadmap item the epic was started from that became a topic, `{"item", "topic"}`.
 
-A brief, park, direction not taken or message that carries a point from before cites it by its id; the screen names each point nothing places yet.
-
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render approve-map {home} --file .ledger/.cache/{home}/discovery/{home}/approve-map-payload.json
 ```
 
-A refusal names what to fix: fix the payload and stage it again. At the gate, follow the `next` of what the answer ran. Keep shaping takes the person's word back into the conversation: a change to a topic already on the map goes through **[changing-the-map.md](changing-the-map.md)**, anything else into the payload, staged again.
+Keep shaping takes the person's word back into the conversation: a change to a topic already on the map is made as Changing the Map says, anything else goes into the payload, staged again.

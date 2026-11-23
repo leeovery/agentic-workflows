@@ -214,8 +214,15 @@ describe('pipeline simulation: discovery\'s entry', () => {
     answerGate(sim, 'import reprompt', '--pick', 's');
     assert.deepStrictEqual(sim.run(['asset', 'import', PRODUCT, shared]).imports, ['.product/assets/pricing.md']);
 
+    // An inbox item the person had fixed outside any piece of work closes as
+    // theirs, by no unit.
+    const { captured } = sim.run(['inbox', 'capture', 'bug'], null, '# Footer typo\n');
+    assert.strictEqual(sim.run(['inbox', 'close', 'none', captured]).unit, null);
+
     // The session's end proposes what it named as roadmap items on one
-    // screen, and the person's yes lands them (18.S63).
+    // screen, and the person's yes lands them (18.S63). An item they gave no
+    // horizon goes to the pick, which has none to offer yet: they name one.
+    sim.refuses(['render', 'horizon-pick', '--park', 'licensing'], /no roadmap on the project manifest|the roadmap holds no horizons/);
     const items = sim.write('.ledger/.cache/product/discovery/product/roadmap-items.json',
       [{ name: 'licensing', horizon: 'later', summary: 'Teams buy seats', sources: [logOf(PRODUCT, 1)] }]);
     sim.render(['roadmap-harvest', '--file', items], { expect: 'content' });

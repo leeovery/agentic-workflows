@@ -1,6 +1,6 @@
 # Choosing a Horizon
 
-*Shared reference. Loaded by [backlogging.md](backlogging.md), ledger's [triage.md](../../ledger/references/triage.md), [ledger-roadmap](../../ledger-roadmap/SKILL.md), ledger-discovery's [ending-the-session.md](../../ledger-discovery/references/ending-the-session.md) and the cut and the merges' directive, [080-cut-and-merges.md](../../ledger-migrate/scripts/migrations/080-cut-and-merges.md).*
+*Shared reference. Loaded by [backlogging.md](backlogging.md), ledger's [triage.md](../../ledger/references/triage.md), [ledger-roadmap](../../ledger-roadmap/SKILL.md) and the cut and the merges' directive, [080-cut-and-merges.md](../../ledger-migrate/scripts/migrations/080-cut-and-merges.md).*
 
 ---
 

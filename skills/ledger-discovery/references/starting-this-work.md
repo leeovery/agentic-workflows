@@ -4,8 +4,6 @@
 
 ---
 
-The person's yes at start this work creates the unit; nothing is created before it.
-
 ## The Types
 
 - **A feature** — one piece of work that needs discussion, planning or exploration. One that grows pivots to an epic later.
@@ -32,4 +30,4 @@ Stage it and draw the screen:
 node .claude/skills/ledger-engine/scripts/engine.cjs render start-this-work --file {payload}
 ```
 
-A refusal names what to fix: fix the payload and stage it again. At the gate, follow the `next` of what the answer ran. For an epic, the `next` carries the conversation into the epic's own discovery: `{home}` is now the epic.
+For an epic, the yes's `next` carries the conversation into the epic's own discovery: its DATA reads as on entering, and `{home}` is now the epic.

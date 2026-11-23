@@ -27,9 +27,9 @@ On a codebase that was built before Ledger arrived, and if you asked for it at s
 
 ## Starting a piece of work
 
-When the talk settles on a piece of work, something to build, fix or change, discovery works out its kind: a feature, an epic, a bugfix or a quick-fix. Work you bring straight to it, asked for in an ordinary conversation, picked at Start, or taken from the inbox or the roadmap, takes this call on its own, outside the product's conversation, and keeps no log of its own, so a fix asked for in one window never stops, reads or ends the product talk going on in another. Talk at Start about the product itself carries the product's conversation on.
+When the talk settles on a piece of work, something to build, fix or change, discovery works out its kind: a feature, an epic, a bugfix or a quick-fix. A kind you name as you bring the work is taken as a hint, and confirmed lightly once the description fits. Work you bring straight to it, asked for in an ordinary conversation, picked at Start, or taken from the inbox or the roadmap, takes this call on its own, outside the product's conversation, and keeps no log of its own, so a fix asked for in one window never stops, reads or ends the product talk going on in another. Talk at Start about the product itself carries the product's conversation on.
 
-Work started from inbox or roadmap items, its **seeds**, takes the largest kind among them: where ideas are among them they carry it, and a bug or a quick-fix rides along as material. Then the **start this work** gate:
+As the work takes shape, it is matched against what already waits: the roadmap's waiting items and the inbox. A match is offered to you, so the new work starts from it rather than beside it; in an epic's discovery, a waiting roadmap item becomes a topic that takes it in. Work started from inbox or roadmap items, its **seeds**, takes the largest kind among them: where ideas are among them they carry it, and a bug or a quick-fix rides along as material. Then the **start this work** gate:
 
 - **Your yes creates the work.** It gets a name, derived from yours or from the description. The seeds move into it as its record of origin, the parts of the product's logs that shaped it are linked, and a feature or a bugfix gets the brief its one topic will open from. Started in the product's conversation, a feature, a bugfix or an epic ends that session as the work leaves it, unless another window is still in it; a quick-fix never ends it, so fixes asked for along the way never split the talk across logs. Until this yes nothing exists on disk: an abandoned exploration leaves no half-made work behind.
 - **Keep shaping** takes your word back into the conversation.
@@ -54,11 +54,11 @@ A topic that has started is never changed under its conversation. What bears on 
 
 ## Putting something aside
 
-Mid-conversation you can put something off: "roadmap it", "that's a v2 thing", "not now". Placed on the timeline, it goes on the roadmap at once, on the horizon you named. Left undecided, it goes into the inbox as an idea, a bug or a quick-fix. Either way it lands immediately, so the thought survives even if the session ends.
+Mid-conversation you can put something off: "roadmap it", "that's a v2 thing", "not now". Placed on the timeline, it goes on the roadmap at once, on the horizon you named. Left undecided, it goes into the inbox as an idea, a bug or a quick-fix. Either way it lands immediately, so the thought survives even if the session ends. Where your words don't say which, the choice is yours. An inbox item you have already had fixed outside any piece of work is closed as fixed by you.
 
 ## Moving between levels
 
-The conversation goes where the talk goes. The product's conversation can move into an epic whose map is still open, and an epic's discovery can widen out to the product, in the same session.
+The conversation goes where the talk goes. The product's conversation can move into an epic whose map is still open, and an epic's discovery can widen out to the product, in the same session. Before each move the log is brought up to date, and it ends on a pointer to where the talk went.
 
 ## The log
 
