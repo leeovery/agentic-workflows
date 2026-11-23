@@ -171,7 +171,7 @@ function startMenuScreen(read) {
     rows: [
       ...listed(read.units).map(unitRow),
       ...legacyRows(read.legacy, read.units.length),
-      { key: 's', word: 'start', label: 'Start something new — describe it, and we\'ll find what kind of work it is', next: handoff('ledger-discovery', 'start', 'none') },
+      { key: 's', word: 'start', label: 'Start — say what\'s on your mind: something new, or the product', next: handoff('ledger-discovery', 'start', 'none') },
       productRow(read),
       { key: 't', word: 'triage', label: 'Triage the inbox', next: drawing('triage') },
       { key: 'r', word: 'roadmap', label: 'Open the product roadmap', next: handoff('ledger-roadmap') },

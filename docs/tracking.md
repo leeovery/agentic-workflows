@@ -15,8 +15,8 @@ Inbox: 2 ideas · 1 bug · 1 quick-fix
 2         → Continue bugfix: Export Timeout — investigation
 3         → Continue epic: Payments Overhaul — discussion, 1 of 3
             topics decided
-s/start   → Start something new — describe it, and we'll find what
-            kind of work it is
+s/start   → Start — say what's on your mind: something new, or the
+            product
 p/product → Talk about the product
 t/triage  → Triage the inbox
 r/roadmap → Open the product roadmap

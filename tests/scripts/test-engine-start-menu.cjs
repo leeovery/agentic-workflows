@@ -131,7 +131,7 @@ describe('the start menu (18.2.12)', () => {
       '2 → Continue feature: Paced — build, phase 2 of 3, not yet written',
       '3 → Continue feature: Solo — discussion',
       '4 → Continue epic: Fumi — discussion, 0 of 2 topics decided',
-      's/start → Start something new — describe it, and we\'ll find what kind of work it is',
+      's/start → Start — say what\'s on your mind: something new, or the product',
     ]);
     assert.deepStrictEqual(Object.entries(rowsShown()).slice(0, 4),
       ['ledger', 'paced', 'solo', FUMI].map((unit, at) => [String(at + 1), { kind: 'engine', argv: ['handoff', 'unit', unit] }]),
@@ -155,14 +155,14 @@ describe('the start menu (18.2.12)', () => {
       '1 → Continue feature: Solo — discussion',
       '2 → Continue epic: Fumi — discussion, 0 of 2 topics decided',
       '3 → Sort the legacy files from the migration — 4 in 3 places',
-      's/start → Start something new — describe it, and we\'ll find what kind of work it is',
+      's/start → Start — say what\'s on your mind: something new, or the product',
     ], { kind: 'engine', argv: ['asset', 'legacy'] }, [
       '1 → Continue feature: Solo — discussion',
       '2 → Continue epic: Fumi — discussion, 0 of 2 topics decided',
       '3 → Sort the legacy files from the migration — 1 in the product',
-      's/start → Start something new — describe it, and we\'ll find what kind of work it is',
+      's/start → Start — say what\'s on your mind: something new, or the product',
     ]]);
-    assert.deepStrictEqual(startMenu().menu.slice(2, 3), ['s/start → Start something new — describe it, and we\'ll find what kind of work it is']);
+    assert.deepStrictEqual(startMenu().menu.slice(2, 3), ['s/start → Start — say what\'s on your mind: something new, or the product']);
   });
 
   it('18.2.3, 20.12.5: every kind of wait lands in exactly one count — approve the map, decided, ready to build and finish the gates, a question wherever it is asked the questions, a decided topic a replaced answer holds the topics — and a verdict in none', () => {
@@ -284,7 +284,7 @@ describe('the start menu (18.2.12)', () => {
 
     assert.deepStrictEqual([empty.shown, full.shown], [['Inbox: empty'], ['Inbox: 2 ideas · 1 bug · 1 quick-fix']]);
     assert.deepStrictEqual(lettered(empty.menu), [
-      's/start → Start something new — describe it, and we\'ll find what kind of work it is',
+      's/start → Start — say what\'s on your mind: something new, or the product',
       'p/product → Talk about the product',
       't/triage → Triage the inbox',
       'r/roadmap → Open the product roadmap',
@@ -293,7 +293,7 @@ describe('the start menu (18.2.12)', () => {
     ]);
     assert.match(lettered(full.menu)[1], /^p\/product → Talk about the product — 1 session, last on \d{1,2} [A-Z][a-z]{2} · research owed$/);
     assert.deepStrictEqual([lettered(full.menu)[0], ...lettered(full.menu).slice(2)], [
-      's/start → Start something new — describe it, and we\'ll find what kind of work it is',
+      's/start → Start — say what\'s on your mind: something new, or the product',
       't/triage → Triage the inbox',
       'r/roadmap → Open the product roadmap',
       'v/view → View completed & cancelled work units',
@@ -358,7 +358,7 @@ describe('the start menu (18.2.12)', () => {
       '3 → Continue bugfix: Crash — investigation',
       '4 → Continue quick-fix: Typo — implementation',
       '5 → Continue epic: Atlas — discovery, 0 topics on the map',
-      's/start → Start something new — describe it, and we\'ll find what kind of work it is',
+      's/start → Start — say what\'s on your mind: something new, or the product',
       'p/product → Talk about the product',
       't/triage → Triage the inbox',
       'r/roadmap → Open the product roadmap',
