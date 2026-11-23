@@ -131,7 +131,7 @@ describe('the start menu (18.2.12)', () => {
       '2 → Continue feature: Paced — build, phase 2 of 3, not yet written',
       '3 → Continue feature: Solo — discussion',
       '4 → Continue epic: Fumi — discussion, 0 of 2 topics decided',
-      'p/product → Talk about the product',
+      's/start → Start something new — describe it, and we\'ll find what kind of work it is',
     ]);
     assert.deepStrictEqual(Object.entries(rowsShown()).slice(0, 4),
       ['ledger', 'paced', 'solo', FUMI].map((unit, at) => [String(at + 1), { kind: 'engine', argv: ['handoff', 'unit', unit] }]),
@@ -155,14 +155,14 @@ describe('the start menu (18.2.12)', () => {
       '1 → Continue feature: Solo — discussion',
       '2 → Continue epic: Fumi — discussion, 0 of 2 topics decided',
       '3 → Sort the legacy files from the migration — 4 in 3 places',
-      'p/product → Talk about the product',
+      's/start → Start something new — describe it, and we\'ll find what kind of work it is',
     ], { kind: 'engine', argv: ['asset', 'legacy'] }, [
       '1 → Continue feature: Solo — discussion',
       '2 → Continue epic: Fumi — discussion, 0 of 2 topics decided',
       '3 → Sort the legacy files from the migration — 1 in the product',
-      'p/product → Talk about the product',
+      's/start → Start something new — describe it, and we\'ll find what kind of work it is',
     ]]);
-    assert.deepStrictEqual(startMenu().menu.slice(2, 3), ['p/product → Talk about the product']);
+    assert.deepStrictEqual(startMenu().menu.slice(2, 3), ['s/start → Start something new — describe it, and we\'ll find what kind of work it is']);
   });
 
   it('18.2.3, 20.12.5: every kind of wait lands in exactly one count — approve the map, decided, ready to build and finish the gates, a question wherever it is asked the questions, a decided topic a replaced answer holds the topics — and a verdict in none', () => {
@@ -284,15 +284,15 @@ describe('the start menu (18.2.12)', () => {
 
     assert.deepStrictEqual([empty.shown, full.shown], [['Inbox: empty'], ['Inbox: 2 ideas · 1 bug · 1 quick-fix']]);
     assert.deepStrictEqual(lettered(empty.menu), [
-      'p/product → Talk about the product',
       's/start → Start something new — describe it, and we\'ll find what kind of work it is',
+      'p/product → Talk about the product',
       't/triage → Triage the inbox',
       'r/roadmap → Open the product roadmap',
       'm/manage → Manage work units, the project\'s setup and drivers, and the matrix',
       'h/help → How Ledger works',
     ]);
-    assert.match(lettered(full.menu)[0], /^p\/product → Talk about the product — 1 session, last on \d{1,2} [A-Z][a-z]{2} · research owed$/);
-    assert.deepStrictEqual(lettered(full.menu).slice(1), [
+    assert.match(lettered(full.menu)[1], /^p\/product → Talk about the product — 1 session, last on \d{1,2} [A-Z][a-z]{2} · research owed$/);
+    assert.deepStrictEqual([lettered(full.menu)[0], ...lettered(full.menu).slice(2)], [
       's/start → Start something new — describe it, and we\'ll find what kind of work it is',
       't/triage → Triage the inbox',
       'r/roadmap → Open the product roadmap',
@@ -321,14 +321,14 @@ describe('the start menu (18.2.12)', () => {
 
   it('8.S78, 18.2.13: the product\'s row notes the research owed before any session as its tail, and drops it once the research is completed', () => {
     ok(dir(), ['brownfield', 'record', 'accepted']);
-    const owed = lettered(startMenu().menu)[0];
+    const owed = lettered(startMenu().menu)[1];
     ok(dir(), ['brownfield', 'record', 'completed']);
 
-    assert.deepStrictEqual([owed, lettered(startMenu().menu)[0]], ['p/product → Talk about the product — research owed', 'p/product → Talk about the product']);
+    assert.deepStrictEqual([owed, lettered(startMenu().menu)[1]], ['p/product → Talk about the product — research owed', 'p/product → Talk about the product']);
   });
 
   it('18.2.13: the product\'s sessions holding talk are counted, those whose logs name no conversation with no date; a session opened and said nothing in never, nor its conversation\'s date', () => {
-    const row = () => lettered(startMenu().menu)[0];
+    const row = () => lettered(startMenu().menu)[1];
     writeState(dir(), '.product/sessions/session-001.md', 'Where sync should go.\n');
     writeState(dir(), '.product/sessions/session-002.md', 'Pricing, a first pass.\n');
     const undated = row();
@@ -343,7 +343,7 @@ describe('the start menu (18.2.12)', () => {
     ]);
   });
 
-  it('18.2.3, 18.2.12: the rows in their order — the units with something waiting first, then features, bugfixes, quick-fixes and epics, each type in the project\'s order; then product, start, triage, roadmap, verdicts, view, manage and help', () => {
+  it('18.2.3, 18.2.12: the rows in their order — the units with something waiting first, then features, bugfixes, quick-fixes and epics, each type in the project\'s order; then start, product, triage, roadmap, verdicts, view, manage and help', () => {
     close();
     staged(NO_PAYLOAD);
     reverse(NOTE_MAP.sync.answer, 'Off until you turn it on.');
@@ -358,8 +358,8 @@ describe('the start menu (18.2.12)', () => {
       '3 → Continue bugfix: Crash — investigation',
       '4 → Continue quick-fix: Typo — implementation',
       '5 → Continue epic: Atlas — discovery, 0 topics on the map',
-      'p/product → Talk about the product',
       's/start → Start something new — describe it, and we\'ll find what kind of work it is',
+      'p/product → Talk about the product',
       't/triage → Triage the inbox',
       'r/roadmap → Open the product roadmap',
       'e/verdicts → Give the verdict waiting on a call you changed',

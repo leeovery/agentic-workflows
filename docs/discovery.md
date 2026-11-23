@@ -4,7 +4,7 @@ Discovery is where you talk the product through and the work takes shape before 
 
 It runs at two levels, each one conversation carried on across as many sessions as you like:
 
-- **The product's conversation** is about everything not yet committed to as work: what the product is, who it serves, where it is going, what the market showed. It is where new work starts, and its other output is the [roadmap](tracking.md). The start menu's `p/product` row carries it on, and `s/start` brings it a new piece of work.
+- **The product's conversation** is about everything not yet committed to as work: what the product is, who it serves, where it is going, what the market showed. It is where new work starts, and its other output is the [roadmap](tracking.md). The start menu's `p/product` row goes straight to it, and `s/start` brings it whatever you have: a new piece of work, or talk about the product.
 - **An epic's discovery** is about the epic as a whole: what it covers, how its topics fit together, their order. It is where the epic's map is drawn and later changed, reached from the epic's menu by `d/discovery`.
 
 ## The conversation

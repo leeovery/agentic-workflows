@@ -17,10 +17,11 @@
 //   "Sort the legacy files from the migration — 41 in 12 places", the one
 //   place named where only one holds any; its next reads them,
 //   `asset legacy`, for the pass that sorts them (legacy-files.cjs).
-// - Then p/product, always, with its sessions' count and last date once it
+// - Then s/start, into discovery, which takes a piece of work to the type
+//   call and talk about the product into its conversation (18.2.7);
+//   p/product, always, with its sessions' count and last date once it
 //   has sessions holding talk, and the brownfield research while it is owed (18.2.13,
-//   8.12.13); s/start, into discovery, which finds the type (18.2.7);
-//   t/triage (18.2.9, projections/triage.cjs); r/roadmap, always;
+//   8.12.13); t/triage (18.2.9, projections/triage.cjs); r/roadmap, always;
 //   e/verdicts, only while verdicts wait (18.2.11); v/view, once a unit
 //   has closed (18.2.18), into the closed units; and m/manage (18.3.4),
 //   each a menu of its own (projections/manage.cjs). The frame adds h/help.
@@ -170,8 +171,8 @@ function startMenuScreen(read) {
     rows: [
       ...listed(read.units).map(unitRow),
       ...legacyRows(read.legacy, read.units.length),
-      productRow(read),
       { key: 's', word: 'start', label: 'Start something new — describe it, and we\'ll find what kind of work it is', next: handoff('ledger-discovery', 'start', 'none') },
+      productRow(read),
       { key: 't', word: 'triage', label: 'Triage the inbox', next: drawing('triage') },
       { key: 'r', word: 'roadmap', label: 'Open the product roadmap', next: handoff('ledger-roadmap') },
       ...verdictRows(read.verdicts),

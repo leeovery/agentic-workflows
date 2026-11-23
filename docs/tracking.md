@@ -15,9 +15,9 @@ Inbox: 2 ideas · 1 bug · 1 quick-fix
 2         → Continue bugfix: Export Timeout — investigation
 3         → Continue epic: Payments Overhaul — discussion, 1 of 3
             topics decided
-p/product → Talk about the product
 s/start   → Start something new — describe it, and we'll find what
             kind of work it is
+p/product → Talk about the product
 t/triage  → Triage the inbox
 r/roadmap → Open the product roadmap
 v/view    → View completed & cancelled work units
@@ -30,8 +30,8 @@ Each piece of work in flight is one row, its kind first, with where it stands �
 
 The other rows:
 
-- **`s/start`** begins something new. Describe it in your own words; [discovery](discovery.md) settles what kind of work it is as you talk. There are no start-by-type rows.
-- **`p/product`** carries on the conversation about the product as a whole: what it is, who it serves, where it is going. It is always there, with its session count once it has sessions.
+- **`s/start`** takes whatever you bring, in your own words: a new piece of work, whose kind [discovery](discovery.md) settles as you talk, or talk about the product, which carries the product's conversation on. There are no start-by-type rows.
+- **`p/product`** goes straight to the conversation about the product as a whole: what it is, who it serves, where it is going. It is always there, with its session count once it has sessions.
 - **`t/triage`** works through the inbox, and **`r/roadmap`** opens the roadmap; both are below.
 - **`e/verdicts`** shows only while a call you changed waits for your verdict, the [verdict queue](trust.md#verdicts).
 - **`v/view`** lists completed and cancelled work once any has closed, each opening in manage.
