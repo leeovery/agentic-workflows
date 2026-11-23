@@ -5,8 +5,7 @@
 // conversation for a project, at the installed engine's version, which every
 // verb that touches work refuses without (engine.cjs, `BOOT_EXEMPT`). It is
 // `booted.json` in the conversation's folder (conversation.cjs), one entry
-// for each project the conversation booted, a file only the engine writes
-// (user-files.cjs):
+// for each project the conversation booted, a file only the engine writes:
 //
 //   { "<the project's main checkout>": { "migration": "<id>", "at": "<instant>" } }
 //
@@ -45,7 +44,9 @@ const path = require('path');
 const { LOCK_TIMEOUT_MS, isObject, withStateLockFile, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { conversationDir } = require('./conversation.cjs');
-const { BOOTED } = require('./user-files.cjs');
+
+/** Boot's stamp on a conversation, in its folder. */
+const BOOTED = 'booted.json';
 const { highestMigration } = require('../../../ledger-migrate/scripts/migration-ids.cjs');
 const { MIGRATIONS_RECORD, finishWaits, reviewWaits } = require('./migration-commit.cjs');
 
@@ -142,4 +143,4 @@ function owesMigration(cwd, stamped) {
   return highest !== null && !record.split('\n').includes(highest);
 }
 
-module.exports = { MIGRATION_OWED, stampBoot, unbootedRefusal, owesMigration };
+module.exports = { BOOTED, MIGRATION_OWED, stampBoot, unbootedRefusal, owesMigration };

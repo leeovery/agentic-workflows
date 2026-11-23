@@ -15,24 +15,8 @@
 // the main checkout, from a code worktree, through a symbolic link, through
 // `..` read from the text, in another case where the filesystem ignores
 // case — against the state of the project the target is in, whatever
-// project the conversation sits in. It refuses a write to every file whose
-// bytes reach the trust log — the log, its lock, each conversation's file of
-// events waiting for it and that file's lock — the settings file and the
-// record of the person in the system config directory, from anywhere,
-// folders named with no letters among them (16.13.2); refuses a write to a
-// conversation's briefs, the folder or any file in it, and to the brief
-// hook's refusals (6.5.12); refuses a write to the files of Claude Code's
-// own the trust log reads the model from — a conversation's transcript, a
-// subagent's transcript and its record (16.4.4). Those are judged by the
-// names the target is written with below the nearest folder above it that
-// is the guarded directory — by a relative path, through `..`, through a
-// link in the guarded directory's own path or one below it, through macOS's
-// firmlink, in another case where the filesystem ignores case — and a write
-// that reaches one under other names, at the place a link leads or through
-// a link to the file, passes, as a write by Bash does. Everything else
-// passes silently: the rest of the system config directory and of Claude
-// Code's project folders, their memory among it, the code tree, and any
-// project with no state. Whether the filesystem ignores case is asked once.
+// project the conversation sits in. Everything else passes silently: the
+// code tree, the files at user level, and any project with no state.
 //
 // Layer: process.
 // ---------------------------------------------------------------------------
@@ -290,225 +274,17 @@ describe('the ledger, refused (5.S7, 5.1.9, 5.4.2)', () => {
   });
 });
 
-describe('the files at user level the engine alone writes, refused (16.13.2)', () => {
-  /** Each, from the system config directory, and what it is in the reason it is refused with. */
-  const USER_FILES = Object.freeze({
-    'trust.jsonl': 'the trust log',
-    'trust.jsonl.lock': 'the trust log\'s lock',
-    'conversations/0001-0002/trust-pending.jsonl': 'a conversation\'s file of events waiting for the trust log',
-    'conversations/0001-0002/trust-pending.jsonl.lock': 'the lock on a conversation\'s events waiting for the trust log',
-    'conversations/0001-0002/gate-shown.json': 'the record of the gate a conversation was shown',
-    'conversations/0001-0002/pressed.json': 'the gate mod\'s record of a conversation\'s last press',
-    'conversations/0001-0002/raise-shown.json': 'a conversation\'s sealed raises',
-    'conversations/0001-0002/booted.json': 'boot\'s stamp on a conversation',
-    'conversations/0001-0002/booted.json.lock': 'the lock on boot\'s stamp on a conversation',
-    'brief-refusals.jsonl': 'the brief hook\'s refusals',
-    'decision-checks.jsonl': 'the one-decision check\'s log',
-    'config.json': 'the settings file',
-    'person.md': 'the record of the person',
-    'person.md.lock': 'the lock on the record of the person',
-    'conversations/0001-0002/person-proposal.json': 'a conversation\'s proposal for the record of the person',
-  });
-
-  /** The reason a write to `rel` is refused with. @param {keyof typeof USER_FILES} rel */
-  const reasonFor = (rel) => `${USER_FILES[rel]} (${path.basename(rel)}) changes only through the engine's commands`;
-
-  /** @type {string} */
-  let config;
-  /** @type {{env: Record<string, string>}} */
-  let inConfig;
-  beforeEach(() => {
-    config = path.join(outside('config'), '2026');
-    fs.mkdirSync(config);
-    inConfig = { env: { LEDGER_CONFIG_DIR: config } };
-  });
-
-  it('Write, Edit and NotebookEdit on each in the system config directory — every file whose bytes reach the trust log, the gate\'s record a gate event is built from, and the raises sealed before the person answers, among them — are refused with its reason, there or not yet written, from a project or from a folder in none', () => {
-    fs.writeFileSync(path.join(config, 'trust.jsonl'), '{"v":1}\n');
-    const elsewhere = outside('drifted');
-    for (const rel of /** @type {(keyof typeof USER_FILES)[]} */ (Object.keys(USER_FILES))) {
-      const file = path.join(config, rel);
-      for (const tool of ['Write', 'Edit', 'NotebookEdit']) assertRefused(guard(dir, file, { ...inConfig, tool }), `${rel} ${tool}`, reasonFor(rel));
-      assertRefused(guard(elsewhere, file, inConfig), `${rel} from a folder in no project`, reasonFor(rel));
-    }
-    assert.strictEqual(fs.readFileSync(path.join(config, 'trust.jsonl'), 'utf8'), '{"v":1}\n');
-  });
-
-  it('each by its names: a relative path, `..`, a symbolic link to the folder, the system config directory named through a link — one to a folder not made yet among them — and another case where the filesystem ignores case, a folder\'s before it is made among them — in folders named with no letters; a link to the file, named otherwise, passes, as a write by Bash does', () => {
-    const elsewhere = outside('links');
-    fs.symlinkSync(config, path.join(elsewhere, 'config'));
-    const pending = /** @type {const} */ ('conversations/0001-0002/trust-pending.jsonl');
-    assertRefusedInAnotherCase(guard(dir, path.join(config, pending.toUpperCase()), inConfig), `${pending} before its folders are made`, reasonFor(pending));
-    fs.symlinkSync(path.join(elsewhere, 'later'), path.join(elsewhere, 'dangling'));
-    const dangling = { env: { LEDGER_CONFIG_DIR: path.join(elsewhere, 'dangling') } };
-    assertRefused(guard(dir, path.join(elsewhere, 'later', 'trust.jsonl'), dangling), 'trust.jsonl where the system config directory, a link to a folder not made yet, leads', reasonFor('trust.jsonl'));
-    fs.mkdirSync(path.join(config, 'conversations', '0001-0002'), { recursive: true });
-    const throughLink = { env: { LEDGER_CONFIG_DIR: path.join(elsewhere, 'config') } };
-    for (const rel of /** @type {(keyof typeof USER_FILES)[]} */ (Object.keys(USER_FILES))) {
-      const [file, reason, link] = [path.join(config, rel), reasonFor(rel), path.join(elsewhere, `link-${path.basename(rel)}`)];
-      fs.symlinkSync(file, link);
-
-      assertRefused(guard(path.dirname(file), path.basename(rel), inConfig), `${rel} relative`, reason);
-      assertRefused(guard(dir, `${path.join(config, 'conversations', 'sess-1', 'deeper')}/../../../${rel}`, inConfig), `${rel} through ..`, reason);
-      assertRefused(guard(dir, path.join(elsewhere, 'config', rel), inConfig), `${rel} through a link to the folder`, reason);
-      assertAllowed(guard(dir, link, inConfig), `${rel} through a link to the file: the Bash class`);
-      assertRefused(guard(dir, file, throughLink), `${rel} with the system config directory named through a link`, reason);
-      assertRefusedInAnotherCase(guard(dir, path.join(config, rel.toUpperCase()), inConfig), `${rel} in another case`, reason);
-    }
-  });
-
-  it('in a conversation\'s folder that is itself a link, the files that feed the trust log are refused named through the link, and pass where it leads, as a write by Bash does', () => {
-    const real = outside('real-conversation');
-    fs.mkdirSync(path.join(config, 'conversations'));
-    fs.symlinkSync(real, path.join(config, 'conversations', 'linked'));
-    for (const rel of /** @type {const} */ (['conversations/0001-0002/trust-pending.jsonl', 'conversations/0001-0002/trust-pending.jsonl.lock', 'conversations/0001-0002/gate-shown.json', 'conversations/0001-0002/pressed.json', 'conversations/0001-0002/raise-shown.json'])) {
-      const name = path.basename(rel);
-      assertRefused(guard(dir, path.join(config, 'conversations', 'linked', name), inConfig), `${name} through the link`, reasonFor(rel));
-      assertAllowed(guard(dir, path.join(real, name), inConfig), `${name} where the link leads: the Bash class`);
-    }
-  });
-
-  it('the system config directory is the folder the engine writes in: a `..` after a link in its path is read from the text, and before it is made, every name below the nearest folder made counts, that folder where a link in its path leads', () => {
-    const out = outside('roots');
-    fs.mkdirSync(path.join(out, 'real', 'inner'), { recursive: true });
-    fs.mkdirSync(path.join(out, 'real', 'cfg'));
-    fs.mkdirSync(path.join(out, 'cfg'));
-    fs.symlinkSync(path.join(out, 'real', 'inner'), path.join(out, 'lnk'));
-    const climbing = { env: { LEDGER_CONFIG_DIR: `${path.join(out, 'lnk')}/../cfg` } };
-    assertRefused(guard(dir, path.join(out, 'cfg', 'trust.jsonl'), climbing), 'trust.jsonl where the engine writes it, the `..` read from the text', reasonFor('trust.jsonl'));
-    const unmade = { env: { LEDGER_CONFIG_DIR: path.join(out, 'a', 'workflows') } };
-    assertRefused(guard(dir, path.join(out, 'a', 'workflows', 'config.json'), unmade), 'config.json two folders below the nearest made', reasonFor('config.json'));
-    assertAllowed(guard(dir, path.join(out, 'b', 'workflows', 'config.json'), unmade), 'another folder of that name, not made either');
-    const linked = { env: { LEDGER_CONFIG_DIR: path.join(out, 'lnk', 'fresh') } };
-    assertRefused(guard(dir, path.join(out, 'real', 'inner', 'fresh', 'trust.jsonl'), linked), 'trust.jsonl where the link in its path leads', reasonFor('trust.jsonl'));
-  });
-
-  it('through macOS\'s firmlink, where it has one, the system config directory is known made or not — /Users, on the data volume on every Mac — and nothing is made there: the hook only stats', () => {
-    const firm = (/** @type {string} */ at) => path.join('/System/Volumes/Data', at);
-    let same = false;
-    try {
-      const [own, other] = [fs.statSync('/Users'), fs.statSync(firm('/Users'))];
-      same = own.dev === other.dev && own.ino === other.ino;
-    } catch { /* no firmlink names /Users */ }
-    const listed = () => (same ? fs.readdirSync('/Users') : []);
-    const before = listed();
-    for (const root of ['/Users', `/Users/never-made-${Math.random().toString(36).slice(2)}`]) {
-      const res = guard(dir, firm(path.join(root, 'trust.jsonl')), { env: { LEDGER_CONFIG_DIR: root } });
-      if (same) assertRefused(res, `${root}/trust.jsonl through the firmlink`, reasonFor('trust.jsonl'));
-      else assertAllowed(res, `${root}/trust.jsonl under a path that names no folder, on a system with no firmlink`);
-    }
-    assert.deepStrictEqual(listed(), before, 'nothing made under /Users');
-  });
-
-  it('every file in a conversation\'s briefs, at any depth there, and the folder itself, is refused — Write and Edit, by a relative path, through `..`, through a link to the conversations folder, in another case where the filesystem ignores case — and a name beside them, or a briefs folder anywhere else, passes', () => {
-    const briefs = path.join(config, 'conversations', 'sess-1', 'briefs');
-    fs.mkdirSync(briefs, { recursive: true });
-    const reason = (/** @type {string} */ name) => `a brief a conversation issued (${name}) changes only through the engine's commands`;
-    const elsewhere = outside('briefs-link');
-    fs.symlinkSync(path.join(config, 'conversations'), path.join(elsewhere, 'conversations'));
-
-    for (const name of ['b1.md', 'b1.json']) {
-      for (const tool of ['Write', 'Edit']) assertRefused(guard(dir, path.join(briefs, name), { ...inConfig, tool }), `${name} ${tool}`, reason(name));
-      assertRefused(guard(briefs, name, inConfig), `${name} relative`, reason(name));
-      assertRefused(guard(dir, `${briefs}/../../sess-2/briefs/${name}`, inConfig), `${name} through ..`, reason(name));
-      assertRefused(guard(dir, path.join(elsewhere, 'conversations', 'sess-1', 'briefs', name), inConfig), `${name} through a link to the conversations folder`, reason(name));
-      assertRefusedInAnotherCase(guard(dir, path.join(config, 'conversations', 'sess-1', 'BRIEFS', name), inConfig), `${name} in another case`, reason(name));
-    }
-    assertRefused(guard(dir, path.join(briefs, 'deeper', 'b2.md'), inConfig), 'a file deeper in briefs/', reason('b2.md'));
-    assertRefused(guard(dir, briefs, inConfig), 'the briefs folder itself', 'a conversation\'s briefs (briefs/) change only through the engine\'s commands');
-    for (const at of [path.join(config, 'conversations', 'sess-1', 'briefs.md'), path.join(config, 'conversations', 'briefs', 'b1.md'), path.join(config, 'briefs', 'b1.md'), path.join(root, layout.cache('briefs', 'b1.md')), path.join(dir, 'briefs', 'b1.md')]) {
-      assertAllowed(guard(dir, at, inConfig), at);
-    }
-  });
-
-  it('the rest of the system config directory passes, and so does a file of the same name anywhere else', () => {
-    for (const rel of ['credentials.json', 'conversations/sess-1/position.json', 'nested/trust.jsonl', 'conversations/trust-pending.jsonl', 'conversations/sess-1/nested/trust-pending.jsonl']) {
-      assertAllowed(guard(dir, path.join(config, rel), inConfig), rel);
-    }
-    for (const name of Object.keys(USER_FILES)) {
-      assertAllowed(guard(dir, path.join(root, layout.cache(name)), inConfig), `${name} in the state's cache`);
-      assertAllowed(guard(dir, path.join(dir, name), inConfig), `${name} in the code tree`);
-    }
-  });
-});
-
-describe('Claude Code\'s own files the trust log reads the model from, refused (16.4.4)', () => {
-  /** Each, from Claude Code's config directory, and what it is in the reason it is refused with. */
-  const CLAUDE_FILES = Object.freeze({
-    'projects/-Users-me-app/sess-1.jsonl': 'a conversation\'s transcript',
-    'projects/-Users-me-app/sess-1/subagents/agent-a1.jsonl': 'a subagent\'s transcript',
-    'projects/-Users-me-app/sess-1/subagents/agent-a1.meta.json': 'a subagent\'s record',
-  });
-
-  /** The reason a write to a file named `name` that is `what` is refused with. @param {string} what @param {string} name */
-  const reasonFor = (what, name) => `${what} (${name}) is Claude Code's own: the trust log reads the model from it`;
-
-  /** @type {string} */
-  let claude;
-  /** @type {{env: Record<string, string>}} */
-  let inClaude;
-  beforeEach(() => {
-    claude = outside('claude');
-    inClaude = { env: { CLAUDE_CONFIG_DIR: claude } };
-  });
-
-  it('a conversation\'s transcript, and a subagent\'s transcript and record, in any project folder of its projects directory: Write and Edit refused, by a relative path, through a link, with Claude Code\'s config directory named through a link, and in another case where the filesystem ignores case', () => {
-    fs.mkdirSync(path.join(claude, 'projects', '-Users-me-app', 'sess-1', 'subagents'), { recursive: true });
-    const elsewhere = outside('claude-links');
-    fs.symlinkSync(path.join(claude, 'projects'), path.join(elsewhere, 'projects'));
-    fs.symlinkSync(claude, path.join(elsewhere, 'claude'));
-    const throughLink = { env: { CLAUDE_CONFIG_DIR: path.join(elsewhere, 'claude') } };
-    for (const [rel, what] of Object.entries(CLAUDE_FILES)) {
-      const [file, reason] = [path.join(claude, rel), reasonFor(what, path.basename(rel))];
-      for (const tool of ['Write', 'Edit']) assertRefused(guard(dir, file, { ...inClaude, tool }), `${rel} ${tool}`, reason);
-      assertRefused(guard(path.dirname(file), path.basename(rel), inClaude), `${rel} relative`, reason);
-      assertRefused(guard(dir, path.join(elsewhere, rel), inClaude), `${rel} through a link`, reason);
-      assertRefused(guard(dir, file, throughLink), `${rel} with Claude Code's config directory named through a link`, reason);
-      assertRefusedInAnotherCase(guard(dir, path.join(claude, rel.toUpperCase()), inClaude), `${rel} in another case`, reasonFor(what, path.basename(rel).toUpperCase()));
-    }
-  });
-
-  it('the names are read from the nearest folder above the target that is the projects directory: through a link in a project folder that leads back to it, another project\'s transcript is refused', () => {
-    const projects = path.join(claude, 'projects');
-    fs.mkdirSync(path.join(projects, '-Users-me-app'), { recursive: true });
-    fs.mkdirSync(path.join(projects, '-Users-me-other'));
-    fs.symlinkSync(projects, path.join(projects, '-Users-me-app', 'up'));
-    const transcript = 'projects/-Users-me-app/sess-1.jsonl';
-    assertRefused(guard(dir, path.join(projects, '-Users-me-app', 'up', '-Users-me-other', 'sess-1.jsonl'), inClaude), 'through the link', reasonFor(CLAUDE_FILES[transcript], 'sess-1.jsonl'));
-  });
-
-  it('in a conversation\'s or a project\'s folder that is itself a link, the files the trust log reads are refused named through the link, and pass where it leads, as a write by Bash does', () => {
-    const [realProject, realConversation] = [outside('real-project'), outside('real-conversation')];
-    fs.mkdirSync(path.join(claude, 'projects', '-Users-me-app'), { recursive: true });
-    fs.symlinkSync(realProject, path.join(claude, 'projects', '-Users-me-linked'));
-    fs.symlinkSync(realConversation, path.join(claude, 'projects', '-Users-me-app', 'sess-2'));
-    const record = CLAUDE_FILES['projects/-Users-me-app/sess-1/subagents/agent-a1.meta.json'];
-    const routes = [
-      ['projects/-Users-me-app/sess-2/subagents/agent-a1.meta.json', path.join(realConversation, 'subagents', 'agent-a1.meta.json'), record],
-      ['projects/-Users-me-app/sess-2/subagents/agent-a1.jsonl', path.join(realConversation, 'subagents', 'agent-a1.jsonl'), CLAUDE_FILES['projects/-Users-me-app/sess-1/subagents/agent-a1.jsonl']],
-      ['projects/-Users-me-linked/sess-3.jsonl', path.join(realProject, 'sess-3.jsonl'), CLAUDE_FILES['projects/-Users-me-app/sess-1.jsonl']],
-      ['projects/-Users-me-linked/sess-3/subagents/agent-a1.meta.json', path.join(realProject, 'sess-3', 'subagents', 'agent-a1.meta.json'), record],
-    ];
-    for (const [rel, real, what] of routes) {
-      assertRefused(guard(dir, path.join(claude, rel), inClaude), `${rel} through the link`, reasonFor(what, path.basename(rel)));
-      assertAllowed(guard(dir, real, inClaude), `${rel} where the link leads: the Bash class`);
-    }
-  });
-
-  it('the rest passes — a project folder\'s memory, a conversation\'s other files, a record\'s name at a project folder\'s top, a file of that name outside a project folder — and so does a transcript\'s name anywhere else', () => {
-    for (const rel of [
-      'projects/-Users-me-app/memory/MEMORY.md', 'projects/-Users-me-app/memory/notes.jsonl', 'projects/-Users-me-app/memory/team/notes.jsonl', 'projects/-Users-me-app/notes.md', 'projects/-Users-me-app/sess-1.meta.json',
-      'projects/-Users-me-app/sess-1/tool-results/out.txt', 'projects/-Users-me-app/sess-1/subagents/deeper/agent-a1.jsonl', 'projects/-Users-me-app/sess-1/subagents/notes.txt',
-      'projects/sess-1.jsonl', 'settings.json',
-    ]) assertAllowed(guard(dir, path.join(claude, rel), inClaude), rel);
-    assertAllowed(guard(dir, path.join(dir, 'sess-1.jsonl'), inClaude), 'in the code tree');
-  });
-});
-
 describe('everything else, allowed', () => {
   it('the code tree, and a folder outside the project, pass silently', () => {
     assertAllowed(guard(dir, path.join(dir, 'src/app.js')), 'code');
     assertAllowed(guard(dir, path.join(outside('elsewhere'), layout.ledger)), 'outside');
+  });
+
+  it('a file at user level passes — the trust log, a conversation\'s brief', () => {
+    const config = outside('config');
+    for (const rel of ['trust.jsonl', 'conversations/sess-1/briefs/b1.md']) {
+      assertAllowed(guard(dir, path.join(config, rel), { env: { LEDGER_CONFIG_DIR: config } }), rel);
+    }
   });
 
   it('a project with no state passes every write, its .ledger/.ledger.jsonl among them — and so does a folder in no repository', () => {

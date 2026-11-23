@@ -34,7 +34,7 @@ const { LEDGER_VERSION, CARRIED_SESSION } = require(path.join(SCRIPTS, 'domain/l
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
 const { systemConfigDir } = require(path.join(SCRIPTS, 'kernel/system-config.cjs'));
-const { DECISION_CHECKS } = require(path.join(SCRIPTS, 'domain/user-files.cjs'));
+const { DECISION_CHECKS } = require(path.join(SCRIPTS, 'domain/ledger-one-decision.cjs'));
 
 const UNIT = 'fumi';
 const SESSION_ID = 'session-1';

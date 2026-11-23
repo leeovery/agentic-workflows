@@ -28,7 +28,7 @@ const { SESSION_ID, MADE, NOTE, PHASES, writtenWorld, ledgerHelpers } = require(
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { systemConfigDir } = require(path.join(SCRIPTS, 'kernel/system-config.cjs'));
-const { DECISION_CHECKS } = require(path.join(SCRIPTS, 'domain/user-files.cjs'));
+const { DECISION_CHECKS } = require(path.join(SCRIPTS, 'domain/ledger-one-decision.cjs'));
 
 const CHECK_LOG = path.join(systemConfigDir(), DECISION_CHECKS);
 const PANEL = 'A near-frameless floating panel.';

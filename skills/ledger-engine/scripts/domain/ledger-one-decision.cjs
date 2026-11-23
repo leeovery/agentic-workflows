@@ -42,7 +42,9 @@ const claudeCall = require('../kernel/claude-call.cjs');
 const { systemConfigDir } = require('../kernel/system-config.cjs');
 const { isoNow } = require('./dates.cjs');
 const { projectOf } = require('./trust-log.cjs');
-const { DECISION_CHECKS } = require('./user-files.cjs');
+
+/** The one-decision check's runs, in the system config directory. */
+const DECISION_CHECKS = 'decision-checks.jsonl';
 
 /** @typedef {import('../kernel/claude-call.cjs').CannotRun} CannotRun */
 /** @typedef {import('./ledger-write.cjs').Request} Request */
@@ -208,4 +210,4 @@ function checkOneDecision(cwd, request, named, warnings) {
   return { ...request, unchecked: false };
 }
 
-module.exports = { PROMPT, SCHEMA, TIMEOUT_MS, judgeDecision, judgeDecisionAsync, checkOneDecision };
+module.exports = { DECISION_CHECKS, PROMPT, SCHEMA, TIMEOUT_MS, judgeDecision, judgeDecisionAsync, checkOneDecision };

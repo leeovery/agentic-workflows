@@ -2,13 +2,11 @@
 
 // ---------------------------------------------------------------------------
 // A quick-fix built beside the person and the other windows, in a worktree
-// of its own (fix-branch.cjs, shell-guard.cjs, finish.cjs): two windows
+// of its own (fix-branch.cjs, finish.cjs): two windows
 // each running a quick-fix of its own at once, neither stopped at the code
 // gate, each built in its own worktree on its own branch, one closing while
-// the other's fix is in flight, both landing; a raw commit in a quick-fix's
-// worktree, from another window or its own with no fix in flight, refused
-// between its fixes and at its close gate, one in the person's checkout
-// passing; the person on a branch of their own with changes not committed
+// the other's fix is in flight, both landing; the person on a branch of
+// their own with changes not committed
 // from the first fix's start to the close, their branch, its tip and what
 // git names changed there never moved, the quick-fix's worktree kept out
 // of it by the repository's exclude file; the conversation run from a
@@ -25,8 +23,7 @@
 // the project's own checkout and taking the worktree apart under it
 // (engine.cjs, `placed`); and the close refused over a conflict with the
 // branch it lands on, naming the way on — a one-line task merging that
-// branch in the worktree, the merge committed through the door — which the
-// shell guard lets through where it refuses a merge that commits, followed
+// branch in the worktree, the merge committed through the door — followed
 // to the close, made from the worktree, landing. The close over the person's
 // changes through a host, standing with their checkout left behind:
 // tests/drivers/github/test-landing-quick-fix-pull.cjs.
@@ -45,7 +42,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const {
-  call, ok, okSections, refuses, GIT_TIMEOUT_MS, output, git, createFile, writeState, readManifest, layout, accountTaken, fixtureFrom, cleanupFixture,
+  ok, okSections, refuses, GIT_TIMEOUT_MS, output, git, createFile, writeState, readManifest, layout, accountTaken, fixtureFrom, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const {
@@ -62,8 +59,6 @@ const OTHER = Object.freeze({ unit: 'tidy', description: 'The readme spells colo
 const [FLAG] = SET;
 /** What the person has in their checkout, not committed: an edit of the file fix 1.1 changes, and a note of their own. */
 const MINE = Object.freeze({ [FLAG.file]: 'const flag = \'mine\';\n', 'notes/mine.md': 'my own note\n' });
-/** The shell guard's refusal of a raw commit in typo's worktree. */
-const RAW_REFUSED = `a raw git commit is refused here — ${BRANCH} is checked out for ${UNIT}, a quick-fix in progress, whose work goes through the commit door alone: a fix's change with \`engine commit --paths <file>… --task ${UNIT} <task> -m "<message>"\`, anything else from a checkout of your own`;
 
 const world = fixtureFrom('quick-fix-windows-', (dir) => {
   quickFix(dir);
@@ -97,18 +92,6 @@ const theirs = (at) => [branchOut(at), git(at, ['rev-parse', 'HEAD']).trim(), gi
 
 /** The person's changes written in their checkout at `at`. @param {string} at */
 const mineWritten = (at) => Object.entries(MINE).forEach(([file, text]) => createFile(at, file, text));
-
-/** A shell command asked of the shell guard from `cwd` in a window: its exit code and what it said. @param {string} cwd @param {string} command @param {{env: Record<string, string|undefined>}} as */
-function guarded(cwd, command, as) {
-  const { code, stderr } = call(cwd, ['shell', 'guard'], {
-    env: as.env,
-    stdin: JSON.stringify({ hook_event_name: 'PreToolUse', cwd, session_id: as.env.CLAUDE_CODE_SESSION_ID, tool_name: 'Bash', tool_input: { command } }),
-  });
-  return { code, said: stderr.trim() };
-}
-
-/** A raw `git commit` asked of the shell guard from `cwd` in a window. @param {string} cwd @param {{env: Record<string, string|undefined>}} as */
-const rawCommit = (cwd, as) => guarded(cwd, 'git commit -am x', as);
 
 /** The other quick-fix's fix built in window two up to its commit, through the door from its worktree. */
 function otherCommitted() {
@@ -155,20 +138,6 @@ describe('a quick-fix built beside the other windows (12.7.8)', () => {
     assert.deepStrictEqual([git(dir, ['log', '-2', '--format=%s', 'main']).trim().split('\n'), branchOut(dir), git(dir, ['status', '--porcelain']).trim()], [
       [`fix(${OTHER.unit}): ${OTHER.description}`, `fix(${UNIT}): ${DESCRIPTION}`], 'main', '',
     ]);
-  });
-
-  it('a raw commit in its worktree is refused from another window, and from its own with no fix in flight, between its fixes and at its close gate, naming the door; one in the person\'s checkout passes', () => {
-    dir = world();
-    entered(dir, UNIT, one());
-    fixBuilt(dir, 1, FLAG.title, FLAG.file, FLAG.text, one());
-    const asked = () => [rawCommit(fixTree(dir), two()), rawCommit(fixTree(dir), one()), rawCommit(dir, two())];
-    const between = asked();
-    fixesRecorded(dir, 1, one());
-    output(dir, ['render', 'finish', UNIT], one());
-    const atTheGate = asked();
-
-    const refused = { code: 2, said: RAW_REFUSED };
-    assert.deepStrictEqual([between, atTheGate], [[refused, refused, { code: 0, said: '' }], [refused, refused, { code: 0, said: '' }]]);
   });
 });
 
@@ -256,7 +225,7 @@ describe('a cancel and a move made from inside the quick-fix\'s worktree, where 
 });
 
 describe('a quick-fix whose branch conflicts at the close with the branch it lands on', () => {
-  it('the close is refused, nothing landed, naming the way on — a one-line task merging that branch in the worktree, the merge committed through the door — which the shell guard lets through where it refuses a merge that commits; followed, the close made from the worktree, where that commit left Claude\'s shell, lands the settled change and takes the worktree apart under it', () => {
+  it('the close is refused, nothing landed, naming the way on — a one-line task merging that branch in the worktree, the merge committed through the door; followed, the close made from the worktree, where that commit left Claude\'s shell, lands the settled change and takes the worktree apart under it', () => {
     dir = world();
     const settled = 'const flag = \'colour\'; // settled\n';
     entered(dir, UNIT, one());
@@ -269,7 +238,6 @@ describe('a quick-fix whose branch conflicts at the close with the branch it lan
     ok(dir, ['task', 'create', UNIT, '1', '--title', 'merge main', '--type', 'chore', '--why', 'a merge of main, its one conflict settled by hand'], one());
     ok(dir, ['task', 'start', UNIT, '1.2'], one());
     const merge = 'git merge --no-ff --no-commit main';
-    const asked = [guarded(fixTree(dir), 'git merge main', two()).code, guarded(fixTree(dir), merge, one()).code];
     const merging = spawnSync('git', merge.split(' ').slice(1), { cwd: fixTree(dir), encoding: 'utf8', timeout: GIT_TIMEOUT_MS }).status;
     createFile(fixTree(dir), FLAG.file, settled);
     ok(fixTree(dir), ['commit', '--paths', FLAG.file, '--task', UNIT, '1.2', '-m', `chore(${UNIT}): merge main`], one());
@@ -281,7 +249,7 @@ describe('a quick-fix whose branch conflicts at the close with the branch it lan
 
     assert.strictEqual(error, `finish yes: land: ${BRANCH} conflicts with main at ${FLAG.file}, so nothing moved — start a one-line task, "merge main", and in ${UNIT}'s worktree run \`git merge --no-ff --no-commit main\`, settle the conflict, `
       + `then commit the merge through the door, naming each file you settled, which finishes it: \`engine commit --paths <file>… --task ${UNIT} <task> -m "<message>"\`, and land again`);
-    assert.deepStrictEqual([stood, asked, merging], [[tip, 'in-progress'], [2, 0], 1]);
+    assert.deepStrictEqual([stood, merging], [[tip, 'in-progress'], 1]);
     assert.deepStrictEqual([git(dir, ['show', `main:${FLAG.file}`]), readManifest(dir, UNIT).status, git(dir, ['rev-parse', 'main^']).trim(), fs.existsSync(fixTree(dir))], [settled, 'completed', tip, false]);
     assert.deepStrictEqual([branchOut(dir), git(dir, ['status', '--porcelain']).trim()], ['main', '']);
   });

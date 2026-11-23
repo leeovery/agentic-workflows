@@ -42,7 +42,7 @@ const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { isId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { gateShown } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
-const { DECISION_CHECKS } = require(path.join(SCRIPTS, 'domain/user-files.cjs'));
+const { DECISION_CHECKS } = require(path.join(SCRIPTS, 'domain/ledger-one-decision.cjs'));
 const { ORDER } = require(path.join(SCRIPTS, 'domain/labeller.cjs'));
 
 const UNLABELLED = 'I couldn\'t tell what kind of question this is, so it comes to you.';

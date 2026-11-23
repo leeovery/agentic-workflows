@@ -105,12 +105,17 @@ const { handedSession } = require('../kernel/process.cjs');
 const { callerModel, conversationDir, conversationsRoot } = require('./conversation.cjs');
 const { SESSION, readTrustEvent, trustEvent } = require('./trust-events.cjs');
 const { MODEL } = require('./event-fields.cjs');
-const { TRUST_LOG, PENDING } = require('./user-files.cjs');
 const { migrationRuns } = require('./state-worktree.cjs');
 
 // The version of a kept line's own shape: what it awaits, beside its event.
 const KEPT_VERSION = 1;
 const NEWLINE = 0x0a;
+/** The trust log, in the system config directory. */
+const TRUST_LOG = 'trust.jsonl';
+
+/** A conversation's events waiting for the trust log, in its folder. */
+const PENDING = 'trust-pending.jsonl';
+
 const TRUST_LOCK = { timeoutMs: LOCK_TIMEOUT_MS, name: 'the trust log\'s lock' };
 const PENDING_LOCK = { timeoutMs: LOCK_TIMEOUT_MS, name: 'the lock on the conversation\'s waiting trust events' };
 

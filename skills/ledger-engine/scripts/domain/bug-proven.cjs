@@ -41,9 +41,9 @@
 //   squashed, merged or rebased; then the series' command runs after the
 //   tests as one of the door's checks, and must pass (15.5.4). Every refusal
 //   names the way on, and one of a commit not built on task 1.1's work the
-//   repository behind; a branch is taken in by a merge through the door,
-//   the way the hook before Bash lets a task in flight make one
-//   (shell-guard.cjs), run in that repository's folder for a nested one. What it reads: for a bugfix, the runs of phase 1's
+//   repository behind; a branch is taken in by a merge with `--no-ff
+//   --no-commit` finished through the door, run in that repository's folder
+//   for a nested one. What it reads: for a bugfix, the runs of phase 1's
 //   scenarios and each repository's branches, and where the commit is not
 //   built on task 1.1's tip, the landings it holds; for any other unit,
 //   nothing beyond its manifest.
@@ -198,8 +198,8 @@ const gitIn = (repo) => (repo.dir === '' ? 'git' : `git -C ${quoted(repo.dir)}`)
 
 /**
  * The way on that takes `rev` in, named `named`, in the repository git runs
- * in as `git`: a merge through the door, as the hook before Bash lets a task
- * in flight make one (shell-guard.cjs).
+ * in as `git`: a merge with `--no-ff --no-commit`, finished through the
+ * door.
  * @param {string} named @param {string} rev @param {string} [git]
  */
 const mergeWay = (named, rev, git = 'git') => `merge ${named} in with \`${git} merge --no-ff --no-commit ${rev}\`, resolve what conflicts, then commit the merge through the door, which finishes it`;

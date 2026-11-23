@@ -1049,7 +1049,7 @@ layout guard                       (hook before Write, Edit and NotebookEdit; it
 
 The layout on disk: one table of every place Ledger keeps in `.ledger/`, each a file, a free folder, a file only the engine writes, or a log (`domain/layout.cjs`).
 
-- **`guard`** — Claude Code's hook before Write, Edit and NotebookEdit. It refuses (exit 2) a path in the state the layout has no place for (scratch goes in `.ledger/.cache/`), a file only the engine writes, naming the verb that writes it, a concluded unit's `spec.md`, and at user level the trust log's sources, a conversation's sealed and stamped files and its briefs, and Claude Code's transcripts. A file place's `.txt` beside it passes as its staging. Everything else passes, silent.
+- **`guard`** — Claude Code's hook before Write, Edit and NotebookEdit. It refuses (exit 2) a path in the state the layout has no place for (scratch goes in `.ledger/.cache/`), a file only the engine writes, naming the verb that writes it, and a concluded unit's `spec.md`. A file place's `.txt` beside it passes as its staging. Everything else passes, silent.
 
 ### `shell`
 
@@ -1057,7 +1057,7 @@ The layout on disk: one table of every place Ledger keeps in `.ledger/`, each a 
 shell guard                        (hook before Bash; its JSON on stdin)
 ```
 
-- **`guard`** — Claude Code's hook before Bash: reads the command as the shell would run it and refuses (exit 2), each refusal with its way on, the first command that would harm or bypass the state: removing or unlocking the `.ledger` worktree, deleting or force-pushing `ledger-state`, a raw `git commit` in the state worktree, while the conversation has a task in flight any git command that commits onto a task's branch outside the door (`engine commit --paths <file>… --task <unit> <N.M> -m "<message>"`, a merge made first with `--no-ff --no-commit`), and from any conversation a raw `git commit`, or any other git command that commits, in a checkout with out the branch of a quick-fix in progress, `fix/{unit}` — a nested repository's there among them, its state found beside the checkout enclosing it, past one of its own holding no such quick-fix — naming it and the way on (the command's own way through the door, the door, or a checkout of the caller's own), and a raw `git commit` whose folder the text cannot tell where the text names one of the engine's own worktrees, `.claude/worktrees/ledger-…` by a name only the engine gives (one of your own named like it never); any command naming a user-level file the layout hook guards, a read among them (use the Read tool); and a write onto a file only the engine writes, naming its verb. It decides from the text alone: an expansion, alias, script or `sh -c` is not seen, and a command it cannot read passes.
+- **`guard`** — Claude Code's hook before Bash: reads the command as the shell would run it and refuses (exit 2), each refusal with its way on: a raw `git commit` in the state worktree; while the conversation has a task in flight, a raw `git commit` anywhere, naming the commit door (`engine commit --paths <file>… --task <unit> <N.M> -m "<message>"`); and a write onto a file only the engine writes, naming its verb. It decides from the text alone: an expansion, alias, script or `sh -c` is not seen, and a command it cannot read passes.
 
 ## Capture and the roadmap
 
