@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-11-23
+
+Agentic Workflows is now Ledger: a rebuilt flow that records every decision, builds each phase's tasks side by side, and proves them by running the product.
+
+💥 Breaking
+- The product is renamed from Agentic Workflows to Ledger — install with `npx agntc add leeovery/ledger` and start with `/ledger` in place of `/workflow-start`; the `workflow-*` skills, agents and engine paths are gone, so update any commands, hooks, settings or permission rules that name them.
+- Project state moves from `.workflows/` to `.ledger/`, a worktree of its own `ledger-state` branch — boot migrates existing projects and commits the result on your yes.
+- User config and environment variables are renamed (`LEDGER_CONFIG_DIR`, `LEDGER_GATE_SURFACE`, `LEDGER_HANDOFF`, `LEDGER_HARNESS_REPLACED`), and knowledge provider keys are now read from `~/.config/ledger/credentials.json` instead of `~/.config/workflows/credentials.json`.
+- Research, planning, scoping and baseline are no longer separate phases or skills — research is a tool inside discussion, scoping becomes the quick-fix flow, and planning becomes a phase cut made from the specification.
+- Work types are now epic, feature, bugfix and quick-fix; cross-cutting is no longer a type.
+- `manifest resolve`, writes to gate modes, and the old staging, tracking and storage-path fields are gone from the manifest field commands, and writes to engine-owned landing records or `project_id` are refused.
+- Setting `approved_at` or `concluded_at` now requires an ISO-8601 UTC time.
+
+✨ Added
+- A record of every question, finding and decision, with an ask rule that learns from your answers which calls Claude makes for you and which it brings to you.
+- Records live on their own `ledger-state` branch shared by every worktree, so pull requests never carry them, with a writer lock for concurrent sessions.
+- Specifications are written by area from the records, each statement citing its decisions, cut into build phases, and approved at a single ready-to-build screen.
+- A review page for the spec: tick lines, leave comments, and have Claude read the marks back before the build starts.
+- The build writes each phase's tasks as the phase starts and runs them side by side in their own worktrees, with independent reviewers, a phase review and a review phase that holds the whole change to the spec.
+- Tasks are proven by driving the running product through a verify setup, with the verdict written by a script rather than Claude's account.
+- Tasks land as stacked pull requests on GitHub or as local branches elsewhere, through pluggable task and landing drivers with `drivers check` and `drivers set`.
+- Board pane and banner beside the conversation with tabs for this session, the unit's page and all work, showing what waits on you.
+- Start menu with inbox, triage, roadmap and matrix screens, plus a product conversation for work not yet started, each with built-in help.
+- `/ledger` with words routes straight into the piece of work you name, carries on the one unit in progress, or offers a pick.
+- A trust log and `render matrix` show how often you overruled Claude per question kind, and `render matrix-replay` previews a new ask threshold before you set it.
+- Blind questions hide Claude's answer until you answer, then reveal how often Claude picks as you do.
+- Questions raised in the build park only the task that depends on them, with a numbered queue and a receipt of what the answer freed.
+- Ready to discuss queues waiting questions and sends them to Claude in one message.
+- Environment setup (run commands, preparation, linters, concurrency limits, verify setup) is confirmed once at the first ready to build and enforced at every code commit.
+- Checklists at every closing point, worked with `checklist show|done|skip|close`.
+- Bugfixes prove their bug first with a reproducing test that fails on the unfixed code, and investigations close into the spec with root-cause and fix validation.
+- Quick-fixes build in their own worktree with a short record per fix and an optional review at the close, and `workunit move` promotes them to a feature or bugfix.
+- `inbox capture` and `ledger-keep` log ideas, bugs, facts and instructions wherever they come up, and review out-of-scope findings are filed to the inbox.
+- Background agents for discussions: deep dives, gap reviews, opposing-lens perspectives and a closing-pass reader.
+- An experiment laboratory with designed-before-run experiments, run tallies, concurrent controls and verdicts reported back to the discussion.
+- A first-run offer to have a researcher read an existing codebase before the product's first conversation.
+- Guided migration with a legacy research split and the cutting of in-progress builds into phases.
+- A shell guard refuses commands that would lose the state branch, bypass the commit door or write engine-only files, and a state merge screen settles fields two machines changed.
+- Boot stops clearly when git is older than 2.40 or the folder is not in a git repository.
+- Offers to set GitHub's branch rule and squash default for the project's repositories.
+- Knowledge setup ends with a "Knowledge base ready" line, and `knowledge query` remembers the last search for follow-ups.
+- New README, logo, screenshots and docs pages on trust, verification, the build and state and git.
+
+🔧 Changed
+- The specification is one spec joined by area with a sweep across topics and review passes until one changes nothing.
+- Quick-fixes skip scoping and are built and reviewed fix by fix in one conversation.
+- The roadmap archives items instead of removing them, and `move` brings them back.
+- The epic menu leads with what waits on you and shows tallies and topics held in other sessions.
+- The knowledge base runs on Ledger's state root, names files by absolute path, and ranks results by decay and boosts only.
+- Knowledge records decay and prune by work unit alone, with no exemption for specifications.
+- Unknown `knowledge` verbs answer with a one-line JSON usage error.
+- A handoff into a fresh conversation carries the engine's boot stamp, so work carries on booted.
+- The walkthrough is titled "How Ledger works" and its offer carries on into the walk.
+
+🗑️ Removed
+- The baseline assessment, bridge, scoping, planning, continue-epic, continue-linear and help skills, the legacy research-split tool and the knowledge REPL script.
+- Roadmap `pull`, `bind` and `flag` commands, replaced by the pull-forward and menu flow.
+
 ## [0.8.18] - 2026-10-14
 
 ✨ Added
