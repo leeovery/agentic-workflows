@@ -44,7 +44,7 @@ Every screen is drawn by the engine from the state on disk and shown exactly as 
 
 ## How the work flows
 
-Work comes in four shapes, each with a pipeline sized to it:
+Work comes in four shapes, each with a pipeline sized to it. An epic has many topics, all decided before its one spec is written; a feature has one.
 
 | Type | Pipeline |
 |---|---|
@@ -53,28 +53,28 @@ Work comes in four shapes, each with a pipeline sized to it:
 | Bugfix | Discovery → Investigation → Specification → Implementation → Review |
 | Quick-fix | Discovery → Implementation → Review (on request) |
 
-**Discussion.** Each topic gets a conversation of its own. Claude pushes back, finds the questions nobody has answered yet, and records each decision as it's made. An epic is many topics, decided before one spec is written across them; a feature is one. When a number is about to bear a decision, a discussion can spawn an experiment, designed before it runs. [Discussion](docs/discussion.md)
+**Discussion.** Each topic gets a conversation of its own. Claude pushes back, finds the questions nobody has answered yet, and records each decision as it's made. When a decision rests on a number nobody has measured, the discussion can run an experiment, designed before it runs. [Discussion](docs/discussion.md)
 
-**The spec.** The decided topics become one spec, every statement citing the ledger entries it comes from. It's cut into phases, and you approve it at ready to build. There you choose how the build runs: on its own, stopping only for what needs you, or stopping after each task for you to try it. [Specification](docs/specification.md)
+**The spec.** The decided topics become one spec, every statement citing the ledger entries it comes from. It's cut into phases, and you approve it at its last step, ready to build. There you pick how the build runs. Auto runs on its own and stops only for what needs you; step also stops after each task for you to try it. [Specification](docs/specification.md)
 
-**The build.** Each phase's tasks are written as the phase starts. Builders work them side by side, each in a worktree of its own, with the tests that prove them. Reviewers who didn't write the code check each task, and a pair checks each phase's whole change against the spec. On GitHub, every task lands as its own pull request, and each phase as a stack of them. [The build](docs/the-build.md)
+**The build.** Each phase's tasks are written as the phase starts, and builders work each in a worktree of its own, with the tests that prove it. In auto, tasks that share no files are built side by side. Reviewers who didn't write the code check each task, and a pair checks each phase's whole change against the spec. On GitHub, every task lands as its own pull request, and each phase as a stack of them. [The build](docs/the-build.md)
 
-**Review.** The built change is held against the spec, and what the review finds comes back as fix tasks. [Review](docs/review.md)
+**Review.** The built change is held against the spec. What the review finds in the change comes back as fix tasks, and what lies beyond it goes to the inbox. [Review](docs/review.md)
 
 ## More features
 
-- **Starting in an existing codebase.** Your first session offers to have a researcher read the code. What the code shows lands on the ledger as findings, and what it leaves open becomes the first questions. [Discovery](docs/discovery.md)
+- **Starting in an existing codebase.** Your first session offers to have a researcher read the code. What the code shows lands on the ledger as findings, and what it leaves open becomes the first questions you talk through. [Discovery](docs/discovery.md)
 - **The inbox and the roadmap.** An idea or a bug mentioned mid-conversation lands in the inbox, for you to triage later. Say "that's a v2 thing" anywhere and it's on the roadmap in one line. [Tracking](docs/tracking.md)
 - **Work that changes shape.** A feature that outgrows its scope pivots into an epic, and one that belongs inside an epic is absorbed as a topic. Cancelled work comes back. [Lifecycle](docs/lifecycle-operations.md)
-- **State on its own branch.** Ledger keeps its records on a branch of their own, `ledger-state`, beside your code and pushed after every commit. Pull requests never carry it, and a second machine catches up on its own. [State and git](docs/state-and-git.md)
-- **Many sessions, one checkout.** Talk through as many topics side by side as you like. Each commit takes only what its own action wrote, never another session's half-made change.
-- **Your tracker and your code host.** Tasks live in your tracker and land in your repository through drivers. Tick tracks the tasks, and code lands on GitHub as stacked pull requests, or as local branches where there's no remote. [The build](docs/the-build.md)
-- **Session labels.** Opt in, and your terminal session's label shows where you're working, such as `myproject · payments · discussion`. [Configuration](docs/configuration.md)
-- **Upgrades that migrate themselves.** An update moves existing projects to the new version in place, on the next run.
+- **State on its own branch.** Ledger keeps its records on a branch of their own, `ledger-state`, beside your code and pushed after every commit. Pull requests never carry it, a second machine catches up on its own, and on GitHub setup offers a rule protecting it. [State and git](docs/state-and-git.md)
+- **Many sessions, one checkout.** Talk through as many topics side by side as you like. Each commit holds what that session wrote, never another session's half-made change. A build and a review take turns with the code. [Reliability](docs/reliability.md)
+- **Your tracker and your code host.** Tasks are kept in a tracker and land in your repository, each through a driver. The tracker that ships is Tick. Code lands on GitHub as stacked pull requests, or as local branches where there's no remote or it's on another host. [The build](docs/the-build.md)
+- **Session labels.** Working inside tmux? Opt in, and your session's label shows where you are, such as `myproject · payments · discussion`. [Configuration](docs/configuration.md)
+- **Upgrades that migrate themselves.** An update moves existing projects to the new version in place, on the next run. A project from before Ledger is moved across too. [State and git](docs/state-and-git.md)
 
 ## Install
 
-Needs Node 18+, git 2.40.0+, and Claude Code 2.1.287+ in its terminal app or the Desktop app's Code tab. Run your session at medium effort or above.
+Needs Node 18+, git 2.40.0+, a git repository and Claude Code 2.1.287+. Ledger is built for Claude Code's terminal app and the Desktop app's Code tab. On the web or in the VS Code extension, its menus print as text and support is soft. Run your session at medium effort or above.
 
 ```bash
 npx agntc add leeovery/ledger
@@ -82,7 +82,7 @@ npx agntc add leeovery/ledger
 
 Commit the installed files to share Ledger with your team. `npx agntc update` pulls the latest, and `npx agntc remove leeovery/ledger` uninstalls it.
 
-The build's tracker needs Tick, and landing on GitHub needs GitHub's CLI with its stack extension. Search by meaning is optional, with an OpenAI-compatible key entered in your terminal, never the chat. [Configuration](docs/configuration.md)
+The build's tracker needs [Tick](https://github.com/leeovery/tick) 0.3.0+, a task tool built for coding agents. Landing on GitHub needs GitHub's CLI 2.30.0+ with its stack extension. Search by meaning is optional: it needs an OpenAI key, which you enter in your terminal, never the chat. [Configuration](docs/configuration.md)
 
 ## Quick start
 
