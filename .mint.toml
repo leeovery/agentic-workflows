@@ -5,10 +5,6 @@
 # Config reference (every key, level, and default): https://github.com/leeovery/mint
 # AI-assisted setup (inspects your project and proposes config): run `mint setup`
 
-# Release-notes diffs can exceed mint's 50000 default on large skill-documentation
-# releases.
-max_diff_lines = 60000
-
 # Keep release-notes NOISE out of the AI diff (the release itself is unaffected):
 #   package-lock.json — lockfile churn
 #   .claude/          — dev-only agent skills, not shipped product
