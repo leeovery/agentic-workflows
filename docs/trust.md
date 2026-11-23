@@ -86,7 +86,7 @@ A question's kind or a verdict you find wrong is corrected in your own words; th
 
 ## The record of you
 
-Alongside the counts, Ledger keeps your preferences in words, each with its reason and examples, across all your projects — never a decision tree, which breaks on the first case it did not foresee. An entry Claude proposes steers nothing until you say yes on the screen that proposes it, and the record never shapes whether Claude asks, save through the care entries it holds. If you keep saying "don't care" to a kind under a care entry, Claude proposes dropping the entry.
+Alongside the counts, Ledger keeps your preferences in words, each with its reason and examples, across all your projects — never a decision tree, which breaks on the first case it did not foresee. Claude proposes an entry when you state a preference outright or your answers keep showing one, and a care entry when you want a kind always to come to you in a project. An entry Claude proposes steers nothing until you say yes on the screen that proposes it. The record shapes Claude's lean on the calls it makes or raises for you, and never whether Claude asks, save through the care entries it holds. If you keep saying "don't care" to a kind under a care entry, Claude proposes dropping the entry.
 
 ## Where it lives
 
