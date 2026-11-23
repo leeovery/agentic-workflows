@@ -37,8 +37,7 @@ Ledger stays out of the way. Nothing about how you talk to Claude changes: a few
 
 |  |  |
 |:---:|:---:|
-| <a href="docs/tracking.md"><img src="art/start-menu.webp" alt="The start menu: the work in progress, the inbox, and the ways to start something new" width="420"></a><br>**The start menu**<br>Where every piece of work stands | <a href="docs/the-build.md"><img src="art/build.webp" alt="A build in progress: its phases and tasks, which are done, which are being built and which wait" width="420"></a><br>**The build**<br>What's built, what's building, what waits |
-| <a href="docs/discovery.md"><img src="art/discussion.webp" alt="An epic's map: its topics, which are decided and which are still being talked through" width="420"></a><br>**An epic's map**<br>Which topics are decided, and which are open | <a href="docs/tracking.md"><img src="art/roadmap.webp" alt="The roadmap: horizons named in your own release language, each holding the work decided on but not started" width="420"></a><br>**The roadmap**<br>What's decided on, and when it's for |
+| <a href="docs/discussion.md"><img src="art/discussion.webp" alt="A topic's map in a Claude Code session: what changed since you last looked, the open questions, and the decided ones, each marked as yours or Claude's call" width="420"></a><br>**A topic's map**<br>What's decided, by you or by Claude, and what's open | <a href="docs/tracking.md"><img src="art/roadmap.webp" alt="The roadmap in a Claude Code session: three horizons, each holding an idea, and the roadmap's menu as buttons" width="420"></a><br>**The roadmap**<br>What's decided on, and which horizon it's for |
 
 Every screen is drawn by the engine from the state on disk and shown exactly as drawn, so Claude can't editorialise where your work stands. With Ledger's Claude Code mod, every menu is a row of buttons above the prompt.
 
