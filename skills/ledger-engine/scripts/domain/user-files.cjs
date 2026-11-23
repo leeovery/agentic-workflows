@@ -20,9 +20,6 @@
 // over as issued (brief-guard.cjs), and that hook's refusals; the
 // one-decision check's log (ledger-one-decision.cjs); the settings file and
 // the record of the person (person.cjs).
-// In each project folder of Claude Code's projects directory, the files of
-// its own the trust log reads the model from (conversation.cjs): a
-// conversation's transcript, and a subagent's transcript and its record.
 //
 // Each is judged by the names that reach it from the folder it is guarded
 // below, which each hook reads its own way, spelled as it folds them. The
@@ -32,7 +29,7 @@
 
 const path = require('path');
 const { SETTINGS_FILE, systemConfigDir } = require('../kernel/system-config.cjs');
-const { claudeProjectsDir, conversationsRoot } = require('./conversation.cjs');
+const { conversationsRoot } = require('./conversation.cjs');
 const { BRIEFS, BRIEF_REFUSALS } = require('./brief-names.cjs');
 
 /** The trust log, in the system config directory. */
@@ -120,34 +117,15 @@ function briefRefusal(file, fold, below) {
 }
 
 /**
- * Why `file` is refused as one of Claude Code's own files the trust log
- * reads the model from — in a project folder of its projects directory, a
- * conversation's transcript, or in a conversation's `subagents/` a
- * subagent's transcript or its record — or null where it is none of them.
- * @param {string} file as written @param {Fold} fold @param {NamesBelow} below
- * @returns {string|null}
- */
-function claudeRefusal(file, fold, below) {
-  const name = fold(path.basename(file));
-  const transcript = name.endsWith('.jsonl');
-  if (!transcript && !name.endsWith('.meta.json')) return null;
-  const names = below(file, claudeProjectsDir());
-  const what = names.length === 2 && transcript ? 'a conversation\'s transcript'
-    : names.length === 4 && names[2] === 'subagents' ? `a subagent's ${transcript ? 'transcript' : 'record'}` : null;
-  return what === null ? null : `${what} (${path.basename(file)}) is Claude Code's own: the trust log reads the model from it`;
-}
-
-/**
  * Why a tool call reaching `file` at user level is refused — a file the
- * engine alone writes there, a conversation's briefs, or one of Claude
- * Code's own the trust log reads the model from — or null where it is none
- * of them: each judged by the names `below` reads from a guarded folder to
- * the file, spelled by `fold`.
+ * engine alone writes there, or a conversation's briefs — or null where it
+ * is neither: each judged by the names `below` reads from a guarded folder
+ * to the file, spelled by `fold`.
  * @param {string} file as written @param {Fold} fold @param {NamesBelow} below
  * @returns {string|null}
  */
 function userLevelRefusal(file, fold, below) {
-  return userRefusal(file, fold, below) ?? briefRefusal(file, fold, below) ?? claudeRefusal(file, fold, below);
+  return userRefusal(file, fold, below) ?? briefRefusal(file, fold, below);
 }
 
 module.exports = { TRUST_LOG, PENDING, SHOWN, RAISE_SHOWN, PRESSED, BOOTED, DECISION_CHECKS, PERSON, PROPOSAL, userLevelRefusal };

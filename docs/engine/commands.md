@@ -1058,7 +1058,7 @@ layout guard                       (hook before Write, Edit and NotebookEdit; it
 
 The layout on disk: one table of every place Ledger keeps in `.ledger/`, each a file, a free folder, a file only the engine writes, or a log (`domain/layout.cjs`).
 
-- **`guard`** — Claude Code's hook before Write, Edit and NotebookEdit. It refuses (exit 2) a path in the state the layout has no place for (scratch goes in `.ledger/.cache/`), a file only the engine writes, naming the verb that writes it, a concluded unit's `spec.md`, and at user level the trust log's sources, a conversation's sealed and stamped files and its briefs, and Claude Code's transcripts. A file place's `.txt` beside it passes as its staging. Everything else passes, silent.
+- **`guard`** — Claude Code's hook before Write, Edit and NotebookEdit. It refuses (exit 2) a path in the state the layout has no place for (scratch goes in `.ledger/.cache/`), a file only the engine writes, naming the verb that writes it, a concluded unit's `spec.md`, and at user level the trust log's sources, a conversation's sealed and stamped files, and its briefs. A file place's `.txt` beside it passes as its staging. Everything else passes, silent.
 
 ### `shell`
 

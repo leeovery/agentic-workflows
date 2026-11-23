@@ -584,10 +584,10 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
   });
 });
 
-describe('the files at user level the layout hook refuses, by their names (6.5.12, 16.13.2, 16.4.4)', () => {
+describe('the files at user level the layout hook refuses, by their names (6.5.12, 16.13.2)', () => {
   const briefs = path.join(CONFIG, 'conversations', BUILDING, 'briefs');
 
-  it('a command naming a conversation\'s briefs, the folder or a file in it, the brief hook\'s refusals, the one-decision check\'s log, the trust log or a transcript — read or written, by its path, from its folder, through `~`, as a glob — is refused with the layout hook\'s reason and the way on', () => {
+  it('a command naming a conversation\'s briefs, the folder or a file in it, the brief hook\'s refusals, the one-decision check\'s log or the trust log — read or written, by its path, from its folder, through `~`, as a glob — is refused with the layout hook\'s reason and the way on', () => {
     const brief = (/** @type {string} */ name) => `a brief a conversation issued (${name}) changes only through the engine's commands — ${NAMED}`;
     const trustLog = `the trust log (trust.jsonl) changes only through the engine's commands — ${NAMED}`;
     const cases = [
@@ -599,7 +599,6 @@ describe('the files at user level the layout hook refuses, by their names (6.5.1
       [`echo '{}' >> ${path.join(CONFIG, 'decision-checks.jsonl')}`, `the one-decision check's log (decision-checks.jsonl) changes only through the engine's commands — ${NAMED}`],
       [`tail -3 ${path.join(CONFIG, 'trust.jsonl')}`, trustLog],
       [`cd ${CONFIG} && sed -i '' 1d trust.jsonl`, trustLog],
-      [`grep -l card ${path.join(CLAUDE, 'projects', '-Users-me-app', '*.jsonl')}`, `a conversation's transcript (*.jsonl) is Claude Code's own: the trust log reads the model from it — ${NAMED}`],
     ];
     const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-home-')));
     scratch.push(home);
@@ -610,13 +609,14 @@ describe('the files at user level the layout hook refuses, by their names (6.5.1
     });
   });
 
-  it('the rest of the system config directory passes, and so does a file of those names anywhere else', () => {
+  it('the rest of the system config directory passes, and so does a file of those names anywhere else, and Claude Code\'s transcripts and subagents\' records', () => {
     for (const command of [
       `cat ${path.join(CONFIG, 'conversations', BUILDING, 'position.json')}`,
       `ls ${path.join(CONFIG, 'conversations', BUILDING)}`,
       `cat ${path.join(CONFIG, 'nested', 'trust.jsonl')} ${path.join(CONFIG, 'briefs', 'b1.md')}`,
       'cat trust.jsonl person.md briefs/b1.md',
       `ls ${path.join(CLAUDE, 'projects', '-Users-me-app', 'memory')}`,
+      `grep -l card ${path.join(CLAUDE, 'projects', '-Users-me-app', '*.jsonl')} ${path.join(CLAUDE, 'projects', '-Users-me-app', 'sess-1', 'subagents', 'agent-a1.meta.json')}`,
     ]) assertPassed(guard(dir, command), command);
   });
 });

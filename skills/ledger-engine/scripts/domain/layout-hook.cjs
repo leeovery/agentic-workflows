@@ -21,11 +21,10 @@
 // it refuses the files only the engine writes, as the hook before Bash does
 // (user-files.cjs, `userLevelRefusal`): the trust log and every file whose
 // bytes reach it, the gate's records, the sealed raises, a conversation's
-// briefs, the settings file and the record of the person, and Claude Code's
-// own transcripts and records the trust log reads the model from. Those it
-// judges by the names the target is written with, below the nearest folder
-// above it that is the guarded directory, read with its `..` from the text
-// as the engine joins names to it: the same folder on disk, however it is
+// briefs, the settings file and the record of the person. Those it judges
+// by the names the target is written with, below the nearest folder above
+// it that is the guarded directory, read with its `..` from the text as the
+// engine joins names to it: the same folder on disk, however it is
 // named — through a link, a firmlink or in another case — or, before the
 // directory is made, one that would be made where it would. No other folder
 // is read. A write named through a link below the directory —
@@ -34,8 +33,8 @@
 // a link leads, through a link from outside that leads in, or through a
 // link below the directory that leads back to it, where the names start
 // again — is not seen, as a write by Bash is not, and passes. Every other
-// write outside the state is allowed — the rest of Claude Code's project
-// folders, their memory among it — and so is every write in a project with
+// write outside the state is allowed — Claude Code's project folders,
+// their transcripts and memory among them — and so is every write in a project with
 // no state but those at user level. Where the filesystem the target lands
 // on ignores case, names are compared in lower case (`toLowerCase`), so a
 // refused file's name in another case is refused as it is, and a place in

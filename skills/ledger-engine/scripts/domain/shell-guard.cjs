@@ -38,9 +38,9 @@
 //   worktree of the person's own named like one none (kernel/code-root);
 // - a command naming a file at user level the layout hook refuses Claude's
 //   writes to (user-files.cjs, `userLevelRefusal`) — a conversation's
-//   briefs, the brief hook's refusals, the trust log and its kin, Claude
-//   Code's transcripts — by the names its words give it, a read among them,
-//   since the text cannot tell one from a write;
+//   briefs, the brief hook's refusals, the trust log and its kin — by the
+//   names its words give it, a read among them, since the text cannot tell
+//   one from a write;
 // - a command writing to a file in the state only the engine writes — the
 //   manifests, the ledger, `spec-review.json` — for the reason the layout
 //   hook refuses Claude's own write to it, naming the verb (layout.cjs,
