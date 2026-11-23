@@ -30,10 +30,6 @@ Every call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb} …`;
 - **An instruction for working in this project** — a rule or a gotcha of its code, not of the product, on the person's yes → a line in its `CLAUDE.md`. Where this conversation holds a build or a quick-fix, the line is a one-line task of that work, committed through the door as that work commits one; else commit the person's line on its own, `git add CLAUDE.md && git commit -m "{message}" -- CLAUDE.md`.
 - **A point for a topic of work under way, before its spec**, on the person's stated intent — what was found or said, and what the topic is asked to decide — written to `.ledger/.cache/product/discovery/product/message-{slug}.md`, its first line the title → `topic send {work_unit} {topic} --from product --content .ledger/.cache/product/discovery/product/message-{slug}.md --slug {slug}`, then `render send-report {work_unit}.{topic} --sent {path}`, the path the send answered. Past its spec, the work's own conversation settles it.
 
-For a file shared:
-
-Load **[reference-files.md](../ledger-shared/references/reference-files.md)** and follow its instructions as written.
-
 ## A Migration Owed
 
 A call refused because this checkout owes Ledger's migration: say Ledger has been updated and its migration runs first, and ask. On the person's yes:

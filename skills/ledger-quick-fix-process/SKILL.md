@@ -89,6 +89,7 @@ Append to the build's log, `.ledger/{work_unit}/build/log.md`, as the work goes:
 - A note for later → `task note {work_unit} --file {note}`; the notes answered at the close → `quick-fix notes {work_unit} --file {path}` (**Closing**).
 - Your call on a note → `ledger ask {work_unit}.implementation`, `{"text", "by": "claude", "who_moved_whom": "none"}`; then `ledger decide {work_unit}.implementation --answers {question_id}`, `{"text", "why", "by": "claude", "who_moved_whom": "none"}`; a note filed → `inbox file {work_unit} --file {item}`, `{"kind", "text", "call"}`: its kind `idea`, `bug` or `quick-fix`, its text opening on its `# Title`, its call your decision's id.
 - A call or a question → `ledger ask {work_unit}.implementation [--task {task}]`, then `raise {work_unit}.implementation --answers {question_id} [--parks {task}]`; a decision that must change → `raise {work_unit}.implementation --replaces {decision_id} --reason {reason} [--parks {task}]`; what relied on it → `ledger affected {work_unit}`, `ledger hold`.
+- A raise's call, on stdin → `{"question", "rows": [{"key", "name", "text", "notice"}], "lean", "why", "sort": "one|several", "mechanism", "product_wide"}`; a `--fact` takes no `lean`, `why` or `sort`.
 - A question waiting → `raise waiting|draw|aside {work_unit} …`, its answer `raise answer {id} …`.
 - Earlier work → `knowledge query "{term}" …`.
 - An inbox item the work resolved → `inbox close {work_unit} {path} …`.

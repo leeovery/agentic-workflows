@@ -239,7 +239,7 @@ A line in the record of the person naming one project and one kind, such as "Air
 The project's screen of how the ask rule stands: for each kind, how often the person changed Claude's lean, how often Claude's answer would have cost the product, its rate, and whether it asks or has gone quiet, with Claude's one-answer calls on a row of their own. A new project starts from the person's answers across their other projects, at most ten answers' worth a kind. The threshold, the threshold mid-build and the care entries are set from it, and a kind or verdict found wrong is corrected in words.
 
 **the record of the person**:
-The person's preferences in words, each with its reason and examples, kept across all their projects; the care entries are part of it. Claude proposes an entry when it sees a pattern or the person states a preference, and an entry steers nothing until the person says yes. The screens call it the record of you.
+The person's preferences in words, each with its reason and examples, kept across all their projects; the care entries are part of it. An entry Claude proposes steers nothing until the person says yes. The screens call it the record of you.
 _Avoid_: profile, rules
 
 ## The product layer
@@ -285,7 +285,7 @@ A file shared with or made for a piece of work — notes, a design document, a s
 _Avoid_: import, attachment
 
 **reference file**:
-A shared file kept to be searched rather than read: one the person shares for reference, or one Claude judges is, such as a transcript, a raw export or a long chat log. It is listed with what it holds where a later sitting finds it — in the product's conversation, the product picture, and in an epic and a topic's brief the ones that bear on them — searched when a point needs it, and read properly whenever the person asks.
+A shared file kept to be searched rather than read: one the person shares for reference, or one Claude judges is, such as a transcript, a raw export or a long chat log. It is read properly whenever the person asks.
 
 **legacy files**:
 The files a piece of work had from before Ledger that the migration found no place for — old plans, agent reports, research — set aside with the work, or with the product, until each is sorted. The start menu shows them on one row, *Sort the legacy files from the migration*, and an epic's menu shows its own. Each file or folder is kept among the work's assets, everything that names it following it, or discarded; a file brought in becomes findings on the record, citing it where it was kept.

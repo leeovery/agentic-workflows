@@ -167,6 +167,6 @@ describe('the answering rule (23.3.5)', () => {
   });
 
   it('23.S16: leaves the gate the question set aside waiting for the person\'s answer', () => {
-    assert.match(rule, /\bWhere the person was at a gate, the question set it aside: it waits as \[instructions\.md\]\(instructions\.md\) says, taking their answer whenever it comes\./);
+    assert.match(rule, /\bWhere the person was at a gate, the question set it aside: it waits, taking their answer whenever it comes\./);
   });
 });
