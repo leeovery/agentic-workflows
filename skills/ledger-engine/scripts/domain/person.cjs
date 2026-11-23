@@ -7,8 +7,7 @@
 // one record across every project on the machine, never a project's
 // (16.18.6). It ships empty, no file at all, and its file goes with its last
 // entry (16.18.5). Only the engine writes it, and only on the person's yes
-// (16.13.2, 16.18.2, person-verbs.cjs); the layout hook refuses Claude's own
-// writes to it (user-files.cjs).
+// (16.13.2, 16.18.2, person-verbs.cjs).
 //
 // - Its layout (P5): the version line,
 //   `<!-- Ledger: the record of you, version N -->`; the title; a section a
@@ -56,7 +55,9 @@ const { LOCK_TIMEOUT_MS, writeTextAtomic, withStateLockFile } = require('../kern
 const { TIME, CARE_KINDS } = require('./event-fields.cjs');
 const { isId } = require('./ledger-ids.cjs');
 const { evidenceOf } = require('./trust-evidence.cjs');
-const { PERSON } = require('./user-files.cjs');
+
+/** The record of the person, in the system config directory. */
+const PERSON = 'person.md';
 
 /** @typedef {import('./event-fields.cjs').Kind} Kind */
 /** @typedef {import('./trust-evidence.cjs').Answer} Answer */
@@ -312,6 +313,6 @@ function dropCue(root, { id, name }, kind, care) {
 }
 
 module.exports = {
-  CARE, personPath, readRecord, checkWritable, changeRecord, careOf, holdsPreference, withPreference, withoutPreference, withCare, careIn,
+  CARE, PERSON, personPath, readRecord, checkWritable, changeRecord, careOf, holdsPreference, withPreference, withoutPreference, withCare, careIn,
   careEntries, recordToRead, dropCue,
 };

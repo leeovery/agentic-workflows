@@ -7,40 +7,24 @@
 // on stdin as Claude Code sends it. Ordinary commands pass silently and
 // write nothing — a git read, git's plumbing, a quoted word or a heredoc's
 // body or a comment that says "git commit", a mention of the state branch,
-// a file under the state removed by its name, a name built at run time, a
-// read of a file only the engine writes, a write to a place the layout
-// gives Claude or to a file of an engine-only name outside any state.
-// It refuses, with exit 2 and the way on: the state worktree unlocked,
-// moved or removed, `.ledger` removed, the state branch deleted here or on
-// the remote or force-pushed, by every spelling Claude writes, in a project
-// with a remote and one without (4.S7); during a build, a raw `git commit`
-// wherever it runs, and every other git command that commits past the door
-// onto a task's branch, a quick-fix's one branch among them — a merge, a
-// pull, a cherry-pick, a revert, an am or a rebase but with the flags that
-// make no commit — the tasks in flight
-// read from the conversation stdin names, each with its door (6.S11, 6.S22,
-// 12.S21), the engine's own landing remedies passing on every other branch;
-// a raw commit in a quick-fix's worktree, from any conversation, while the
-// quick-fix is in progress, its manifest read once, and every other git
-// command that makes a commit there, each with its own way through the
-// door — in a nested repository's part of the worktree too, the state found
-// beside the checkout enclosing it — and, where the text cannot say where a
-// raw commit runs, one whose text names a worktree of the engine's own, by
-// a name only it gives — one of the person's own named like it passing; a
-// raw commit in the state worktree at any time; a command naming a file at user level the layout
-// hook refuses Claude's writes to; and a command writing, by any form a
-// shell writes with, to a file in the state only the engine writes, for the
-// layout hook's reason (2.S1). Input it cannot read passes. A pass never
-// runs git, and the position is read for a git command that makes a commit
+// a file under the state removed by its name, the cache cleared, a name
+// built at run time, a read of a file only the engine writes, a write to a
+// place the layout gives Claude or to a file of an engine-only name outside
+// any state, a command naming a file at user level. It refuses, with exit 2
+// and the way on: during a build, a raw `git commit` wherever it runs, the
+// tasks in flight read from the conversation stdin names, each with its
+// door (6.S11, 6.S22, 12.S21), every other git command passing, a rebase
+// among them; a raw commit in the state worktree at any time; and a command
+// writing, by any form a shell writes with, to a file in the state only the
+// engine writes, for the layout hook's reason (2.S1). Input it cannot read
+// passes. A pass never runs git, and the position is read for a raw commit
 // alone. At the shell door each guard answers before the engine loads
 // anything but its own module, the shell guard's modules pinned one by one,
 // and the layout guard's for a write into the state (E5).
 //
 // Layer: verb, and process for the shell door. World: a project with a unit
-// and two tasks, one started in one conversation and both in another, a
-// code worktree beside it on task 1.1's branch, and a quick-fix in
-// progress with its worktree on its one branch; a project with a bare
-// remote and one without, for the state's refusals.
+// and two tasks, one started in one conversation and both in another, and a
+// code worktree beside it on task 1.1's branch.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -52,7 +36,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const {
-  ENGINE, call, ok, git, stateGit, commitAll, fixtureFrom, codeProject, cleanupFixture, initRepo, statePath, layout, STATE_DIR_NAME,
+  ENGINE, call, ok, git, stateGit, commitAll, fixtureFrom, cleanupFixture, statePath, layout, STATE_DIR_NAME,
 } = require('./engine-harness.cjs');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
 
@@ -60,14 +44,11 @@ const SCRIPTS = path.dirname(ENGINE);
 const { GUARD_VERBS } = require(path.join(SCRIPTS, 'guards.cjs'));
 const { positionPath } = require(path.join(SCRIPTS, 'domain', 'conversation.cjs'));
 const { ignoresCase } = require(path.join(SCRIPTS, 'kernel', 'state-root.cjs'));
-const lg = require(path.join(SCRIPTS, 'domain', 'landing-git.cjs'));
-const { quickFixBranch } = require(path.join(SCRIPTS, 'domain', 'landing-names.cjs'));
 
 // Whether the filesystem every folder of these tests is on ignores case.
 const IGNORES_CASE = ignoresCase(fs.realpathSync(os.tmpdir()));
 
 const UNIT = 'pay';
-const FIX = 'typo';
 const BUILDING = 'building-session';
 const PARALLEL = 'parallel-session';
 const IDLE = 'idle-session';
@@ -80,32 +61,20 @@ const TASK = [
   '## Outcome', 'A card is taken.', '', '## Acceptance scenarios', '- Given a card, when it is taken, then it is charged.', '', '## Spec reference', '§1',
 ].join('\n');
 
-/** Why each of the state's commands is refused. */
-const REFUSED = Object.freeze({
-  worktree: 'unlocking, moving or removing the state worktree (.ledger) is refused — it holds Ledger\'s state, and boot keeps it locked where it is',
-  removal: 'removing .ledger is refused — it is the state worktree, holding Ledger\'s state; a stray file in it is removed by its own name',
-  branch: 'deleting the state branch (ledger-state) is refused — it holds Ledger\'s state, which only the engine changes',
-  remote: 'deleting ledger-state on the remote is refused — it holds Ledger\'s state, and boot restores a lost local branch from it',
-  force: 'force-pushing ledger-state is refused — the engine pushes it after every commit, and a force would drop what another clone pushed; push your own branches by name',
-  stateCommit: 'a raw git commit in the state worktree (.ledger) is refused — every state commit is the engine\'s, made by the verb that changes the state',
-});
-const FIX_COMMIT = `a raw git commit is refused here — ${quickFixBranch(FIX)} is checked out for ${FIX}, a quick-fix in progress, whose work goes through the commit door alone: a fix's change with \`engine commit --paths <file>… --task ${FIX} <task> -m "<message>"\`, anything else from a checkout of your own`;
+const STATE_COMMIT = 'a raw git commit in the state worktree (.ledger) is refused — every state commit is the engine\'s, made by the verb that changes the state';
 const BUILD_COMMIT = `a raw git commit is refused while task 1.1 of ${UNIT} is in flight — the build commits through the commit door: \`engine commit --paths <file>… --task ${UNIT} 1.1 -m "<message>"\``;
-const NAMED = 'a shell command naming it is refused, and the Read tool reads it';
 
 /** The engine's modules a pass of the shell guard loads, by their paths in the scripts folder. */
 const SHELL_GUARD_LOADS = [
-  'domain/brief-names.cjs', 'domain/conversation.cjs', 'domain/landing-names.cjs', 'domain/shell-guard.cjs', 'domain/task-id.cjs', 'domain/user-files.cjs', 'engine.cjs', 'guards.cjs',
-  'kernel/call.cjs', 'kernel/code-root.cjs', 'kernel/file-stream.cjs', 'kernel/git-reads.cjs', 'kernel/git.cjs', 'kernel/isolated-git.cjs', 'kernel/manifest-io.cjs', 'kernel/manifest-schema.cjs',
-  'kernel/process.cjs', 'kernel/shell-reader.cjs', 'kernel/spawn.cjs', 'kernel/state-root.cjs', 'kernel/system-config.cjs',
+  'domain/conversation.cjs', 'domain/shell-guard.cjs', 'engine.cjs', 'guards.cjs', 'kernel/call.cjs', 'kernel/file-stream.cjs', 'kernel/git-reads.cjs', 'kernel/git.cjs',
+  'kernel/isolated-git.cjs', 'kernel/manifest-io.cjs', 'kernel/process.cjs', 'kernel/shell-reader.cjs', 'kernel/spawn.cjs', 'kernel/state-root.cjs', 'kernel/system-config.cjs',
 ];
 
 /** The engine's modules the layout guard loads for a write into the state, every shipped task driver's aside. */
 const LAYOUT_GUARD_LOADS = [
-  'domain/brief-names.cjs', 'domain/conversation.cjs', 'domain/drivers.cjs', 'domain/layout-hook.cjs', 'domain/layout.cjs', 'domain/task-id.cjs',
-  'domain/user-files.cjs', 'engine.cjs', 'guards.cjs', 'kernel/call.cjs', 'kernel/file-stream.cjs', 'kernel/git-reads.cjs', 'kernel/git.cjs',
-  'kernel/isolated-git.cjs', 'kernel/manifest-io.cjs', 'kernel/manifest-schema.cjs', 'kernel/manifest.cjs', 'kernel/process.cjs', 'kernel/reviewers.cjs', 'kernel/spawn.cjs', 'kernel/state-root.cjs',
-  'kernel/system-config.cjs', 'kernel/version.cjs',
+  'domain/drivers.cjs', 'domain/layout-hook.cjs', 'domain/layout.cjs', 'domain/task-id.cjs', 'engine.cjs', 'guards.cjs', 'kernel/call.cjs', 'kernel/git-reads.cjs',
+  'kernel/git.cjs', 'kernel/isolated-git.cjs', 'kernel/manifest-io.cjs', 'kernel/manifest-schema.cjs', 'kernel/manifest.cjs', 'kernel/process.cjs', 'kernel/reviewers.cjs',
+  'kernel/spawn.cjs', 'kernel/state-root.cjs', 'kernel/version.cjs',
 ];
 
 /** Each file in the state only the engine writes, by its path from the state, with the layout hook's reason for refusing a write to it. */
@@ -121,7 +90,6 @@ const inState = (rel) => `${STATE_DIR_NAME}/${rel}`;
 /** The unit, its first task written, the project's code committed. */
 const unitWorld = fixtureFrom('shell-guard-', (dir) => {
   createManifest(dir, UNIT, {});
-  createManifest(dir, FIX, { work_type: 'quick-fix' });
   commitAll(dir, 'init');
   ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Cards']);
   const file = path.join(templateFolder('shell-guard-files-'), 'task.md');
@@ -135,7 +103,6 @@ const TASK_BRANCH = 'feat/pay-1.1-take-a-card';
 
 /** @type {string} */ let dir;
 /** @type {string} */ let worktree;
-/** @type {string} */ let fixTree;
 /** @type {string[]} */ const scratch = [];
 
 before(() => {
@@ -143,8 +110,6 @@ before(() => {
   worktree = path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-worktree-'))), 'card');
   scratch.push(dir, path.dirname(worktree));
   git(dir, ['worktree', 'add', '-q', '-b', TASK_BRANCH, worktree]);
-  fixTree = path.join(path.dirname(worktree), FIX);
-  git(dir, ['worktree', 'add', '-q', '-b', quickFixBranch(FIX), fixTree]);
   ok(dir, ['task', 'start', UNIT, '1.1'], { env: { CLAUDE_CODE_SESSION_ID: BUILDING } });
   for (const task of ['1.1', '1.2']) ok(dir, ['task', 'start', UNIT, task], { env: { CLAUDE_CODE_SESSION_ID: PARALLEL } });
   ok(dir, ['session', 'label', UNIT], { env: { CLAUDE_CODE_SESSION_ID: PLACED } });
@@ -210,7 +175,7 @@ function writingNothing(fn) {
 }
 
 describe('ordinary commands pass silently, writing nothing', () => {
-  it('git\'s reads and plumbing, a quoted word, a heredoc\'s body or a comment saying "git commit", a mention of the state branch, a forced push of another branch, a file under the state removed by its name, the engine\'s own commit, a read of a file only the engine writes — redirected from, copied away — a write to a log or the spec, or to a file of an engine-only name outside the state — each passes during a build and out of one, and nothing is written', () => {
+  it('git\'s reads and plumbing, a quoted word, a heredoc\'s body or a comment saying "git commit", a mention of the state branch, a forced push of another branch, a file under the state removed by its name, the cache cleared, the engine\'s own commit, a read of a file only the engine writes — redirected from, copied away — a write to a log or the spec, or to a file of an engine-only name outside the state — each passes during a build and out of one, and nothing is written', () => {
     const conversation = path.join(CONFIG, 'conversations', BUILDING);
     const [manifest, ledger, spec] = [inState(layout.manifest(UNIT)), inState(layout.ledger), inState(layout.unit(UNIT, 'spec.md'))];
     const commands = [
@@ -228,6 +193,7 @@ describe('ordinary commands pass silently, writing nothing', () => {
       'git branch -d card',
       'git worktree list && git worktree remove ../card',
       'rm -rf node_modules dist && rm -rf .ledger/pay/stray.md',
+      'rm -r .ledger/.cache/x',
       'ls -la .ledger && cat .ledger/manifest.json',
       `jq .status ${manifest} && jq . < ${manifest} && wc -l < ${ledger} && grep -c found ${ledger} && head -3 ${ledger}`,
       `git -C ${STATE_DIR_NAME} diff && cat ${manifest} > held.json && cp ${manifest} ${ledger} ${os.tmpdir()} && mv held.json kept.json`,
@@ -249,85 +215,6 @@ describe('ordinary commands pass silently, writing nothing', () => {
   });
 });
 
-describe('4.S7: the state\'s refusals, in a project with a remote and one without (4.4.2, 4.4.8, 6.3.8)', () => {
-  /** @type {{main: string}[]} */
-  let projects;
-  before(() => {
-    const at = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-projects-')));
-    scratch.push(at);
-    projects = [codeProject(path.join(at, 'remote'), { remote: true, state: true }), codeProject(path.join(at, 'local'), { state: true })];
-  });
-
-  /** Each command refused with `reason`, from each project's main checkout, writing nothing. @param {string} reason @param {(main: string) => string[]} commands */
-  function refusedEverywhere(reason, commands) {
-    writingNothing(() => {
-      for (const { main } of projects) {
-        for (const command of commands(main)) assertRefused(guard(main, command), reason, `${command} — from ${main}`);
-      }
-    });
-  }
-
-  it('unlocking, moving or removing the state worktree — by its name, its path, from inside it, through `-C`', () => {
-    refusedEverywhere(REFUSED.worktree, (main) => [
-      'git worktree unlock .ledger',
-      'git worktree remove --force .ledger',
-      'git worktree move .ledger ../elsewhere',
-      `git worktree remove -f -f ${path.join(main, STATE_DIR_NAME)}/`,
-      'git -C .ledger worktree remove .',
-      'cd .ledger && git worktree unlock .',
-    ]);
-  });
-
-  it('removing .ledger — the folder, its contents, from inside it, from below it', () => {
-    refusedEverywhere(REFUSED.removal, (main) => [
-      'rm -rf .ledger',
-      'rm -r .ledger/',
-      'rm -fr .ledger/*',
-      'rm -R ./.ledger/.',
-      `rm --recursive --force ${path.join(main, STATE_DIR_NAME)}`,
-      'cd .ledger && rm -rf *',
-      'cd .ledger/pay && rm -rf ..',
-    ]);
-  });
-
-  it('deleting ledger-state locally — `branch -d`, `-D`, `--delete`, the ref deleted', () => {
-    refusedEverywhere(REFUSED.branch, () => [
-      'git branch -d ledger-state',
-      'git branch -D ledger-state',
-      'git branch --delete --force ledger-state',
-      'git -C .ledger branch -Dr ledger-state',
-      'git update-ref -d refs/heads/ledger-state',
-    ]);
-  });
-
-  it('deleting ledger-state on the remote — `--delete`, `-d`, an empty source', () => {
-    refusedEverywhere(REFUSED.remote, () => [
-      'git push origin --delete ledger-state',
-      'git push -d origin ledger-state',
-      'git push origin :ledger-state',
-      'git push origin :refs/heads/ledger-state',
-    ]);
-  });
-
-  it('force-pushing ledger-state — `-f`, `--force…`, a `+` refspec, a mirror, every branch forced, the state worktree\'s own branch forced, by no refspec or by `HEAD` or `@` there — through a chain, its setup words and git\'s global options', () => {
-    refusedEverywhere(REFUSED.force, () => [
-      'git push --force origin ledger-state',
-      'git push -fu origin ledger-state',
-      'git push --force-with-lease origin ledger-state',
-      'git push origin +ledger-state',
-      'git push origin +HEAD:refs/heads/ledger-state',
-      'git push --mirror origin',
-      'git push --all --force origin',
-      'cd .ledger && git push -f',
-      'cd .ledger && git push --force origin HEAD',
-      'git -C .ledger push -f origin @',
-      'cd .ledger && git push origin +@',
-      'git status && GIT_TRACE=1 command git -c core.pager=cat --no-pager push -f origin ledger-state',
-      'env -u GIT_DIR git --git-dir=.git push origin +ledger-state',
-    ]);
-  });
-});
-
 describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
   it('6.S11: during a build, a raw git commit in a code worktree is refused, naming the commit door\'s call for the task in flight — Claude Code\'s own message form among them', () => {
     const commands = [
@@ -346,92 +233,8 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
       `a raw git commit is refused while task 1.1 of ${UNIT}, task 1.2 of ${UNIT} are in flight — the build commits through the commit door: ${doors}`, 'two in flight');
   });
 
-  it('12.14: during a build, every git command that makes a commit past the door is refused, naming the way on and the door, which finishes a merge — a merge but with both --no-ff and --no-commit, or --abort or --quit, its --continue named the door\'s own way; a pull; a cherry-pick or revert but with --no-commit, -n, --abort or --quit; an am or a rebase but with --abort or --quit; those run, and out of a build each runs', () => {
-    const door = `\`engine commit --paths <file>… --task ${UNIT} 1.1 -m "<message>"\``;
-    const refused = (/** @type {string} */ subcommand, /** @type {string} */ way) => `git ${subcommand} is refused while task 1.1 of ${UNIT} is in flight — it makes a commit past the commit door: ${way}, ${door}`;
-    const merged = 'merge with --no-ff --no-commit, resolve what conflicts, then commit the merge through the door, which finishes it';
-    const branch = TASK_BRANCH;
-    const cases = [
-      ...['git merge --continue', `git -C ${worktree} merge --continue`, 'git add src/card.js && git merge --continue']
-        .map((command) => [command, refused('merge', 'name each file you resolved, and commit the merge through the door, which finishes it')]),
-      ...[`git merge ${branch}`, `git merge --no-edit ${branch}`, `git merge --no-ff ${branch}`, `git merge --no-commit ${branch}`].map((command) => [command, refused('merge', merged)]),
-      ...['git pull', 'git pull --rebase origin main'].map((command) => [command, refused('pull', `fetch, then ${merged}`)]),
-      ...['git cherry-pick abc123', 'git cherry-pick --continue'].map((command) => [command, refused('cherry-pick', 'pick with --no-commit, then commit through the door')]),
-      ['git revert abc123', refused('revert', 'revert with --no-commit, end the revert with --quit, which keeps its change, then commit through the door')],
-      ['git am fix.patch', refused('am', 'apply the patch with git apply, then commit through the door')],
-      ...['git rebase main', 'git rebase --continue', 'git rebase -i main'].map((command) => [command, refused('rebase', `rather than rebase, ${merged}`)]),
-    ];
-    for (const [command, refusal] of cases) assertRefused(guard(worktree, command, { session: BUILDING }), refusal, command);
-    for (const command of [
-      `git merge --no-ff --no-commit ${branch}`, `git merge --no-commit --no-ff ${branch}`, 'git merge --abort', 'git merge --quit', 'git cherry-pick --no-commit abc123', 'git cherry-pick -n abc123', 'git cherry-pick --abort',
-      'git revert -n abc123', 'git revert --quit', 'git am --abort', 'git rebase --abort', 'git rebase --quit', 'git fetch origin',
-    ]) assertPassed(guard(worktree, command, { session: BUILDING }), command);
-    for (const [command] of cases) assertPassed(guard(worktree, command, { session: IDLE }), `out of a build: ${command}`);
-  });
-
-  it('N1 (12.7.5, 6.3.7): during a build, a git command but a raw commit that makes a commit passes where it lands on no task\'s branch — the engine\'s own landing remedies as printed, on a phase\'s branch or the branch the project lands on — and is refused on a task\'s branch, or where the text cannot say where it runs; a raw commit is refused wherever it runs', () => {
-    const phase = 'feat/pay-phase-1';
-    git(dir, ['branch', phase]);
-    const scratch = path.join(lg.scratchRoot(dir), 'feat-pay-phase-1');
-    const rewrite = lg.remedy(dir, phase, lg.rewrite(phase, lg.quoted('main'), `bring ${phase} up to date with main`));
-    git(dir, ['worktree', 'add', '-q', scratch, phase]);
-    try {
-      const printed = [...rewrite.matchAll(/`([^`]+)`/g)].map(([, command]) => command).filter((command) => / rebase /.test(command));
-      const remedies = [...printed, 'git merge --ff-only origin/main'];
-      /** A command run on task 1.1's branch: its `-C` the task's worktree, or, with none, run there. @param {string} command @returns {[string, string]} */
-      const onTask = (command) => (command.startsWith('git -C ') ? [dir, command.replace(/^git -C (?:'[^']*'|\S+)/, `git -C ${worktree}`)] : [worktree, command]);
-      const door = `\`engine commit --paths <file>… --task ${UNIT} 1.1 -m "<message>"\``;
-
-      assert.strictEqual(printed.length, 2, rewrite);
-      for (const command of remedies) assertPassed(guard(dir, command, { session: BUILDING }), command);
-      assertRefused(guard(dir, 'git commit -m x', { session: BUILDING }), BUILD_COMMIT, 'a raw commit from the project\'s checkout on main');
-      for (const [cwd, command] of remedies.map(onTask)) assert.match(guard(cwd, command, { session: BUILDING }).stderr, new RegExp(`is refused while task 1\\.1 of ${UNIT} is in flight — it makes a commit past the commit door: .*${door.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\n$`), command);
-      assert.match(guard(dir, 'cd "$NOWHERE" && git merge --continue', { session: BUILDING }).stderr, /^git merge is refused while task 1\.1 of pay is in flight/, 'a folder the text cannot say');
-    } finally {
-      git(dir, ['worktree', 'remove', '--force', scratch]);
-    }
-  });
-
-  it('N1 (R14): a checkout with the unit\'s quick-fix branch out is on a task\'s branch, every task of a quick-fix committing there — a command making a commit past the door refused', () => {
-    const branch = quickFixBranch(UNIT);
-    const tree = path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-quick-fix-'))), 'fix');
-    scratch.push(path.dirname(tree));
-    git(dir, ['worktree', 'add', '-q', '-b', branch, tree]);
-    try {
-      assert.match(guard(tree, 'git merge --ff-only origin/main', { session: BUILDING }).stderr, new RegExp(`^git merge is refused while task 1\\.1 of ${UNIT} is in flight — it makes a commit past the commit door`));
-    } finally {
-      git(dir, ['worktree', 'remove', '--force', tree]);
-      git(dir, ['branch', '-q', '-D', branch]);
-    }
-  });
-
-  it('N1: a command run in a subfolder of a task\'s worktree is on the task\'s branch, the checkout read from the nearest folder up holding a .git — by the shell\'s directory, by `cd`, by `-C` — and refused', () => {
-    const nested = path.join(worktree, 'src', 'pay');
-    fs.mkdirSync(nested, { recursive: true });
-    const refusal = new RegExp(`^git pull is refused while task 1\\.1 of ${UNIT} is in flight`);
-    for (const [cwd, command] of [[nested, 'git pull'], [worktree, 'cd src/pay && git pull'], [dir, `git -C ${nested} pull`]]) {
-      assert.match(guard(cwd, command, { session: BUILDING }).stderr, refusal, `${command} from ${path.relative(worktree, cwd) || 'the worktree'}`);
-    }
-  });
-
-  it('N1: a rebase stopped on a task\'s branch, HEAD detached, is that branch\'s — its --continue refused — and a HEAD detached otherwise is no task\'s', () => {
-    const repo = initRepo(path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-rebase-'))), 'repo'));
-    scratch.push(path.dirname(repo));
-    git(repo, ['checkout', '-q', '-b', TASK_BRANCH]);
-    git(repo, ['commit', '-q', '--allow-empty', '-m', 'work']);
-    git(repo, ['checkout', '-q', '--detach']);
-    const detached = guard(repo, 'git rebase --continue', { session: BUILDING });
-    /** The guard's word on `--continue`, a rebase stopped with its state in `kind`, the folder git writes for its backend. @param {string} kind */
-    const stopped = (kind) => {
-      fs.mkdirSync(path.join(repo, '.git', kind));
-      fs.writeFileSync(path.join(repo, '.git', kind, 'head-name'), `refs/heads/${TASK_BRANCH}\n`);
-      const { stderr } = guard(repo, 'git rebase --continue', { session: BUILDING });
-      fs.rmSync(path.join(repo, '.git', kind), { recursive: true });
-      return stderr;
-    };
-
-    assertPassed(detached, 'detached, no rebase');
-    for (const kind of ['rebase-merge', 'rebase-apply']) assert.match(stopped(kind), /^git rebase is refused while task 1\.1 of pay is in flight/, kind);
+  it('during a build, a git command but a raw commit passes on a task\'s branch — a rebase by hand among them', () => {
+    assertPassed(guard(worktree, 'git rebase main', { session: BUILDING }), 'a rebase on task 1.1\'s branch');
   });
 
   it('a raw commit is found wherever the text runs one — in a loop, in a conditional, in a substitution alone, by git\'s path', () => {
@@ -477,94 +280,15 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
     assertPassed(guard(dir, 'git commit -m x', { session: NAMELESS }), 'a task, no unit');
   });
 
-  it('a raw commit where the checkout has out the one branch of a quick-fix of the project\'s in progress is refused from any conversation, naming it and the way on — the build\'s own refusal first where the conversation has a task in flight; a quick-fix completed or cancelled, a unit of another type, or one of no state here, lets it run', () => {
-    const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-fix-')));
-    scratch.push(base);
-    const ended = [['landed', 'completed'], ['dropped', 'cancelled']];
-    for (const [name, status] of ended) createManifest(dir, name, { work_type: 'quick-fix', status });
-    const trees = [...ended.map(([name]) => name), UNIT, 'elsewhere'].map((name) => {
-      const at = path.join(base, name);
-      git(dir, ['worktree', 'add', '-q', '-b', quickFixBranch(name), at]);
-      return [name, at];
-    });
-    try {
-      assertRefused(guard(fixTree, 'git commit -m x', { session: IDLE }), FIX_COMMIT, 'a conversation with no task in flight, the quick-fix\'s own between fixes among them');
-      assertRefused(guard(dir, `git -C ${fixTree} commit -am x`, { session: PLACED }), FIX_COMMIT, 'from the project, into the worktree');
-      assertRefused(guard(fixTree, 'git commit -m x', { session: BUILDING }), BUILD_COMMIT, 'a task in flight in the conversation');
-      for (const [name, at] of trees) assertPassed(guard(at, 'git commit -m x', { session: IDLE }), name);
-      assertPassed(guard(dir, 'git commit -m x', { session: IDLE }), 'the branch the project lands on');
-    } finally {
-      for (const [name, at] of trees) {
-        git(dir, ['worktree', 'remove', '--force', at]);
-        git(dir, ['branch', '-q', '-D', quickFixBranch(name)]);
-      }
-      for (const [name] of ended) fs.rmSync(statePath(dir, name), { recursive: true, force: true });
-    }
-  });
-
-  it('every other git command that makes a commit in a quick-fix\'s worktree is refused from a conversation with no task in flight, naming its own way through the door and the door — a merge but with both --no-ff and --no-commit, or --abort or --quit, its --continue; a pull; a cherry-pick or revert but with --no-commit, -n, --abort or --quit; an am or a rebase but with --abort or --quit — those making none pass, and so does each in the person\'s checkout', () => {
-    const merged = 'merge with --no-ff --no-commit, resolve what conflicts, then commit the merge through the door, which finishes it';
-    const refused = (/** @type {string} */ subcommand, /** @type {string} */ way) => FIX_COMMIT.replace('a raw git commit', `git ${subcommand}`).replace('commit door alone: ', `commit door alone: ${way}; `);
-    const cases = [
-      ['git merge main', refused('merge', merged)],
-      [`git -C ${fixTree} merge --no-commit main`, refused('merge', merged)],
-      ['git merge --continue', refused('merge', 'name each file you resolved, and commit the merge through the door, which finishes it')],
-      ['git pull', refused('pull', `fetch, then ${merged}`)],
-      ['git cherry-pick abc123', refused('cherry-pick', 'pick with --no-commit, then commit through the door')],
-      ['git revert abc123', refused('revert', 'revert with --no-commit, end the revert with --quit, which keeps its change, then commit through the door')],
-      ['git am fix.patch', refused('am', 'apply the patch with git apply, then commit through the door')],
-      ['git rebase main', refused('rebase', `rather than rebase, ${merged}`)],
-    ];
-    for (const [command, refusal] of cases) assertRefused(guard(fixTree, command, { session: IDLE }), refusal, command);
-    for (const command of ['git merge --no-ff --no-commit main', 'git merge --abort', 'git cherry-pick -n abc123', 'git revert --quit', 'git am --abort', 'git rebase --abort']) {
-      assertPassed(guard(fixTree, command, { session: IDLE }), command);
-    }
-    for (const [command] of cases.filter(([command]) => !command.includes(' -C '))) assertPassed(guard(dir, command, { session: IDLE }), `in the person's checkout: ${command}`);
-  });
-
-  it('a raw commit in a nested repository\'s part of a quick-fix\'s worktree is refused, the state found beside the checkout enclosing it — by the shell\'s directory and by `-C`, its clone holding no state, or a state of its own, a project in its own right, holding no such quick-fix', () => {
-    const clone = initRepo(path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-nested-'))), 'lib'));
-    scratch.push(path.dirname(clone));
-    git(clone, ['commit', '-q', '--allow-empty', '-m', 'the lib']);
-    const nested = path.join(fixTree, 'lib');
-    git(clone, ['worktree', 'add', '-q', '-b', quickFixBranch(FIX), nested]);
-    try {
-      assertRefused(guard(nested, 'git commit -am x', { session: IDLE }), FIX_COMMIT, 'from the nested repository');
-      assertRefused(guard(dir, `git -C ${nested} commit -am x`, { session: IDLE }), FIX_COMMIT, 'from the project, into it');
-      assertPassed(guard(clone, 'git commit -am x', { session: IDLE }), 'the clone\'s own checkout, on the branch it lands on');
-      fs.mkdirSync(path.join(clone, STATE_DIR_NAME, 'other'), { recursive: true });
-      assertRefused(guard(nested, 'git commit -am x', { session: IDLE }), FIX_COMMIT, 'the clone a project of its own');
-    } finally {
-      git(clone, ['worktree', 'remove', '--force', nested]);
-    }
-  });
-
-  it('where the text cannot say where a raw commit runs, one whose text names a worktree of the engine\'s own is refused, naming the door; one naming none, or a worktree of the person\'s own named like the engine\'s, runs', () => {
-    const named = (/** @type {string} */ name) => `WT=${path.join(dir, '.claude', 'worktrees', name)} && cd "$WT" && git commit -am x`;
-    assertRefused(guard(dir, named(`ledger-${FIX}`), { session: IDLE }), 'a raw git commit is refused here — the command names a worktree of Ledger\'s own, and its text cannot say where it runs: a quick-fix\'s work goes through the commit door alone, a fix\'s change with `engine commit --paths <file>… --task <unit> <task> -m "<message>"`, anything else from a checkout of your own', named(`ledger-${FIX}`));
-    assertPassed(guard(dir, 'cd "$WT" && git commit -am x', { session: IDLE }), 'naming none');
-    assertPassed(guard(dir, named('ledger-export'), { session: IDLE }), 'the person\'s own');
-  });
-
-  it('a raw commit with no task in flight reads one manifest, the quick-fix\'s the checkout\'s branch names, once however many commits the command holds, and none where its branch names no quick-fix', (t) => {
-    const reads = t.mock.method(fs, 'readFileSync');
-    const manifestReads = (/** @type {string} */ cwd) => {
-      reads.mock.resetCalls();
-      guard(cwd, 'git commit -m a; git commit --amend --no-edit', { session: IDLE });
-      return reads.mock.calls.filter(({ arguments: [file] }) => String(file).endsWith('manifest.json')).map(({ arguments: [file] }) => path.relative(statePath(dir), String(file)));
-    };
-    assert.deepStrictEqual([manifestReads(fixTree), manifestReads(dir), manifestReads(worktree)], [[layout.manifest(FIX)], [], []]);
-  });
-
   it('in the state worktree a raw commit is refused at any time — from inside it, by `cd` or `pushd`, by `popd` back into it, by `-C` after `-C`, by `--work-tree` or `--git-dir` — and one beside it, or a subshell\'s `cd` left behind, or a `popd` out of it, is not', () => {
     const state = path.join(dir, STATE_DIR_NAME);
-    assertRefused(guard(state, 'git commit -am x'), REFUSED.stateCommit, 'from inside it');
+    assertRefused(guard(state, 'git commit -am x'), STATE_COMMIT, 'from inside it');
     assertRefused(guard(dir, 'git commit -am x', { session: BUILDING }), BUILD_COMMIT, 'during a build, the build\'s refusal beside it');
     for (const command of [
       'cd .ledger && git add -A && git commit -m x', 'pushd .ledger && git commit -m x', `cd .ledger && pushd ${os.tmpdir()} && popd && git commit -m x`,
       'git -C .ledger commit -m x', `git -C ${os.tmpdir()} -C ${state} commit`, 'git --work-tree=.ledger commit', 'git --git-dir .ledger/.git commit',
     ]) {
-      assertRefused(guard(dir, command), REFUSED.stateCommit, command);
+      assertRefused(guard(dir, command), STATE_COMMIT, command);
     }
     for (const command of ['git commit -m x', 'git -C .ledger log -1', 'cd .ledger && git status', '(cd .ledger && git status) && git commit -m x', 'pushd .ledger && popd && git commit -m x']) {
       assertPassed(guard(dir, command), command);
@@ -584,40 +308,15 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
   });
 });
 
-describe('the files at user level the layout hook refuses, by their names (6.5.12, 16.13.2)', () => {
-  const briefs = path.join(CONFIG, 'conversations', BUILDING, 'briefs');
-
-  it('a command naming a conversation\'s briefs, the folder or a file in it, the brief hook\'s refusals, the one-decision check\'s log or the trust log — read or written, by its path, from its folder, through `~`, as a glob — is refused with the layout hook\'s reason and the way on', () => {
-    const brief = (/** @type {string} */ name) => `a brief a conversation issued (${name}) changes only through the engine's commands — ${NAMED}`;
-    const trustLog = `the trust log (trust.jsonl) changes only through the engine's commands — ${NAMED}`;
-    const cases = [
-      [`cat ${path.join(briefs, 'b1.md')}`, brief('b1.md')],
-      [`echo "Do it differently." > ${path.join(briefs, 'b1.md')}`, brief('b1.md')],
-      [`ls ${path.join(CONFIG, 'conversations', '*', 'briefs', '*.json')}`, brief('*.json')],
-      [`rm -rf ${briefs}`, `a conversation's briefs (briefs/) change only through the engine's commands — ${NAMED}`],
-      [`echo '{}' >> ${path.join(CONFIG, 'brief-refusals.jsonl')}`, `the brief hook's refusals (brief-refusals.jsonl) changes only through the engine's commands — ${NAMED}`],
-      [`echo '{}' >> ${path.join(CONFIG, 'decision-checks.jsonl')}`, `the one-decision check's log (decision-checks.jsonl) changes only through the engine's commands — ${NAMED}`],
-      [`tail -3 ${path.join(CONFIG, 'trust.jsonl')}`, trustLog],
-      [`cd ${CONFIG} && sed -i '' 1d trust.jsonl`, trustLog],
-    ];
-    const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-home-')));
-    scratch.push(home);
-    writingNothing(() => {
-      for (const [command, reason] of cases) assertRefused(guard(dir, command), reason, command);
-      const res = guard(dir, 'cat ~/.config/ledger/trust.jsonl', { env: { HOME: home, LEDGER_CONFIG_DIR: undefined } });
-      assertRefused(res, trustLog, 'through `~`');
-    });
-  });
-
-  it('the rest of the system config directory passes, and so does a file of those names anywhere else, and Claude Code\'s transcripts and subagents\' records', () => {
-    for (const command of [
-      `cat ${path.join(CONFIG, 'conversations', BUILDING, 'position.json')}`,
-      `ls ${path.join(CONFIG, 'conversations', BUILDING)}`,
-      `cat ${path.join(CONFIG, 'nested', 'trust.jsonl')} ${path.join(CONFIG, 'briefs', 'b1.md')}`,
-      'cat trust.jsonl person.md briefs/b1.md',
-      `ls ${path.join(CLAUDE, 'projects', '-Users-me-app', 'memory')}`,
+describe('a command naming a file at user level passes', () => {
+  it('the trust log, a conversation\'s briefs, the brief hook\'s refusals, the one-decision check\'s log, Claude Code\'s transcripts and subagents\' records — read or written', () => {
+    const briefs = path.join(CONFIG, 'conversations', BUILDING, 'briefs');
+    const commands = [
+      `tail -3 ${path.join(CONFIG, 'trust.jsonl')} && cat ${path.join(briefs, 'b1.md')} ${path.join(CONFIG, 'brief-refusals.jsonl')} ${path.join(CONFIG, 'decision-checks.jsonl')}`,
       `grep -l card ${path.join(CLAUDE, 'projects', '-Users-me-app', '*.jsonl')} ${path.join(CLAUDE, 'projects', '-Users-me-app', 'sess-1', 'subagents', 'agent-a1.meta.json')}`,
-    ]) assertPassed(guard(dir, command), command);
+      `echo "Do it differently." > ${path.join(os.tmpdir(), 'shell-guard-none', 'briefs', 'b1.md')}`,
+    ];
+    for (const command of commands) assertPassed(guard(dir, command), command);
   });
 });
 
@@ -742,7 +441,7 @@ describe('the shell door', () => {
     }
   });
 
-  it('E5: the shell guard loads these modules of the engine\'s and no other, a commit\'s read of the position and of a quick-fix\'s manifest, and a write outside the state among them', () => {
+  it('E5: the shell guard loads these modules of the engine\'s and no other, a commit\'s read of the position and a write outside the state among them', () => {
     const loaded = loadedBy([ENGINE, 'shell', 'guard'], hookInput(dir, 'git status > status.txt && git commit -m x'));
     assert.deepStrictEqual(loaded.map((file) => path.relative(SCRIPTS, file)), SHELL_GUARD_LOADS);
   });
@@ -754,7 +453,7 @@ describe('the shell door', () => {
     assert.deepStrictEqual(loaded.map((file) => path.relative(SCRIPTS, file)), [...LAYOUT_GUARD_LOADS, ...drivers].sort());
   });
 
-  it('the guard never runs git — passing from the project or the state worktree, a commit\'s read of the position and a write into the state\'s layout read among them, and refusing a commit in a quick-fix\'s worktree', () => {
+  it('the guard never runs git — passing from the project or the state worktree, a commit\'s read of the position and a write into the state\'s layout read among them, and refusing a commit in the state worktree', () => {
     const bin = path.join(out, 'bin');
     const ran = path.join(out, 'git-ran');
     fs.mkdirSync(bin);
@@ -762,7 +461,7 @@ describe('the shell door', () => {
     const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` };
     const runs = [
       [dir, 'git status && git commit -m x && git push origin card && rm -rf .ledger/pay/stray.md', 0],
-      [fixTree, 'git commit -am x', 2],
+      [path.join(dir, STATE_DIR_NAME), 'git commit -am x', 2],
       [path.join(dir, STATE_DIR_NAME), 'git log -1 && git push origin HEAD && ls', 0],
     ];
     for (const [cwd, command, status] of runs) {

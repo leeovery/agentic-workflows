@@ -100,8 +100,16 @@ const { ENTRY_SEPARATOR, learnedGate, keepsShowing } = require('./learned-gates.
 const { gateShown, gateStepped, gateSurfaceAnnounced } = require('./projections/surfaces.cjs');
 const { endShowing } = require('./showing-hold.cjs');
 const { record } = require('./trust-log.cjs');
-const { SHOWN, RAISE_SHOWN, PRESSED } = require('./user-files.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
+
+/** The gate a conversation was shown, in its folder. */
+const SHOWN = 'gate-shown.json';
+
+/** The raises a conversation was drawn, sealed (raise.cjs). */
+const RAISE_SHOWN = 'raise-shown.json';
+
+/** The gate mod's record of its last press (conversation.cjs). */
+const PRESSED = 'pressed.json';
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 /** @typedef {import('./projections/surfaces.cjs').ShownOption} ShownOption */

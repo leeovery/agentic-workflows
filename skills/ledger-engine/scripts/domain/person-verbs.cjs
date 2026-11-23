@@ -14,7 +14,7 @@
 //   why and its examples, each one line — to keep in the record, or, with
 //   `--drop`, to drop from it (16.18.2, 16.5.4). It draws the proposal
 //   screen (projections/person.cjs) and holds the proposal in the
-//   conversation's folder (`person-proposal.json`, user-files.cjs) in place
+//   conversation's folder (`person-proposal.json`) in place
 //   of any held before, until the answer. Nothing else reads it: a proposal
 //   steers nothing until the yes (16.S54). It refuses a proposal of another
 //   shape — both entries, or neither; a care entry naming no kind one names,
@@ -66,7 +66,9 @@ const { projectName } = require('./state-checks.cjs');
 const { projectId, modelOf, record } = require('./trust-log.cjs');
 const { countsOf, stateOf } = require('./trust-counts.cjs');
 const { trustSettings } = require('./trust-settings.cjs');
-const { PROPOSAL } = require('./user-files.cjs');
+
+/** A conversation's proposal for the record of the person, held for the person's yes. */
+const PROPOSAL = 'person-proposal.json';
 const {
   CARE, readRecord, checkWritable, changeRecord, careOf, careIn, holdsPreference, withPreference, withoutPreference, withCare,
 } = require('./person.cjs');

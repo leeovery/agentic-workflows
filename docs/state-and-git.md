@@ -24,11 +24,11 @@ Boot also makes two small commits of its own on your code, on whatever branch yo
 
 ## What protects it
 
-The state worktree is locked when it is created, with the reason "Ledger state, do not remove". A hook Ledger installs in the project's Claude Code settings, before every shell command, refuses each of the ways a session could lose it: unlocking or removing the worktree, deleting the folder, deleting the branch locally or on the remote, force-pushing it, committing in the state worktree by hand, and writing by shell to a file only the engine writes, such as a manifest or the ledger. Reading any of them passes. A second hook, before every file write, refuses an edit to those files, and any write under `.ledger/` outside the layout. Both hold whether or not Ledger's Claude Code mod runs.
+The state worktree is locked when it is created, with the reason "Ledger state, do not remove". A hook Ledger installs in the project's Claude Code settings, before every shell command, refuses committing in the state worktree by hand, and writing by shell to a file only the engine writes, such as a manifest or the ledger. Reading any of them passes. A second hook, before every file write, refuses an edit to those files, and any write under `.ledger/` outside the layout. Both hold whether or not Ledger's Claude Code mod runs.
 
 The ledger itself is checked on every read: on disk it must begin, byte for byte, with what the state branch last committed. Anything changed, removed or reordered stops the engine, showing the line it found.
 
-On GitHub, setup offers a rule on the repository refusing the state branch's deletion and any push to it that isn't a fast-forward, for anything run outside Claude Code, and sets it only on your yes. Without a remote, the lock and the hooks are the protection.
+On GitHub, setup offers a rule on the repository refusing the state branch's deletion and any push to it that isn't a fast-forward, for anything run outside Claude Code, and sets it only on your yes. Without a remote, the lock is the protection.
 
 Every git call the engine makes in the state worktree runs with hooks off and git's inherited environment cleared, so a hook in your code repository never fires on a state commit.
 

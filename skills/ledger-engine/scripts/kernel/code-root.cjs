@@ -20,8 +20,7 @@
 // folder up it holds (`outsideLayouts`), so a verb that takes the layout
 // apart never carries on in the folder it took away (engine.cjs); a file
 // there has its copy in the checkout at the same place (`checkoutPath`),
-// the engine's own among them (kernel/call.cjs); and a text naming a path
-// into one is told by the same names (`namesLayout`, domain/shell-guard).
+// the engine's own among them (kernel/call.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -65,19 +64,6 @@ function engineNamed(checkout, name) {
   if (dot > 0 && /** @type {readonly string[]} */ (LAYOUT_KINDS).includes(name.slice(0, dot))) return true;
   const unit = ONE_LINE.exec(name)?.[1] ?? name;
   return fs.existsSync(path.join(checkout, STATE_DIR_NAME, unit, 'manifest.json'));
-}
-
-/** A path into one of the engine's own layouts as a text names it, the layout's name after the prefix. */
-const LAYOUT_PATH = new RegExp(`${LAYOUTS.replace('.', '\\.')}/${LAYOUT}([A-Za-z0-9._-]+)`, 'g');
-
-/**
- * Whether `text` names a path into one of the engine's own layouts of the
- * main checkout `checkout` (`engineNamed`) — a worktree of the person's own
- * named like one none.
- * @param {string} checkout @param {string} text
- */
-function namesLayout(checkout, text) {
-  return [...text.matchAll(LAYOUT_PATH)].some(([, name]) => engineNamed(checkout, name));
 }
 
 /**
@@ -128,4 +114,4 @@ function checkoutPath(file) {
   return layout === null ? null : path.join(layout.checkout, ...layout.below);
 }
 
-module.exports = { LAYOUTS, LAYOUT, LAYOUT_KINDS, codeRoot, outsideLayouts, checkoutPath, namesLayout };
+module.exports = { LAYOUTS, LAYOUT, LAYOUT_KINDS, codeRoot, outsideLayouts, checkoutPath };

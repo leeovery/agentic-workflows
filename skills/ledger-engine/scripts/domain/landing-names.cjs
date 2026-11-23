@@ -113,18 +113,11 @@ function taskOfBranch(unit, branch) {
 }
 
 const QUICK_FIX = 'fix/';
-const QUICK_FIX_UNIT = new RegExp(`^${KEBAB_SLUG}$`);
 
 /** A quick-fix's one branch. @param {string} unit @returns {string} */
 function quickFixBranch(unit) {
   assertUnit(unit);
   return `${QUICK_FIX}${unit}`;
-}
-
-/** The unit whose quick-fix branch `branch` would be, or null where it names none. @param {string} branch @returns {string|null} */
-function quickFixOfBranch(branch) {
-  const unit = branch.startsWith(QUICK_FIX) ? branch.slice(QUICK_FIX.length) : '';
-  return QUICK_FIX_UNIT.test(unit) ? unit : null;
 }
 
 /** Whether a branch is one a task of the unit's commits on: a task's own, or a quick-fix's one branch. @param {string} unit @param {string} branch @returns {boolean} */
@@ -239,4 +232,4 @@ function landingOf(ref, message) {
   return null;
 }
 
-module.exports = { slugOf, taskBranch, phaseBranch, unitBranch, quickFixBranch, quickFixOfBranch, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, unitLanding, bringUpSubject, mergedThrough, quickFixMerged, landingOf, tasksOfMessage };
+module.exports = { slugOf, taskBranch, phaseBranch, unitBranch, quickFixBranch, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, unitLanding, bringUpSubject, mergedThrough, quickFixMerged, landingOf, tasksOfMessage };

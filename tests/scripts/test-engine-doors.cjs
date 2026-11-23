@@ -12,12 +12,7 @@
 // layout; a raw `git commit` during a build, by the hook before Bash, and a
 // code commit naming no task, by the commit door, where `commit --task`
 // lands. Each door's own suite proves its details; this one holds the table
-// whole. The contracts no verb lands through are proven in their doors'
-// suites alone: the files at user level only the engine writes, refused to
-// Claude's Write and Edit (test-engine-layout-hook.cjs) and to a shell
-// command naming them (test-engine-shell-guard.cjs), and the state worktree
-// and its branch, unlocked, removed, deleted or force-pushed by a shell
-// command (test-engine-shell-guard.cjs, 4.S7).
+// whole.
 //
 // Layer: verb. World: a unit with a task written, its discussion under way
 // and its code committed; the task started in one conversation, its branch

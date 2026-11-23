@@ -30,7 +30,7 @@ const { TASK_VERBS } = require('../../skills/ledger-engine/scripts/domain/task-v
 const { POINTER, ROLES, pointerOf } = require('../../skills/ledger-engine/scripts/domain/brief-names.cjs');
 const { storeBrief } = require('../../skills/ledger-engine/scripts/domain/brief.cjs');
 const { newId } = require('../../skills/ledger-engine/scripts/domain/ledger-ids.cjs');
-const { BOOTED } = require('../../skills/ledger-engine/scripts/domain/user-files.cjs');
+const { BOOTED } = require('../../skills/ledger-engine/scripts/domain/boot-stamp.cjs');
 
 const ROOT = path.join(__dirname, '..', '..');
 

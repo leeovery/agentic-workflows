@@ -63,11 +63,11 @@
 //   pull request's head left after its merge by hand is never brought in —
 //   fast-forwarded to where the branch is behind it, else merged with it
 //   where it holds a change the branch
-//   lacks, refused naming the way on where the two conflict: the merge the
-//   hook before Bash passes, in the repository that conflicts, finished
+//   lacks, refused naming the way on where the two conflict: a merge with
+//   `--no-ff --no-commit`, in the repository that conflicts, finished
 //   through the door under the task of the unit's in flight in the
-//   conversation, else under a one-line task of its own (shell-guard.cjs;
-//   landing-names.cjs) — so no push drops a commit of the host's; then
+//   conversation, else under a one-line task of its own (landing-names.cjs)
+//   — so no push drops a commit of the host's; then
 //   cut again where a person's merge of the pull request by hand, by any
 //   method, left the branch holding commits that have landed past the
 //   branch it lands on as the host has it (`quickFixLanding`): cut from that
@@ -305,8 +305,8 @@ function broughtIn(held, at) {
 
 /**
  * The way on for the host's head conflicting with the branch (the
- * header's): merged into the branch in the quick-fix's worktree, with the
- * merge the hook before Bash passes, finished through the door — under the
+ * header's): merged into the branch in the quick-fix's worktree, with a
+ * merge made with `--no-ff --no-commit`, finished through the door — under the
  * task of the unit's in flight in the calling conversation, else under a
  * one-line task of its own (landing-names.cjs).
  * @param {RepoLanding} held @param {string} head

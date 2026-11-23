@@ -55,7 +55,7 @@ const { SIDE, AUTH_MAP, oldProject, migratedProject } = require('./migration-seq
 const { listOld, audit } = require('./migration-audit.cjs');
 const { newId } = require('../../skills/ledger-engine/scripts/domain/ledger-ids.cjs');
 const { CARRIED_SESSION } = require('../../skills/ledger-engine/scripts/domain/ledger-events.cjs');
-const { DECISION_CHECKS } = require('../../skills/ledger-engine/scripts/domain/user-files.cjs');
+const { DECISION_CHECKS } = require('../../skills/ledger-engine/scripts/domain/ledger-one-decision.cjs');
 
 const AUDIT = path.join(__dirname, 'migration-audit.cjs');
 // The link dead before the migration, in auth's discussion.
