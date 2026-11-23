@@ -261,7 +261,7 @@ _Avoid_: promote
 What the person has said of the product as a whole, in any conversation — a principle, a direction, who it is for, a constraint, a lean — kept as their input beside the directions they dropped, each with why. Every topic's opening reads them beside the product record, which speaks where both do, and a view is decided in the first topic it bears on.
 
 **product picture**:
-The product's conversation's one view of where the product stands, rewritten in place as the talk moves on: the log is the journey, the picture where things stand now. Each point in it is the person's view, a point from before, an open question with the leans on it, or a pointer to the product record once a discussion has decided it; a section of its own lists the shared files not read in full. It decides nothing and holds the product's level, what no started work holds yet, thinning as work starts; a return to the product's conversation opens from it.
+The product's conversation's one view of where the product stands: the log is the journey, the picture where things stand now. It decides nothing, and thins as work starts; a return to the product's conversation can open from it.
 _Avoid_: the current model, the product summary
 
 **backlog**:

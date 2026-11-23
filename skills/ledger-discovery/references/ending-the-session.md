@@ -4,7 +4,7 @@
 
 ---
 
-Re-read the log against the conversation and add what is missing, and in the product's conversation bring the picture up to date. In an epic's discovery, a session in which you changed the topics or their order beyond what the person asked for ends on **Approving the Map** instead, which closes it.
+In an epic's discovery, a session in which you changed the topics or their order beyond what the person asked for ends on approve the map instead, which closes it.
 
 ## The Roadmap Items
 

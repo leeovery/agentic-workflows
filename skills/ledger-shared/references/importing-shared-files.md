@@ -1,6 +1,6 @@
 # Importing Shared Files
 
-*Shared reference. Loaded by `ledger-discovery`'s `spikes-and-shared-files.md`, by `ledger-discussion-process` and by `ledger-investigation-process`.*
+*Shared reference. Loaded by `ledger-discovery`, by `ledger-discussion-process` and by `ledger-investigation-process`.*
 
 ---
 
