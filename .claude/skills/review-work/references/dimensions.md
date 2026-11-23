@@ -25,10 +25,14 @@ shipped silently non-compliant work.
   engine.
 - Skill file structure — the backbone, the `## Instructions` load directive
   pointing at `framework.md`, load directive format, reference file naming.
-- Prose economy — the exact words to describe the task perfectly. WHY cut
-  where WHAT suffices, and no instruction, path, or distinction the agent
-  needs removed in the name of brevity.
-- Presentation register, and the line between it and stored artifact prose.
+- Prescription — a phase skill fences its field (which phase and piece of
+  work, what it is for, its tools, what it records, its verbs, its hard
+  edges) and gives its corridors' moves. Outside a corridor, a line telling
+  Claude how to converse, the order a conversation takes, its pacing or
+  when it writes the record is a finding, and so is a counter-rule added to
+  fix a behaviour: the fix deletes the prose that caused it.
+- Prose economy — deletion is the default. WHY cut where WHAT suffices; a
+  sentence stays only where Claude would get the work wrong without it.
 - A tool a driver wraps is named **only** in the places CLAUDE.md's Tool
   Names allows. Anywhere else is a violation.
 - No convention invented for the occasion. This project is mature and
