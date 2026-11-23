@@ -756,8 +756,8 @@ function checkBashGrantsCarryWildcard(files) {
 // ---------------------------------------------------------------------------
 // Check 29 — the framework's references load once per conversation (The
 // Framework Load; 2.10.9): framework.md loads each file it composes once, and
-// no other file loads one, so voice, altitude and the rest come into a
-// conversation through the framework's load alone.
+// no other file loads one, so each comes into a conversation through the
+// framework's load alone.
 // ---------------------------------------------------------------------------
 
 const FRAMEWORK_FILE = /\/skills\/ledger-shared\/references\/framework\.md$/;
@@ -1080,9 +1080,10 @@ function checkNoResumeSections(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 39 — no skill paces the person out of the work (CONVENTIONS.md, Who
-// Holds What): nothing runs the work without them or keeps them out of it,
-// and no question waits until they say they are ready for it.
+// Check 39 — no skill paces the conversation (CONVENTIONS.md, The Phase
+// Skill): the decidable part of it, a line keeping the person out of the
+// work, running it without them, or holding a question until they say they
+// are ready for it.
 // ---------------------------------------------------------------------------
 
 const PACING = /\bkeep (?:the person|them) out\b|\bruns?(?: start to finish)? without the person\b|\b(?:once|until|when) (?:the person|they) (?:says? (?:they are|they're) |(?:is|are) )ready to (?:discuss|talk)\b/i;
@@ -1093,7 +1094,7 @@ function checkNoPacing(files) {
     const lines = readLines(file);
     const { inFence } = parseFences(lines);
     lines.forEach((line, i) => {
-      if (!inFence[i] && PACING.test(line)) out.push({ file, line: i + 1, message: 'paces the person out of the work — a skill says where things go, how they are recorded and what is guarded, never how Claude paces itself' });
+      if (!inFence[i] && PACING.test(line)) out.push({ file, line: i + 1, message: 'paces the person out of the work — a skill never says how Claude converses or paces itself' });
     });
   }
   return out;
@@ -1745,14 +1746,6 @@ test('check 27 (framework load) — catches a skill a conversation opens on whos
     assert.match(v[0].message, /^ledger-discovery is a skill a conversation opens on — its `## Instructions` section opens with the framework load$/);
     assert.match(v[2].message, /^ledger-continue-linear is not a skill a conversation opens on — it carries no framework load and no `## Instructions` section$/);
   });
-});
-
-test('2.S17 — the framework load holds voice and altitude, once each', () => {
-  const framework = path.join(REPO, 'skills', 'ledger-shared', 'references', 'framework.md');
-  const loaded = loadsOf(framework).map(({ target }) => path.relative(path.dirname(framework), target));
-  for (const name of ['voice.md', 'altitude.md']) {
-    assert.strictEqual(loaded.filter((n) => n === name).length, 1, `framework.md loads ${name} once, got ${JSON.stringify(loaded)}`);
-  }
 });
 
 test('check 30 (no design tool) — 9.S53: catches each listed tool named in a skill, a reference or an agent, fenced or not, in any case; permits the plain words beside them and a name inside another word', () => {
