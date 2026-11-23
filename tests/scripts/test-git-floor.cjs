@@ -42,7 +42,7 @@ describe('the git floor', () => {
   });
 
   for (const [rel, line] of [
-    ['README.md', /^\*\*Setup:\*\* .*\bgit (\d+\.\d+\.\d+)\+/m],
+    ['README.md', /^Needs .*\bgit (\d+\.\d+\.\d+)\+/m],
     ['docs/configuration.md', /^Ledger needs .*\bgit (\d+\.\d+\.\d+) or newer/m],
     ['docs/contributing.md', /The engine needs git (\d+\.\d+\.\d+) or newer/],
   ]) {
