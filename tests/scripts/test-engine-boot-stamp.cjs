@@ -169,9 +169,10 @@ describe('the refusal until boot has run (18.S74)', () => {
 });
 
 describe('what goes through before boot has run (BOOT_EXEMPT)', () => {
-  it('the table names boot and what its stops run, the hooks\' and the gate mod\'s targets, the capture line and its retry, the banner the bare command opens on, and the walkthrough\'s and help\'s screens — nothing else', () => {
+  it('the table names boot and what its stops run, the hooks\' and the gate mod\'s targets, the capture line and its retry, the banner the bare command opens on, the walkthrough\'s and help\'s screens, and `help`, a verb\'s usage — nothing else', () => {
     assert.deepStrictEqual(BOOT_EXEMPT, {
       boot: '*',
+      help: '*',
       'state-merge': ['pick'],
       render: [
         'git-floor-stop', 'repo-stop', 'state-lost-gate', 'migration-guard-stop', 'migration-checks-stop', 'state-merge-gate', 'migration-taken-stop', 'directive-arrival', 'directive-carry-on', 'migrations-applied', 'migration-gate', 'banner',

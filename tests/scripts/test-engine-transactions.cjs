@@ -514,7 +514,7 @@ describe('work-unit completion — finish\'s, in process', () => {
   });
 
   it('is no CLI verb — a unit completes at finish\'s yes — and refuses an unknown work unit', () => {
-    const usage = /^Usage: engine workunit <create\|cancel\|reactivate\|pivot\|absorb\|move\|split\|retire\|position> …$/;
+    const usage = /^Usage: engine workunit <create\|cancel\|reactivate\|pivot\|absorb\|move\|split\|retire\|position> … — its forms: engine help workunit$/;
     assert.match(engineFails(dir, ['workunit', 'complete', 'auth-flow', '-m', 'msg']).error, usage);
     assert.strictEqual(readManifest(dir, 'auth-flow').status, 'in-progress');
     assert.match(engineFails(dir, ['workunit', 'finish', 'auth-flow']).error, usage);
