@@ -24,15 +24,25 @@ shipped silently non-compliant work.
   structure, the zero output rule, gates entered and left through the
   engine.
 - Skill file structure — the backbone, the `## Instructions` load directive
-  pointing at `framework.md`, load directive format, reference file naming.
+  pointing at `framework.md`, load directive format, reference file naming,
+  inline or reference by the two weights, references one level deep, a
+  contents list on a reference over 100 lines, standing guidance in
+  SKILL.md.
 - Prescription — a phase skill fences its field (which phase and piece of
-  work, what it is for, its tools, what it records, its verbs, its hard
-  edges) and gives its corridors' moves. Outside a corridor, a line telling
-  Claude how to converse, the order a conversation takes, its pacing or
-  when it writes the record is a finding, and so is a counter-rule added to
-  fix a behaviour: the fix deletes the prose that caused it.
-- Prose economy — deletion is the default. WHY cut where WHAT suffices; a
-  sentence stays only where Claude would get the work wrong without it.
+  work, what it is for and where it sits, its tools, what it records, its
+  verbs, its hard edges) and gives its corridors' moves. Outside a
+  corridor, a line telling Claude how to converse, the order a conversation
+  takes, its pacing or when it writes the record is a finding, and so is a
+  counter-rule added to fix a behaviour: the fix deletes the prose that
+  caused it.
+- Explanation — a skill explains what Claude cannot know untold: what the
+  phase is and where it sits, what each record, tool and door is for and
+  who reads it. A missing explanation is a finding as much as a prescribed
+  method; a method gets no why.
+- Removal — how-to and voice are cut freely. A removed engine instruction,
+  route, payload or corridor move is a finding unless every engine feature
+  it fed still has a caller (the removal check). A door line is complete:
+  form, stdin payload, quoting, and any answer field the skill uses or says.
 - A tool a driver wraps is named **only** in the places CLAUDE.md's Tool
   Names allows. Anywhere else is a violation.
 - No convention invented for the occasion. This project is mature and
