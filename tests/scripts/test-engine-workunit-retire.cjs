@@ -111,7 +111,7 @@ describe('a cross-cutting unit leaves the registry (21.7.3, 21.7.5, 19.6.7)', ()
     assert.ok(!fs.existsSync(statePath(dir, layout.cache('caching'))), 'its cache purged');
   });
 
-  it('its legacy files go among the product\'s, to be sorted there, its log\'s links to one and to their folder following them, and a redo rebasing neither again', () => {
+  it('its legacy files go among the product\'s, its log\'s links to one and to their folder following them, and a redo rebasing neither again', () => {
     const log = layout.topic('caching', 'invalidation', 'log.md');
     writeState(dir, layout.assets('caching', 'legacy', 'notes.md'), '# Notes\n');
     writeState(dir, log, `${fs.readFileSync(statePath(dir, log), 'utf8')}\nSee [the notes](../../assets/legacy/notes.md), in [the legacy](../../assets/legacy/).\n`);
@@ -120,7 +120,7 @@ describe('a cross-cutting unit leaves the registry (21.7.3, 21.7.5, 19.6.7)', ()
     run(RETIRE);
 
     const notes = layout.productAssets('legacy', 'caching', 'notes.md');
-    assert.deepStrictEqual(run(['asset', 'legacy', 'product']).files, [{ path: notes, named: 1, dead: 1 }]);
+    assert.strictEqual(fs.readFileSync(statePath(dir, notes), 'utf8'), '# Notes\n');
     assert.ok(!fs.existsSync(statePath(dir, layout.productAssets('caching', 'assets', 'legacy'))), 'nothing of them left in the kept folder');
     assert.match(fs.readFileSync(statePath(dir, layout.productAssets(log)), 'utf8'), /See \[the notes\]\(\.\.\/\.\.\/\.\.\/legacy\/caching\/notes\.md\), in \[the legacy\]\(\.\.\/\.\.\/\.\.\/legacy\/caching\/\)\.\n$/);
   });

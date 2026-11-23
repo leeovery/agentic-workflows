@@ -357,7 +357,6 @@ describe('every screen names a topic through one helper', () => {
       'projections/manage.cjs › manageUnitScreen › manifest.name',
       'projections/manage.cjs › unitRowOn › manifest.name',
       'projections/start-menu.cjs › endedReceipt › name',
-      'projections/start-menu.cjs › legacyWhere › places[0].place',
       'projections/start-menu.cjs › unitRow › name',
       'projections/transactions.cjs › absorbReceipt › epic',
       'projections/transactions.cjs › absorbSummary › epic',

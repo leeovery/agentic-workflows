@@ -288,7 +288,7 @@ _Avoid_: import, attachment
 A shared file kept to be searched rather than read: one the person shares for reference, or one Claude judges is, such as a transcript, a raw export or a long chat log. It is read properly whenever the person asks.
 
 **legacy files**:
-The files a piece of work had from before Ledger that the migration found no place for — old plans, agent reports, research — set aside with the work, or with the product, until each is sorted. The start menu shows them on one row, *Sort the legacy files from the migration*, and an epic's menu shows its own. Each file or folder is kept among the work's assets, everything that names it following it, or discarded; a file brought in becomes findings on the record, citing it where it was kept.
+The files a piece of work had from before Ledger that the migration found no place for — old plans, agent reports, research — kept with the work, or with the product, for Claude to look in when the work needs them.
 
 **mail**:
 The messages waiting for a discussion or investigation: from another topic of the same epic, from a later phase that met a question only that conversation can settle, or from a conversation outside the work that found something bearing on it. Its next session raises each one, and it cannot close while one waits; the menus show it as *mail waiting*.

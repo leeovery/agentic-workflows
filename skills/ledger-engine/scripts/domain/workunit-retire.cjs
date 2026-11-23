@@ -10,7 +10,7 @@
 //   `.product/assets/{unit}/` — its manifest, the specs the move kept as its
 //   assets, its topics' logs — as reference, nothing of it deleted, but its
 //   legacy files, which move to `.product/assets/legacy/{unit}/`, among the
-//   product's to be sorted (legacy-files.cjs). Every document's link to
+//   product's. Every document's link to
 //   anything the moves took follows it, the unit's own documents rebased
 //   from where they sat (follow-moves.cjs): its links out of the folder,
 //   and every other document's into it. It comes

@@ -7,8 +7,7 @@
 // that says something, with the trust machinery's own and the earlier
 // record's, its reference files and the product picture; review is three
 // terms, never one (23.S9); the inbox is the place and triage the act, and
-// messages between topics are mail (23.S10); the legacy files are named by
-// the row the menus draw for them. The answering rule's half of
+// messages between topics are mail (23.S10). The answering rule's half of
 // 23.S16: the rule loads the glossary from where it lives, at the question,
 // answers in the screens' words, says where the glossary stops and points at
 // the docs, invents nothing and puts the gate back; and no entry speaks in an
@@ -128,12 +127,6 @@ describe('the glossary (23.3)', () => {
     assert.match(avoid, /\btriage waiting\b/);
     assert.match(entry('message').definition, /\bsent to that topic's mail\b/);
     assert.deepStrictEqual(entries.filter(({ term, definition }) => term !== 'mail' && /triage waiting/i.test(definition)), []);
-  });
-
-  it('the legacy files are named by the row both menus draw for them', () => {
-    const row = /\*([^*]+)\*/.exec(entry('legacy files').definition)?.[1];
-    const projections = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'scripts', 'domain', 'projections');
-    for (const menu of ['start-menu.cjs', 'epic-menu.cjs']) assert.ok(fs.readFileSync(path.join(projections, menu), 'utf8').includes(`head: '${row}'`), `${menu} draws the row as ${row}`);
   });
 
   it('23.S16: finds an engine verb, a path or a skill name, quoted or not, and passes the keys and the command', () => {

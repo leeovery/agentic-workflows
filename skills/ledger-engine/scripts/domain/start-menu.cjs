@@ -12,9 +12,7 @@
 // inbox's live items by kind; the product's conversation, its sessions holding
 // talk (discovery-entry.cjs), and whether the
 // brownfield research is owed (8.12.13); the verdicts waiting, the queue
-// across every unit (16.10); whether any unit has closed; and each place
-// holding legacy files, a unit of any status or the product, with how many
-// (legacy-files.cjs).
+// across every unit (16.10); and whether any unit has closed.
 //
 // The ledger is read once for the waits and the queue (ledger-read.cjs,
 // `readShownOnce`), a raise this conversation sealed counting in it as it
@@ -36,7 +34,6 @@ const { productConversation } = require('./discovery-entry.cjs');
 const { researchOwed } = require('./brownfield.cjs');
 const { discoverInbox } = require('./start.cjs');
 const { mailPhases } = require('./derivations.cjs');
-const { legacyPlaces } = require('./legacy-files.cjs');
 
 /** @typedef {import('./waits.cjs').Wait} Wait */
 
@@ -53,7 +50,6 @@ const { legacyPlaces } = require('./legacy-files.cjs');
  * @property {boolean} researchOwed
  * @property {number} verdicts
  * @property {boolean} closed  whether any unit has completed or been cancelled
- * @property {import('./legacy-files.cjs').LegacyPlace[]} legacy  the places holding legacy files, the units in the order the project lists them, then the product
  * @property {string[]} warnings  what the ledger's read said
  */
 
@@ -112,7 +108,6 @@ function startMenuRead(cwd, { waits: reading = true } = {}) {
     researchOwed: researchOwed(loadProjectManifest(cwd)),
     verdicts: queue,
     closed: all.some(({ status }) => status === 'completed' || status === 'cancelled'),
-    legacy: legacyPlaces(cwd, all.map(({ name }) => name)),
     warnings,
   };
 }

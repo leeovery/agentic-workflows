@@ -4,10 +4,8 @@
 // Domain ring: spikes and assets (9.10, 6.1.11) — `asset spike`, a spike's
 // folder, `asset import`, the files the person shares,
 // `asset add|status|lift`, the links from the ledger's entries
-// to the files that inform them, and `asset legacy|keep|discard`, the
-// files the migration kept with no place in the layout, read and sorted
-// (legacy-files.cjs). A link never moves a file: Claude writes it where it
-// lives, and the link records where that is.
+// to the files that inform them. A link never moves a file: Claude writes
+// it where it lives, and the link records where that is.
 //
 // - A spike (9.10.10, 4.11.12, 4.11.13): `spike <unit|product> <slug>`
 //   numbers the unit's next spike, or the product's, in the order spikes
@@ -94,8 +92,6 @@ const { withStateLock } = require('./state-worktree.cjs');
 const { HELD_NOTE } = require('./commit.cjs');
 const { PRODUCT_DIR, SPIKE_HOMES, assetHome } = require('./layout.cjs');
 const { planImports, copyImports, assertLandableSources } = require('./import-landing.cjs');
-const { legacyPlaces, surveyLegacy, readLegacy, keepLegacy, discardLegacy } = require('./legacy-files.cjs');
-const { loadAllManifests } = require('./reads.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {import('./ledger.cjs').EntryPlace} EntryPlace */
@@ -106,10 +102,9 @@ const SPIKE_FOLDER = new RegExp(`^([0-9]{3,})-(${KEBAB_SLUG})$`);
 
 /**
  * A verb's argv: its positionals as its usage shows them, the last one
- * repeated where `more` says so, or all of them together where `repeated`
- * does, one more it may take where `optional` names it, and each flag it
- * takes, by name, whether it must be given.
- * @typedef {{args: string[], more?: true, repeated?: true, optional?: string, flags: Record<string, boolean>}} Takes
+ * repeated where `more` says so, and each flag it takes, by name, whether
+ * it must be given.
+ * @typedef {{args: string[], more?: true, flags: Record<string, boolean>}} Takes
  */
 
 /** @type {Readonly<Record<string, Takes>>} */
@@ -119,9 +114,6 @@ const VERBS = Object.freeze({
   add: { args: [`<work-unit|${PRODUCT}>`, '<path>'], flags: { entry: true, status: false } },
   status: { args: [`<work-unit|${PRODUCT}>`, '<path>', `<${ASSET_STATUSES.join('|')}>`], flags: { entry: false } },
   lift: { args: ['<work-unit>', '<path>'], flags: { into: true, entry: true } },
-  legacy: { args: [], optional: `<work-unit|${PRODUCT}>`, flags: {} },
-  keep: { args: [`<work-unit|${PRODUCT}>`, '<path>'], repeated: true, flags: {} },
-  discard: { args: [`<work-unit|${PRODUCT}>`, '<path>'], flags: {} },
 });
 
 /** How each flag's value is shown. @type {Readonly<Record<string, string>>} */
@@ -129,10 +121,9 @@ const SHOWN = Object.freeze({ entry: '<id>', status: `<${ASSET_STATUSES.join('|'
 
 /** @param {string} verb */
 function verbUsage(verb) {
-  const { args, more, repeated, optional, flags } = VERBS[verb];
+  const { args, more, flags } = VERBS[verb];
   const shown = Object.entries(flags).map(([flag, required]) => (required ? `--${flag} ${SHOWN[flag]}` : `[--${flag} ${SHOWN[flag]}]`));
-  const again = repeated ? [`[${args.join(' ')} …]`] : [];
-  return ['asset', verb, ...args, ...(more ? ['…'] : []), ...again, ...(optional === undefined ? [] : [`[${optional}]`]), ...shown].join(' ');
+  return ['asset', verb, ...args, ...(more ? ['…'] : []), ...shown].join(' ');
 }
 
 const ASSET_USAGE = Object.keys(VERBS).map(verbUsage).join('\n');
@@ -146,7 +137,7 @@ const ASSET_USAGE = Object.keys(VERBS).map(verbUsage).join('\n');
  */
 function readArgs(verb, argv) {
   const usage = `Usage: engine ${verbUsage(verb)}`;
-  const { args, more, repeated, optional, flags: takes } = VERBS[verb];
+  const { args, more, flags: takes } = VERBS[verb];
   /** @type {string[]} */
   const positional = [];
   /** @type {Record<string, string>} */
@@ -162,9 +153,7 @@ function readArgs(verb, argv) {
     flags[flag] = value;
     i += 1;
   }
-  const most = args.length + (optional === undefined ? 0 : 1);
-  const counted = repeated ? positional.length % args.length === 0 : more || positional.length <= most;
-  if (positional.length < args.length || !counted || Object.entries(takes).some(([flag, required]) => required && !Object.hasOwn(flags, flag))) throw new Error(usage);
+  if (positional.length < args.length || (!more && positional.length > args.length) || Object.entries(takes).some(([flag, required]) => required && !Object.hasOwn(flags, flag))) throw new Error(usage);
   return { positional, flags };
 }
 
@@ -571,44 +560,9 @@ function linking(said, reading, unit, rel, prefix) {
   return entry;
 }
 
-/**
- * `asset legacy [<place>]`: every place holding legacy files, with its
- * folders, or the files of the one named, a unit's whatever its status.
- * @param {string} cwd @param {string[]} positional
- */
-function listLegacy(cwd, [name]) {
-  if (name === undefined) return surveyLegacy(cwd, legacyPlaces(cwd, loadAllManifests(cwd).map((manifest) => manifest.name)).map(({ place }) => place));
-  ownerOf(cwd, 'asset legacy', name);
-  return readLegacy(cwd, name);
-}
-
-/**
- * A place and a path to sort, checked: a unit the project has, whatever its
- * status, or the product, and a path written plain.
- * @param {string} cwd @param {string} said @param {string} place @param {string} given
- * @returns {import('./legacy-files.cjs').Sorted}
- */
-function sortedAt(cwd, said, place, given) {
-  ownerOf(cwd, said, place);
-  return { place, rel: spelledInState(said, cwd, given) };
-}
-
-/** `asset keep <place> <path> …`: each place and path checked, then kept. @param {string} cwd @param {string[]} positional */
-function keepLegacyAt(cwd, positional) {
-  const pairs = positional.flatMap((place, i) => (i % 2 === 0 ? [[place, positional[i + 1]]] : []));
-  return keepLegacy(cwd, pairs.map(([place, given]) => sortedAt(cwd, 'asset keep', place, given)));
-}
-
-/** `asset discard <place> <path>`: the place and path checked, then discarded. @param {string} cwd @param {string[]} positional */
-function discardLegacyAt(cwd, [place, given]) {
-  const { rel } = sortedAt(cwd, 'asset discard', place, given);
-  return discardLegacy(cwd, place, rel);
-}
-
 /** What each verb does with its argv read. @type {Readonly<Record<string, (cwd: string, positional: string[], flags: Record<string, string>) => Record<string, unknown>>>} */
 const RUNS = Object.freeze({
   spike: startSpike, import: importFiles, add: addAsset, status: changeStatus, lift: liftAsset,
-  legacy: listLegacy, keep: keepLegacyAt, discard: discardLegacyAt,
 });
 
 /**

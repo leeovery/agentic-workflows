@@ -66,13 +66,4 @@ A decision is never edited. A changed mind, a new fact, another topic's decision
 
 ## The legacy files
 
-A project moved across from before Ledger can hold files the move found no place for: notes left beside the work, references, images, research. They are kept as **legacy files**, with their piece of work or with the product, until each is sorted. While any wait, the start menu shows a row for them, *Sort the legacy files from the migration*, and an epic's menu shows its own.
-
-Sorting is a short pass, at your pace:
-
-- **Finished work kept whole.** A completed piece of work's reports, and every folder something already links to, can be kept all at once, in one step.
-- **Keep it.** A file or folder is kept among the work's assets, and everything that names it follows it to its new place.
-- **Bring it in.** Claude reads the file, keeps it, and records what it holds that the work will want as findings on the ledger, each citing the file. A question it leaves open for a topic still in discussion goes to that topic as a message.
-- **Discard it**, on your word. The state's history keeps it, and Claude says first if anything still points at it.
-
-The pass ends when nothing is left, or wherever you stop; what is left waits on the same row.
+A project moved across from before Ledger can hold files the move found no place for: notes left beside the work, references, images, research. They are kept as **legacy files**, in the `assets/legacy/` folder of their piece of work, or of the product. Claude is told the folder is there whenever it works in that piece of work, or in the product's conversation, and looks in it when the work needs what it holds.

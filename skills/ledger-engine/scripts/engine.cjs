@@ -568,11 +568,10 @@ function runLedger(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// asset — a spike's folder, the links from the ledger's entries to the
-// files that inform them, and the legacy files sorted (domain/asset.cjs): a
-// link holds the writer lock around its read of the ledger, the append and
-// the commit, as a ledger write does, a spike around taking its number, and
-// a legacy file's sorting around its move and its commit.
+// asset — a spike's folder, and the links from the ledger's entries to the
+// files that inform them (domain/asset.cjs): a link holds the writer lock
+// around its read of the ledger, the append and the commit, as a ledger
+// write does, and a spike around taking its number.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -2689,8 +2688,7 @@ const COMMANDS = Object.freeze({
 // and its answer, or a draw that proceeds, holds it around its ledger write
 // as a `ledger` write does; `enter` holds it around a start or a level move
 // and its commit alone, its question and reads taking none; an `asset` link holds it as a
-// `ledger` write does, a spike around taking its number, and a legacy
-// file's sorting around its move and its commit; `presence`,
+// `ledger` write does, and a spike around taking its number; `presence`,
 // `session label`, `repair`, `cleanup` and `resume`, and the hold
 // `topic mailbox` refreshes write only the session files the state ignores,
 // as `enter` does beside its start; a conversation's folder is outside the
