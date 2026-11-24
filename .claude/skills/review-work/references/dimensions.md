@@ -41,7 +41,9 @@ shipped silently non-compliant work.
   phase is and where it sits, what each record, tool and door is for and
   who reads it. What Ledger is belongs to the framework's paragraph, never
   to a skill. A missing explanation is a finding as much as a prescribed
-  method; a method gets no why.
+  method; a method gets no why. Explanation is as terse as clarity allows,
+  and a line Claude could read two ways is a finding: an ambiguity costs
+  thinking on every turn that meets it.
 - Removal — how-to and voice are cut freely. A removed engine instruction,
   route, payload or corridor move is a finding unless every engine feature
   it fed still has a caller, or the cut was brought to the person (the

@@ -6,7 +6,7 @@ A skill not yet rewritten to this file keeps its shape until its rewrite.
 
 ## The Aim
 
-Get out of Claude's way, and explain clearly. A skill says what Claude cannot know untold — what each thing it names is for (Where a Rule Goes) — so Claude does the work well by its own judgment. Explaining is not prescribing: it orders no step, and a skill may grow to explain. A method is prescribed only with cause: a hard edge, where leaving it to Claude has been shown to go wrong; a corridor, where the outcome must be the same every time (Where a Rule Goes, Fields and Corridors). A line is judged by whether it equips Claude or constrains it, never by its length.
+Get out of Claude's way, and explain clearly. A skill says what Claude cannot know untold — what each thing it names is for (Where a Rule Goes) — so Claude does the work well by its own judgment. Explaining is not prescribing: it orders no step, and a skill may grow to explain. It is as terse as clarity allows, and unambiguous: an ambiguity costs Claude thinking on every turn that meets it, so it is removed, never left for Claude to resolve. A method is prescribed only with cause: a hard edge, where leaving it to Claude has been shown to go wrong; a corridor, where the outcome must be the same every time (Where a Rule Goes, Fields and Corridors). A line is judged by whether it equips Claude or constrains it, never by its length.
 
 ## Who Holds What
 
