@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-11-24
+
+A new conversation picks up what the last one said, so you no longer have to recap after leaving mid-thought.
+
+## 💥 Breaking
+
+- The `asset legacy`, `asset keep` and `asset discard` commands are removed, along with the start menu's and epic menu's "Sort the legacy files from the migration" row — legacy files now stay in `assets/legacy/` for Claude to look in when the work needs them.
+
+## ✨ Added
+
+- Catch-up on the previous conversation at a place — a new conversation reads what earlier ones there said after the work was last written down, and opens with a short reminder of where things had got to.
+- `engine help <verb> [<sub>]` prints one verb's forms alone, and a refused unknown sub-verb now points to it.
+- Claude is told when a piece of work or the product holds legacy files from before Ledger, and where to find them.
+- Claude is pointed to guidance on code built otherwise than a decision carried over from before Ledger, wherever the work holds such a decision.
+- Say you don't care at a question and Claude's lean lands as its own call, settling that one question.
+
+## 🔧 Changed
+
+- The start menu's `s/start` row now takes whatever you bring — a new piece of work or talk about the product — and sits before `p/product`, which goes straight to the product's conversation.
+- Every call Claude would make for you now goes through the ask rule, the obvious ones included, rather than being settled alone.
+- Where the code has moved on from a decision carried over from before Ledger, Claude may replace the decision itself when the code plainly stands and the change is easy to undo; otherwise it asks before the build changes the code.
+- Discovery is gentler about moving on: Claude offers to start work only once the talk seems to have come to rest, and never records its own suggestions as your views.
+- Session-resume hooks are now installed in every Ledger project, not only those with session labels on, so a resumed conversation is recorded where it was.
+- Discovery's product picture, briefs and shared-file handling are simplified: each shared file is marked as reference or to read.
+- Putting a topic's changes on the map: a merge or split Claude would make on its own is put to you first and made at your word.
+- The shell hook now refuses only hand commits in the state worktree, raw commits while a build task is in flight, and shell writes to engine-only files.
+- The layout hook now guards only the state under `.ledger/`, no longer files at user level.
+
+## 🐛 Fixed
+
+- Keeping a decision carried over from before Ledger now correctly says the build will change the code to match when the code was built otherwise.
+
 ## [0.9.0] - 2026-11-23
 
 Agentic Workflows is now Ledger: a rebuilt flow that records every decision, builds each phase's tasks side by side, and proves them by running the product.
