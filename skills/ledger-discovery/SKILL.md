@@ -40,7 +40,7 @@ Where `$0` names a kind of work, the entry is the type call, `--type-call` (The 
 node .claude/skills/ledger-engine/scripts/engine.cjs enter discovery {home} [--type-call] [--seeds "{seeds}"]
 ```
 
-The DATA names what there is to read; read what the work needs. Do what `catch up` says.
+The DATA names what there is to read; read what the work needs.
 
 ## The Record
 

@@ -21,20 +21,20 @@ const { installTmuxStub, tmuxStubEnv, tmuxStubName, setTmuxStubName, setTmuxStub
 const { installPortalStub, portalStubEnv, portalStubLabel, setPortalStubLabel, portalStubCalls, pinnedPath } = require('./portal-stub.cjs');
 const harness = require('./engine-harness.cjs');
 
-const { engineHook, LEDGER_HOOKS, LAYOUT_GROUP, GUARD_GROUPS } = harness;
+const { engineHook, LEDGER_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, RESUME_GROUP, OWN_HOOKS } = harness;
 const SESSION_HOOK = engineHook('session cleanup');
-const RESUME_HOOK = engineHook('session resume');
+const [RESUME_HOOK] = RESUME_GROUP.hooks;
 const [PRESENCE_HOOK, END_HOOK] = LEDGER_HOOKS;
 // The settings a project reaches with labels on — one group per matcher,
 // ours alone — and with them off.
 const LABELS_ON = {
   hooks: {
     SessionEnd: [{ hooks: [SESSION_HOOK, PRESENCE_HOOK, END_HOOK] }],
-    SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }],
+    SessionStart: [RESUME_GROUP],
     PreToolUse: GUARD_GROUPS,
   },
 };
-const LABELS_OFF = { hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK, END_HOOK] }], PreToolUse: GUARD_GROUPS } };
+const LABELS_OFF = { hooks: OWN_HOOKS };
 // The SessionStart hook's stdin, as Claude Code writes it on `claude --resume`.
 const RESUME_STDIN = (/** @type {string} */ id) => JSON.stringify({ session_id: id, hook_event_name: 'SessionStart', source: 'resume' });
 
@@ -263,4 +263,4 @@ const CHOICE = {
   code: { subject: 'chore: record session-label choice', files: ['.claude/settings.json'] },
 };
 
-module.exports = { world, ZMX_NAME, inPortal, portalLabel, setPortalLabel, portalCalls, portalStash,LAYOUT_GROUP, GUARD_GROUPS, SESSION_HOOK, RESUME_HOOK, PRESENCE_HOOK, END_HOOK, LABELS_ON, LABELS_OFF, RESUME_STDIN, git, stateGit, projectWith, setup, teardown, engine, resume, tmuxName, renameCount, setTmuxName, setTmuxId, stashFile, stashRecords, writeStash, conversationsRoot, conversation, position, writePosition, ownStartTime, peerIdentity, optIn, projectManifest, settingsPath, settings, writeSettings, head, CHOICE };
+module.exports = { world, ZMX_NAME, inPortal, portalLabel, setPortalLabel, portalCalls, portalStash,LAYOUT_GROUP, GUARD_GROUPS, RESUME_GROUP, SESSION_HOOK, RESUME_HOOK, PRESENCE_HOOK, END_HOOK, LABELS_ON, LABELS_OFF, RESUME_STDIN, git, stateGit, projectWith, setup, teardown, engine, resume, tmuxName, renameCount, setTmuxName, setTmuxId, stashFile, stashRecords, writeStash, conversationsRoot, conversation, position, writePosition, ownStartTime, peerIdentity, optIn, projectManifest, settingsPath, settings, writeSettings, head, CHOICE };

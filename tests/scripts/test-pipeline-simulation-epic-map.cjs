@@ -258,14 +258,14 @@ describe('pipeline simulation: epic map', () => {
     // recorded; opted in (the choice lands on the project manifest, and the
     // project's settings gain `session cleanup` beside the `presence
     // cleanup` and `conversation end` every project's SessionEnd hook
-    // carries, plus a SessionStart `session resume` matched to resume,
-    // committed together) but outside tmux (the sim strips the identity)
+    // carries, the SessionStart `session resume` matched to resume every
+    // project carries kept, committed together) but outside tmux (the sim strips the identity)
     // answers no-multiplexer; an unknown phase refuses; a hand-stamped manifest
     // false disables; the SessionEnd restore sweep answers with nothing to
     // restore and the SessionStart resume — on stderr, its stdout being
     // conversation context — with nothing to resume; opting out takes
-    // `session cleanup` and `session resume` back out and leaves
-    // Ledger's own, the layout hook before every write among them, which
+    // `session cleanup` back out and leaves Ledger's own, `session resume`
+    // among them, the layout hook before every write among them, which
     // refuses a Write to the ledger and lets one to a manifest through, the
     // brief hook before every dispatch, and the shell hook before every shell
     // command, which refuses a raw commit in the state worktree and lets the
@@ -284,7 +284,7 @@ describe('pipeline simulation: epic map', () => {
       SessionEnd: ['engine.cjs" session cleanup', 'engine.cjs" presence cleanup', 'engine.cjs" conversation end'],
       SessionStart: ['engine.cjs" session resume'],
       PreToolUse: guardVerbs,
-    }, 'the opt-in installs the session hooks on both events, beside the layout, brief and shell hooks');
+    }, 'the opt-in installs the label hook beside Ledger\'s own on both events, the layout, brief and shell hooks among them');
     assert.strictEqual(stateGit(sim.dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: record session-label choice',
       'the choice is state');
     assert.strictEqual(git(sim.dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: record session-label choice',
@@ -312,6 +312,7 @@ describe('pipeline simulation: epic map', () => {
     assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.session_labels']), 'false');
     assert.deepStrictEqual(hookVerbs(), {
       SessionEnd: ['engine.cjs" presence cleanup', 'engine.cjs" conversation end'],
+      SessionStart: ['engine.cjs" session resume'],
       PreToolUse: guardVerbs,
     }, 'opting out leaves Ledger\'s own in place');
     const beforeWrite = (/** @type {string} */ rel) => sim.engine(['layout', 'guard'], null, JSON.stringify({

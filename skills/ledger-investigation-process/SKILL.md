@@ -35,7 +35,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs enter investigation {work_u
 
 A refusal names the way on: say it in a line. Where another session holds the topic, the entry asks first; carrying on from it ends the turn. Waiting mail is the conversation's first business (**Mail**).
 
-Then read what the DATA names, each in full, an `earlier` one as input never changed. Take in each `landed` report as **Validations** says, and close each `lost` one with `agent incorporate`. Search earlier work units' entries in the bug's area with `knowledge query`.
+Then read what the DATA names, each in full, an `earlier` one as input never changed, a `catch up` transcript as far as the framework says. Take in each `landed` report as **Validations** says, and close each `lost` one with `agent incorporate`. Search earlier work units' entries in the bug's area with `knowledge query`.
 
 Then open the conversation; never stop in silence once you have read. The opening names each `kept branch` and `kept work` to the person, a piece of work with the calls its line gives. On resume, say in your own words, in a line, where the hunt stands and what comes next.
 

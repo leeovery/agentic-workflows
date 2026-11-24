@@ -14,7 +14,9 @@
 // the conversation sits at, as its position names it (`sittingPlace`): the
 // product's conversation for the project place `product`, a unit's place
 // for any other; none for a project place discovery never enters, the
-// roadmap, nor a conversation with no position.
+// roadmap, nor a conversation with no position. A position's place is read
+// the same way where a conversation arrives somewhere (`placeAt`,
+// session-label.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -55,13 +57,25 @@ function enteredAt(cwd, place) {
   }
 }
 
-/** The place the calling conversation sits at, as its position names it (the header's); null where it names none. @returns {Place|null} */
-function sittingPlace() {
-  const sessionId = handedSession();
-  const position = sessionId === null ? null : readPosition(sessionId);
+/**
+ * The place a position names (the header's): the product's conversation for
+ * the project place `product`, a unit's place for any other; null for none.
+ * @param {{name: string, phase?: string, topic?: string}|null} position
+ * @returns {{unit: string, phase: string, topic: string}|null}
+ */
+function placeAt(position) {
   if (position === null) return null;
   if (position.name === PRODUCT && position.phase === undefined) return { unit: PRODUCT, phase: 'discovery', topic: PRODUCT };
   return position.phase === undefined || position.topic === undefined ? null : { unit: position.name, phase: position.phase, topic: position.topic };
 }
 
-module.exports = { recordEntry, enteredAt, sittingPlace };
+/** The place the calling conversation sits at, as its position names it (the header's); null where it names none. @returns {Place|null} */
+function sittingPlace() {
+  const sessionId = handedSession();
+  return placeAt(sessionId === null ? null : readPosition(sessionId));
+}
+
+/** Whether two places are one. @param {{unit: string, phase: string, topic: string}|null} a @param {{unit: string, phase: string, topic: string}|null} b */
+const samePlace = (a, b) => a !== null && b !== null && a.unit === b.unit && a.phase === b.phase && a.topic === b.topic;
+
+module.exports = { recordEntry, enteredAt, sittingPlace, placeAt, samePlace };

@@ -38,13 +38,6 @@
 //     (8.14.3), the points from before it carries (from-before.cjs), its map, and the product record with what discovery found of
 //     the unit (8.6.7) — and, from seeds, each roadmap idea to take in
 //     (18.8.4);
-//   - either, where the open log was last written by another conversation:
-//     that conversation's transcript, to catch the log up from its last write
-//     onward, and at the product the picture with it, or one line that the
-//     transcript is gone (8.14.9) — none where
-//     the log ends on a level move's pointer, its talk carried on elsewhere,
-//     nor where that conversation still holds the place live, writing its
-//     own (18.4.21).
 //
 // The type call (`--type-call`, at the product alone): a piece of work
 // brought to Start — in the person's words, from the start menu, or from
@@ -78,8 +71,7 @@ const { PRODUCT_PICTURE } = require('./layout.cjs');
 const { sessionLogs, activeSession, sessionLogsAt, openSession } = require('./discovery-session.cjs');
 const { discoveryStanding } = require('./topic-standing.cjs');
 const { readPosition, placeLine } = require('./position.cjs');
-const { clearOwnQuietly, holdsLive } = require('./presence.cjs');
-const { runningTranscript } = require('./conversation.cjs');
+const { clearOwnQuietly } = require('./presence.cjs');
 const { researchOwed } = require('./brownfield.cjs');
 const { productCall, mapCall, namedConversations, isHeader, appendLine, topicLog } = require('./topic-log.cjs');
 const { beyondLists } = require('./discovery-log.cjs');
@@ -147,11 +139,6 @@ function linesOf(file) {
   }
 }
 
-/** A log's written lines, trimmed, blank lines left out. @param {string} file absolute */
-function writtenLines(file) {
-  return linesOf(file).map((line) => line.trim()).filter((line) => line !== '');
-}
-
 /**
  * A log's closing line: its last written line beyond the fixed lists that is
  * neither a conversation's line nor a pointer the engine wrote; null where
@@ -177,13 +164,6 @@ function productConversation(cwd) {
   return { sessions: logs.length, last: latest?.date ?? null };
 }
 
-/**
- * Whether a log ends on the pointer a level move wrote: the sitting there
- * ended cleanly, and what came after it is in the log moved to.
- * @param {string} file absolute
- */
-const endsOnPointer = (file) => writtenLines(file).at(-1)?.startsWith(POINTER) === true;
-
 /** An older log as read: its path, and its closing line where it has one. @param {string} file absolute */
 function closedBy(file) {
   const closing = closingLine(file);
@@ -203,26 +183,6 @@ function shapedBy(first) {
     const target = LINK.exec(line)?.[1];
     return target === undefined ? line.slice(SHAPED_BY.length).trim() : path.resolve(path.dirname(first), target);
   });
-}
-
-/**
- * Where the open log was last written by a conversation other than this
- * one: its transcript, to catch the log up from, or the one line that it is
- * gone. Nothing for a log opened by this entry, for one a level move left,
- * ending on its pointer, nor for one whose last writer holds the place live.
- * @param {Entering} at @returns {Line[]}
- */
-function catchUp({ cwd, unit, started }) {
-  if (started) return [];
-  const log = statePath(cwd, logAt(unit, /** @type {string} */ (activeSession(cwd, unit))));
-  const last = namedConversations(log).at(-1);
-  if (last === undefined || last.session === handedSession() || endsOnPointer(log)) return [];
-  if (holdsLive(cwd, unit, 'discovery', unit, last.session)) return [];
-  const transcript = last.transcript !== null && fs.existsSync(last.transcript) ? last.transcript : runningTranscript(last.session);
-  const pictured = unit === PRODUCT && pictureOf(cwd).length > 0;
-  return [as('catch up')(transcript === null
-    ? `the transcript of session ${last.session}, which last wrote the log, is gone — say so in one line, and carry on from the log${pictured ? ', bringing the picture up to date from it' : ''}`
-    : `read ${transcript} from the log's last write onward, and add to the log${pictured ? ' and the picture what they are' : ' what it is'} missing`)];
 }
 
 /** The product's picture, where its conversation has written one. @param {string} cwd @returns {Line[]} */
@@ -298,7 +258,6 @@ function productReads(at) {
     as('product')(`\`${productCall()}\``),
     as('research owed')(researchOwed(at.manifest) ? 'yes' : 'no'),
     payloadLine(at.cwd),
-    ...catchUp(at),
   ];
 }
 
@@ -313,7 +272,6 @@ function epicReads(at) {
     as('map')(`\`${mapCall(at.unit)}\``),
     as('product')(`\`${productCall(at.unit)}\``),
     ...(at.seeds === null ? [] : seedReads(at.cwd, at.unit, at.seeds)),
-    ...catchUp(at),
   ];
 }
 

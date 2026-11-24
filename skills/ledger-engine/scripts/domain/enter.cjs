@@ -15,16 +15,20 @@
 // at a feature's topic closed into its spec voiding that close, the
 // discussion going on (9.7.9), in the same commit; records where the
 // conversation is working — its position, the session label and the place's
-// presence, as `session label` does — and when it entered the place
-// (place-entry.cjs); and answers what the phase needs to begin or resume,
-// in sections: any question first, then a DATA naming what to read, as
+// presence, as `session label` does — when it entered the place
+// (place-entry.cjs), and the conversation entering it (catch-up.cjs); and
+// answers what
+// the phase needs to begin or resume, in sections: any question first, then
+// a DATA naming what to read, as
 // paths and engine calls, never their contents, read as the place stood
 // before the entry wrote anything, and the log the conversation keeps, where it keeps one,
 // with the line it opens its next write with (8.14.8) — or, for a row that
 // writes that line itself, the line written; what a read of the ledger said
 // on the way rides the response as warnings. The reading comes after the
-// question (2.10.3). Between the row's reads and the log, the DATA names the
-// place's legacy folder where it holds files — what the migration kept from
+// question (2.10.3). After the row's reads, the DATA names each
+// conversation before this one to catch up on (catch-up.cjs). Between the row's reads
+// and the log, the DATA names the place's legacy folder where it holds
+// files — what the migration kept from
 // before Ledger with no other place, there to look in — and the record of
 // the person wherever its file stands (16.18.4, person.cjs) — none while the
 // person has kept nothing — never reading either, so neither refuses an
@@ -109,6 +113,7 @@ const { sessionLogs } = require('./discovery-session.cjs');
 const { arriveAt } = require('./session-label.cjs');
 const { beatQuietly, peerHold } = require('./presence.cjs');
 const { recordEntry } = require('./place-entry.cjs');
+const { owedAt, caughtUp } = require('./catch-up.cjs');
 const { agentsLeft } = require('./agent-state.cjs');
 const { runningTranscript } = require('./conversation.cjs');
 const { topicLog, ledgerView, recordCall, productCall, owedHeader, appendLine } = require('./topic-log.cjs');
@@ -655,13 +660,15 @@ function enterThrough(entries, cwd, argv) {
   const readied = entering.started ? entry.readies?.(entering) ?? [] : [];
   entry.closes?.(at);
   const [reads, fromBefore] = withOneCheck(() => [[...entry.reads(entering), ...readied], fromBeforeLines(cwd, phase, unit, entering.notes)]);
+  const owed = owedAt(cwd, unit, phase, place, take);
   const held = heldAt(cwd, phase, unit, place);
   /** @type {{committed?: string|null, note?: string, warnings?: string[]}} */
   const commit = entering.started || entering.voided || departure !== null ? settle(cwd, entry, entering, held, departure) : {};
   held.arrive(worked);
   beatQuietly(cwd, unit, phase, place);
   recordEntry(cwd, unit, phase, place);
-  const lines = [...reads, ...legacyLines(cwd, unit), ...fromBefore, ...personLines(), ...logLines(cwd, entry, entering)];
+  const logged = logLines(cwd, entry, entering);
+  const lines = [...reads, ...caughtUp(cwd, unit, phase, place, entering.started, owed), ...legacyLines(cwd, unit), ...fromBefore, ...personLines(), ...logged];
   const warnings = [...entering.notes, ...(commit.warnings ?? [])];
   return {
     response: { phase, unit, ...atTopic, entered: true, started: entering.started, ...commit, ...(warnings.length > 0 ? { warnings } : {}) },

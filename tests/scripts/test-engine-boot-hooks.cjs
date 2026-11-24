@@ -26,7 +26,7 @@ const { spawnSync } = require('child_process');
 const { installTmuxStub, tmuxStubEnv, tmuxStubName } = require('./tmux-stub.cjs');
 const { installPortalStub, portalStubEnv } = require('./portal-stub.cjs');
 const harness = require('./engine-harness.cjs');
-const { git, stateGit, commitAll, statePath, layout, writeState, LEDGER_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, OWN_HOOKS, hooked } = harness;
+const { git, stateGit, commitAll, statePath, layout, writeState, LEDGER_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, RESUME_GROUP, OWN_HOOKS, hooked } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { processStartTime } = require(path.join(REAL_SCRIPTS, 'kernel/process.cjs'));
 const { conversationDir, positionPath } = require(path.join(REAL_SCRIPTS, 'domain/conversation.cjs'));
@@ -172,7 +172,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     commitSettings(JSON.stringify({ hooks: { SessionEnd: [{ hooks: LEDGER_HOOKS }], PreToolUse: [theirs, LAYOUT_GROUP] } }, null, 2) + '\n');
     const first = bootWith();
     assert.strictEqual(first.session_hooks_installed, true);
-    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [{ hooks: LEDGER_HOOKS }], PreToolUse: [theirs, ...GUARD_GROUPS] } });
+    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [{ hooks: LEDGER_HOOKS }], PreToolUse: [theirs, ...GUARD_GROUPS], SessionStart: [RESUME_GROUP] } });
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install Ledger session hooks');
     const head = git(fix.project, ['rev-parse', 'HEAD']);
 
@@ -225,7 +225,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(bootWith().session_hooks_installed, false);
   });
 
-  it('labels off wants Ledger\'s own alone — a `session cleanup` and a `session resume` left behind come back out', () => {
+  it('labels off wants Ledger\'s own alone — a `session cleanup` left behind comes back out, `session resume` staying as Ledger\'s own', () => {
     recordChoice(false);
     commitSettings(LABELS_ON);
     const res = bootWith();
@@ -233,7 +233,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(LEDGER_HOOKS));
   });
 
-  it('labels never asked wants Ledger\'s own alone too — stale label hooks come back out', () => {
+  it('labels never asked wants Ledger\'s own alone too — a stale `session cleanup` comes back out', () => {
     assert.strictEqual(bootWith().session_hooks_installed, false, 'the fixture already carries it');
     assert.ok(!('defaults' in JSON.parse(fs.readFileSync(statePath(fix.project, layout.projectManifest), 'utf8'))), 'no choice recorded');
     commitSettings(LABELS_ON);
