@@ -6,7 +6,7 @@ A skill not yet rewritten to this file keeps its shape until its rewrite.
 
 ## The Aim
 
-Get out of Claude's way, and explain clearly. A skill says what Claude cannot know untold — what Ledger is, where the phase sits, what each record and tool is for and who reads it — so Claude does the work well by its own judgment. Explaining is not prescribing: it orders no step, and a skill may grow to explain. A method is prescribed only with cause: where leaving it to Claude has been shown to go wrong, or where the outcome must be the same every time (Where a Rule Goes). A line is judged by whether it equips Claude or constrains it, never by its length.
+Get out of Claude's way, and explain clearly. A skill says what Claude cannot know untold — what each thing it names is for (Where a Rule Goes) — so Claude does the work well by its own judgment. Explaining is not prescribing: it orders no step, and a skill may grow to explain. A method is prescribed only with cause: a hard edge, where leaving it to Claude has been shown to go wrong; a corridor, where the outcome must be the same every time (Where a Rule Goes, Fields and Corridors). A line is judged by whether it equips Claude or constrains it, never by its length.
 
 ## Who Holds What
 
@@ -30,7 +30,7 @@ Ask of each rule, in this order:
 3. Anything else is how-to, and deleted.
 
 These sit outside the table:
-- **What a thing is for** — the phase, a record, a tool, a door. It is explanation, not a rule (The Aim), and stays wherever it informs Claude's judgment.
+- **What a thing is for** — the phase and where it sits, a record and who reads it, a tool, a door. It is explanation, not a rule (The Aim), and stays wherever it informs Claude's judgment. What Ledger is, the framework says once for every skill (The Framework Load); a phase skill says what its own phase is and where it sits.
 - **A corridor's moves** — what works, prescribed precisely, in a corridor alone (Fields and Corridors).
 - **A contract the spec names no verb for, or a procedure with no checklist item.** Bring it to the person. It is never held in prose as a "must" until a verb or an item exists. A verb the spec names that is not built yet is built by its phase, never brought to the person.
 - **A rule that holds in every conversation, and that the engine's structure needs** — how a reply at a gate is taken. It belongs to the framework (The Framework Load), never to a skill.
@@ -40,7 +40,7 @@ A behaviour Ledger gets wrong is fixed by deleting the prose that causes it, nev
 
 ## The Phase Skill
 
-A phase skill fences its field and gives its corridors' moves (Fields and Corridors), and nothing else. Outside a corridor it never says how Claude converses, the order a conversation takes, its pacing, or when Claude writes the record (lint check 39 catches the pacing it can decide). Its fence:
+A phase skill fences its field and gives its corridors' moves (Fields and Corridors), and nothing else. Outside a corridor it never says how Claude converses, the order a conversation takes, its pacing, what Claude reads — the entry's DATA names what there is, and Claude reads what the work needs — or when Claude writes the record (lint check 39 catches the pacing it can decide). Its fence:
 - **Which phase and which piece of work this is** — its arguments, as the engine's handoff table declares them.
 - **Its goal** — what the phase is for, and where it sits: what feeds it, and what reads what it leaves.
 - **Its done-condition** — what is true when the phase can be left, stated as what the engine holds.
@@ -79,7 +79,7 @@ Some requests can come wherever the phase is: put an idea or a bug aside, postpo
 
 ### The Skeleton
 
-```markdown
+````markdown
 ---
 name: {skill}
 description: Ledger's {phase} phase. Reached only through a Ledger handoff, never invoked directly; work comes into Ledger through /ledger.
@@ -114,7 +114,13 @@ A corridor: its moves, in order.}
 
 ## Doors
 
-- {What lands} → `{verb}`.
+- {What it is for}:
+
+  ```bash
+  node .claude/skills/ledger-engine/scripts/engine.cjs {verb} {args} <<'{TAG}'
+  {payload}
+  {TAG}
+  ```
 
 ## Closing
 
@@ -123,7 +129,7 @@ A corridor: its moves, in order.}
 ## {A Request at Any Point}
 
 {The words that bring it, and the verb or reference that takes it.}
-```
+````
 
 A section the phase has nothing for is left out. `## Instructions` is there only in a skill a conversation opens on (The Framework Load).
 
@@ -155,7 +161,7 @@ When Ledger moves to a new model, the model pass is a session entering each phas
 
 Skill and reference files are loaded into Claude's context. How-to and voice are cut freely, and come back only for a problem met in use. An engine instruction, a route, a payload or a corridor's move is cut only after the removal check.
 - **The removal check.** Before a line goes, list every engine feature it fed — a verb, a flag, a payload field, a field of an answer it used or said, a line of the DATA it read — and confirm each still has a caller in the skill or its references. One left with none keeps its line, or is brought to the person as a cut.
-- **Lean.** What a thing is for — the phase, a record, a tool, a door — stays wherever it informs Claude's judgment; a method gets no why. No backstory, and no line about the file itself. A sentence for a case the work never hits, a feature no consumer uses, or a move Claude would make untold is deleted.
+- **Lean.** What a thing is for is explanation (Where a Rule Goes); a method gets no why. No backstory, and no line about the file itself. A sentence for a case the work never hits, a feature no consumer uses, or a move Claude would make untold is deleted.
 - **One action, one form.** An action takes the same form wherever a skill and its references name it. Two doors for one trigger get a line that decides between them.
 - **The clean path.** No retry branch for a tool or agent that fails, no guard for a state only a crash produces, no workaround for the harness. Interruption and resume stay first-class: they are the entry's job.
 - **Written fresh.** Each file reads as though authored now: no "formerly", no "(new)", no note of what a change replaced.
@@ -280,4 +286,4 @@ A reference is:
   A shared reference, under `skills/ledger-shared/references/`, says `*Shared reference. Loaded by {callers}.*`. A reference over 100 lines lists its sections below the rule.
 - **Loaded** by one line, never mid-sentence, the link bold and resolving (lint checks 7, 7b): `Load **[name.md](references/name.md)** and follow its instructions as written.` What it needs from the caller is named in the load line — ``… with topic = `{topic}`.`` — and is already in context.
 - **One level deep.** Every load is signposted from SKILL.md; a reference never loads another reference, the framework's composition aside (The Framework Load). A reference that needs another's procedure names the SKILL.md section that loads it.
-- **Deferring to the owner.** A part that needs another skill's mechanic invokes that skill or loads its reference from SKILL.md, carrying only what the caller knows. It never restates the owner's paths, naming or format. Where two files say the same thing, delete one rather than keep them aligned.
+- **Deferring to the owner.** A single call of another skill's mechanic is a door line, written inline. A part that needs more of it invokes that skill or loads its reference from SKILL.md, carrying only what the caller knows. What is never restated is the owner's procedure, paths, naming and format. Where two files say the same thing, delete one rather than keep them aligned.

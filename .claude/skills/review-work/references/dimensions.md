@@ -21,9 +21,9 @@ shipped silently non-compliant work.
   markers, and the design system: glyphs, chrome, forms, menus, lists,
   callouts and blockers.
 - Structural conventions — heading hierarchy, reference file headers and
-  structure, the zero output rule, gates entered and left through the
-  engine.
-- Skill file structure — the backbone, the `## Instructions` load directive
+  structure, what the engine owns (the prose names the verb and stops),
+  gates entered and left through the engine.
+- Skill file structure — the skeleton, the `## Instructions` load directive
   pointing at `framework.md`, load directive format, reference file naming,
   inline or reference by the two weights, references one level deep, a
   contents list on a reference over 100 lines, standing guidance in
@@ -32,17 +32,27 @@ shipped silently non-compliant work.
   work, what it is for and where it sits, its tools, what it records, its
   verbs, its hard edges) and gives its corridors' moves. Outside a
   corridor, a line telling Claude how to converse, the order a conversation
-  takes, its pacing or when it writes the record is a finding, and so is a
+  takes, its pacing, what it reads (the entry's DATA names what there is;
+  Claude reads what the work needs) or when it writes the record is a
+  finding, and so is a
   counter-rule added to fix a behaviour: the fix deletes the prose that
   caused it.
-- Explanation — a skill explains what Claude cannot know untold: what the
+- Explanation — a skill explains what Claude cannot know untold: what its
   phase is and where it sits, what each record, tool and door is for and
-  who reads it. A missing explanation is a finding as much as a prescribed
+  who reads it. What Ledger is belongs to the framework's paragraph, never
+  to a skill. A missing explanation is a finding as much as a prescribed
   method; a method gets no why.
 - Removal — how-to and voice are cut freely. A removed engine instruction,
   route, payload or corridor move is a finding unless every engine feature
-  it fed still has a caller (the removal check). A door line is complete:
-  form, stdin payload, quoting, and any answer field the skill uses or says.
+  it fed still has a caller, or the cut was brought to the person (the
+  removal check). A door line is complete: form, stdin payload, quoting,
+  and any answer field the skill uses or says.
+- One action, one form — an action takes the same form wherever a skill
+  and its references name it, and two doors for one trigger get a line
+  that decides between them.
+- Refusals — a refusal is the framework's to take. A door line that
+  restates the framework's refusal line is a finding; one adds to it only
+  where the way on is not the one the refusal names.
 - A tool a driver wraps is named **only** in the places CLAUDE.md's Tool
   Names allows. Anywhere else is a violation.
 - No convention invented for the occasion. This project is mature and
@@ -77,7 +87,8 @@ now, with the current behaviour the only behaviour it has ever had.
 Walk the prose as a graph and prove every path terminates somewhere real.
 
 - Every `Proceed to`, `Return to`, and load target exists and is spelled as
-  the destination writes itself.
+  the destination writes itself, and so does every SKILL.md section a
+  reference names as the one that loads another's procedure.
 - Every section has at least one inbound edge. Unreachable prose is a
   finding regardless of how correct it reads.
 - Every branch set covers its cases, first-match-wins ordering intact, no
