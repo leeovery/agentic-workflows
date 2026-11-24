@@ -4,7 +4,7 @@
 
 ---
 
-The topic postponed, `{postponed}`, is this one or another of the epic. A single-topic unit has nothing to postpone: its topic is the unit, and its "not now" is a cancel; say so in a line. Postponing this topic leaves it: bring the log up to date. Another topic of the epic, named, leaves this one as it is.
+The topic postponed, `{postponed}`, is this one or another of the epic. A single-topic unit has nothing to postpone: its topic is the unit, and its "not now" is a cancel; say so in a line. Postponing another topic of the epic leaves this conversation where it is.
 
 Where the person named a horizon, fetch the confirm, `render postpone-gate {work_unit}.discovery.{postponed} --horizon '{horizon}'`; otherwise the pick over the roadmap's horizons, `render horizon-pick {work_unit}.discovery.{postponed}`. A horizon named in words, or a Comment changing it, leads to the confirm again with it.
 

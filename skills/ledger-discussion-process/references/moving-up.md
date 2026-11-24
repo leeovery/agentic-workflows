@@ -4,7 +4,7 @@
 
 ---
 
-Suggest going there in a line; only the person's word moves it. `{home}` is `{work_unit}` for an epic's discovery, or `product` for the product's conversation, the only place a single-topic unit's talk moves up to. Bring the log up to date, then move, in this conversation:
+Suggest going there in a line; only the person's word moves it. `{home}` is `{work_unit}` for an epic's discovery, or `product` for the product's conversation, the only place a single-topic unit's talk moves up to. Move, in this conversation:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs enter discovery {home} --move

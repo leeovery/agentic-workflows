@@ -6,11 +6,11 @@ Every question, finding and decision lands on the ledger, every answer you give 
 
 ## The opening
 
-The topic starts from its brief, and for a feature the discovery logs and the seeds; the record of every topic decided so far, never their logs; the product record, with what discovery found of the product; each spike; and earlier work in the topic's area, from the [knowledge base](knowledge-base.md). A topic that waited on the roadmap, or a piece of work that moved here from another kind, also has the record it left in its first place, as input it never changes. Claude reads what the work needs of it.
+The topic starts from its brief, and for a feature the discovery logs and the seeds; the record of every topic decided so far, never their logs; the product record, with what discovery found of the product; each spike; and earlier work in the topic's area, searched in the [knowledge base](knowledge-base.md) each time the topic opens: an earlier decision that still holds is built on, and one that must change is replaced, never decided a second time beside it. A topic that waited on the roadmap, or a piece of work that moved here from another kind, also has the record it left in its first place, as input it never changes. Claude reads what the work needs of it.
 
-The opening is short: what the brief covers and what came across into the topic, then where you want to start. The opening decides nothing.
+The opening is short: what the brief covers and what came across into the topic, then where you want to start. It decides nothing. The brief's open questions go on the map as the conversation starts, wherever it begins, so none can be missed when the topic closes.
 
-What you settled on in discovery is working ground, never asked again. It moves when something here contradicts it, or when you reopen it yourself. A point the brief carries from the [record from before](discovery.md#what-you-bring-from-before) is not: it goes on the map as an open question, with the answer from before as Claude's lean, and always comes to you, however quiet its kind.
+What you settled on in discovery is working ground, never asked again; what the brief leaves open is still open. Settled ground moves when something here contradicts it, or when you reopen it yourself. A point the brief carries from the [record from before](discovery.md#what-you-bring-from-before) is not: it goes on the map as an open question, with the answer from before as Claude's lean, and always comes to you, however quiet its kind.
 
 ## The conversation
 
@@ -18,20 +18,20 @@ A discussion is a conversation, never a conveyor belt of decisions. The map trac
 
 - **Your decision is yours.** "Your call" hands a point to Claude, and it is recorded as Claude's answer; "don't care" leaves it to whoever builds it. Neither is ever written as yours.
 - **An answer that settles part of a question** puts the rest on the map as a question of its own.
-- **A changed mind is a replacement, never an edit.** The new decision replaces the old with its cause named: a new fact, another topic's decision, the question a message raised, or simply that you changed your mind. Everything that relied on the old answer is flagged.
-- **A decision is never written twice.** A question another topic's current decision already answers merges into it.
+- **A changed mind is a replacement, never an edit.** The new decision replaces the old with its cause named: a new fact, another topic's decision, the question a message raised, or simply that you changed your mind. Changing a decision of your own is yours to do at any time, and is recorded as yours; where the old answer was Claude's lean, it counts as a reversal in the [trust](trust.md) evidence. Claude never replaces a decision of yours itself: it asks. Everything that relied on the old answer is flagged.
+- **A decision is never written twice.** A question a current decision already answers, another topic's or an earlier piece of work's, merges into it.
 - **Nothing waits half-decided.** A question closes by your decision, Claude's call, don't care, a move to another topic, or a place on the roadmap.
 - **Signing off with questions open is a pause**, never the end: the log is brought up to date and the topic waits for its next session.
 
 ### Facts and findings
 
-A claim about the code, a number or the platform is checked before it is said. What is learnt lands as a finding saying how it is known: read in the code, documented with its source, seen in a spike, measured by an experiment, or exploratory, measured in the conversation without one, with the command and its result. A finding informs a question; only a decision closes one.
+A claim about the code, a number or the platform is checked before it is said. What is learnt lands as a finding saying how it is known: read in the code, documented with its source, seen in a spike, measured by an experiment, or exploratory, measured in the conversation without one, with the command and its result. A finding informs a question; only a decision closes one. A question the code or a run answers outright is closed by Claude, stating what was found.
 
 ### Claude's calls
 
-Until the topic's shape is agreed, what it covers and how it broadly works, Claude makes no call of intent or taste on it alone: each is worked through with you. The shape you agree lands on the ledger as your decision, so the map shows where the topic turned.
+Until the topic's shape is agreed, what it covers and how it broadly works, Claude makes no call of intent or taste on it alone: each is worked through with you. The shape you agree lands on the ledger as yours, each rule of it a decision under one question, so the map shows where the topic turned.
 
-Once the shape is agreed, Claude fills in the rest. A call it leans on goes on the map as a question and is raised at a natural pause; whether it reaches you is decided by the ask rule, from how often Claude's answers on calls of that kind would have cost the product, read from your verdicts, never by Claude's own confidence. A call that reaches you usually shows Claude's lean beside it, sealed before you answer; now and then one is asked blind, Claude's answer held back until you have given yours. One that does not is recorded on the ledger as Claude's, and shows first on the map the next time you look. A fact only you hold, such as a deadline or an outside constraint, is always asked. [Trust](trust.md) covers the rule.
+Once the shape is agreed, Claude fills in the rest. Every call it would make goes on the map as a question and is raised at a natural pause, the ones it would sooner ask you about included; whether it reaches you is decided by the ask rule, from how often Claude's answers on calls of that kind would have cost the product, read from your verdicts, never by Claude's own confidence. A call that reaches you usually shows Claude's lean beside it, sealed before you answer; now and then one is asked blind, Claude's answer held back until you have given yours. One that does not is recorded on the ledger as Claude's, and shows first on the map the next time you look. A fact only you hold, such as a deadline or an outside constraint, is always asked. [Trust](trust.md) covers the rule.
 
 ### The map
 
@@ -41,15 +41,15 @@ Claude draws the map at natural pauses and whenever you ask: your questions besi
 
 - **A deep dive** answers in the background what neither of you can answer from the room, when it is worth more than a lookup. Claude offers it, or you ask for one. It surveys how others do it, reads one file against the question, checks whether the platform can do it, maps what exists and what it costs, or holds a claim against sources. It measures nothing: a number a decision would rest on comes back as the measurement it would take. When it lands you hear what was asked, what came back in full, and what it opened.
 - **A spike** is anything to look at or press that is never wired into the product: a design board, draft code, a format trial, a prototype to scroll and feel. Spikes are encouraged, because they settle what guessing would not. A spike is evidence only for what you reviewed in it. A design spike ends in a lock: "which design?" is a question on the map, closed by your choice.
-- **An experiment** comes in when a number is about to bear a decision. Claude offers it in the conversation with what a dependable answer would take off the table; declined, a quick measurement in the conversation stands in as an exploratory finding. Accepted, the question waits on the experiment, which you run now or later, and its result comes back as a measured finding ([experiments](experiments.md)).
+- **An experiment** comes in when a number is about to bear a decision. Unless you asked for it, Claude offers it in the conversation first, with a quick measurement there as the alternative, since an experiment keeps the topic from closing until it reports or is abandoned; declined, that measurement stands in as an exploratory finding. Accepted, the question waits on the experiment, which you run now or later, and its result comes back as a measured finding ([experiments](experiments.md)).
 
 Files, from spikes or shared by you, live with the work and are linked from the entry they inform, as **canonical**, which the specification carries and the build builds to, or **reference**, which a builder consults before re-solving anything it covers. You change a file's status in your own words, any time.
 
 ## Reviews
 
-Once the conversation has got going, a background review reads the topic from its record, never from the conversation, with a clean slate, and runs while you talk. Where a decision has two defensible ways and you stay unsettled, Claude offers **perspectives**: two agents each argue one side of the tension, and a third reconciles them, so you hear the tensions rather than two advocates.
+Once the conversation has got going, a background review reads the topic from its record and its log, never from the conversation, with a clean slate, and runs while you talk. It comes round again as the topic moves on: each further review waits until enough has changed since the last. Where a decision has two defensible ways and you stay unsettled, Claude offers **perspectives**: two agents each argue one side of the tension, and a third reconciles them, so you hear the tensions rather than two advocates.
 
-What a review finds is taken at a natural pause, never jumped to, and each finding becomes a question. Claude re-derives each from the record before acting on it: one the record or a fact settles is answered; one that hides a real choice goes through the ask rule; one that belongs to another topic goes there as a message. No finding is cut for count.
+What a review finds is taken at a natural pause, never jumped to, and each finding the topic takes up becomes a question. Claude re-derives each from the record before acting on it: one a decision already answers merges into that decision; one the code or a run answers is answered from what was found; one that hides a real choice, a single defensible answer included, goes through the ask rule; one that belongs to another topic goes there as a message. No finding is cut for count.
 
 The review is there to find the gaps while they are cheap to answer, so it hunts widely, for:
 

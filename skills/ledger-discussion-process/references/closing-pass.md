@@ -19,12 +19,12 @@ node .claude/skills/ledger-engine/scripts/engine.cjs agent dispatch {work_unit} 
 node .claude/skills/ledger-engine/scripts/engine.cjs brief closing-pass-reader {work_unit} {topic} --agent {agent}
 ```
 
-Its report is taken in as any report coming back is (the skill's **Tools**). A `product` finding is a line for the close's payload, written nowhere before the person's yes. Every point the pass finds lands — an entry, a question on the map, a message, later on the roadmap, a product-record line, or a candidate — never left in the log as a thread no one owns.
+Its report is taken in as any report coming back is (the skill's **Tools**). A `product` finding is a line for the close's payload, written nowhere before the person's yes.
 
 Where the pass changed what the topic decides — a question opened, an answer replaced — another pass reads what changed, unasked, once the conversation has closed what it opened. The passes end at one that changes nothing, and `closing-pass` is done.
 
 Your own reads:
-- `decisions-entered` — the conversation and the log read against the record: every decision made in the conversation has its entry, and every answer the person gave landed. The brief read against it too: a point it marks as from before that never reached the map goes on it, open, asked with its id from before.
+- `decisions-entered` — the conversation and the log read against the record: every decision made in the conversation has its entry, and every answer the person gave landed. The brief read against it too: an open question of the brief's that never reached the map goes on it, as does a point it marks as from before, asked with its id from before.
 - `conflicts-read` — no two current answers on the topic contradict each other.
 - `findings-rerun` — each measured or exploratory finding a decision rests on is run again by its command. A value that has changed is replaced, `--reason was-wrong`, with the new result; each decision relying on it is then confirmed (`ledger hold`) or replaced — a decision of the person's through `raise --replaces`.
 
