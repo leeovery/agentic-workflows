@@ -29,7 +29,7 @@ A claim about the code, a number or the platform is checked before it is said. W
 
 ### Claude's calls
 
-Until the topic's shape is agreed, what it covers and how it broadly works, Claude makes no call of intent or taste on it alone: each is worked through with you. The shape you agree lands on the ledger as yours, each rule of it a decision under one question, so the map shows where the topic turned.
+Until the topic's shape is agreed, what it covers and how it broadly works, Claude makes no call of intent or taste on it alone: each is worked through with you. Where several ways are open, Claude puts ideas forward and asks what you think; where one is clear, it sets out how it sees it working and invites you to pull it apart. The shape you agree lands on the ledger as yours, each rule of it a decision under one question, so the map shows where the topic turned.
 
 Once the shape is agreed, Claude fills in the rest. Every call it would make goes on the map as a question and is raised at a natural pause, the ones it would sooner ask you about included; whether it reaches you is decided by the ask rule, from how often Claude's answers on calls of that kind would have cost the product, read from your verdicts, never by Claude's own confidence. A call that reaches you usually shows Claude's lean beside it, sealed before you answer; now and then one is asked blind, Claude's answer held back until you have given yours. One that does not is recorded on the ledger as Claude's, and shows first on the map the next time you look. A fact only you hold, such as a deadline or an outside constraint, is always asked. [Trust](trust.md) covers the rule.
 
