@@ -32,7 +32,7 @@ Start this work created the unit, approve the map landed the epic's map, or the 
 
 ## Entering
 
-Where `$0` is not `none`, the person brings a piece of work, and the entry is its type call, `--type-call`: it opens no session of the product's conversation and keeps no log, so work asked for in one window never stops or ends the product talk in another. The talk settles what kind of work it is, and start this work takes it from there. Should the person want the product's conversation instead, enter again without it.
+Where `$0` is not `none`, the person brings a piece of work, and the entry is its type call, `--type-call`: it opens no session of the product's conversation and keeps no log, so work asked for in one window never stops or ends the product talk in another. The talk settles what kind of work it is, and start this work takes it from there, as Starting This Work says. Should the person want the product's conversation instead, enter again without it.
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs enter discovery {home} [--type-call] [--seeds "{seeds}"]
@@ -70,7 +70,9 @@ Every call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb} …`;
 
 ## Starting This Work
 
-In the product's conversation or a type call, the talk settles on a piece of work: something to build, fix or change. Load **[starting-this-work.md](references/starting-this-work.md)** and follow its instructions as written.
+Discovery is for talking, never a race to build. In the product's conversation or a type call alike, where the talk seems to have come to rest on a piece of work — something to build, fix or change — with nothing left to talk through, you may say so and offer to move it on; the person may keep talking instead. On their yes, or when they ask for it themselves:
+
+Load **[starting-this-work.md](references/starting-this-work.md)** and follow its instructions as written.
 
 ## Approving the Map
 
