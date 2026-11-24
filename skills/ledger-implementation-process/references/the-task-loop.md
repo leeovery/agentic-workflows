@@ -61,7 +61,7 @@ A finding it fixed coming back, or the builder and its reviewers going round on 
 
 ## A Builder That Stops
 
-A builder stops on a problem it cannot build past. Record the stop, `task stopped {work_unit} {task}`, then decide what to do: think it through, or where the answer needs the person, raise it for the task. Then put what the builder should know onto the task, written to `.ledger/.cache/{work_unit}/build/addition.md` — a fact about the code the task was written before, an answer to its question, or the person's instruction — `task add {work_unit} {task} --file .ledger/.cache/{work_unit}/build/addition.md --by {by:[orchestrator|person]}`, and send the builder back in, `brief builder {work_unit} {task}` by SendMessage. A decision goes to the ledger, never onto the task. Nothing onto a task sets how its builder works, where it looks or how big the work is, and the builder never edits its task.
+A builder stops on a problem it cannot build past. Record the stop, `task stopped {work_unit} {task}`, then decide what to do: think it through, or where it is a call, raise it for the task. Then put what the builder should know onto the task, written to `.ledger/.cache/{work_unit}/build/addition.md` — a fact about the code the task was written before, an answer to its question, or the person's instruction — `task add {work_unit} {task} --file .ledger/.cache/{work_unit}/build/addition.md --by {by:[orchestrator|person]}`, and send the builder back in, `brief builder {work_unit} {task}` by SendMessage. A decision goes to the ledger, never onto the task. Nothing onto a task sets how its builder works, where it looks or how big the work is, and the builder never edits its task.
 
 ## Waiting on the Person
 

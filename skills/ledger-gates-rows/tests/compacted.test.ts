@@ -23,7 +23,7 @@ const COMPACTED = `${FOLDER}/compacted.json`
 
 const NOTE = [
   'The conversation was just compacted. This conversation is working in the discussion of "management-window" in the epic "fumi". Before anything else, re-read these in full, running each engine call:',
-  '- /Users/person/fumi/.claude/skills/ledger-discussion-process/SKILL.md and its framework',
+  '- /Users/person/fumi/.claude/skills/ledger-discussion-process/SKILL.md and what its Instructions section loads',
   '- /Users/person/fumi/.ledger/fumi/discussion/management-window.md',
   'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
 ].join('\n')

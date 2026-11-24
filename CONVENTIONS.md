@@ -40,7 +40,7 @@ A behaviour Ledger gets wrong is fixed by deleting the prose that causes it, nev
 
 ## The Phase Skill
 
-A phase skill fences its field and gives its corridors' moves (Fields and Corridors), and nothing else. Outside a corridor it never says how Claude converses, the order a conversation takes, its pacing, what Claude reads — the entry's DATA names what there is, and Claude reads what the work needs — or when Claude writes the record (lint check 39 catches the pacing it can decide). Its fence:
+A phase skill fences its field and gives its corridors' moves (Fields and Corridors), and nothing else. Outside a corridor it never says how Claude converses, the order a conversation takes, its pacing, what Claude reads — the entry's DATA names what there is, and Claude reads what the work needs — or orders when Claude writes the record (lint check 39 catches the pacing it can decide). A line saying loosely what is wanted — a log written as the talk goes, at the points where it makes sense — is explanation, and stays. Its fence:
 - **Which phase and which piece of work this is** — its arguments, as the engine's handoff table declares them.
 - **Its goal** — what the phase is for, and where it sits: what feeds it, and what reads what it leaves.
 - **Its done-condition** — what is true when the phase can be left, stated as what the engine holds.
@@ -99,7 +99,7 @@ allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 
 Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.
 
-{The ask rule's load, in a phase that raises (The Framework Load).}
+{The load of `raising-a-call.md`, in a phase that raises (The Framework Load).}
 
 ## Done When
 
@@ -262,13 +262,13 @@ The framework loads once per conversation, at the head of the skill the conversa
 Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.
 ```
 
-A phase skill that raises a call — discussion, investigation, specification, the build, a quick-fix's and the review phase — loads the ask rule on the line after it, and no other skill or reference loads it (lint check 40). The section holds nothing else:
+A phase skill that raises a call — discussion, investigation, specification, the build, a quick-fix's and the review phase — loads `raising-a-call.md` on the line after it, and no other skill or reference loads it (lint check 40). The section holds nothing else:
 
 ```markdown
-Load **[the-ask-rule.md](../ledger-shared/references/the-ask-rule.md)** and follow its instructions as written.
+Load **[raising-a-call.md](../ledger-shared/references/raising-a-call.md)** and follow its instructions as written.
 ```
 
-The ask rule holds, once, what every raise needs and Claude cannot know untold: what a call is and why it goes through a raise, that facts are checked, the call's payload field by field, what the raise answers, and how the person's answer is recorded. A phase skill keeps its own door lines for where it raises, and restates nothing the ask rule says. Discovery decides nothing, and never loads it.
+`raising-a-call.md` holds, once, what every raise needs and Claude cannot know untold: what a call is and why it goes through a raise, that facts are checked, the call's payload field by field, what the raise answers, and how the person's answer is recorded. A phase skill keeps its own door lines for where it raises, and restates nothing it says. Discovery raises nothing, and never loads it.
 
 An opening skill met later in a conversation — without the mod, a handoff invokes the next skill in the same one — carries on from the load already made. A skill only ever opened in place carries neither the section nor the load (lint check 27).
 
@@ -279,7 +279,7 @@ The framework holds only what is true in every conversation and that Claude woul
 A part goes inline or into a reference by two weights: how often and how early its trigger comes, against its size and what its signpost must say.
 - **Inline** — what every turn needs, and the opening. A part of a line or two is inline wherever its trigger comes: it costs less than its signpost.
 - **A reference** — a part needed only at a rare or late moment — a request at any point, a closing, a once-a-project step, a corridor's move — loaded then and only then, even where the signpost and the file come to more words than the part would inline: until its moment, it stays out of the context.
-- **Standing guidance stays in SKILL.md.** A reference holds a procedure that runs to its end at its trigger. What holds across turns is in SKILL.md, which a compaction keeps and a loaded reference does not — the framework and the ask rule aside, which the skill's re-read after a compaction loads again (Handoffs and Recovery); SKILL.md opens on what matters most, all of it inside what a compaction keeps of it (Claude Code keeps an invoked skill's first 5,000 tokens).
+- **Standing guidance stays in SKILL.md.** A reference holds a procedure that runs to its end at its trigger. What holds across turns is in SKILL.md, which a compaction keeps and a loaded reference does not — the framework and `raising-a-call.md` aside, which the skill's re-read after a compaction loads again (Handoffs and Recovery); SKILL.md opens on what matters most, all of it inside what a compaction keeps of it (Claude Code keeps an invoked skill's first 5,000 tokens).
 
 A reference is:
 - **Named** for what it covers, in kebab-case: `closing-pass.md`, `sending-a-message.md`.

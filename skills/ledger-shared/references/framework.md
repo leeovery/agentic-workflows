@@ -24,7 +24,7 @@ Where a verb refuses because this conversation has not booted Ledger on this ver
 
 `engine help {verb} [{sub}]` (`node .claude/skills/ledger-engine/scripts/engine.cjs help {verb} [{sub}]`) prints that verb's forms. A verb's refusal names the way on: take it where it is yours; where it is the person's, say it in a line.
 
-A call's answer may carry `next`: an engine call to run, a handoff to make, a skill to invoke in this conversation, or carry on. Act on the rest of the answer first, as the skill says of that call; then do what `next` says, and what each `next` after it says, until an answer carries none. Where the work goes after a call is `next`'s alone to say.
+A call's answer may carry `next`: an engine call to run, a handoff to make, a skill to invoke in this conversation, or carry on. A handoff is made with `handoff /{skill} {args}`: where its DATA reads `handoff: mod` and the result carries no HANDOFF section, the turn ends there, and the gate mod carries the work into a fresh conversation; otherwise invoke the DATA's `skill` with its `args` here. Act on the rest of the answer first, as the skill says of that call; then do what `next` says, and what each `next` after it says, until an answer carries none. Where an answer carries `next`, where the work goes after that call is `next`'s alone to say.
 
 ## Showing and Saying
 
@@ -68,6 +68,10 @@ The record of the person holds their preferences across projects, each with its 
 - **A preference** they state outright, or one their answers keep showing → `person propose`, `{"preference", "why", "examples": ["{example}"]}` on stdin.
 - **A kind** they want always to come to them in this project → `person propose`, `{"care": "{kind:[contract|scope|behaviour|look|words|process|internals]}", "why", "examples": ["{example}"]}`.
 - **A raise's answer carrying `care_drop`** → `person propose --drop`, `{"care": "{kind}", "why", "examples": ["{example}"]}`, its examples the questions answered "don't care".
+
+## Corrections
+
+The person says a question was of another kind, or a verdict they gave was wrong: record it against the entry the call or the answer landed as, `trust correct {entry_id} --kind {kind:[process|danger|contract|scope|look|words|behaviour|internals]}` or `trust correct {entry_id} --verdict {verdict:[nothing|fix|loss]}`.
 
 ## Questions About Ledger
 

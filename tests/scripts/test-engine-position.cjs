@@ -466,7 +466,7 @@ describe('conversation position', () => {
   function note(where, skill, files) {
     return [
       `The conversation was just compacted. This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
-      `- ${abs(`.claude/skills/${skill}/SKILL.md`)} and its framework`,
+      `- ${abs(`.claude/skills/${skill}/SKILL.md`)} and what its Instructions section loads`,
       ...files.map((f) => `- ${abs(f)}`),
       'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
     ].join('\n');
@@ -509,7 +509,7 @@ describe('conversation position', () => {
       files: [],
       text: [
         'The conversation was just compacted. This conversation is working in the migration. Before anything else, re-read these in full, running each engine call:',
-        `- ${skill} and its framework`,
+        `- ${skill} and what its Instructions section loads`,
         '- its boot, run again as it says: boot stops where the migration stands, and names what to carry on with',
         'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
       ].join('\n'),
@@ -528,7 +528,7 @@ describe('conversation position', () => {
       files: [],
       text: [
         'The conversation was just compacted. This conversation is working in the epic "pay". Before anything else, re-read these in full, running each engine call:',
-        `- ${abs('.claude/skills/ledger-continue-epic/SKILL.md')} and its framework`,
+        `- ${abs('.claude/skills/ledger-continue-epic/SKILL.md')} and what its Instructions section loads`,
         'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
       ].join('\n'),
     });
@@ -552,7 +552,7 @@ describe('conversation position', () => {
     const logFile = abs(`.ledger/${unit}/topics/${topic}/log.md`);
     return [
       `The conversation was just compacted. This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
-      `- ${abs(`.claude/skills/ledger-${phase}-process/SKILL.md`)} and its framework`,
+      `- ${abs(`.claude/skills/ledger-${phase}-process/SKILL.md`)} and what its Instructions section loads`,
       `- \`node .claude/skills/ledger-engine/scripts/engine.cjs ledger record ${unit} ${topic}\``,
       ...(brief ? [`- ${abs(`.ledger/${unit}/topics/${topic}/brief.md`)}`] : []),
       ...(log ? [`- ${logFile}`] : []),
@@ -639,7 +639,7 @@ describe('conversation position', () => {
     const engine = 'node .claude/skills/ledger-engine/scripts/engine.cjs';
     const specNote = (/** @type {string[]} */ calls, /** @type {string[]} */ files, /** @type {string[]} */ lines = []) => [
       'The conversation was just compacted. This conversation is working in the specification of the epic "pay". Before anything else, re-read these in full, running each engine call:',
-      `- ${abs('.claude/skills/ledger-specification-process/SKILL.md')} and its framework`,
+      `- ${abs('.claude/skills/ledger-specification-process/SKILL.md')} and what its Instructions section loads`,
       ...calls.map((call) => `- \`${engine} ${call}\``),
       ...files.map((file) => `- ${abs(file)}`),
       ...lines,
@@ -755,7 +755,7 @@ describe('conversation position', () => {
     const caught = picture === null ? `the log, ${abs(log)},` : `the log, ${abs(log)}, and the picture, ${abs(picture)},`;
     return [
       `The conversation was just compacted. This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
-      `- ${abs('.claude/skills/ledger-discovery/SKILL.md')} and its framework`,
+      `- ${abs('.claude/skills/ledger-discovery/SKILL.md')} and what its Instructions section loads`,
       ...calls.map((call) => `- \`${call}\``),
       ...documents.map((file) => (file.includes('#') ? `- ${abs(file.split('#')[0])}, its section \`#${file.split('#')[1]}\` alone` : `- ${abs(file)}`)),
       transcript === null
@@ -818,7 +818,7 @@ describe('conversation position', () => {
     ]]);
     const note = (/** @type {string[]} */ calls, /** @type {string[]} */ files, /** @type {string} */ line) => [
       'The conversation was just compacted. This conversation is working in the experiment of "ledger" in the epic "pay". Before anything else, re-read these in full, running each engine call:',
-      `- ${abs('.claude/skills/ledger-experiment-process/SKILL.md')} and its framework`,
+      `- ${abs('.claude/skills/ledger-experiment-process/SKILL.md')} and what its Instructions section loads`,
       ...calls.map((call) => `- \`node .claude/skills/ledger-engine/scripts/engine.cjs ${call}\``),
       ...files.map((file) => `- ${file}`),
       line,

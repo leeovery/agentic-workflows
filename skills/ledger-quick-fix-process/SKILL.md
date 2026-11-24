@@ -18,7 +18,7 @@ Settled work of any size, needing no decision beyond a quick call, made in one s
 
 Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.
 
-Load **[the-ask-rule.md](../ledger-shared/references/the-ask-rule.md)** and follow its instructions as written.
+Load **[raising-a-call.md](../ledger-shared/references/raising-a-call.md)** and follow its instructions as written.
 
 ## Done When
 

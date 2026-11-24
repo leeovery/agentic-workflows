@@ -199,7 +199,7 @@ message among them — and the mod appends one message last: the engine's
 `conversation position` note. It says the conversation was just compacted and
 where it is working, the work unit named by its work type, then what to do
 before anything else. The note carries the recovery whole, since no skill
-keeps steps of its own for it: the skill and its framework re-read in full,
+keeps steps of its own for it: the skill and what its Instructions section loads re-read in full,
 then what the place re-reads, each file by its absolute path — in discussion
 the topic's record and its log, the log caught up from the conversation's
 transcript — then carry on from where the conversation was, as if the break

@@ -165,7 +165,7 @@ describe('the recovery note (24.2.2)', () => {
     const note = output(dir, ['conversation', 'position', SESSION_ID], { env: { ...env(), CLAUDE_CODE_SESSION_ID: '' } });
 
     for (const line of [
-      `- ${path.join(dir, '.claude/skills/ledger-review-process/SKILL.md')} and its framework`, `- \`${ENGINE} ledger record ${UNIT}\``,
+      `- ${path.join(dir, '.claude/skills/ledger-review-process/SKILL.md')} and what its Instructions section loads`, `- \`${ENGINE} ledger record ${UNIT}\``,
       ...[`${UNIT}/review/round-1.md`, `${UNIT}/spec.md`, `${UNIT}/build/log.md`].map((rel) => `- ${statePath(dir, rel)}\n`),
       `\nround: round 2\n${AREA_LINES.join('\n')}\n${UNNAMED}\n${fixPhaseLine(3, 1, 'built')}\nfix task waiting: 3.1 not started\n`,
     ]) {
