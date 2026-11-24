@@ -14,7 +14,7 @@ Each item is a kebab-case `name`, a one-line `summary` in the product's terms, a
 node .claude/skills/ledger-engine/scripts/engine.cjs render roadmap-harvest --file .ledger/.cache/product/discovery/product/roadmap-items.json
 ```
 
-A refusal names what to change: a name already on the roadmap folds into the item there or takes another, and an illegal name or horizon is respelled — a horizon with the person — before it is drawn again. A change the person asks for changes the file, and the items are drawn again.
+A change the person asks for changes the file, and the items are drawn again.
 
 ## The Close
 
