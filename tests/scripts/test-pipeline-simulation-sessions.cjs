@@ -61,8 +61,9 @@ describe('pipeline simulation: sessions', () => {
 
     // The review's lifecycle: no file exists until the sub-agent writes one;
     // the report lands, the row promotes, and each finding is taken as a
-    // question the review asked, recorded as it is taken — the last closes
-    // the report, and a finding taken twice refuses.
+    // question the review asked, recorded as it is taken with the question
+    // it was asked as — the last closes the report, and a finding taken twice
+    // refuses.
     enterEntry(sim, wu, 'discussion', 'beta');
     const review = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review']);
     scan = sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
@@ -73,7 +74,7 @@ describe('pipeline simulation: sessions', () => {
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', 'review-001', '--findings', 'F1,F2']);
     const findings = ['F1', 'F2'].map((finding) => {
       const asked = reviewAsks('beta', `What does ${finding} ask?`);
-      return { asked, row: sim.run(['agent', 'surface', wu, 'discussion', 'beta', 'review-001', finding]) };
+      return { asked, row: sim.run(['agent', 'surface', wu, 'discussion', 'beta', 'review-001', finding, '--question', asked]) };
     });
     assert.deepStrictEqual(findings.map((f) => f.row.status), ['acknowledged', 'incorporated'], 'the last finding closes the report');
     sim.refuses(['agent', 'surface', wu, 'discussion', 'beta', 'review-001', 'F1'], /incorporated/);
@@ -122,7 +123,7 @@ describe('pipeline simulation: sessions', () => {
     sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
     sim.run(['agent', 'ack', wu, 'discussion', 'alpha', fin.id, '--findings', 'G1']);
     const g1 = reviewAsks('alpha', 'What does G1 ask?');
-    assert.strictEqual(sim.run(['agent', 'surface', wu, 'discussion', 'alpha', fin.id, 'G1']).status, 'incorporated');
+    assert.strictEqual(sim.run(['agent', 'surface', wu, 'discussion', 'alpha', fin.id, 'G1', '--question', g1]).status, 'incorporated');
 
     probe = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
     assert.strictEqual(probe.in_flight.length + probe.pending.length + probe.acknowledged.length, 0, 'nothing owed');

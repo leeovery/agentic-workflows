@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the checklists (6.4) — one per closing point, held by the
 // engine and worked by `checklist show|done|skip|close`. The six points sit
-// in one table (`POINTS`), each item's key kept for good and its text the
-// spec's words, as a gate shows them to the person:
+// in one table (`POINTS`), each item's key kept for good — never renamed or
+// reused, a stored mark under a key its point does not hold left unread —
+// and its text the spec's words, as a gate shows them to the person:
 // - decided, a topic's close (6.4.6), on the unit's manifest under
 //   `checklists.decided.{topic}`;
 // - ready to build (6.4.7), `checklists.ready-to-build`;
@@ -366,7 +367,6 @@ const POINTS = Object.freeze({
       { key: 'questions-closed', text: 'every question of the person\'s closed', check: questionsClosed },
       { key: 'closing-pass', text: 'the closing pass run, and its last re-read changing nothing' },
       { key: 'decisions-entered', text: 'every decision in the conversation has an entry' },
-      { key: 'replacements-checked', text: 'each replacement checked against what it replaced' },
       { key: 'conflicts-read', text: 'the read for conflicting answers run within the topic' },
       { key: 'findings-rerun', text: 'each measured finding the topic\'s decisions rest on re-run' },
       { key: 'mailbox-empty', text: 'the topic\'s mailbox empty: every message raised and answered', check: mailboxEmpty },

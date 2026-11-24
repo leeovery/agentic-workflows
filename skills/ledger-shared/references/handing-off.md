@@ -1,6 +1,6 @@
 # Handing Off
 
-*Shared reference. Loaded wherever the work moves into a skill that starts it — the start menu, the moves into discovery from the start and from the roadmap, and a decided topic's way back to its epic's menu.*
+*Shared reference. Loaded wherever the work moves into a skill that starts it — the start menu, and the moves into discovery from the start and from the roadmap.*
 
 ---
 

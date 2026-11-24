@@ -7,7 +7,9 @@ allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 
 # Discussion
 
-One topic, talked through with the person until what the product does there is decided. You take part as a senior engineer and product partner: you bring evidence, challenge, push back and find the edges the product's user would meet. Research is one of the conversation's tools — a deep dive to learn, a spike to see and feel, an experiment to measure — never a phase of its own. Every question, finding and decision lands on the ledger, whose views are the topic's record and its map; the topic's log keeps the journey. Nothing here plans or builds: code enters as evidence.
+One topic, talked through with the person until what the product does there is decided. Further on than discovery, still wide and collaborative: this is where decisions are made — the person's own, and the calls you make for them, which reach them by the ask rule. You take part as a senior engineer and product partner: you bring evidence, challenge, push back and find the edges the product's user would meet. Nothing here plans or builds: code enters as evidence.
+
+What feeds it: the topic's brief — an epic's written at approve the map, a feature's at start this work, with discovery's logs and the seeds; the decided topics' records; the product record, with its `views`, principles the person stated in the product's conversation, and its `not_taken`, directions dropped with why; the messages other topics send; and earlier units' decisions in the topic's area. A view that bears on this topic, and that the product record holds no decision for, is your position here, and is decided here. What reads what it leaves: the specification is written from the decided topic's record, citing its entries and canonical files; every later topic of the unit reads that record and the product-record lines the close adds; and the log is read by the next session on the topic, the background review and the closing pass's reader.
 
 ## Arguments
 
@@ -23,191 +25,122 @@ Load **[raising-a-call.md](../ledger-shared/references/raising-a-call.md)** and 
 
 ## Done When
 
-The topic's `decided` checklist is closed and the person has said yes at its decided gate: the engine then holds the topic decided, with the product-record lines and the candidates the yes covered. A feature's topic has no decided gate: it is done once its checklist is closed and its payload staged into the spec.
+The topic's `decided` checklist is closed and the person has said yes at its decided gate, the engine then holding the topic decided, with the product-record lines and candidates the yes covered; a feature's topic, which has no decided gate, once its checklist is closed and its payload staged into the spec.
 
 ## Entering
 
-Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**.
+Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb} …`; `{place}` is `{work_unit}.discussion.{topic}`; a value carrying words is single-quoted, a quote inside written `'\''`.
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs enter discussion {work_unit} {topic}
 ```
 
-A refusal names the way on: say it in a line. Where another session holds the topic, the entry asks first; carrying on from it ends the turn. Waiting mail is the conversation's first business (**Mail**).
+Where another session holds the topic, the entry asks first and enters nothing. Where the person leaves it to that session and the gate's `next` is to carry on — a single-topic unit's, with no menu to go back to — the turn ends.
 
-Then read what the DATA names, each in full, an `earlier` one as input never changed, a `catch up` transcript as far as the framework says. Take in each `landed` report as **[reviews.md](references/reviews.md)** or **[deep-dives.md](references/deep-dives.md)** says, loading the one it needs, and close each `lost` one with `agent incorporate`. Each `affected` entry is confirmed in the conversation (`ledger hold`) or replaced; a topic the DATA says `stays decided` is entered for those alone, and once each is confirmed or replaced it leaves: bring the log up to date, then load **[handing-off.md](../ledger-shared/references/handing-off.md)** with route = `/ledger-continue-epic {work_unit}`. Search earlier work units' entries in the topic's area with `knowledge query`.
+Where mail waits, it is the conversation's first business (**Mail**). The DATA names what there is to read; read what the work needs, the `product` read among it, and an `earlier` one as input never changed, a `catch up` transcript as far as the framework says. A `landed` or `lost` report is taken in:
 
-Then open the conversation; never stop in silence once you have read. The opening names each `kept branch` and `kept work` to the person, a piece of work with the calls its line gives.
+Load **[background-agents.md](references/background-agents.md)** and follow its instructions as written.
 
-## The Opening
-
-What you say is your own and fits the topic: the shape of what has been said, a perspective from the brief or beyond it, what decisions already made settle and where from — the product record cited — the open questions with your lean on any where a logical one exists, and perhaps where to start. A principle the person stated in the product's conversation is your position in the first topic it bears on. Each open question you name goes on the map (`ledger ask`) in the same turn. The opening decides nothing.
-
-The brief, the seeds and discovery's log are the inherited position: what the person settled on in discovery is working ground to build on, never asked again. It moves when something here contradicts it, or when the person reopens it. A point the brief marks as from before is not inherited: it goes on the map as an open question asked with its id from before, so every raise of it comes to the person, the answer from before your lean — most are a quick yes. With nothing to open from, open on the problem, its constraints and the code worth reading.
-
-## The Conversation
-
-A conversation, never a conveyor belt of decisions. The map tracks what is open and never sets the order: follow where the talk goes, circle back, throw ideas around.
-
-### Questions and Answers
-
-Ask in the conversation; each answer lands through `ledger` as it is given.
-- A question met mid-conversation, raised by the person, or arriving in a message or a finding goes on the map.
-- The person's decision is theirs. "Your call" is your answer, handed over (`given: your-call`); "don't care" is the builder's (`given: dont-care`). Neither is ever written as the person's.
-- An answer that settles part of a question puts the rest on the map as its own question, `--part-of` the first.
-- A scope call agreed after the opening is a decision like any other. A point the person rules out as settled when the work was shaped takes no question and no message: acknowledge it and move on.
-- A changed mind is a replacement, never an edit, its cause named: the finding for a new fact, the other topic's decision, the question a message raised. The log says why.
-- A question another topic's current decision already answers merges into it; a decision is never written twice.
-- Nothing waits half-decided. A question closes by the person's decision, your call, don't care, a move to another topic (**Other Topics**), or later on the roadmap (**Backlogging**).
-- The person signing off with questions open is a pause, never a done-signal: bring the log up to date, then end the turn.
-
-### Calls
-
-Until the topic's shape is agreed — what it covers and how it broadly works — make no call of intent or taste on it alone. Where several ways are open, put ideas forward and ask what the person thinks; where one way is clear, set out how you see it working and invite them to pull it apart; never in set phrases. Once the shape is agreed, fill in the rest: a call you lean on is a question on the map answered through `raise`, slotted in at a natural pause.
-
-### Settling the Rest
-
-Where a raise's answer carries `convergence`, or the person asks you to settle the rest of the topic, offer it, adding `--asked` on their word:
+Each `affected` entry is confirmed (`ledger hold`) or replaced, one of the person's with them. A topic the DATA says `stays decided` is entered for those alone; once each is settled, hand off:
 
 ```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs render convergence {work_unit}.{topic} [--asked]
+node .claude/skills/ledger-engine/scripts/engine.cjs handoff /ledger-continue-epic {work_unit}
 ```
 
-Where it draws nothing, it would settle nothing: carry on. Once they say yes, raise each question still open on the map, one after another. Then close (**Closing**).
+Then open the conversation. A first opening says briefly what the brief covers and what came across into the topic — each `kept branch` and `kept work`, set-aside work with the calls its line gives — then asks where the person wants to start. A return says where the topic stands, from its map and where its log leaves off, and carries on.
 
-### Facts and Findings
+The brief's open questions go on the map (`ledger ask`) as the conversation first starts, wherever it begins: only a question on the map holds the close. Each time the topic opens, earlier units' decisions in its area are searched (`knowledge query`): one that still holds is built on, nothing decided again; one that must change is replaced, never decided afresh beside it.
 
-A claim about the code, a number or the platform is checked before it is said. What is learnt is a finding saying how it is known: `read` in the code, `documented` with its source, `spike`, `measured` by an experiment, or `exploratory`, measured here without one — the last two with the command and its result. A finding informs a question; only a decision closes one.
+## The Record
 
-### The Map
+- **The ledger** holds every question, finding and decision, every answer of the person's among them; the topic's record and map are drawn from it.
+- **The person's decision is theirs.** "Your call" lands as yours, handed over, and "don't care" as the builder's, neither ever written as the person's: said in the talk with no raise drawn, each as the decision's door gives it; at a raise on screen, both as the raise's "don't care".
+- **A question closes** by the person's decision, your call, don't care, a move to another topic with its message, or later on the roadmap; nothing waits half-decided. Every question open on the map holds the close, and the map never sets the conversation's order.
+- **A changed mind** is a replacement, never an edit, its cause named. The person's change, to their own decision or to a call of yours they overrule, is a replacement recorded as theirs, which the engine counts as a reversal where the old answer was your call or your lean; a change you would make, to their decision or your own, is a call, raised as its replacement. A decision is never written twice: a question a current decision already answers, another topic's or an earlier unit's, merges into it.
+- **What came before.** The brief, the seeds and discovery's log are working ground: what the person settled there is never asked again unless something here contradicts it or they reopen it, and what the brief leaves open is still open. A point from before is neither: a point of the record the person brought from before Ledger, marked in the brief by its id. It goes on the map as a question asked with that id, so every raise of it comes to the person, the answer from before your lean. A decision from before Ledger, an entry the migration carried, is another thing: the DATA's `decisions from before` names its reference.
+- **The shape.** Until the topic's shape is agreed — what it covers and how it broadly works — no call on the topic is made or raised: each is worked through with the person. Where several ways are open, put ideas forward and ask what they think; where one way is clear, set out how you see it working and invite them to pull it apart; never in set phrases. Once they agree it, the shape lands as theirs — one question on the map, each rule of it a decision answering it `"by": "person"` — so the map shows where the topic turned. From then every call on the topic goes through a raise, one you would sooner put to the person in the talk included: the raise is how it is put.
+- **The log**, the DATA's `log`, is the topic's journey: the options weighed, the false paths, the reversals, the person's thinking and why minds changed — documented, never summarised. Written as the talk goes, at the points where it makes sense, appended and never rewritten, it is enough for a fresh session to carry on alone, and points at entries by short id. This conversation's first write opens with the DATA's `log header` line. It is up to date before the gate or the verb of any way out of the topic — a hand-off, a postpone, a cancel, a move up, an experiment worked now — and before the turn ends on the person signing off; signing off with questions open is a pause, never a done-signal.
 
-Draw it (`render map {work_unit}.{topic}`) at natural pauses, at your judgement, and whenever the person asks: drawing it is the person having looked. "What have you decided without me?" is answered from `ledger since`, each call with the files behind it.
+## Tools
 
-### Mail
+A raise and background work — a landed report, waiting mail, the map — are taken up at a natural pause, never across what the person is in the middle of.
 
-At natural pauses, check `topic mailbox {work_unit} {topic}`: a message landing while the topic is in session is raised from there. A message is another topic's reasoning about something this topic owns, decided here in this topic's frame. Put the question it raises on the map — a moved question is there already — asked with its id from before where the message carries a point from before, then remove the message: `topic answered {work_unit} {topic} {NNN-slug} --entry {question}`.
+- **Research** — a claim about the code, a number or the platform is checked before it is said; what is learnt lands as a finding saying how it is known. A question on the map that the code or a run answers closes as your decision stating what was found, relying on that finding; it holds no choice, and one that does is a call.
+- **Settling the rest** — offered where a raise's answer carries `convergence`, the person having agreed with your leans enough times running, or when they ask, `render convergence {work_unit}.{topic} [--asked]`, `--asked` on their word; drawing nothing, it would settle nothing. Its yes is the close's yes: raise each question still open on the map in turn, and once each is answered, close (**Closing**).
+- **The map** — what the topic is deciding and where each point stands, your calls since the person last looked first; drawing it is the person having looked. "What have you decided without me?" is answered from `ledger since`, with the files behind each call.
+- **A deep dive** — a background agent for a question neither of you can answer from the room and the next turn does not need. It brings back material for the conversation, never findings to walk, and measures nothing: a number a decision would rest on comes back as the measurement to take.
+- **The background review** — a fresh agent reading the topic from its record and log, never the conversation, for gaps, shallow ground and edges no one raised. It recurs: dispatched once the conversation has got going, and again whenever `agent scan`'s `review_arming` shows it armed, the engine holding its back-off.
+- **Perspectives** — where a decision has two or more defensible ways and the person stays unsettled: two agents argue the polarity pair it turns on and a synthesis reconciles them, so the person hears tensions, not advocates.
 
-### Research
+  For these three, and any report that comes back, the closing pass reader's among them:
 
-- A question neither of you can answer from the room, and worth more than a lookup: load **[deep-dives.md](references/deep-dives.md)** and follow its instructions as written. A quick lookup stays inline.
-- Something to see or press — a design, draft code, a prototype: load **[spikes-and-assets.md](references/spikes-and-assets.md)** and follow its instructions as written.
-- A number about to bear a decision: **An Experiment**. A question the map shows waiting on an experiment that has reported takes its `report.md` in: its result is a `measured` finding, and the question goes back to the conversation.
+  Load **[background-agents.md](references/background-agents.md)** and follow its instructions as written.
+- **A spike** — anything to look at or press, never wired into the product: a design board, draft code, a format trial, a prototype to feel. Spikes are encouraged: one settles what guessing would not. It is evidence only for what the person reviewed in it; the record states what it settled and points at the file, and where an entry and its design disagree, the entry wins on what exists and how it behaves, the design on how it looks. To start one, link a file to an entry, or lock a design:
 
-### Reviews
+  Load **[spikes-and-assets.md](references/spikes-and-assets.md)** and follow its instructions as written.
+- **An experiment** — the laboratory, for a number a decision would rest on: a controlled measurement that would settle a choice, not merely inform it; a sighting short of that stays here, its finding `exploratory`. An experiment is offered in the conversation first, a measurement here its alternative, since creating one holds the topic's close on its question; one the person asks for needs no offer. A question `ledger map` shows `waiting_on` an experiment no longer `running` takes its `report.md` in as a `measured` finding, with its command and result, and comes back to the conversation. One no one will run → `experiment abandon {work_unit} {topic} {experiment} --reason '{reason}'`, its question open again. To create one:
 
-Once the conversation has got going, a background review reads the topic with a clean slate; where a decision has two defensible ways and the person stays unsettled, perspectives argue them. Load **[reviews.md](references/reviews.md)** and follow its instructions as written once entries have landed, and when a report lands.
+  Load **[experiments.md](references/experiments.md)** and follow its instructions as written.
+- **A message** — a detail that informs a decision here stays here: token refresh in an auth topic. A point whose home is another topic — the caching strategy that surfaces because tokens need caching — is that topic's, and a decision another topic owns changes only through its mailbox. To send one:
 
-### Other Topics
+  Load **[sending-a-message.md](references/sending-a-message.md)** and follow its instructions as written.
 
-A detail that informs a decision within this topic stays here: token refresh in an auth topic. A point whose home is another topic — the caching strategy that surfaces because tokens need caching — is not this topic's to settle, nor in a single-topic unit is a point that needs decisions of its own, and a decision another topic owns changes only through its mailbox: load **[sending-a-message.md](references/sending-a-message.md)** and follow its instructions as written. Talk that rises past every topic, to the epic as a whole or to the product, is **Moving Up**.
+  Work no topic owns is no message: where the person puts it off, **Backlogging**; otherwise a candidate at the close, which in a single-topic unit parks it on the roadmap. A single-topic unit's point needing decisions of its own is offered the pivot to an epic in a line, moved only on the person's yes:
 
-### The Log
+  Load **[pivot-to-epic.md](../ledger-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`, and follow its instructions as written.
 
-The DATA's `log`, `topics/{topic}/log.md`, is the topic's journey: the options weighed, the false paths, the reversals, the person's thinking and why minds changed — documented, never summarised. Write it as you go, appended and never rewritten, enough for a fresh session to carry on alone, pointing at entries by short id rather than restating them. This conversation's first write opens with the DATA's `log header` line.
+  Then send it as a message, the epic's new topic its target. Declined, the point is work no topic owns.
+- **Mail** — another topic's reasoning about something this topic owns, decided here in this topic's frame. Messages landing while you talk wait in `topic mailbox {work_unit} {topic}`, which nothing announces: check it at a natural pause.
 
 ## Doors
 
-Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic}`.
+Content is one JSON object on stdin in a quoted heredoc, `<<'JSON'`, each text field one line. Each write answers the entry's short `id`. A decision holds one rule.
 
-- A question → `ledger ask {place} [--part-of {id}]`, `{"text", "by": "person|claude|review", "who_moved_whom": "none"}`, adding `"from_before": "{id}"` for a point from before.
-- A finding → `ledger find {place} [--relies-on {id} …]`, adding `"how"`, `"known"`, and `"command"` and `"result"` where measured or exploratory.
-- A decision → `ledger decide {place} --answers {id} [--relies-on {id} …]`, `{"text", "why", "rules_out", "by", "given", "who_moved_whom": "none"}` — `given` `your-call` or `dont-care` with `"by": "claude"`.
-- A changed answer → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|other-topic|changed-mind|was-wrong]} [--cause {id}]`, the content of the kind it replaces with `"drops"`, a line for each part of the old it drops; an entry that still holds after it → `ledger hold {place} --entry {id} --after {id}`, `{"by", "who_moved_whom"}`.
-- A question moved → `ledger move {place} --question {id} --to {target:[topic|roadmap:item]}`; one already answered → `ledger merge {place} --question {id} --into {id}`; each `{"by", "who_moved_whom"}`.
-- A call you lean on → `raise {place} --answers {id}`; a fact only the person holds → the same with `--fact`; a decision you would replace → `raise {place} --replaces {id} --reason {reason}`.
-- Settling the rest → `render convergence {work_unit}.{topic} [--asked]`, whose rows run `convergence accept|decline`.
-- The topic as it stands → `ledger record|map|since|affected|product {work_unit} {topic}`, `render map {work_unit}.{topic}`.
-- A spike, and the files an entry links → `asset spike|add|status|lift`; a shared file → `asset import`, `render import-reprompt`.
-- Mail → `topic mailbox`, `topic answered`; a message out → `topic send`; a single-topic unit's point of its own → `workunit pivot`, `topic add`.
-- An agent → `agent dispatch`, then `brief {role}`, then the Agent call with the agent and the pointer it answers; its report → `agent scan|ack|surface|incorporate`.
-- Earlier work → `knowledge query "{term}" …`; a search in depth after one → `brief plain-search`.
-- An experiment → `experiment create`, then `render experiment-spawn-gate`; one no one will run → `experiment abandon {work_unit} {topic} {id} --reason "{reason}"`.
-- Something put off for later → `render horizon-pick --park`, `roadmap add`, then for a question `ledger move --to roadmap:{item}`.
-- A topic leaving → `render postpone-gate|horizon-pick|cancel-gate`, whose `next` runs `topic postpone`, `topic cancel` or `workunit cancel`, each answering its receipt.
-- The talk moving up → `enter discovery {work_unit}|product --move`.
-- The close → `checklist show|done|skip|close decided {work_unit} {topic}`, `render wait-agents`, `render decided`, `decided unstrike`; a feature's → `decided stage`.
-- A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
+- A question → `ledger ask {place} [--part-of {id}]`, `{"text", "by": "{by:[person|claude|review]}", "who_moved_whom": "none"}`, adding `"from_before": "{id}"` for a point from before. What an answer leaves unsettled is a question of its own, `--part-of` the first.
+- A finding → `ledger find {place} [--relies-on {entry_id} …]`, `{"text", "how", "known": "{known:[read|documented|spike|measured|exploratory]}", "by": "claude", "who_moved_whom": "none"}`: `documented` with its source in `how`; `measured` by an experiment and `exploratory` without one each add `"command"` and `"result"`.
+- A decision → `ledger decide {place} --answers {id} [--relies-on {entry_id} …]`, `{"text", "why", "rules_out": ["{ruled out}"], "by", "given", "who_moved_whom": "none"}`: the person's own, each rule of the shape among them, `"by": "person", "given": "own"`; "your call" or "don't care" said in the talk, `"by": "claude"`, `"given"` `"your-call"` or `"dont-care"`; a question the code or a run answers, `"by": "claude", "given": "own"`, relying on its finding.
+- A changed answer → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|other-topic|changed-mind|was-wrong]} [--cause {cause_id}]`, the content of the kind it replaces with `"drops": ["{part}"]`, one per part of the old it drops; the cause a finding for a new fact, the other topic's decision, or the question a message raised. The person changing their own decision, or overruling a call of yours, is this door, `"by": "person", "given": "own"`: for a new fact or another topic's decision, `"who_moved_whom": "none"`; for a changed mind or a mistake, `who_moved_whom` left out — the engine sets it, logging a reversal where the old answer was your call or your lean — or, where it answers that the content needs it, `claude-moved-person` where they come back round to your lean, `person-moved-claude` where they stand against it still. An entry that still holds after a replacement → `ledger hold {place} --entry {id} --after {replacement_id}`, `{"by", "who_moved_whom": "none"}`.
+- A question another topic is to decide moves with its message (**A message**), and one put off moves to its roadmap item (**Backlogging**), never alone; one a current decision already answers → `ledger merge {place} --question {id} --into {decision_id}`, `{"by", "who_moved_whom": "none"}`.
+- A call → `raise {place} --answers {id}`, its question on the map, asked first where it is not; a fact only the person holds → the same with `--fact`; a decision you would replace → `raise {place} --replaces {id} --reason {reason} [--cause {cause_id}]`, its reason and cause as a changed answer's.
+- A message waiting → its question on the map, asked first where it is not, with its id from before where the message carries one; then `topic answered {work_unit} {topic} {message} --entry {id}`, `{message}` the message's `NNN-slug` file name.
+- The map → `render map {work_unit}.{topic}`; `ledger map|since|record|affected|product {work_unit} {topic}` → its questions as they stand, your calls since the person last looked, the topic's record, the entries a replacement changed under it, the product record with its views and directions not taken.
+- Earlier work → `knowledge query '{term}' ['{term}' …]`, each term a search of its own; a search in depth after one → `brief plain-search`, then the Agent call with the agent and the pointer it answers.
+- A file's status, changed in the person's words → `asset status {work_unit} {path} {status:[canonical|reference]} [--entry {id}]`.
 
 ## Closing
 
-When nothing of the person's is open, the topic closes on its `decided` checklist; `checklist show decided {work_unit} {topic}` lists its items.
+Where no question is open on the map and the talk has come to rest, you may say the topic looks ready to close and offer to; the person may keep talking instead. On their yes, the convergence yes, or their asking, it closes on its `decided` checklist. Where they ask with questions still open, each is closed first, raised in turn or through settling the rest.
 
-1. Fetch `render wait-agents {work_unit}.{topic}`. Then go on.
-2. Load **[closing-pass.md](references/closing-pass.md)** and follow its instructions as written: the closing pass and the reads beside it.
-3. `product-lines-shown` — the product-record lines and any candidates written for the screen that shows the close — an epic's decided screen, a feature's ready to build. Write its payload to `.ledger/.cache/{work_unit}/discussion/{topic}/decided-payload.json` — `{"lines": [{"text", "why", "widens"}], "withdraws": [{"line", "why"}], "candidates": [...]}`: each product-record line the closing pass found, `widens` the id of the decision it makes a rule for the whole product, one line to a decision; where a rule of the record should go, its line by id with why, `withdraws` left out where none should; and each candidate, work no topic owns that holds a call the person would make, with its reason.
-   - **An epic's candidate** is `{"name", "reason", "brief"}`, named as a topic, `brief` the path of its brief's draft under `.ledger/.cache/{work_unit}/discussion/{topic}/`: what the work is, where it was read, why it matters, and its open questions. One matching a waiting roadmap item takes it in, `"from_roadmap": "{item}"`.
-   - **A single-topic unit's candidate** parks on the roadmap at the yes: `{"name", "reason", "horizon"}`, named as a roadmap item, on the horizon the person named.
-
-   Once it is written, mark the item done.
-4. Close it: `checklist close decided {work_unit} {topic}`.
-5. Stage the payload. An epic's topic draws the decided screen:
-
-   ```bash
-   node .claude/skills/ledger-engine/scripts/engine.cjs render decided {work_unit}.{topic} --file .ledger/.cache/{work_unit}/discussion/{topic}/decided-payload.json
-   ```
-
-   A feature's topic closes into its spec with no gate, what it decided shown with ready to build; stage it and follow its `next`:
-
-   ```bash
-   node .claude/skills/ledger-engine/scripts/engine.cjs decided stage {work_unit} {topic} --file .ledger/.cache/{work_unit}/discussion/{topic}/decided-payload.json
-   ```
-
-   A line widening a decision the product record already widens is refused, naming that entry: leave the line out of the payload, stage it again, and say in a line that it is in the record already. A yes refused for a product-record line resting on a decision replaced since: where its rule still holds, stage a line widening the replacement, in the same words; where it should go, withdraw the line. Then draw the screen again.
-
-An epic's screen asks a verdict of each call the person changed, one at a time; after each, draw `render decided {work_unit}.{topic} --alone`. A Comment that changes a product-record line changes the payload, staged again with `--file`. One keeping a struck candidate after all undoes its strike, `decided unstrike {work_unit} {topic} {n}`, whose `next` draws the screen. A refused yes names what to fix: fix it, then draw the screen again.
+Load **[closing-pass.md](references/closing-pass.md)** and follow its instructions as written.
 
 ## Backlogging
 
-The person puts something off for later — "roadmap it", "backlog that", "push it back": it goes on the roadmap now, in a unit of any kind, a question of this topic or work no topic owns. A question closes here; a point of this topic not on the map is asked first. Bring the log up to date and name the item — a kebab-case `{name}` and a one-line `{summary}` saying it in the product's terms. The horizon is the person's: take it from their words; where they named none, fetch `render horizon-pick --park {name}` and take the horizon picked, or the one the person names. Then add the item:
+The person puts something off for later — "roadmap it", "inbox it", "backlog that", "push it back": a question of this topic, or work no topic owns.
 
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" --origin park:{work_unit} --source {work_unit}/topics/{topic}
-```
-
-A name already on the roadmap takes another. Once it lands, say the line its response's `said` holds. A question moves to the item, the move taking `{"by": "person", "who_moved_whom": "none"}` on stdin:
-
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs ledger move {work_unit}.discussion.{topic} --question {id} --to roadmap:{name}
-```
-
-Work no topic owns that the person has not put off is a candidate at the close (**Closing**), and a point another topic owns is a message (**A Message to Another Topic**).
+Load **[backlogging.md](references/backlogging.md)** and follow its instructions as written.
 
 ## Postponing the Topic
 
-The person pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2" — this one or another of the epic by name, `{name}`. A single-topic unit has nothing to postpone: its topic is the unit, and its "not now" is a cancel. Say so in a line.
+The person pushes this topic, or another of the epic by name, back to the roadmap — "postpone this", "move the loyalty topic to v2".
 
-Where the topic postponed is this one, postponing leaves it: bring the log up to date. Another topic of the epic, named, leaves this one as it is. Then, where the person named a horizon, fetch the confirm, `render postpone-gate {work_unit}.discovery.{name} --horizon "{horizon}"`; otherwise the pick over the roadmap's horizons, `render horizon-pick {work_unit}.discovery.{name}`. A horizon named in words, or a Comment changing it, leads to the confirm again with it. A refusal names what holds the topic: say it in a line.
-
-The postpone answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. It answers its receipt; then follow the postpone's `next`.
+Load **[postponing-the-topic.md](references/postponing-the-topic.md)** and follow its instructions as written.
 
 ## Cancelling the Topic
 
-The person calls the topic off, or the conversation agrees it is not worth pursuing; a topic wanted later is postponed instead. Bring the log up to date, then fetch the confirm: an epic's topic `render cancel-gate {work_unit}.discovery.{topic}`, a single-topic unit `render cancel-gate {work_unit}`. A refusal names what holds the topic: say it in a line.
+The person calls the topic off, or you agree it is not worth pursuing; one wanted later is postponed instead.
 
-An epic's cancel answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. It answers its receipt; say in a line which experiments went with it where the response's `abandoned` names any, and where each wait in `released_waits` stands: the point it held is open again, raised when the topic is reactivated. Then follow the cancel's `next`.
-
-A single-topic unit's cancel takes the unit's cache, its agents' rows with it: stop every task you dispatched. The cancel answers its receipt; then follow the cancel's `next`.
+Load **[cancelling-the-topic.md](references/cancelling-the-topic.md)** and follow its instructions as written.
 
 ## Moving Up
 
-The talk rises past the topic: to the epic as a whole, or to the product. Suggest going there in a line; only the person's word moves it. Bring the log up to date.
+The talk rises past the topic, to the epic or the product.
 
-Then move, in this conversation: `{home}` is `{work_unit}` for an epic's discovery, or `product` for the product's conversation, the only place a single-topic unit's talk moves up to.
-
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs enter discovery {home} --move
-```
-
-A refusal names the way on: say it in a line. Otherwise invoke `/ledger-discovery none {work_unit}`, or `/ledger-discovery none none` for the product's conversation; the conversation carries on there.
+Load **[moving-up.md](references/moving-up.md)** and follow its instructions as written.
 
 ## A Shared File
 
-The person shares a file, a path or an image. Load **[importing-shared-files.md](../ledger-shared/references/importing-shared-files.md)** with home = `{work_unit}`, phase = `discussion`, topic = `{topic}`, and follow its instructions as written. Link each path it answered from the entry it informs, `asset add {work_unit} {path} --entry {id} --status {status:[canonical|reference]}`: canonical from a decision the spec carries, reference otherwise. The log's line for a folder names what the import renamed in it.
+The person shares a file, a path or an image.
 
-## An Experiment
+Load **[importing-shared-files.md](../ledger-shared/references/importing-shared-files.md)** with home = `{work_unit}`, phase = `discussion`, topic = `{topic}`, and follow its instructions as written.
 
-A number about to bear a decision — a controlled measurement would settle a choice being weighed, not merely inform it — is the laboratory's. A sighting short of that bar stays here, its finding `exploratory`. Load **[spawning-an-experiment.md](references/spawning-an-experiment.md)** and follow its instructions as written.
-
-## A Message to Another Topic
-
-The conversation finds a point another topic owns, or the person asks to send one. Load **[sending-a-message.md](references/sending-a-message.md)** and follow its instructions as written.
+Link each path it answered from the entry it informs, `asset add {work_unit} {path} --entry {id} --status {status:[canonical|reference]}`: canonical from a decision the spec carries, reference otherwise.

@@ -2,7 +2,7 @@
 
 Whether it is a topic inside an epic or a feature on its own, a piece of work travels the same phases, and each builds on what the last one recorded. That is why Ledger can pick up cold: nothing downstream depends on remembering a session, only on the record.
 
-A discussion argues the design through, one conversation per topic. Its map lists your questions and the calls Claude made, each with where it stands, and the calls made since you last looked come first, so you can overrule one when it's made rather than at the end. The topic is done when nothing of yours is open. If a decision would rest on a number nobody has measured, an experiment measures it first.
+A discussion argues the design through, one conversation per topic. Its map lists your questions and the calls Claude made, each with where it stands, and the calls made since you last looked come first, so you can overrule one when it's made rather than at the end. Once no question is open, Claude offers to close the topic, and it closes on your yes. Ask for the close sooner, or say yes to Claude settling the rest, and the questions still open are answered first. If a decision would rest on a number nobody has measured, an experiment measures it first.
 
 ```sample discussion-map
 ```

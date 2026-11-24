@@ -765,7 +765,7 @@ function passGate(sim, rendered, name, key) {
 const gatesAnswered = (sim) => trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'gate').map(({ gate }) => gate);
 
 /** Claude's items of the decided checklist; the engine works out the rest. */
-const DECIDED_ITEMS = Object.freeze(['closing-pass', 'decisions-entered', 'replacements-checked', 'conflicts-read', 'findings-rerun', 'product-lines-shown']);
+const DECIDED_ITEMS = Object.freeze(['closing-pass', 'decisions-entered', 'conflicts-read', 'findings-rerun', 'product-lines-shown']);
 
 /**
  * A discussion closed as the prose closes it (9.7): the map drawn, no agent
@@ -793,14 +793,14 @@ function decideTopic(sim, wu, topic, payload = { lines: [], candidates: [] }) {
  * A discussion worked from its entry to its close as the prose works it
  * (9.3, 9.7): the entry; the reads — every other decided topic's record and
  * the product record; each waiting message raised as a question and answered
- * off the mailbox; the opening question asked and the person's answer
- * decided, the log written; then the close — an epic's topic's through its
+ * off the mailbox; the topic's shape asked and landed as the person's
+ * decision, the log written; then the close — an epic's topic's through its
  * decided gate's yes, a feature's staged into its spec. Answers what the yes,
  * or the stage, answered.
  * @param {Sim} sim @param {string} wu @param {string} topic
  * @param {{question?: string, answer?: string, payload?: {lines: object[], candidates: object[]}}} [opts]
  */
-function discussed(sim, wu, topic, { question = `What does ${topic} settle?`, answer = 'This.', payload } = {}) {
+function discussed(sim, wu, topic, { question = `What does ${topic} cover, and how does it broadly work?`, answer = 'This.', payload } = {}) {
   enterEntry(sim, wu, 'discussion', topic);
   const items = sim.manifest(wu).phases?.discussion?.items ?? {};
   for (const [name, item] of Object.entries(items)) {
