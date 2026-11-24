@@ -51,6 +51,15 @@ Once the conversation has got going, a background review reads the topic from it
 
 What a review finds is taken at a natural pause, never jumped to, and each finding becomes a question. Claude re-derives each from the record before acting on it: one the record or a fact settles is answered; one that hides a real choice goes through the ask rule; one that belongs to another topic goes there as a message. No finding is cut for count.
 
+The review is there to find the gaps while they are cheap to answer, so it hunts widely, for:
+
+- **Coverage** — ground the topic set out to cover and has not touched, and the concerns beside it: security, error handling, scale, observability, migration, rollback.
+- **Each decision** — its why, the alternatives weighed, the trade-offs it accepts, and whether it is surer than what it rests on. Never which option you chose.
+- **Each decided mechanism, at its edges** — an empty or malformed input, a dependency that is down, a limit reached, the mechanism itself failing, a default nobody stated.
+- **What nobody said** — an assumption nothing checked, an outside dependency never named, the question you should both be asking.
+
+What counts as a finding follows how far the topic has come: early on the review offers things to pull on; once most is decided, it keeps what a spec built from the record would get wrong or stall on. A real decision about what the product does counts at any stage, however small. A nit, a preference or a mechanism the builder would settle is noted in the report and never raised. The review holds no finding back to spare you: the gaps get found, and the [ask rule](trust.md#the-ask-rule) decides which of them come to you.
+
 ## Other topics
 
 A detail that informs a decision within this topic stays here: token refresh in an auth topic. A point whose home is another topic, such as the caching strategy that surfaces because tokens need caching, is that topic's to settle. It goes there as a **message**: what this topic found, the reasoning, and what the other is asked to decide. Claude never visits the other topic. The message waits in that topic's **mail**, and its next session raises it before anything else; a topic cannot close while mail waits. The menus show it as *mail waiting*.

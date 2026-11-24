@@ -17,7 +17,7 @@ Every agent is briefed by the engine, from a template Ledger owns, filled from t
 Behind a live [discussion](discussion.md), agents work in the background while the conversation carries on:
 
 - **The deep dive** answers one open question in real depth — from sources, from the code — and reports what it found for the conversation to take up.
-- **The discussion reviewer** reads the topic's record and log with a clean slate, for gaps, shallow ground and edges nobody raised, each finding with where it belongs.
+- **The discussion reviewer** reads the topic's record and log with a clean slate and hunts for what the conversation missed: ground left untouched and the concerns beside it, such as security, error handling and migration; a decision with no why, no alternative weighed or a trade-off unsaid; every decided mechanism at its edges; an assumption nobody checked. Each finding comes back with where it belongs. It holds none back to spare you: which ones reach you is the ask rule's to decide.
 - **The perspective agents** argue a hard decision from two deliberately opposed lenses, and **the synthesis agent** reconciles them into the landscape of trade-offs and what would tip it.
 - **The closing-pass reader** reads the topic fresh at its close, against the other records and the product record, and carries the gap review where none has run since the topic's last decision.
 
