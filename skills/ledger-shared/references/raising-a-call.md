@@ -53,7 +53,7 @@ Where the phase's skill says a raise is not drawn where it is made — the build
 A raise is no gate: its answer never goes to `gate`. `{id}` is the one the draw answered as `raise`.
 - **A row picked**, the screen's `keep` among them → `raise answer {id} --pick {key}`, the key as the screen shows it, `{"why"}` on stdin, the person's reason as they gave it. Where they pick your lean having first disagreed, then come round to your view, add `"who_moved_whom": "claude-moved-person"`, never on a blind question or a `keep`; every other value is the engine's.
 - **Their own answer**, a Comment that gives it among them → `raise answer {id} --own`, `{"text", "why"}`, adding `"rules_out": ["{ruled out}"]` for what their words rule out.
-- **"Don't care"** → `raise answer {id} --dont-care`, nothing on stdin: your lean lands as your decision, marked as their "don't care", and settles this question alone. While a raise is on screen this is the only door for it, never the phase's own decision door: the engine counts these answers to cue dropping a care entry.
+- **"Don't care"**, or "your call" → `raise answer {id} --dont-care`, nothing on stdin: your lean lands as your decision, marked as their "don't care", and settles this question alone; it is no evidence of how they would have answered. While a raise is on screen this is the only door for it, never the phase's own decision door: the engine counts these answers to cue dropping a care entry.
 - **Explain** → `raise answer {id} --didnt-follow`; explain it again, then `raise show {id}`. The question stays open.
 - **Technical** → `raise show {id} --technical`; `raise show {id}` hides the mechanism again.
 - **A comment or a question** about it is talked through, then `raise show {id}`.
