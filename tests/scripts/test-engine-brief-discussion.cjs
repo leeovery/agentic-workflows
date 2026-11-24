@@ -23,7 +23,8 @@
 // or effort, which each role's agent's definition fixes (its roster is
 // test-engine-brief.cjs's); the perspective's definition names the engine's
 // polarity pairs, the deep dive's its kinds, the closing-pass reader's its
-// product lane and every part of its brief (26.S15).
+// product lane and every part of its brief (26.S15), the reviewer's what it
+// hunts for, which the reader's gap review reads there (9.9.6).
 //
 // Layer: verb. World: an epic with three topics under discussion, written
 // once through the ledger's verbs — on the note window a decision replaced,
@@ -274,8 +275,10 @@ describe('the perspective\'s and the synthesis\'s briefs', () => {
 });
 
 describe('the discussion reviewer\'s brief (9.8.13)', () => {
-  it('the topic\'s record, its log\'s path, every other live topic\'s record under its name, the product record and the dispatch\'s report', () => {
+  it('the topic\'s record, its log\'s path, every other live topic\'s record under its name, the product record, the names the person struck or removed (8.10.11) and the dispatch\'s report', () => {
     const review = dispatch('review');
+    ok(dir, ['topic', 'add', UNIT, 'dock-badge', '--summary', 'A badge on the dock.', '--brief', writeState(dir, layout.cache('scratch', 'brief.md'), '# Dock badge\n')]);
+    ok(dir, ['topic', 'remove', UNIT, 'dock-badge']);
 
     const { res, brief } = issued(['discussion-reviewer', UNIT, TOPIC, '--agent', review.id]);
 
@@ -284,18 +287,19 @@ describe('the discussion reviewer\'s brief (9.8.13)', () => {
       'topic-log': `\`${statePath(dir, LOG)}\``,
       'other-records': `## menu-bar\n\n${readJson(['record', UNIT, 'menu-bar'])}\n\n## space-homing\n\n${readJson(['record', UNIT, 'space-homing'])}`,
       'product-record': readJson(['product', UNIT, TOPIC]),
+      dismissed: '- dock-badge',
       'report-to': `\`${review.file}\``,
     })}`);
   });
 
-  it('a topic with no log yet, and no other topic holding anything, draws each as none recorded', () => {
+  it('a topic with no log yet, no other topic holding anything, and no name struck, draws each as none recorded', () => {
     fs.rmSync(statePath(dir, LOG));
     for (const topic of ['space-homing', 'menu-bar']) ok(dir, ['topic', 'cancel', UNIT, 'discovery', topic]);
     const review = dispatch('review');
 
     const { brief } = issued(['discussion-reviewer', UNIT, TOPIC, '--agent', review.id]);
 
-    assert.deepStrictEqual([section(brief, 'This topic\'s log'), section(brief, 'Other topics\' records')], ['None recorded.', 'None recorded.']);
+    assert.deepStrictEqual(['This topic\'s log', 'Other topics\' records', 'What the person struck or removed'].map((part) => section(brief, part)), ['None recorded.', 'None recorded.', 'None recorded.']);
   });
 
   it('9.S46: the reviewer\'s template carries no "it is `ask`" tie-break, and neither does its agent\'s definition, whose lanes leave the call to the matrix', () => {
@@ -303,6 +307,15 @@ describe('the discussion reviewer\'s brief (9.8.13)', () => {
 
     for (const text of [template('discussion-reviewer'), definition]) assert.doesNotMatch(text, /either way|it is `ask`|is `ask`/);
     assert.match(definition, /whether it reaches the person is the matrix's to decide, never yours/);
+  });
+
+  it('the reviewer\'s definition names what it hunts, sweeps each decided mechanism through the edges, weighs no decision\'s choice, leaves nothing for the spec, keeps what fails the bar as observations, and never proposes a name struck', () => {
+    const definition = fs.readFileSync(path.join(AGENTS, 'ledger-discussion-reviewer.md'), 'utf8');
+
+    assert.deepStrictEqual([
+      [...definition.slice(definition.indexOf('## What You Hunt'), definition.indexOf('## The Bar')).matchAll(/^- \*\*(.+?)\*\* — /gm)].map(([, hunt]) => hunt),
+      ['security, error handling, scale, observability, migration, rollback', 'one at a time, through each class of edge', 'Which option a decision took is never a finding', 'Nothing waits for the spec', '\n## Observations\n', 'A name the person struck or removed is their answer: never propose one.'].filter((said) => !definition.includes(said)),
+    ], [['Coverage', 'Each decision', 'Each decided mechanism, at its edges', 'What nobody said', 'What no longer agrees'], []]);
   });
 
   it('9.S28: no template of the reviews sets a cap on findings, and each review\'s definition says there is none', () => {
@@ -459,6 +472,21 @@ describe('discussion\'s agents and templates (26.1, 26.5)', () => {
     const parts = [...template('closing-pass-reader').matchAll(/^# (.+)$/gm)].map(([, part]) => part);
 
     assert.deepStrictEqual([parts.includes('The gap review'), parts.includes('What the person struck or removed'), /^3\. \*\*Work the decisions create that no topic owns\.\*\* A name the person struck or removed is their answer: never propose one\.$/m.test(definition)], [true, true, true]);
+  });
+
+  it('9.9.6: the closing-pass reader\'s gap review is the reviewer\'s hunt and bar, read from its definition as installed and restated nowhere; its report keeps observations, and a declined finding stays declined', () => {
+    const definition = fs.readFileSync(path.join(AGENTS, 'ledger-closing-pass-reader.md'), 'utf8');
+    const gapReview = definition.slice(definition.indexOf('\n## The Gap Review\n'), definition.indexOf('\n## Lanes\n'));
+    const [, read] = /** @type {RegExpMatchArray} */ (gapReview.match(/Read `\.claude\/agents\/([\w-]+)\.md`, from the project root, for two sections alone, \*\*What You Hunt\*\* and \*\*The Bar\*\*/));
+    const hunt = fs.readFileSync(path.join(AGENTS, `${read}.md`), 'utf8');
+
+    assert.deepStrictEqual([
+      read,
+      ['\n## What You Hunt\n', '\n## The Bar\n', '- **Settled** — '].filter((part) => !hunt.includes(part)),
+      /^tools: (?:.+, )?Read(?:,|$)/m.test(definition),
+      ['error handling', 'class of edge', 'malformed'].filter((restated) => definition.includes(restated)),
+      ['a finding the person already declined among them', 'nothing waits for the spec', 'How the code achieves a decided behaviour is the builder\'s', '\n## Observations\n'].filter((said) => !definition.includes(said)),
+    ], ['ledger-discussion-reviewer', [], true, [], []]);
   });
 
   it('the closing-pass reader marks a line for the product record as a lane of its own', () => {

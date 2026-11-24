@@ -69,7 +69,7 @@ const ROLES = Object.freeze({
     agent: 'ledger-discussion-synthesis', whose: 'the synthesis\'s', kind: 'synthesis', records: ['pair-question', 'perspectives', 'topic-record', 'report-to'],
   },
   'discussion-reviewer': {
-    agent: 'ledger-discussion-reviewer', whose: 'the discussion reviewer\'s', kind: 'review', records: ['topic-record', 'topic-log', 'other-records', 'product-record', 'report-to'],
+    agent: 'ledger-discussion-reviewer', whose: 'the discussion reviewer\'s', kind: 'review', records: ['topic-record', 'topic-log', 'other-records', 'product-record', 'dismissed', 'report-to'],
   },
   'closing-pass-reader': {
     agent: 'ledger-closing-pass-reader',

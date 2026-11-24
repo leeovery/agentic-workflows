@@ -51,6 +51,15 @@ Once the conversation has got going, a background review reads the topic from it
 
 What a review finds is taken at a natural pause, never jumped to, and each finding becomes a question. Claude re-derives each from the record before acting on it: one the record or a fact settles is answered; one that hides a real choice goes through the ask rule; one that belongs to another topic goes there as a message. No finding is cut for count.
 
+The review is there to find the gaps while they are cheap to answer, so it hunts widely, for:
+
+- **Coverage** — ground the topic set out to cover and has not touched, and the concerns beside it: security, error handling, scale, observability, migration, rollback.
+- **Each decision** — its why, the alternatives weighed, the trade-offs it accepts, and whether it is surer than what it rests on. Never which option you chose.
+- **Each decided mechanism, at its edges** — an empty or malformed input, a dependency that is down, a limit reached, the mechanism itself failing, a default nobody stated.
+- **What nobody said** — an assumption nothing checked, an outside dependency never named, the question you should both be asking.
+
+What counts as a finding follows how far the topic has come: early on the review offers things to pull on; once most is decided, it keeps what a spec built from the record would get wrong or stall on. A real decision about what the product does counts at any stage, however small. A nit, a preference or a mechanism the builder would settle is noted in the report and never raised. The review holds no finding back to spare you: the gaps get found, and the [ask rule](trust.md#the-ask-rule) decides which of them come to you.
+
 ## Other topics
 
 A detail that informs a decision within this topic stays here: token refresh in an auth topic. A point whose home is another topic, such as the caching strategy that surfaces because tokens need caching, is that topic's to settle. It goes there as a **message**: what this topic found, the reasoning, and what the other is asked to decide. Claude never visits the other topic. The message waits in that topic's **mail**, and its next session raises it before anything else; a topic cannot close while mail waits. The menus show it as *mail waiting*.
@@ -68,6 +77,8 @@ A feature has no other topic. A point of its own that needs decisions of its own
 After eight agreements in a row, or on your word, Claude offers to settle the rest: how many points are open, how many it would settle, and which still come to you by the rule, by kind. On yes its points go on the ledger, yours come one at a time, and the topic moves to its close. Declined, the offer waits for the next run of agreements. Where it would settle none of the open points, no offer is made.
 
 A topic closes once nothing of yours is open on its map, through a **closing pass** with two readers. A fresh agent, unanchored by the conversation, reads the topic's entries and log against the other topics' records and the product record, looking for a question with no answer, a contradiction with another record, and work the decision creates that no topic owns. Claude, who was in the conversation, checks that every decision made in it has its entry, that each replacement holds up against what it replaced, that no two current answers contradict each other, and runs again each measurement a decision rests on. Anything the pass finds lands somewhere, and where it changed what the topic decides, another pass reads what changed, until one changes nothing.
+
+Where no review has read the topic since its last decision, as on a quick topic whose background review never started, the fresh reader carries the gap review too: the same hunt as under [Reviews](#reviews), held to what a spec built from the record would get wrong or stall on.
 
 The close also proposes what goes beyond the topic:
 
