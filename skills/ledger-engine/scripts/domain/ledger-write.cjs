@@ -100,9 +100,11 @@
 //   call, are refused, naming the raise, under the lock.
 // - What is the person's (16.5.7): a decision of theirs, as written or as
 //   their keep of it since gives it, is changed by a raise alone, which
-//   always asks them; Claude's own `ledger replace` of one is refused,
-//   checked with the links, before the call and under the lock. One they
-//   hand Claude is written as Claude's, given as they gave it.
+//   always asks them — but where it stands as the migration carried it,
+//   decided by the ask rule as any call (raise.cjs); Claude's own `ledger
+//   replace` of one is refused, checked with the links, before the call and
+//   under the lock. One they hand Claude is written as Claude's, given as
+//   they gave it.
 // - What the engine sets: a replacement's kind; the question a replaced
 //   decision answers, in its wording as the replacement is written — the
 //   last of its line, whatever wording the replaced decision named — so it

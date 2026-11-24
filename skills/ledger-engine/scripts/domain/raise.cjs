@@ -37,7 +37,9 @@
 //   the keep row says keeping it has the build change the code to match,
 //   and the lean may be keep, Claude's own read that the decision should
 //   stand — so the person's keep agrees with it, and their pick of a
-//   proposal stands over it.
+//   proposal stands over it. Without the mark, such a decision, no keep of
+//   the person's on it since, is replaced as any call is, whoever its line
+//   says made it: the ask rule decides whether it reaches the person.
 // - It refuses, drawing nothing: no session; no state; a place or a link
 //   `ledger decide` refuses — `ledger replace`, on a replacement — read and
 //   checked by that code before any lock (ledger-write.cjs), since the answer
@@ -119,8 +121,10 @@
 // - The decision point decides from the call and, beside it (E1): its label;
 //   where it is made, and whether it blocks build work — made in the build
 //   for a task, which a question asked parks; whose the entry a replacement
-//   would replace is — who decided it, read from the entry, or the person
-//   where a keep of theirs stands on it since (16.5.7); the mark Claude gives
+//   would replace is — carried over where it stands as the migration
+//   carried it, whoever its line says made it; else who decided it, read
+//   from the entry, or the person where a keep of theirs stands on it since
+//   (16.5.7, `whoseReplaced`); the mark Claude gives
 //   a question that always asks, `--always design-problem`, `--always
 //   live-server` or `--always built-otherwise` (19.4.22, 19.4.20, 21.6.16),
 //   which a fact, always asked, never takes; whether the question it
@@ -365,7 +369,7 @@ const { conversationDir } = require('./conversation.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
 const { carrying } = require('./ledger.cjs');
 const { ROW_FIELDS, CALL_FIELDS: CALL_SHAPE, ASKED_BLIND, CARRIED_SESSION, entryKind } = require('./ledger-events.cjs');
-const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, notCurrent, factsOf, replacementsOf, whoseDecision } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, notCurrent, factsOf, replacementsOf, keptOf, whoseDecision } = require('./ledger-fold.cjs');
 const { liveness, manifestOf, measuredBy } = require('./ledger-units.cjs');
 const { topicTitle, quickFixBuild, investigationUnderWay, fixesUnderWay } = require('./derivations.cjs');
 const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('./ledger-write.cjs');
@@ -1238,9 +1242,10 @@ function decided(cwd, raising, call, label) {
  * replace`'s where it names `--replaces`, else `ledger decide`'s — in the
  * raise's words: a question it answers still open; a decision it replaces
  * a decision, its answer as it stands kept for the screen's own row, worded
- * for the mark the raise `always` asks by, and whose it is — who decided it,
- * or as the person's keep of it since was given, theirs or their "don't
- * care" (`whoseDecision`). Its usage is a fact's where `fact`.
+ * for the mark the raise `always` asks by, and whose it is — carried over
+ * where it stands as the migration carried it, else who decided it, or as
+ * the person's keep of it since was given, theirs or their "don't care"
+ * (`whoseReplaced`). Its usage is a fact's where `fact`.
  * @param {string} cwd @param {string[]} args @param {string[]} warnings @param {boolean} fact @param {Always|null} always
  * @returns {{place: Place, target: Target, replacedBy: DecidedBy|null, short: (id: string) => string, read: import('./ledger-fold.cjs').Folded}}
  */
@@ -1262,7 +1267,22 @@ function placedRaise(cwd, args, warnings, fact, always) {
   if (kind !== 'decision') throw new Error(`raise --replaces names ${short(entry)}, a ${kind} — a raise replaces a decision, the person picking its answer`);
   if (always === BUILT_OTHERWISE && replacing.session !== CARRIED_SESSION) throw new Error(`raise: ${ALWAYS} ${BUILT_OTHERWISE} marks code built otherwise than a decision the migration brought across, and ${short(entry)} was decided in Ledger, its session not the migration's`);
   const replaces = { entry, reason: /** @type {string} */ (linked.reason), cause: /** @type {string|null} */ (linked.cause), keep: keepRow(/** @type {string} */ (replacing.text), always) };
-  return { place, target: { answers: null, relies_on: reliesOn, replaces }, replacedBy: whoseDecision(read, entry), short, read };
+  return { place, target: { answers: null, relies_on: reliesOn, replaces }, replacedBy: whoseReplaced(read, entry, replacing), short, read };
+}
+
+/**
+ * Whose the decision `entry`, its line `replacing`, is as a raise to replace
+ * it reads it (16.5.7, 21.6.16): carried over where it stands as the
+ * migration carried it from before Ledger — its line the migration's, and no
+ * keep of the person's on it since — whoever that line says made it, so the
+ * ask rule decides its replacement as any call's, and only the
+ * built-otherwise mark always asks it; else as it stands decided
+ * (`whoseDecision`), the person's own, made or kept in Ledger, always asking.
+ * @param {Folded} read @param {string} entry @param {Record<string, unknown>} replacing
+ * @returns {DecidedBy}
+ */
+function whoseReplaced(read, entry, replacing) {
+  return replacing.session === CARRIED_SESSION && keptOf(read, entry).length === 0 ? 'carried' : whoseDecision(read, entry);
 }
 
 /**
