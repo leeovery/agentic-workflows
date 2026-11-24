@@ -8,7 +8,7 @@ What informs a decision lives in the unit as a file, linked from the ledger entr
 
 ## A Spike
 
-`asset spike {work_unit} {slug}` starts one and answers its folder and the folder's twin under the cache. The source goes in the folder as it is written, a design spike's rounds in `round-{N}/` inside it; dependencies, builds and run output go in the cache twin.
+`asset spike {work_unit} {slug}` starts one, answering `spike`, its name, `path`, its folder from the state root as a link names it, and `folder` and `cache`, that folder and its twin under the cache. The source goes in `folder` as it is written, a design spike's rounds in `round-{N}/` inside it; dependencies, builds and run output go in `cache`.
 
 ## Linking
 
@@ -16,7 +16,7 @@ What informs a decision lives in the unit as a file, linked from the ledger entr
 - **canonical** — the spec carries it and the builder builds to it: linked from a decision.
 - **reference** — the builder consults it before re-solving anything it covers: linked from a finding, or for what the log tells.
 
-The person changes a status in their own words, any time: `asset status {work_unit} {path} {status:[canonical|reference]}`. Your own spike's files are linked with the status reference to the call they settled, so what you decided without the person shows how you found out.
+Your own spike's files are linked with the status reference to the call they settled, so what you decided without the person shows how you found out.
 
 ## A Design Lock
 

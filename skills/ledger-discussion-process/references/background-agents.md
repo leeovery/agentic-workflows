@@ -4,11 +4,11 @@
 
 ---
 
-The deep dive, the background review and the perspectives read the topic from its record, never the conversation, and run in the background while the conversation carries on. Each is dispatched, then briefed, then called: the Agent call's `subagent_type` is the agent `brief` answers, its prompt the pointer alone.
+The deep dive, the background review and the perspectives read the topic from its record, never the conversation, and run in the background while the conversation carries on. Each is dispatched, then briefed, then called: the Agent call's `subagent_type` is the agent `brief` answers, its prompt the pointer alone. `{agent}` is the `id` a dispatch answered, and `{id}` the question on the map the agent works on.
 
 ## A Deep Dive
 
-Offer it in the conversation; one the person asks for needs no offer. The question it answers is on the map. Pick its kind:
+Offer it in the conversation; one the person asks for needs no offer. The question it answers is on the map, asked first where it is not. Pick its kind:
 - `survey` — how several implementations do it;
 - `read` — one file held against the question, named by `--path`;
 - `feasibility` — whether the platform can do it;
@@ -19,40 +19,51 @@ Dispatch it under a kebab-case label, brief it, then make the Agent call:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind deep-dive --label {slug}
-node .claude/skills/ledger-engine/scripts/engine.cjs brief deep-dive {work_unit} {topic} --question {question} --agent {id} --kind {kind} [--path {file}]
+node .claude/skills/ledger-engine/scripts/engine.cjs brief deep-dive {work_unit} {topic} --question {id} --agent {agent} --kind {kind} [--path {file}]
 ```
 
 ## The Background Review
 
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind review
-node .claude/skills/ledger-engine/scripts/engine.cjs brief discussion-reviewer {work_unit} {topic} --agent {id}
-```
+A dispatch refused — mail waiting, or too few moves since the last review — leaves the conversation carrying on: dispatch again later. `--final` waives the count, and only for a review the person asked for, whatever the refusal suggests.
 
-A review the person asks for adds `--final` to the dispatch.
+```bash
+node .claude/skills/ledger-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind review [--final]
+node .claude/skills/ledger-engine/scripts/engine.cjs brief discussion-reviewer {work_unit} {topic} --agent {agent}
+```
 
 ## Perspectives
 
-Offer them in the conversation. The signal comes from the conversation, never from the domain alone: a straightforward decision, or one the person made with confidence, takes none. On yes, with the decision a question on the map, pick the polarity pair whose tension it turns on, from the pairs in `.claude/agents/ledger-discussion-perspective.md`, and dispatch both lenses as one set; brief each agent the response names, and call both:
+Offer them in the conversation. The signal comes from the conversation, never from the domain alone: a straightforward decision, or one the person made with confidence, takes none. On yes, the decision's question on the map, asked first where it is not, pick the polarity pair whose tension it turns on, from the pairs in `.claude/agents/ledger-discussion-perspective.md`, and dispatch both lenses as one set; brief each agent the response's `agents` names, and call both:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind perspective --label {lens} --label {counter_lens}
-node .claude/skills/ledger-engine/scripts/engine.cjs brief perspective {work_unit} {topic} --question {question} --agent {id}
+node .claude/skills/ledger-engine/scripts/engine.cjs brief perspective {work_unit} {topic} --question {id} --agent {agent}
 ```
 
-Once both have reported, the synthesis reconciles them, on the set the dispatch answered:
+Once both have reported, the synthesis reconciles them, on the `set` the dispatch answered:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind synthesis --set {set}
-node .claude/skills/ledger-engine/scripts/engine.cjs brief synthesis {work_unit} {topic} --agent {id}
+node .claude/skills/ledger-engine/scripts/engine.cjs brief synthesis {work_unit} {topic} --agent {agent}
 ```
 
-The perspectives feed the synthesis, never the conversation: once it is dispatched, close each of the set's perspectives, `agent incorporate {work_unit} discussion {topic} {id}`.
+The perspectives feed the synthesis, never the conversation: once it is dispatched, close each of the set's perspectives, `agent incorporate {work_unit} discussion {topic} {agent}`.
 
 ## When a Report Lands
 
-`agent scan {work_unit} discussion {topic}` lists what has landed as `pending`. A perspective waits for its synthesis.
+`agent scan {work_unit} discussion {topic}` lists what has landed as `pending`. A perspective waits for its synthesis. A `lost` agent went with the conversation that dispatched it and will never report: close it, `agent incorporate {work_unit} discussion {topic} {agent}`.
 
-**A deep dive's report** is read in full, then `agent ack {work_unit} discussion {topic} {id} --clean`. What it learnt lands as findings, each saying how it is known as the report does, and the log keeps what came back. The person hears it: what was asked, what came back, what it opened, and its answers in full — every condition, threshold and alternative, scoped as the report scoped it, told as what the product does before any symbol the report used. Each line under its Opened is judged: a new question on the map, a point another topic owns, a number a decision would rest on — the laboratory's cue — or nothing worth carrying.
+**A deep dive's report** is read in full, then `agent ack {work_unit} discussion {topic} {agent} --clean`. What it learnt lands as findings, each saying how it is known as the report does, and the log keeps what came back. The person hears it: what was asked, what came back, what it opened, and its answers in full — every condition, threshold and alternative, scoped as the report scoped it, told as what the product does before any symbol the report used. Each line under its Opened is judged: a new question on the map, a point another topic owns, a number a decision would rest on — the laboratory's cue — or nothing worth carrying.
 
-**Any other report** is read, then its findings recorded by the ids its headings carry, `agent ack {work_unit} discussion {topic} {id} --findings {F1,F2}`, or `--clean` where it found none; each is then taken as the skill's **Findings** says.
+**Any other report** is read, then its findings recorded by the ids its headings carry, `agent ack {work_unit} discussion {topic} {agent} --findings {F1,F2}`, or `--clean` where it found none.
+
+## A Report's Findings
+
+The background review's findings and the closing pass reader's each come with a lane, the reader's read of where the finding goes; a synthesis brings tensions. Each finding taken is a question the review asked, `ledger ask` with `"by": "review"`, recorded as taken, `agent surface {work_unit} discussion {topic} {agent} {finding} --question {id}`, `{id}` the question it was asked as. The lane is where you start, never where a finding must end: re-derive each from the record before you act on it.
+- **apply** — the record or a fact settles it. Check it: a question a current decision answers merges into that decision; one a fact settles is answered as your decision, relying on the finding that records the fact. An `apply` the record contradicts is a call.
+- **call** — a call the topic leaves open is worked through with the person while the topic's shape is still open, and goes through `raise` once it is agreed. A fix you cannot stand behind is raised as a call with several defensible answers.
+- **route** — another topic's: a message, the question moving with it. Work no topic owns goes as the skill's **A message** says.
+
+A synthesis's tensions are told to the person; one they take up is a question on the map.
+
+A finding a later decision has made moot merges into that decision, and you say so in one line. A finding bound for the person is checked first against the answers given earlier and the record. Only the raise moves a finding away from the person: one that turns out to hide a real choice goes to `raise`, never settled alone. A finding the person waves off is answered, as "don't care" or as their own decision, never left open; another topic's still goes there. No finding is cut for count.

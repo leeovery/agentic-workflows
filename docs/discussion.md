@@ -49,7 +49,7 @@ Files, from spikes or shared by you, live with the work and are linked from the 
 
 Once the conversation has got going, a background review reads the topic from its record, never from the conversation, with a clean slate, and runs while you talk. Where a decision has two defensible ways and you stay unsettled, Claude offers **perspectives**: two agents each argue one side of the tension, and a third reconciles them, so you hear the tensions rather than two advocates.
 
-Each finding a review brings back becomes a question. Claude re-derives each from the record before acting on it: one the record or a fact settles is answered; one that hides a real choice goes through the ask rule; one that belongs to another topic goes there as a message. No finding is cut for count.
+What a review finds is taken at a natural pause, never jumped to, and each finding becomes a question. Claude re-derives each from the record before acting on it: one the record or a fact settles is answered; one that hides a real choice goes through the ask rule; one that belongs to another topic goes there as a message. No finding is cut for count.
 
 The review is there to find the gaps while they are cheap to answer, so it hunts widely, for:
 
@@ -68,15 +68,15 @@ A feature has no other topic. A point of its own that needs decisions of its own
 
 ## Putting things off
 
-- **Backlogging** — "roadmap it", "push it back": a question of this topic, or work no topic owns, goes on the roadmap on a horizon you name, and the question closes.
+- **Backlogging** — "roadmap it", "inbox it", "push it back": a question of this topic goes on the roadmap on a horizon you name, and closes; work no topic owns goes on the roadmap or into the inbox, as you say.
 - **Postponing** — an epic's topic you want later, this one or another by name, goes to the roadmap whole and comes back when it is pulled forward. A feature's topic is the work itself, so its "not now" is a cancel.
 - **Cancelling** — a topic not worth pursuing leaves active work, still listed on the epic's menu as the record that it was raised and declined. Any experiment still running under it is abandoned, and a message waiting for it goes to the inbox.
 
 ## Closing a topic
 
-After eight agreements in a row, or on your word, Claude offers to settle the rest: how many points are open, how many it would settle, and which still come to you by the rule, by kind. On yes its points go on the ledger and yours come one at a time. Declined, the offer waits for the next run of agreements. Where it would settle none of the open points, no offer is made.
+After eight agreements in a row, or on your word, Claude offers to settle the rest: how many points are open, how many it would settle, and which still come to you by the rule, by kind. On yes its points go on the ledger, yours come one at a time, and once each is answered the topic closes. Declined, the offer waits for the next run of agreements. Where it would settle none of the open points, no offer is made.
 
-Once nothing of yours is open on the map and the talk has come to rest, Claude may say the topic looks ready to close and offer to; you can keep talking instead. On your yes, or when you ask for it, the topic closes through a **closing pass** with two readers. A fresh agent, unanchored by the conversation, reads the topic's entries and log against the other topics' records and the product record, looking for a question with no answer, a contradiction with another record, a replacement that does not hold up against what it replaced, and work the decision creates that no topic owns. Claude, who was in the conversation, checks that every decision made in it has its entry and that no two current answers contradict each other, and runs again each measurement a decision rests on. Anything the pass finds lands somewhere, and where it changed what the topic decides, another pass reads what changed, until one changes nothing.
+Once no question is open on the map and the talk has come to rest, Claude may say the topic looks ready to close and offer to; you can keep talking instead. On your yes, your yes to settling the rest, or when you ask for it, the topic closes through a **closing pass** with two readers. A fresh agent, unanchored by the conversation, reads the topic's entries and log against the other topics' records and the product record, looking for a question with no answer, a contradiction with another record, a replacement that does not hold up against what it replaced, and work the decision creates that no topic owns. Claude, who was in the conversation, checks that every decision made in it has its entry and that no two current answers contradict each other, and runs again each measurement a decision rests on. Anything the pass finds lands somewhere, and where it changed what the topic decides, another pass reads what changed, until one changes nothing.
 
 Where no review has read the topic since its last decision, as on a quick topic whose background review never started, the fresh reader carries the gap review too: the same hunt as under [Reviews](#reviews), held to what a spec built from the record would get wrong or stall on.
 
@@ -93,4 +93,4 @@ A decided topic stays decided until something it relies on moves. When a decisio
 
 ## The log
 
-The topic's log, `topics/{topic}/log.md`, is its journey: the options weighed, the false paths, the reversals, your thinking and why minds changed. It is appended and never rewritten, enough for a fresh session to carry on alone, and it points at entries by their short ids rather than restating them. [How it fits together](how-it-fits-together.md#the-record-and-the-logs) says how a log names the conversations that wrote it.
+The topic's log, `topics/{topic}/log.md`, is its journey: the options weighed, the false paths, the reversals, your thinking and why minds changed. It is written as the conversation goes, appended and never rewritten, enough for a fresh session to carry on alone, and it points at entries by their short ids rather than restating them. [How it fits together](how-it-fits-together.md#the-record-and-the-logs) says how a log names the conversations that wrote it.

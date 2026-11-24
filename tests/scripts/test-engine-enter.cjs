@@ -615,7 +615,7 @@ function entering(skill) {
 }
 
 describe('what a move carries, read by the skill a topic opens in (19.5.16, R26)', () => {
-  it('every key a move\'s carry is read by is read where the topic opens, in the discussion and the investigation: an `earlier` one as input never changed, and each piece of work kept named to the person', () => {
+  it('the discussion\'s and the investigation\'s entering read every file a move carries, each an `earlier` key, as input never changed, and name each piece of work it kept, `kept branch` and `kept work`', () => {
     const kept = [CARRIED.branch, CARRIED.work];
     const earlier = Object.values(CARRIED).filter((key) => !kept.includes(key));
 

@@ -4,7 +4,7 @@
 
 ---
 
-`checklist show decided {work_unit} {topic}` lists the close's items. Mark each as it holds, `checklist done decided {work_unit} {topic} {item}`, or skip it with its reason, `checklist skip decided {work_unit} {topic} {item} --reason "{reason}"`.
+`checklist show decided {work_unit} {topic}` lists the close's items. Mark each as it holds, `checklist done decided {work_unit} {topic} {item}`, or skip it with its reason, `checklist skip decided {work_unit} {topic} {item} --reason '{reason}'`.
 
 ## Waiting for Agents
 
@@ -12,14 +12,14 @@ Fetch `render wait-agents {work_unit}.{topic}`, which draws nothing where no age
 
 ## The Closing Pass
 
-It has two readers: a fresh agent, unanchored by the conversation, and you, who were in it. Dispatch the fresh reader, brief it, then make the Agent call; do your own reads while it works, since the close waits on its report.
+It has two readers: a fresh agent, unanchored by the conversation, and you, who were in it. The fresh reader reads the log: bring it up to date, then dispatch the reader, brief it, `{agent}` the `id` the dispatch answered, and make the Agent call; do your own reads while it works.
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind closing-pass
-node .claude/skills/ledger-engine/scripts/engine.cjs brief closing-pass-reader {work_unit} {topic} --agent {id}
+node .claude/skills/ledger-engine/scripts/engine.cjs brief closing-pass-reader {work_unit} {topic} --agent {agent}
 ```
 
-Its report is taken in as the skill's **Tools** loads a report coming back, and its findings as the skill's **Findings** says. A `product` finding is a line for the close's payload, written nowhere before the person's yes. Every point the pass finds lands — an entry, a question on the map, a message, later on the roadmap, a product-record line, or a candidate — never left in the log as a thread no one owns.
+Its report is taken in as any report coming back is (the skill's **Tools**). A `product` finding is a line for the close's payload, written nowhere before the person's yes. Every point the pass finds lands — an entry, a question on the map, a message, later on the roadmap, a product-record line, or a candidate — never left in the log as a thread no one owns.
 
 Where the pass changed what the topic decides — a question opened, an answer replaced — another pass reads what changed, unasked, once the conversation has closed what it opened. The passes end at one that changes nothing, and `closing-pass` is done.
 
@@ -44,7 +44,7 @@ Close the checklist: `checklist close decided {work_unit} {topic}`. Then stage t
 node .claude/skills/ledger-engine/scripts/engine.cjs render decided {work_unit}.{topic} --file .ledger/.cache/{work_unit}/discussion/{topic}/decided-payload.json
 ```
 
-A feature's topic closes into its spec with no gate, what it decided shown with ready to build; stage it, and follow the `next` it answers:
+A feature's topic closes into its spec with no gate, what it decided shown with ready to build; stage it:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs decided stage {work_unit} {topic} --file .ledger/.cache/{work_unit}/discussion/{topic}/decided-payload.json
@@ -52,4 +52,4 @@ node .claude/skills/ledger-engine/scripts/engine.cjs decided stage {work_unit} {
 
 A line widening a decision the product record already widens is refused, naming that entry: leave the line out of the payload, stage it again, and say in a line that it is in the record already. A yes refused for a product-record line resting on a decision replaced since: where its rule still holds, stage a line widening the replacement, in the same words; where it should go, withdraw the line. Then draw the screen again.
 
-An epic's screen asks a verdict of each call the person changed, one at a time; after each, draw `render decided {work_unit}.{topic} --alone`. A Comment that changes a product-record line changes the payload, staged again with `--file`. One keeping a struck candidate after all undoes its strike, `decided unstrike {work_unit} {topic} {n}`, whose `next` draws the screen. Once what a refused yes names is fixed, draw the screen again.
+An epic's screen asks a verdict of each call the person changed, one at a time; after each, draw `render decided {work_unit}.{topic} --alone`. A Comment that changes a product-record line changes the payload, staged again with `--file`. One keeping a struck candidate after all undoes its strike, `decided unstrike {work_unit} {topic} {n}`. Once what a refused yes names is fixed, draw the screen again.

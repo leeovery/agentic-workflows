@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the checklists (6.4) — one per closing point, held by the
 // engine and worked by `checklist show|done|skip|close`. The six points sit
-// in one table (`POINTS`), each item's key kept for good and its text the
+// in one table (`POINTS`), each item's key kept for good — never renamed or
+// reused, and a removed key's stored marks left unread — and its text the
 // spec's words, as a gate shows them to the person:
 // - decided, a topic's close (6.4.6), on the unit's manifest under
 //   `checklists.decided.{topic}`;
