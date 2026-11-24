@@ -16,8 +16,8 @@ Seeds take the largest shape among them; a bug or a quick-fix among them rides a
 ## The Payload
 
 Write it to the DATA's `payload`, this conversation's own:
-- `type` and `name` — a lowercase slug of letters, digits and hyphens; a name taken is derived again more specifically, never numbered.
-- `description` — one line in the person's framing; `reason` — one line on why it is this type.
+- `type` and `name` — the name never asked: the one the person offered, else a single seed's, else derived from the description; a lowercase slug of letters, digits and hyphens, and a name taken derived again more specifically, never numbered.
+- `description` — one line in the person's framing; `reason` — one line on why it is this type. For a quick-fix, one `knowledge query` on the area it touches, what it found of earlier work folded into the `reason`, said nowhere first.
 - `shaped_by` — each part of the product's logs that shaped the work, `.product/sessions/session-NNN.md#{anchor}`; at least one in the product's conversation.
 - `seeds` — the inbox paths it starts from; `roadmap` — the waiting roadmap items it starts from.
 - `from_before` and `shared_files` — for an epic, each point from before that bears on it, `{"id", "point", "file"}`, and each shared file, `{"path", "holds", "kind": "reference|to read"}`, each path from the state root.
@@ -27,7 +27,7 @@ Write it to the DATA's `payload`, this conversation's own:
 Stage it and draw the screen:
 
 ```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs render start-this-work --file {payload}
+node .claude/skills/ledger-engine/scripts/engine.cjs render start-this-work --file '{payload}'
 ```
 
-For an epic, the yes's `next` carries the conversation into the epic's own discovery: its DATA reads as on entering, and `{home}` is now the epic.
+Keep shaping takes the person's word back into the conversation; anything changed is staged again. For an epic, the yes's `next` carries the conversation into the epic's own discovery: its DATA reads as on entering, and `{home}` is now the epic.

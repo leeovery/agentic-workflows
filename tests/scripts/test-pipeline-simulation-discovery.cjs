@@ -168,6 +168,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
     const opened = sim.run(['enter', 'discovery', PRODUCT, '--type-call']);
     assert.strictEqual(opened.entered, true);
     assert.strictEqual(sim.conversations, conversation, 'the route opens in place, nothing cleared: what the person said stays with the work');
+    sim.refuses(['discovery-session', 'close', PRODUCT, '-m', 'discovery(product): end the session'], /no discovery session is open/);
 
     startThisWork(sim, { type: 'quick-fix', name: 'help-topic', description: 'What help prints with no topic', reason: 'One known change.' });
     assert.strictEqual(startWith(sim, 'Make the sidebar margin match on narrow windows').route?.kind, 'start', 'the request, not a go-ahead, beside a unit in progress');
@@ -326,7 +327,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.strictEqual(sim.conversations, conversation, 'no handoff: the same conversation throughout');
   });
 
-  it('the epic menu\'s d hands into its discovery, where the map changes at the person\'s word: a new topic, a cancel confirmed and reactivated, a park pulled forward, a finding, a spike, the log\'s fixed lists, and a message to a started topic (18.4.9, 8.8.6, 8.7.6, 20.11.1)', () => {
+  it('the epic menu\'s d hands into its discovery, where the map changes at the person\'s word: a new topic, a cancel confirmed and reactivated, a park taken in as a topic and a postponed topic pulled back, a finding, a spike, the log\'s fixed lists, and a message to a started topic (18.4.9, 8.8.6, 8.7.6, 20.11.1)', () => {
     mappedEpic(sim, EPIC, ['licensing', 'pricing']);
     enterEntry(sim, EPIC, 'discussion', 'licensing');
     assert.strictEqual(epicPick(sim, EPIC, 'd').text, `Invoke \`/ledger-discovery none ${EPIC}\`.`);
@@ -342,10 +343,15 @@ describe('pipeline simulation: discovery\'s entry', () => {
     sim.run(['topic', 'reactivate', EPIC, 'discovery', 'pricing']);
     assert.match(sim.sections, /Reactivated "Pricing"\./);
 
-    // Put aside onto the roadmap from here, then pulled into the epic after all.
+    // Put aside onto the roadmap from here, then taken into the epic after
+    // all as a new topic; a topic this epic postponed comes back by the pull.
     sim.run(['roadmap', 'add', 'offline-notes', '--horizon', 'later', '--summary', 'Notes without a network', '--origin', `park:${EPIC}`, '--source', log]);
     assert.deepStrictEqual(sim.run(['roadmap', 'state']).items[0].sources, [log]);
-    sim.run(['roadmap', 'pull-forward', 'offline-notes', '--into', EPIC]);
+    sim.run(['topic', 'add', EPIC, 'offline-notes', '--summary', 'Notes without a network', '--brief', briefDraft(sim, EPIC, 'offline-notes'), '--from-roadmap', 'offline-notes']);
+    sim.run(['topic', 'postpone', EPIC, 'seats', '--horizon', 'later']);
+    sim.refuses(['topic', 'add', EPIC, 'seats', '--summary', 'How seats are counted', '--brief', briefDraft(sim, EPIC, 'seats'), '--from-roadmap', 'seats'], /pull it forward instead/);
+    sim.run(['roadmap', 'pull-forward', 'seats', '--into', EPIC]);
+    assert.strictEqual(sim.manifest(EPIC).phases.discovery.items.seats.postponed, undefined, 'the pull restores the postponed row');
 
     const finding = sim.run(['ledger', 'find', `${EPIC}.discovery`], null,
       JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Seats are counted per workspace today.', how: 'read app/Seats.php', known: 'read' })).id;
