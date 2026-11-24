@@ -19,7 +19,7 @@ Work shaped before it came to Ledger, such as notes, a decision log, a model of 
 
 ## The product's conversation
 
-There is one product and one conversation about it. When a session ends, the capabilities it named that are not on the roadmap yet are proposed as roadmap items on one screen, each on a horizon you name. Nothing reaches the roadmap without your yes, and with nothing to propose there is no screen.
+There is one product and one conversation about it. When a session ends, what the product picture and the log hold that the roadmap does not yet is proposed as roadmap items on one screen, each on a horizon you name. An item is coarse, an area of work a piece of work could start from, never a task, and a placeholder you can change until work starts from it. Nothing reaches the roadmap without your yes, and with nothing to propose there is no screen.
 
 The conversation keeps one **product picture**: where the product stands now, while the log keeps the journey there. It decides nothing, and thins as work starts: start this work lands the picture with the work's own detail taken out and a pointer to the work in its place. Every way into the product's conversation can read it, a return with the last session's closing line and the work started since, and you can ask to see it at any time.
 
