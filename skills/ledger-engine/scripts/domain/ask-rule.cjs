@@ -11,7 +11,9 @@
 //
 // It decides, in this order:
 // - Always ask, whatever the counts (16.5), where no label is needed to
-//   tell: replacing an entry the person decided, or kept since (16.5.7); a
+//   tell: replacing an entry the person decided, or kept since (16.5.7) —
+//   never one standing from before Ledger, which the raise gives as
+//   `carried`, whoever its line says made it (raise.cjs); a
 //   question an experiment still running measures, which only the person
 //   may close meanwhile (9.1.11); and a question Claude marks as a design
 //   problem (19.4.22), testing against a live server (19.4.20), or code
@@ -71,7 +73,7 @@ const { HARD_TO_UNDO, ASK_AGAIN, buildRaised, midBuild } = require('./trust-sett
  * @property {Label|null} label the labeller's, null where it gave none
  * @property {{unit: string, phase: string, topic: string|null}} place where the call is made
  * @property {boolean} blocks_build made in the build for a task, which a question asked parks
- * @property {DecidedBy|null} replaced_by whose the entry the call would replace is — who decided it, or as the person's keep of it since was given, theirs or their "don't care" — null where it replaces none
+ * @property {DecidedBy|null} replaced_by whose the entry the call would replace is — `carried` where it stands from before Ledger, else who decided it, or as the person's keep of it since was given, theirs or their "don't care" — null where it replaces none
  * @property {string|null} measured the experiment still running that measures the question the call answers, null for none
  * @property {Always|null} always the mark it always asks by, null for none
  * @property {boolean} from_before whether its question is a point of the record the person brought from before

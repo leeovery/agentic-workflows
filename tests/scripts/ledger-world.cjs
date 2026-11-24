@@ -197,28 +197,31 @@ function ledgerHelpers(dir) {
   }
 
   /**
-   * Claude's decision answering `question` at `address`, landed unchecked
-   * and unlabelled, tagged with `session` and given as `given`, appended in
-   * process: its short id. An address naming no topic places it at its
-   * unit's phase.
-   * @param {string} address @param {string} question @param {string} text @param {string} session @param {string} given
+   * A decision answering `question` at `address`, `by` its maker, landed
+   * unchecked and unlabelled, tagged with `session` and given as `given`,
+   * appended in process: its short id. An address naming no topic places it
+   * at its unit's phase.
+   * @param {string} address @param {string} question @param {string} text @param {string} session @param {string} given @param {'claude'|'person'} [by] @param {boolean} [productWide]
    */
-  function uncheckedDecision(address, question, text, session, given) {
+  function uncheckedDecision(address, question, text, session, given, by = 'claude', productWide = false) {
     const [unit, phase, topic = null] = address.split('.');
     const id = newId();
     appendEntry(statePath(dir()), {
-      event: 'decided', unit, topic, phase, session, ...MADE, answers: full(question), text, why: 'Carried over.', rules_out: [], relies_on: [],
-      product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: true, given, cites: [], task: null,
+      event: 'decided', unit, topic, phase, session, ...MADE, by, answers: full(question), text, why: 'Carried over.', rules_out: [], relies_on: [],
+      product_wide: productWide, sealed: null, alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: true, given, cites: [], task: null,
     }, [], id);
     return /** @type {string} */ (shortIds(entries().map((e) => e.id)).get(id));
   }
 
   /**
-   * Claude's decision carried over, as the migration alone writes one
-   * (ledger-carry.cjs), tagged with the migration's session: its short id.
-   * @param {string} address @param {string} question @param {string} text
+   * A decision carried over, as the migration alone writes one
+   * (ledger-carry.cjs), tagged with the migration's session: Claude's, given
+   * carried — or, `by` the person, given as their own, where the documents
+   * from before show them making it — product-wide where `productWide`: its
+   * short id.
+   * @param {string} address @param {string} question @param {string} text @param {'claude'|'person'} [by] @param {boolean} [productWide]
    */
-  const carriedOver = (address, question, text) => uncheckedDecision(address, question, text, CARRIED_SESSION, 'carried');
+  const carriedOver = (address, question, text, by = 'claude', productWide = false) => uncheckedDecision(address, question, text, CARRIED_SESSION, by === 'person' ? 'own' : 'carried', by, productWide);
 
   /**
    * Claude's own decision in this session that landed unchecked, the

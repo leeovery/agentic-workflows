@@ -184,7 +184,7 @@ const RECORDS_COMPOSED = Object.freeze({
     { ref: 'q1', event: 'asked', text: 'How long is a memo?', by: 'claude', cites: [logCite('memo', 'memo', 'Writing')] },
     { ref: 'd1', event: 'decided', answers: 'q1', text: 'One line.', why: 'The approved spec settles it.', by: 'claude', given: 'carried', cites: [logCite('memo', 'memo', 'Writing'), specCite('memo', 'Writing')] },
     { ref: 'q2', event: 'asked', text: 'How is a memo shared?', by: 'claude', cites: [specCite('memo', 'Sharing')] },
-    { ref: 'd2', event: 'decided', answers: 'q2', text: 'By link.', why: 'Decided at the spec stage.', by: 'claude', given: 'carried', cites: [specCite('memo', 'Sharing')] },
+    { ref: 'd2', event: 'decided', answers: 'q2', text: 'By link.', why: 'Decided at the spec stage.', by: 'person', given: 'own', cites: [specCite('memo', 'Sharing')] },
   ],
   'shop.discussion.cart': [
     { ref: 'q1', event: 'asked', text: 'How is an item added?', by: 'claude', cites: [logCite('shop', 'cart', 'Adding')] },

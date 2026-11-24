@@ -100,9 +100,11 @@
 //   call, are refused, naming the raise, under the lock.
 // - What is the person's (16.5.7): a decision of theirs, as written or as
 //   their keep of it since gives it, is changed by a raise alone, which
-//   always asks them; Claude's own `ledger replace` of one is refused,
-//   checked with the links, before the call and under the lock. One they
-//   hand Claude is written as Claude's, given as they gave it.
+//   always asks them — but one from before Ledger, the ask rule deciding
+//   its raise as any call's (raise.cjs); Claude's own `ledger replace` of
+//   one is refused, checked with the links, before the call and under the
+//   lock. One they hand Claude is written as Claude's, given as they gave
+//   it.
 // - What the engine sets: a replacement's kind; the question a replaced
 //   decision answers, in its wording as the replacement is written — the
 //   last of its line, whatever wording the replaced decision named — so it
@@ -421,7 +423,7 @@ function unparked(said) {
 /**
  * Claude's own replacement of a decision that is the person's (16.5.7) —
  * theirs as written, or as their keep of it since gives it — refused in the
- * words of `said`: changing it always comes to them, through a raise at the
+ * words of `said`: Claude's change to it goes through a raise at the
  * write's `place` for its reason and cause.
  * @param {string} said @param {string} place
  * @returns {LinksCheck}
@@ -432,7 +434,7 @@ function theirsUnreplaced(said, place) {
     if (entry === null || whoseDecision(read, entry) !== 'person') return;
     const short = (/** @type {string} */ id) => shortId(id, read.facts.keys());
     const caused = oneId(cause);
-    throw new Error(`${said}: ${short(entry)} is the person's decision — Claude's change to it always comes to them: raise ${place} --replaces ${short(entry)} --reason ${reason}${caused === null ? '' : ` --cause ${short(caused)}`}`);
+    throw new Error(`${said}: ${short(entry)} is the person's decision — Claude's change to it goes through a raise: raise ${place} --replaces ${short(entry)} --reason ${reason}${caused === null ? '' : ` --cause ${short(caused)}`}`);
   };
 }
 

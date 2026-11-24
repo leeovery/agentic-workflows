@@ -28,7 +28,11 @@
 // before Ledger with no other place, there to look in — and the record of
 // the person wherever its file stands (16.18.4, person.cjs) — none while the
 // person has kept nothing — never reading either, so neither refuses an
-// entry.
+// entry. Beside the legacy folder, an entry into a phase whose work reads
+// the code against the record's decisions names the shared reference on
+// decisions from before Ledger, where the work holds one
+// (decisions-from-before.cjs): that read is taken with the row's, the
+// ledger checked once for both (ledger.cjs, `withOneCheck`).
 //
 // A phase enters through its row of `ENTRIES`: its level — at a topic, or at
 // the work unit — whether the product's conversation enters through it too,
@@ -119,6 +123,8 @@ const { experimentRow } = require('./experiment-entry.cjs');
 const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
 const { recordToRead } = require('./person.cjs');
 const { PRODUCT_DIR } = require('./layout.cjs');
+const { fromBeforeLines } = require('./decisions-from-before.cjs');
+const { withOneCheck } = require('./ledger.cjs');
 const { ontoEpic } = require('./topic-leave.cjs');
 
 /** @typedef {[string, string]} Line a DATA line, its key and its value */
@@ -648,14 +654,14 @@ function enterThrough(entries, cwd, argv) {
   const entering = { ...at, started: entry.unstarted(at), voided: entry.voids?.(at) ?? false, notes: [], seeds, record: worked };
   const readied = entering.started ? entry.readies?.(entering) ?? [] : [];
   entry.closes?.(at);
-  const reads = [...entry.reads(entering), ...readied];
+  const [reads, fromBefore] = withOneCheck(() => [[...entry.reads(entering), ...readied], fromBeforeLines(cwd, phase, unit, entering.notes)]);
   const held = heldAt(cwd, phase, unit, place);
   /** @type {{committed?: string|null, note?: string, warnings?: string[]}} */
   const commit = entering.started || entering.voided || departure !== null ? settle(cwd, entry, entering, held, departure) : {};
   held.arrive(worked);
   beatQuietly(cwd, unit, phase, place);
   recordEntry(cwd, unit, phase, place);
-  const lines = [...reads, ...legacyLines(cwd, unit), ...personLines(), ...logLines(cwd, entry, entering)];
+  const lines = [...reads, ...legacyLines(cwd, unit), ...fromBefore, ...personLines(), ...logLines(cwd, entry, entering)];
   const warnings = [...entering.notes, ...(commit.warnings ?? [])];
   return {
     response: { phase, unit, ...atTopic, entered: true, started: entering.started, ...commit, ...(warnings.length > 0 ? { warnings } : {}) },
