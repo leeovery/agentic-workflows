@@ -24,7 +24,7 @@
 // test-engine-brief.cjs's); the perspective's definition names the engine's
 // polarity pairs, the deep dive's its kinds, the closing-pass reader's its
 // product lane and every part of its brief (26.S15), the reviewer's what it
-// hunts for.
+// hunts for, which the reader's gap review reads there (9.9.6).
 //
 // Layer: verb. World: an epic with three topics under discussion, written
 // once through the ledger's verbs — on the note window a decision replaced,
@@ -472,6 +472,21 @@ describe('discussion\'s agents and templates (26.1, 26.5)', () => {
     const parts = [...template('closing-pass-reader').matchAll(/^# (.+)$/gm)].map(([, part]) => part);
 
     assert.deepStrictEqual([parts.includes('The gap review'), parts.includes('What the person struck or removed'), /^3\. \*\*Work the decisions create that no topic owns\.\*\* A name the person struck or removed is their answer: never propose one\.$/m.test(definition)], [true, true, true]);
+  });
+
+  it('9.9.6: the closing-pass reader\'s gap review is the reviewer\'s hunt and bar, read from its definition as installed and restated nowhere; its report keeps observations, and a declined finding stays declined', () => {
+    const definition = fs.readFileSync(path.join(AGENTS, 'ledger-closing-pass-reader.md'), 'utf8');
+    const gapReview = definition.slice(definition.indexOf('\n## The Gap Review\n'), definition.indexOf('\n## Lanes\n'));
+    const [, read] = /** @type {RegExpMatchArray} */ (gapReview.match(/Read `\.claude\/agents\/([\w-]+)\.md`, from the project root, for two sections alone, \*\*What You Hunt\*\* and \*\*The Bar\*\*/));
+    const hunt = fs.readFileSync(path.join(AGENTS, `${read}.md`), 'utf8');
+
+    assert.deepStrictEqual([
+      read,
+      ['\n## What You Hunt\n', '\n## The Bar\n', '- **Settled** — '].filter((part) => !hunt.includes(part)),
+      /^tools: (?:.+, )?Read(?:,|$)/m.test(definition),
+      ['error handling', 'class of edge', 'malformed'].filter((restated) => definition.includes(restated)),
+      ['a finding the person already declined among them', 'nothing waits for the spec', 'How the code achieves a decided behaviour is the builder\'s', '\n## Observations\n'].filter((said) => !definition.includes(said)),
+    ], ['ledger-discussion-reviewer', [], true, [], []]);
   });
 
   it('the closing-pass reader marks a line for the product record as a lane of its own', () => {

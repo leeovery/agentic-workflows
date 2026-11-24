@@ -78,6 +78,8 @@ After eight agreements in a row, or on your word, Claude offers to settle the re
 
 A topic closes once nothing of yours is open on its map, through a **closing pass** with two readers. A fresh agent, unanchored by the conversation, reads the topic's entries and log against the other topics' records and the product record, looking for a question with no answer, a contradiction with another record, and work the decision creates that no topic owns. Claude, who was in the conversation, checks that every decision made in it has its entry, that each replacement holds up against what it replaced, that no two current answers contradict each other, and runs again each measurement a decision rests on. Anything the pass finds lands somewhere, and where it changed what the topic decides, another pass reads what changed, until one changes nothing.
 
+Where no review has read the topic since its last decision, as on a quick topic whose background review never started, the fresh reader carries the gap review too: the same hunt as under [Reviews](#reviews), held to what a spec built from the record would get wrong or stall on.
+
 The close also proposes what goes beyond the topic:
 
 - **Product-record lines** — a decision here that is really a rule for the whole product, such as a principle you stated, is proposed as a line of the product record, which every later topic reads first. A line already in the record that should go is proposed for withdrawal.
