@@ -150,12 +150,12 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.deepStrictEqual([second.started, second.committed], [false, undefined], 'a return carries on in the open log, nothing opened or committed');
     assert.deepStrictEqual(named(sim, 'session log'), [logPath(sim, PRODUCT, 1)]);
     assert.deepStrictEqual(named(sim, 'catch up'),
-      ['the transcript of session sim-session-1, which last wrote the log, is gone — say so in one line, and carry on from the log']);
+      ['the transcript of session sim-session-1 is gone — say so in one line, and carry on from what this place keeps']);
 
     const left = transcriptOf(sim, 'sim-session-2');
     startNew(sim);
     inTheProduct(sim);
-    assert.deepStrictEqual(named(sim, 'catch up'), [`read ${left} from the log's last write onward, and add to the log what it is missing`],
+    assert.deepStrictEqual(named(sim, 'catch up'), [left],
       'the conversation that ended without a word is named for catch-up at the next return');
     assert.strictEqual(headersIn(sim, PRODUCT, 1).length, 3, 'each conversation adds its own line to the one log');
     assert.ok(!fs.existsSync(logPath(sim, PRODUCT, 2)), 'one product conversation, one log');

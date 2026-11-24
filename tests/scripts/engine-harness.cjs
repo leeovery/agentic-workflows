@@ -1081,16 +1081,19 @@ const BRIEF_GROUP = { matcher: 'Agent|SendMessage', hooks: [engineHook('brief gu
 const SHELL_GROUP = { matcher: 'Bash', hooks: [engineHook('shell guard')] };
 /** The PreToolUse groups, in the order boot installs them. */
 const GUARD_GROUPS = [LAYOUT_GROUP, BRIEF_GROUP, SHELL_GROUP];
+/** The resume hook's group, on `claude --resume`, in every project whatever the label choice. */
+const RESUME_GROUP = { matcher: 'resume', hooks: [engineHook('session resume')] };
 /** Ledger's own hooks by event, as boot installs them. */
-const OWN_HOOKS = { SessionEnd: [{ hooks: LEDGER_HOOKS }], PreToolUse: GUARD_GROUPS };
+const OWN_HOOKS = { SessionEnd: [{ hooks: LEDGER_HOOKS }], SessionStart: [RESUME_GROUP], PreToolUse: GUARD_GROUPS };
 
 /**
  * Settings as boot leaves a project the mod cannot run in: `rest`, then
- * `hooks` in boot's one SessionEnd group, and the guard groups.
+ * `hooks` in boot's one SessionEnd group, the resume group, and the guard
+ * groups.
  * @param {object[]} hooks @param {Record<string, unknown>} [rest]
  */
 function hooked(hooks, rest = {}) {
-  return JSON.stringify({ ...rest, hooks: { SessionEnd: [{ hooks }], PreToolUse: GUARD_GROUPS } }, null, 2) + '\n';
+  return JSON.stringify({ ...rest, hooks: { SessionEnd: [{ hooks }], SessionStart: [RESUME_GROUP], PreToolUse: GUARD_GROUPS } }, null, 2) + '\n';
 }
 
 /** @type {(ReturnType<typeof harness> & {path: string})|null} */
@@ -1167,7 +1170,7 @@ function startItem(dir, workUnit, phase, topic) {
 }
 
 module.exports = {
-  ENGINE, STAND_INS, harness, stubEngine, engineHook, LEDGER_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, OWN_HOOKS, hooked,
+  ENGINE, STAND_INS, harness, stubEngine, engineHook, LEDGER_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, RESUME_GROUP, OWN_HOOKS, hooked,
   call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, sectionOf, screenOf, holdLock, lockAttempts, contend, killedAt,
   FROZEN_MS, FROZEN_AT, withFrozenClock, withEnv, datedAt,
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,

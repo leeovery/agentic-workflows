@@ -108,7 +108,7 @@ const { BOARD_USAGE, boardOf } = require('./domain/board.cjs');
 const { SCRATCH_USAGE, runScratchVerb } = require('./domain/scratch.cjs');
 const { QUICK_FIX_USAGE, runQuickFixVerb } = require('./domain/quick-fix-record.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence } = require('./domain/presence.cjs');
-const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
+const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSession, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation, isAgentId } = require('./domain/conversation.cjs');
 const { recordBuilder, positionReads, positionSections } = require('./domain/position.cjs');
 const { isBriefId } = require('./domain/brief-names.cjs');
@@ -1036,7 +1036,7 @@ function runSession(call, argv) {
     }
     if (command === 'resume') {
       // The SessionStart hook's target.
-      respondOnStderr(call, resumeSessionLabel(hookProjectDir(call.cwd), hookSessionId(call, rest, 'Usage: engine session resume [session-id]')));
+      respondOnStderr(call, resumeSession(hookProjectDir(call.cwd), hookSessionId(call, rest, 'Usage: engine session resume [session-id]')));
       return;
     }
     throw new Error('Usage: engine session <label|label-config|repair|cleanup|resume> … — its forms: engine help session');

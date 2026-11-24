@@ -26,6 +26,10 @@ Where a verb refuses because this conversation has not booted Ledger on this ver
 
 A call's answer may carry `next`: an engine call to run, a handoff to make, a skill to invoke in this conversation, or carry on. A handoff is made with `handoff /{skill} {args}`: where its DATA reads `handoff: mod` and the result carries no HANDOFF section, the turn ends there, and the gate mod carries the work into a fresh conversation; otherwise invoke the DATA's `skill` with its `args` here. Act on the rest of the answer first, as the skill says of that call; then do what `next` says, and what each `next` after it says, until an answer carries none. Where an answer carries `next`, where the work goes after that call is `next`'s alone to say.
 
+## Catching Up
+
+An entry's `catch up` names the transcript of a conversation that was here before this one. Read it from where it last wrote to what this place keeps, as far as that conversation stayed here, and add what it is missing, through the phase's own doors. Then, within the phase's own opening and after anything its skill puts first, say briefly where things had got to: the last thing said, where the transcript still exists, and what was agreed about the plan or the process.
+
 ## Showing and Saying
 
 What you show reaches the person one of two ways. When SendUserMessage is not among the active tools, load it before its first use (ToolSearch, query `select:SendUserMessage`); it is unavailable only once that load has failed, and then everything is written as text.

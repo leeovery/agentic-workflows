@@ -314,13 +314,17 @@ function collectRows(cwd, workUnit, startOf) {
 }
 
 /**
- * Whether the conversation `sessionId` holds the place live — a row of its
- * own there, its owner alive. Catch-up's read (discovery-entry.cjs), at the
- * product's conversation, where several conversations keep rows at once.
- * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic @param {string} sessionId
+ * The conversations holding the place live, each by its session id — a row
+ * of its own there, its owner alive, and that owner not the calling process,
+ * where the row is a conversation's before this one, its sweep at the end
+ * not run (`ownsRow`). Catch-up's read (catch-up.cjs), at every place, the
+ * product's conversation's among them, where several conversations keep
+ * rows at once.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ * @returns {Set<string>}
  */
-function holdsLive(cwd, workUnit, phase, topic, sessionId) {
-  return rowsAt(cwd, workUnit, phase, topic, startTimeReader()).some((row) => row.held && row.session_id === sessionId);
+function heldLive(cwd, workUnit, phase, topic) {
+  return new Set(rowsAt(cwd, workUnit, phase, topic, startTimeReader()).flatMap((row) => (row.held && !ownsRow(row) && row.session_id !== null ? [row.session_id] : [])));
 }
 
 /**
@@ -512,7 +516,7 @@ function cleanupPresence(cwd, sessionId) {
 
 module.exports = {
   beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly,
-  scanPresence, scanProject, heldCodeSessions, peerHold, holdsLive, cleanupPresence,
+  scanPresence, scanProject, heldCodeSessions, peerHold, heldLive, cleanupPresence,
   migrationCarrier, migrationCarried, carriesMigration, beatMigrationQuietly, refreshMigrationQuietly, dropMigrationRow,
   fmtAge,
 };

@@ -149,7 +149,7 @@ describe('pipeline simulation: feature', () => {
     sim.refuses(['handoff', ...shellWords(route)], /inbox file not found/);
   });
 
-  it('feature: a discussion entered through `enter` — the first entry starts it on what discovery left, a later conversation resumes it on its record and its log', () => {
+  it('feature: a discussion entered through `enter` — the first entry starts it on what discovery left, a later conversation resumes it on its record and its log, catching up on the one before', () => {
     const wu = 'filters';
     const keys = () => [...sim.sections.matchAll(/^([a-z ]+): /gm)].map((m) => m[1]);
     const header = () => /^log header: (.*)$/m.exec(sim.sections)?.[1];
@@ -166,7 +166,7 @@ describe('pipeline simulation: feature', () => {
 
     const again = enterEntry(sim, wu, 'discussion', wu);
     assert.deepStrictEqual([again.started, again.committed], [false, undefined], 'a later entry resumes, starting nothing');
-    assert.deepStrictEqual(keys(), ['discovery log', 'product', 'record', 'map', 'affected', 'log', 'log header'], 'a new conversation owes its own header');
+    assert.deepStrictEqual(keys(), ['discovery log', 'product', 'record', 'map', 'affected', 'catch up', 'log', 'log header'], 'a new conversation catches up on the one before and owes its own header');
     assert.match(carryOn(sim).text, /has not written to the log yet/);
   });
 

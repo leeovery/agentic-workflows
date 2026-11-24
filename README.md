@@ -31,7 +31,7 @@ Ledger stays out of the way. Nothing about how you talk to Claude changes: a few
 - **A build that runs itself.** Tasks are built side by side in their own worktrees and reviewed by agents that didn't write them, and a question for you parks only the tasks that depend on it. [The build](docs/the-build.md)
 - **Proven by running it.** Builders drive the running product the way a user would, and a script, never Claude's account, writes the verdict. [Verification](docs/verification.md)
 - **Nothing said in passing is lost.** Mention an idea, a bug or a rule for CLAUDE.md mid-conversation, and Claude keeps it where it belongs while the work carries on. [Tracking](docs/tracking.md)
-- **Picks up where it left off.** After a compaction, a crash or a new session, the work reads its record again and carries on, with no recap. [Reliability](docs/reliability.md)
+- **Picks up where it left off.** After a compaction or a crash, the work reads its record again and carries on, with no recap. A new conversation also reads what the one before it said after the work was last written down, and opens by reminding you where things had got to. [Reliability](docs/reliability.md)
 
 ## What it looks like
 

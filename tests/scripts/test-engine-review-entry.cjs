@@ -12,7 +12,8 @@
 // its entry where none is held, never by entering again (14.1.5); and each
 // question waiting on the person, by the ledger alone, the build's standing
 // read only while something is in flight, so an idle entry's cost stays
-// flat (12.13.22). Its answer and the recovery note are
+// flat (12.13.22); and the conversation before this one named to catch up
+// on, the rule test-engine-enter-catch-up.cjs's. Its answer and the recovery note are
 // test-engine-review-entry-answer.cjs's; a fix task in flight there, taken
 // over at the entry, test-engine-review-fix-tasks.cjs's.
 //
@@ -26,7 +27,7 @@ const fs = require('fs');
 const path = require('path');
 const { traced } = require('./engine-harness.cjs');
 const {
-  UNIT, inStep, useWorld, env, enter, named, recorded, firstRoundFailed, cutUnmerged, fixBuilt, raisedAtReview,
+  UNIT, SESSION_ID, inStep, useWorld, env, enter, named, recorded, firstRoundFailed, cutUnmerged, fixBuilt, raisedAtReview,
   ok, okSections, refusedPristine, statePath, git, stateGit, assert,
 } = require('./review-world.cjs');
 
@@ -121,6 +122,14 @@ describe('the snapshot of the working tree outside .ledger/ (14.1.5)', () => {
 
     assert.deepStrictEqual([recorded1, waiting, built], [null, null, null]);
     assert.deepStrictEqual([snapshot()?.round, snapshot()?.heads], [2, { '.': git(dir, ['rev-parse', 'HEAD']).trim() }]);
+  });
+});
+
+describe('catching up', () => {
+  it('names the conversation entered before this one', () => {
+    enter();
+    const { sections } = okSections(dir, ['enter', 'review', UNIT], { env: env('next') });
+    assert.match(sections, new RegExp(`^catch up: the transcript of session ${SESSION_ID} is gone`, 'm'));
   });
 });
 

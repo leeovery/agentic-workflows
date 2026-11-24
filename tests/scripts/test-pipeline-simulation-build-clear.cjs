@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's build across /clears, as its skill's prose runs
 // it: one task of a feature's one phase in auto, the build entered afresh
-// after each /clear, the task's line in flight naming where it goes. A
+// after each /clear, the task's line in flight naming where it goes, and the
+// conversation cleared named to catch up on. A
 // /clear mid-fix: a new builder sent its brief, then the fix brief, round 2
 // reading the fix. A /clear while the pair reads round 2: the pair briefed
 // again for it and never the builder, a report that does not read going
@@ -16,8 +17,10 @@
 // there, then a new builder sent its brief for the account and the account
 // taken. A /clear once it is taken: the entry, and the reviewer's refusal,
 // naming its landing, and the task landed (24.2.4, 12.1.4, 13.4.5, 12.14).
-// Then the first conversation resumed: the task a later one landed off its
-// position as it enters, no line naming it.
+// Then the first conversation resumed, Claude Code's resume hook recording
+// it again where it was: the task a later one landed off its position as it
+// enters, no line naming it, and the conversation it resumes over named to
+// catch up on.
 //
 // Layer: simulation. World: this file's own, built once on the named world
 // `worlds.specToBuild`, itself built once per run (pipeline-world.cjs) — a
@@ -71,6 +74,9 @@ describe('pipeline simulation: the build across /clears', () => {
     return sim.sections.split('\n').find((line) => line.startsWith('in flight: task 1.1'));
   };
 
+  /** The conversations the last entry names to catch up on, by their session ids, each transcript gone in the sim. */
+  const caughtUpOn = () => [...sim.sections.matchAll(/^catch up: the transcript of session (\S+) is gone — say so in one line, and carry on from what this place keeps$/gm)].map(([, session]) => session);
+
   /** Reviewer `letter`'s report of the round under review written. @param {string} letter @param {string} report */
   const reviewed = (letter, report) => landed(placeIn(sim, loop.brief(['reviewer', WU, '1.1', '--letter', letter]), 'Where your report goes'), report);
 
@@ -87,8 +93,10 @@ describe('pipeline simulation: the build across /clears', () => {
     loop.pairRound('1.1', BUG);
     loop.brief(['fix', WU, '1.1']);
 
-    // A /clear mid-fix: a new builder, its brief and then the fix brief.
+    // A /clear mid-fix: a new builder, its brief and then the fix brief; the
+    // conversation cleared, which never wrote the build's log, caught up on.
     assert.strictEqual(clearedAndEntered(), 'in flight: task 1.1, no builder dispatched here — round 1 of its review failed — a new builder goes with its brief, then its fix brief, engine brief fix ledgerly 1.1');
+    assert.deepStrictEqual(caughtUpOn(), [opened]);
     loop.brief(['builder', WU, '1.1']);
     const second = loop.isolated('1.1', 'agent-1.1-second');
     loop.brief(['fix', WU, '1.1']);
@@ -132,10 +140,16 @@ describe('pipeline simulation: the build across /clears', () => {
     sim.refuses(['render', 'step-gate', WU, '1.1'], /builds in auto, where no gate follows a task/);
     assert.deepStrictEqual(loop.landedTask('1.1')?.argv, ['verify', 'mutants', WU, '1']);
 
-    // The first conversation resumed past every /clear: the task a later
-    // one landed is off its position as it enters, and no line names it.
+    // The first conversation resumed past every /clear, its resume hook
+    // run: the task a later one landed is off its position as it enters,
+    // and no line names it; the conversation it resumes over, in the same
+    // process, is caught up on, each before it named already to the one
+    // after it.
+    const last = sim.env.CLAUDE_CODE_SESSION_ID;
     sim.env = { ...sim.env, CLAUDE_CODE_SESSION_ID: opened };
+    assert.deepStrictEqual(sim.runOnStderr(['session', 'resume', opened]), { ok: true, resumed: false });
     sim.run(['enter', 'implementation', WU]);
     assert.ok(!sim.sections.includes('in flight: '), sim.sections);
+    assert.deepStrictEqual(caughtUpOn(), [last]);
   });
 });

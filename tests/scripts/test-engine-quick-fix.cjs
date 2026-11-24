@@ -220,7 +220,7 @@ describe('enter implementation <quick-fix>: its fixes, with no cut, no ready to 
     );
   });
 
-  it('puts in flight the fix another conversation left in progress, reading each fix by its id, title and where it stands, its record once written, and a question asked in the quick-fix still open with the raise that asks it again (19.5.25); its recovery note re-reads the same', () => {
+  it('puts in flight the fix another conversation left in progress, reading each fix by its id, title and where it stands, its record once written, a question asked in the quick-fix still open with the raise that asks it again (19.5.25), and the conversation that left it to catch up on; its recovery note re-reads the same', () => {
     dir = entered();
     writeState(dir, layout.unit(UNIT, 'summary.md'), `## ${TITLE}\n`);
     const { res, sections } = enter();
@@ -228,7 +228,7 @@ describe('enter implementation <quick-fix>: its fixes, with no cut, no ready to 
     const note = output(dir, ['conversation', 'position'], { env: env() });
 
     assert.deepStrictEqual(res, { ok: true, phase: 'implementation', unit: UNIT, entered: true, started: false });
-    assert.strictEqual(sections, quickFixData(`1.1 "${TITLE}" in progress`, true, [IN_FLIGHT, askedOpenLine()]));
+    assert.strictEqual(sections, `${quickFixData(`1.1 "${TITLE}" in progress`, true, [IN_FLIGHT, askedOpenLine()])}catch up: the transcript of session gone is gone — say so in one line, and carry on from what this place keeps\n`);
     assert.deepStrictEqual(position(), { name: UNIT, phase: 'implementation', topic: UNIT, tasks: [{ task: '1.1', builder: null, reviewers: [] }] });
     for (const line of [
       path.join(dir, '.claude/skills/ledger-quick-fix-process/SKILL.md'), `\`${ENGINE} ledger record ${UNIT}\``, statePath(dir, `${UNIT}/build/log.md`), ...fixesLines(`1.1 "${TITLE}" in progress`, true), IN_FLIGHT, askedOpenLine(),

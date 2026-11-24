@@ -26,7 +26,7 @@ The **ledger** is where every entry is written: one file for the project, `.ledg
 
 A **log** is the journey: the options weighed, the false paths and why they were dropped, the reversals and what changed a mind. Discovery keeps one per session, each topic keeps one across its sessions, and the build keeps one for itself. A log is appended and never rewritten, and points at ledger entries by their short ids rather than restating them.
 
-A conversation's log, a discovery session's or a topic's, names the conversations that wrote it: a line with the date, the conversation's session id and the path of its transcript, added when a conversation first writes to the log and again whenever it writes after another conversation has, so the log's last such line always names its last writer. The log is the record of the journey; the transcript is a backstop, there for as long as Claude Code keeps it. Ledger never sets, recommends or asks how long that is.
+A conversation's log, a discovery session's or a topic's, names the conversations that wrote it: a line with the date, the conversation's session id and the path of its transcript, added when a conversation first writes to the log and again whenever it writes after another conversation has, so the log's last such line always names its last writer. The log is the record of the journey; the transcript is a backstop, there for as long as Claude Code keeps it, from which the next conversation at the place catches the log up on what was said after its last write. Ledger never sets, recommends or asks how long that is.
 
 ## Where everything lives
 

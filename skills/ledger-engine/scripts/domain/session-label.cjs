@@ -20,11 +20,14 @@
 // SessionStart hook fired on `claude --resume`, re-applies the
 // conversation's position (position.cjs — recorded by the same arrivals,
 // labels on or off, and outliving the session) where the project has its
-// work unit. The feature is a display courtesy, never state: for the user
-// who has not opted in, or inside no multiplexer, or on any error of one,
-// every path degrades to a no-op JSON response and the label never gates a
-// flow. (A place the project lacks fails loudly whatever the opt-in — that
-// is an authoring bug, not an environment condition.)
+// work unit. The arrivals and the resume also keep the conversations a
+// place names to catch up on (catch-up.cjs), labels on or off: an arrival
+// marks the conversation's row at the place it left, and a resume records
+// it again at its position's place. The label itself never gates a flow:
+// for the user who has not opted in, or inside no multiplexer, or on any
+// error of one, labelling degrades to a no-op JSON response. (A place the
+// project lacks fails loudly whatever the opt-in — that is an authoring
+// bug, not an environment condition.)
 //
 // Opt-in is the project manifest's `defaults.session_labels` boolean —
 // absent means never asked, which is what ledger's one-time prompt keys on
@@ -37,8 +40,10 @@
 // end`, present in every Ledger project regardless — the heartbeat sweep
 // and the conversation's transcript record are Ledger's own, not a
 // label preference. SessionStart (matcher `resume`) carries `session
-// resume` while labels are on. PreToolUse carries three groups in every
-// Ledger project, each matched to the tools its hook stands before:
+// resume` in every Ledger project regardless, the resumed conversation's
+// catch-up record being Ledger's own, its label part a no-op while labels
+// are off. PreToolUse carries three groups in every Ledger project, each
+// matched to the tools its hook stands before:
 // `layout guard` before Write, Edit and NotebookEdit (domain/layout-hook),
 // `brief guard` before Agent and SendMessage (domain/brief-guard), and
 // `shell guard` before Bash (domain/shell-guard). Recording the choice syncs
@@ -56,6 +61,8 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { commitStateTail, commitOwnChange, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { SETTINGS_SPEC, parseSettings, readProjectSettings, writeProjectSettings } = require('./settings.cjs');
 const { readPosition, assertPlace, isPlace, recordPosition, dropPosition, placeLine } = require('./position.cjs');
+const { placeAt, samePlace } = require('./place-entry.cjs');
+const { movedOn, resumedAt } = require('./catch-up.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { loadManifest } = require('./reads.cjs');
 const { topicTitles, itemName } = require('./derivations.cjs');
@@ -137,14 +144,14 @@ function carriesOurHooks(settings) {
 /** @typedef {{event: string, matcher?: string, commands: string[]}} WantedGroup */
 
 /**
- * The groups wanted, each under its event: the label hooks while labels are
- * on (`session`) — SessionEnd restores the name, and SessionStart brings a
- * resumed session's label back, its matcher having Claude Code fire it on
- * `claude --resume` alone — and Ledger's own (`ledger`), where
- * SessionEnd sweeps the heartbeats and records the conversation's
- * transcript, and PreToolUse runs the layout hook before every write, the
- * brief hook before every dispatch and the shell hook before every shell
- * command. A group with no command wanted is never written.
+ * The groups wanted, each under its event: the label hook while labels are
+ * on (`session`) — SessionEnd restores the name — and Ledger's own
+ * (`ledger`), where SessionEnd sweeps the heartbeats and records the
+ * conversation's transcript, SessionStart records a resumed conversation
+ * again where it was and brings its label back, its matcher having Claude
+ * Code fire it on `claude --resume` alone, and PreToolUse runs the layout
+ * hook before every write, the brief hook before every dispatch and the
+ * shell hook before every shell command. A group with no command wanted is never written.
  * @param {{session: boolean, ledger: boolean}} want
  * @returns {WantedGroup[]}
  */
@@ -153,7 +160,7 @@ function wantedGroups({ session, ledger }) {
   const on = (candidates) => candidates.filter(/** @returns {c is string} */ (c) => typeof c === 'string');
   return [
     { event: 'SessionEnd', commands: on([session && SESSION_CLEANUP_COMMAND, ledger && PRESENCE_CLEANUP_COMMAND, ledger && CONVERSATION_END_COMMAND]) },
-    { event: 'SessionStart', matcher: 'resume', commands: on([session && SESSION_RESUME_COMMAND]) },
+    { event: 'SessionStart', matcher: 'resume', commands: on([ledger && SESSION_RESUME_COMMAND]) },
     { event: 'PreToolUse', matcher: LAYOUT_HOOK_TOOLS.join('|'), commands: on([ledger && LAYOUT_GUARD_COMMAND]) },
     { event: 'PreToolUse', matcher: BRIEF_HOOK_TOOLS.join('|'), commands: on([ledger && BRIEF_GUARD_COMMAND]) },
     { event: 'PreToolUse', matcher: SHELL_HOOK_TOOLS.join('|'), commands: on([ledger && SHELL_GUARD_COMMAND]) },
@@ -226,7 +233,7 @@ function currentCommands(groups, commands) {
 /**
  * A settings document with the session hooks as wanted: SessionEnd carries
  * `session cleanup` iff `session`, and `presence cleanup` and `conversation
- * end` iff `ledger`; SessionStart carries `session resume` iff `session`;
+ * end` iff `ledger`; SessionStart carries `session resume` iff `ledger`;
  * PreToolUse carries `layout guard`, `brief guard` and `shell guard`, each
  * in its own group, iff `ledger` — each event reconciled on its own,
  * every other key (permissions, other events, foreign groups and their
@@ -430,39 +437,48 @@ function applySessionLabel(cwd, name, phase, topic) {
 }
 
 /**
- * Arrive at a place — `session label`'s, and the entry's (enter.cjs): a
- * place this project lacks refused before anything is labelled or recorded,
+ * Arrive at a place — the entry's (enter.cjs), `session label`'s, the
+ * epic's menu's and the roadmap's as each is drawn (menus.cjs), and a
+ * unit's finish's or cancel's return to where its start was made
+ * (topic-leave.cjs): a place this project lacks refused before anything is labelled or recorded,
  * then the session labelled and the conversation's position recorded,
  * labels on or off, with the laboratory's experiment, `record`, where its
- * entry named one. Answers the label's own answer.
+ * entry named one; and, arriving from another place, the conversation
+ * marked moved on there (catch-up.cjs). Answers the label's own answer.
  * @param {string} cwd @param {string} name @param {string} [phase] @param {string} [topic] @param {string} [record]
  */
 function arriveAt(cwd, name, phase, topic, record) {
   assertPlace(cwd, name, phase, topic);
   const labelled = applySessionLabel(cwd, name, phase, topic);
+  const own = handedSession();
+  const left = placeAt(own === null ? null : readPosition(own));
   recordPosition(cwd, name, phase, topic, record);
+  if (left !== null && !samePlace(left, placeAt({ name, phase, topic }))) movedOn(cwd, left);
   return labelled;
 }
 
 /**
- * Bring a resumed session's label back — `session resume`, the SessionStart
- * hook's target on `claude --resume`. The conversation's position is
- * re-applied through `applySessionLabel`, so the gates are `label`'s own
- * (disabled, no multiplexer, its error all no-op), the stash records the
- * resuming process's identity, and a label already worn costs no rename. A
- * position naming a place this project does not have — the conversation
- * resumed in another checkout, or its unit gone — labels nothing and is
- * kept: its folder's tidy-up owns its lifetime. Never throws: a hook must
- * exit clean.
+ * A resumed conversation back at its position — `session resume`, the
+ * SessionStart hook's target on `claude --resume`: recorded again at the
+ * position's place for catch-up (catch-up.cjs, `resumedAt`), labels on or
+ * off, then its label re-applied through `applySessionLabel`, so the
+ * label's gates are `label`'s own (disabled, no multiplexer, its error all
+ * no-op), the stash records the resuming process's identity, and a label
+ * already worn costs no rename. A position naming a place this project does
+ * not have — the conversation resumed in another checkout, or its unit gone
+ * — records and labels nothing and is kept: its folder's tidy-up owns its
+ * lifetime. Never throws: a hook must exit clean.
  * @param {string} cwd @param {string|null} sessionId
  * @returns {{resumed: boolean}}
  */
-function resumeSessionLabel(cwd, sessionId) {
+function resumeSession(cwd, sessionId) {
   if (!sessionId) return { resumed: false };
   const position = readPosition(sessionId);
   if (!position) return { resumed: false };
   try {
     if (!isPlace(cwd, position.name, position.phase, position.topic)) return { resumed: false };
+    const place = placeAt(position);
+    if (place !== null) resumedAt(cwd, sessionId, place);
     return { resumed: applySessionLabel(cwd, position.name, position.phase, position.topic).labelled };
   } catch {
     return { resumed: false };
@@ -518,6 +534,6 @@ function repairTerminalLabel(cwd) {
 }
 
 module.exports = {
-  arriveAt, restoreSessionLabel, repairSessionLabels, repairTerminalLabel, resumeSessionLabel,
+  arriveAt, restoreSessionLabel, repairSessionLabels, repairTerminalLabel, resumeSession,
   resolveEnabled, labelConfigStatus, multiplexerHere, syncSessionHooks, commitSessionHooks, carriesOurHooks, recordLabelChoice,
 };
