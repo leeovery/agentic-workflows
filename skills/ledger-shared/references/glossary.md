@@ -248,7 +248,7 @@ _Avoid_: profile, rules
 The layer above the pieces of work: everything decided about the product but not yet started — ideas, bugs and quick-fixes — held as items in horizons, shaped in the product's own conversation. Saying where something belongs mid-conversation ("that's a v2 thing") puts it there in one line; an item leaves the roadmap once its work starts.
 
 **item**:
-One thing in the inbox or on the roadmap, of one kind: an idea, a bug or a quick-fix. On the roadmap an idea is a capability at the grain the person would move around a real roadmap, a bug or a quick-fix one fix; each has a one-line summary and a pointer to where it came from.
+One thing in the inbox or on the roadmap, of one kind: an idea, a bug or a quick-fix. On the roadmap an idea is a capability at the grain the person would move around a real roadmap, never a task, and a bug or a quick-fix one fix; each has a one-line summary and a pointer to where it came from, and stays a placeholder, changeable until work starts from it.
 
 **horizon**:
 A named bucket on the roadmap, in the person's own staging words (launch, v1, someday). Their order is the meaning: first is next up. The horizon is always the person's; Claude never picks one.
