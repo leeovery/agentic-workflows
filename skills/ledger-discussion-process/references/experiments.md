@@ -20,7 +20,7 @@ Record it under a kebab-case slug drawn from the problem:
 node .claude/skills/ledger-engine/scripts/engine.cjs experiment create {work_unit} {topic} --slug {slug} --from discussion --problem .ledger/.cache/{work_unit}/discussion/{topic}/problem.md --question {question}
 ```
 
-A refused create: say why in a line. Otherwise its `id` is the experiment. Working it now would leave the topic, so bring the log up to date, then fetch the gate:
+Its answer's `id` is the experiment. Working it now would leave the topic, so bring the log up to date, then fetch the gate:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render experiment-spawn-gate {work_unit}.discussion.{topic} --id {id}

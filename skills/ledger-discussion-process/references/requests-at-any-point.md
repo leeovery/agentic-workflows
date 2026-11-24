@@ -24,17 +24,17 @@ node .claude/skills/ledger-engine/scripts/engine.cjs ledger move {place} --quest
 
 The topic postponed is this one or another of the epic, `{name}`. A single-topic unit has nothing to postpone: its topic is the unit, and its "not now" is a cancel; say so in a line. Postponing this topic leaves it: bring the log up to date. Another topic of the epic, named, leaves this one as it is.
 
-Where the person named a horizon, fetch the confirm, `render postpone-gate {work_unit}.discovery.{name} --horizon "{horizon}"`; otherwise the pick over the roadmap's horizons, `render horizon-pick {work_unit}.discovery.{name}`. A horizon named in words, or a Comment changing it, leads to the confirm again with it. A refusal names what holds the topic: say it in a line.
+Where the person named a horizon, fetch the confirm, `render postpone-gate {work_unit}.discovery.{name} --horizon "{horizon}"`; otherwise the pick over the roadmap's horizons, `render horizon-pick {work_unit}.discovery.{name}`. A horizon named in words, or a Comment changing it, leads to the confirm again with it.
 
-The postpone answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. It answers its receipt; then follow its `next`.
+The postpone answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool.
 
 ## Cancelling the Topic
 
-Bring the log up to date, then fetch the confirm: an epic's topic `render cancel-gate {work_unit}.discovery.{topic}`, a single-topic unit `render cancel-gate {work_unit}`. A refusal names what holds the topic: say it in a line.
+Bring the log up to date, then fetch the confirm: an epic's topic `render cancel-gate {work_unit}.discovery.{topic}`, a single-topic unit `render cancel-gate {work_unit}`.
 
-An epic's cancel answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. It answers its receipt; say in a line which experiments went with it, where its `abandoned` names any, and where each wait in `released_waits` stands: the point it held is open again, raised when the topic is reactivated. Then follow its `next`.
+An epic's cancel answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. Say in a line which experiments went with it, where its `abandoned` names any, and where each wait in `released_waits` stands: the point it held is open again, raised when the topic is reactivated.
 
-A single-topic unit's cancel takes the unit's cache, its agents' rows with it: stop every task you dispatched. It answers its receipt; then follow its `next`.
+A single-topic unit's cancel takes the unit's cache, its agents' rows with it: stop every task you dispatched.
 
 ## Moving Up
 
@@ -44,4 +44,4 @@ Suggest going there in a line; only the person's word moves it. Bring the log up
 node .claude/skills/ledger-engine/scripts/engine.cjs enter discovery {home} --move
 ```
 
-A refusal names the way on: say it in a line. Otherwise invoke `/ledger-discovery none {work_unit}`, or `/ledger-discovery none none` for the product's conversation; the conversation carries on there.
+Once it enters, invoke `/ledger-discovery none {work_unit}`, or `/ledger-discovery none none` for the product's conversation; the conversation carries on there.

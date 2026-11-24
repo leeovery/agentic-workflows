@@ -4,7 +4,7 @@
 
 ---
 
-The deep dive, the background review and the perspectives read the topic from its record, never the conversation, and run in the background while the conversation carries on. Each is dispatched, then briefed, then called: the Agent call's `subagent_type` is the agent `brief` answers, its prompt the pointer alone. What they bring back is taken at a natural pause, never jumped to.
+The deep dive, the background review and the perspectives read the topic from its record, never the conversation, and run in the background while the conversation carries on. Each is dispatched, then briefed, then called: the Agent call's `subagent_type` is the agent `brief` answers, its prompt the pointer alone.
 
 ## A Deep Dive
 
@@ -29,7 +29,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs agent dispatch {work_unit} 
 node .claude/skills/ledger-engine/scripts/engine.cjs brief discussion-reviewer {work_unit} {topic} --agent {id}
 ```
 
-The engine refuses the dispatch until the review is armed: carry on, and try again at a later pause. A review the person asks for adds `--final` to the dispatch.
+A review the person asks for adds `--final` to the dispatch.
 
 ## Perspectives
 
@@ -53,14 +53,6 @@ The perspectives feed the synthesis, never the conversation: once it is dispatch
 
 `agent scan {work_unit} discussion {topic}` lists what has landed as `pending`. A perspective waits for its synthesis.
 
-**A deep dive's report** is read in full, then `agent ack {work_unit} discussion {topic} {id} --clean`. What it learnt lands as findings, each saying how it is known as the report does, and the log keeps what came back. At the next natural pause the person hears it: what was asked, what came back, what it opened, and its answers in full — every condition, threshold and alternative, scoped as the report scoped it, told as what the product does before any symbol the report used. Each line under its Opened is judged: a new question on the map, a point another topic owns, a number a decision would rest on — the laboratory's cue — or nothing worth carrying.
+**A deep dive's report** is read in full, then `agent ack {work_unit} discussion {topic} {id} --clean`. What it learnt lands as findings, each saying how it is known as the report does, and the log keeps what came back. The person hears it: what was asked, what came back, what it opened, and its answers in full — every condition, threshold and alternative, scoped as the report scoped it, told as what the product does before any symbol the report used. Each line under its Opened is judged: a new question on the map, a point another topic owns, a number a decision would rest on — the laboratory's cue — or nothing worth carrying.
 
-**Any other report** is read, then its findings recorded by the ids its headings carry: `agent ack {work_unit} discussion {topic} {id} --findings {F1,F2}`, or `--clean` where it found none. The findings are taken at natural pauses, each one taken recorded, `agent surface {work_unit} discussion {topic} {id} {finding} [--question {question}]`, `--question` the question it was asked as.
-
-Each finding is a question the review asked: `ledger ask` with `"by": "review"`. The reviewer's lane is where you start, never where a finding must end: re-derive each from the record before you act on it.
-- **apply** — the record or a fact settles it. Check it: a question a current decision answers merges into that decision; one a fact settles is answered as your decision, relying on the finding that records the fact. An `apply` the record contradicts is a call.
-- **call** — a call the topic leaves open is worked through in the conversation while the topic's shape is still open, and goes through `raise` once it is agreed. A fix you cannot stand behind is raised as a call with several defensible answers.
-- **route** — another topic's: a message, as the skill's **Tools** sends one, the question moving with it. Work no topic owns is a scope call, not this topic's: a candidate at the close, which in a single-topic unit parks it on the roadmap.
-- **A synthesis's tensions** are told to the person; one they take up is a question on the map.
-
-A finding a later decision has made moot merges into that decision, and you say so in one line. A finding bound for the person is checked first against the answers given earlier and the record. Only the raise moves a finding away from the person: one that turns out to hide a real choice goes to `raise`, never settled alone. A finding the person waves off is answered, as "don't care" or as their own decision, never left open; another topic's still goes there. No finding is cut for count.
+**Any other report** is read, then its findings recorded by the ids its headings carry, `agent ack {work_unit} discussion {topic} {id} --findings {F1,F2}`, or `--clean` where it found none; each is then taken as the skill's **Findings** says.
