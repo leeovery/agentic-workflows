@@ -28,4 +28,4 @@ version_pattern = "v{version}"
 # Release-notes AI needs longer than the 60s default on big releases — the
 # v0.6.0 re-platforming diff (75 squashes) timed out twice at 60s. Seconds.
 timeout = 300
-diff_exclude = ["CLAUDE.md", "CONVENTIONS.md", "docs/contributing.md", "demo/", "skills/ledger-gates/tests/", "skills/ledger-gates-rows/tests/", "skills/ledger-engine/content/walkthrough/fixtures/", "skills/ledger-gates/tsconfig.json", "skills/ledger-gates-rows/tsconfig.json", "tsconfig.json", ".gitignore"]
+diff_exclude = ["CLAUDE.md", "CONVENTIONS.md", "docs/contributing.md", "demo/", "skills/ledger-gates/tests/", "skills/ledger-gates-rows/tests/", "skills/ledger-engine/content/walkthrough/fixtures/", "skills/ledger-gates/tsconfig.json", "skills/ledger-gates-rows/tsconfig.json", "tsconfig.json", ".gitignore", "design/"]
