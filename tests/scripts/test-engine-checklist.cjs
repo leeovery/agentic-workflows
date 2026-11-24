@@ -19,7 +19,7 @@
 // build begins (11.8.3);
 // the close refused while an item is open (6.S26), a mark from before
 // the last close never counting toward the next, and a mark under a key the
-// point no longer holds left unread, kept in the record as it was; finish showing no skip,
+// point does not hold left unread, kept in the record as it was; finish showing no skip,
 // each kept on the manifest (6.S32); the
 // record as stored, `checklists.{point}` on the unit's manifest; each write
 // under the writer lock with its own state commit, and every refusal
@@ -518,19 +518,19 @@ describe('the close, refused while any item is open (6.4.4, 6.S26)', () => {
     assert.strictEqual(refused(['close', 'ready-to-build', UNIT]), 'checklist close: ready-to-build has items open: topics-settled, sweep-run, review-settled, invariants-checked, sections-drawn, environment-recorded');
   });
 
-  it('leaves a stored mark under a key the point no longer holds unread — decided\'s `replacements-checked` — shown nowhere, counted toward no close, and kept in the record as it was', () => {
-    const retired = { state: 'skipped', reason: 'Nothing was replaced.', at: new Date().toISOString() };
+  it('leaves a stored mark under a key the point does not hold unread: shown nowhere, counted toward no close, and kept in the record as it was', () => {
+    const stray = { state: 'skipped', reason: 'Nothing to check.', at: new Date().toISOString() };
     const manifest = readManifest(dir, UNIT);
-    manifest.checklists.decided.cards.items['replacements-checked'] = retired;
+    manifest.checklists.decided.cards.items['no-such-item'] = stray;
     createManifest(dir, UNIT, manifest);
-    commitAll(dir, 'a mark under a removed key');
+    commitAll(dir, 'a mark under a key decided does not hold');
     const shown = show('decided', UNIT, 'cards');
 
-    assert.deepStrictEqual([shown.items, shown.skips].map((list) => list.filter((/** @type {any} */ item) => (item.key ?? item.item) === 'replacements-checked')), [[], []]);
+    assert.deepStrictEqual([shown.items, shown.skips].map((list) => list.filter((/** @type {any} */ item) => (item.key ?? item.item) === 'no-such-item')), [[], []]);
     assert.strictEqual(refused(['close', 'decided', UNIT, 'cards']), 'checklist close: decided.cards has items open: findings-rerun');
     checklist(['done', 'decided', UNIT, 'cards', 'findings-rerun']);
     assert.strictEqual(checklist(['close', 'decided', UNIT, 'cards']).checklist, 'decided.cards');
-    assert.deepStrictEqual(records().decided.cards.items['replacements-checked'], retired);
+    assert.deepStrictEqual(records().decided.cards.items['no-such-item'], stray);
   });
 
   it('counts no mark made before the last close toward the next: a topic reopened by mail closes again on its marks made since (10.2.7)', () => {

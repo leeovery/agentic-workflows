@@ -4,7 +4,7 @@
 
 ---
 
-The deep dive, the background review and the perspectives read the topic from its record, the review from its log too, never the conversation, and run in the background while the conversation carries on. Each is dispatched, then briefed, then called: the Agent call's `subagent_type` is the agent `brief` answers, its prompt the pointer alone. `{agent}` is the `id` a dispatch answered, and `{id}` the question on the map the agent works on.
+The deep dive, the background review and the perspectives read the topic from its record, the review from its log too, never the conversation, and run in the background while the conversation carries on. Each is dispatched, then briefed, then called: the Agent call's `subagent_type` is the agent `brief` answers, its prompt the pointer alone. `{agent}` is the `id` a dispatch answered; for an agent an earlier conversation left, the id the DATA's `lost` line gives or the name of its `landed` line's file, its row's `id` in `agent scan`. `{id}` is the question on the map the agent works on.
 
 ## A Deep Dive
 
