@@ -1,23 +1,27 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A raise on the replacement of a decision the migration carried from
-// before Ledger (ledger-engine/scripts/domain/raise.cjs, `whoseReplaced`,
-// over domain/ask-rule.cjs): standing as the migration carried it, no keep
-// of the person's on it since, it is read as carried over, whoever its line
-// says made it — the person among them — so the ask rule decides its
+// A raise on the replacement of a decision from before Ledger
+// (ledger-engine/scripts/domain/raise.cjs, `whoseReplaced`, over
+// domain/ask-rule.cjs): its line the migration's, no keep of the person's on
+// it since, it is given `carried`, whoever its line says made it — the
+// person among them — so the ask rule decides its
 // replacement as any call's, a one-answer call going ahead as Claude's;
 // under `--always built-otherwise` it asks for the mark (21.6.16); once the
 // person keeps it, and for a decision of theirs made in Ledger, it always
 // asks as theirs (16.5.7); and Claude's own `ledger replace` of it stays
-// refused, naming the raise. The rest of a replacement's raise — its draw,
-// its answers and the mark's keep row — is test-engine-raise-replace.cjs's.
+// refused, naming the raise. Asked without the mark, its keep row says the
+// build changes the code to match where the raise's cause is a finding
+// relying on it, and that nothing changes where it is not. The rest of a
+// replacement's raise — its draw, its answers and the mark's keep row — is
+// test-engine-raise-replace.cjs's.
 //
 // Layer: verb. World, built once and copied: the ledger suites' unit with,
-// on the note window, a finding, the person's decision made in Ledger, and
-// the person's decision as the migration carried it. Each test keeps its
-// conversation and the trust log, empty, in a config folder of its own; the
-// stand-in labels each call behaviour.
+// on the note window, a finding, the person's decision made in Ledger, the
+// person's decision from before Ledger with a finding relying on it, and
+// Claude's from before Ledger. Each test keeps its conversation and the
+// trust log, empty, in a config folder of its own; the stand-in labels each
+// call behaviour.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -56,7 +60,10 @@ const FOCUS_CALL = Object.freeze({
   rows: [{ ...MAIN, text: 'The focus stays where it was' }, { ...LAST, text: 'The focus follows the pointer' }],
 });
 
-/** @type {Record<'screens'|'theirs'|'carried', string>} */
+// Claude's decision from before Ledger, its documents showing no one making it.
+const SIZED = 'Half the screen';
+
+/** @type {Record<'screens'|'theirs'|'carried'|'drift'|'sized', string>} */
 const made = /** @type {any} */ ({});
 
 const world = fixtureFrom('raise-carried-', (template) => {
@@ -66,7 +73,9 @@ const world = fixtureFrom('raise-carried-', (template) => {
   made.screens = write('find', NOTE, [], { ...MADE, text: 'New notes open on the main screen.', how: 'read in src/note.js, open', known: 'read' }).id;
   made.theirs = write('decide', NOTE, ['--answers', asked('Does a new note take focus?')], { by: 'person', who_moved_whom: 'none', text: 'It takes the focus', why: 'Typing starts at once.' }).id;
   made.carried = carriedOver(NOTE, asked('Where does a new note open?'), CARRIED, 'person');
-  commitAll(template, 'the decision carried');
+  made.drift = write('find', NOTE, ['--relies-on', made.carried], { ...MADE, text: 'A new note opens on the main screen, whichever it was last opened on.', how: 'read in src/note.js, open', known: 'read' }).id;
+  made.sized = carriedOver(NOTE, asked('How big is a new note?'), SIZED);
+  commitAll(template, 'the decisions from before');
 }, { kept: made });
 
 const config = useTempFolder('raise-carried-config-');
@@ -85,18 +94,24 @@ afterEach(() => {
 const { full } = ledgerHelpers(() => dir);
 const { conversation, seals, answer, lastEntry, labelledAs, raised } = raiseHelpers(() => dir, config, CALL);
 
-/** The flags raising the replacement of `decision`, the finding the cause, as code built otherwise is raised. @param {string} decision */
-const cited = (decision) => ['--replaces', decision, '--reason', 'new-fact', '--cause', made.screens];
+/** The flags raising the replacement of `decision`, the finding `cause` its cause, as code built otherwise is raised. @param {string} decision @param {string} [cause] */
+const cited = (decision, cause = made.screens) => ['--replaces', decision, '--reason', 'new-fact', '--cause', cause];
+
+/** A raise of `call` on the replacement of `decision`, with `more` flags, labelled behaviour: its response and its screen. @param {string} decision @param {Record<string, unknown>} call @param {string[]} [more] @param {string} [cause] */
+const drawing = (decision, call, more = [], cause = undefined) => raised(NOTE, [...cited(decision, cause), ...more], call, labelledAs(call, 'behaviour'));
 
 /** A raise of `call` on the replacement of `decision`, with `more` flags, labelled behaviour: its response. @param {string} decision @param {Record<string, unknown>} call @param {string[]} [more] */
-const raising = async (decision, call, more = []) => (await raised(NOTE, [...cited(decision), ...more], call, labelledAs(call, 'behaviour'))).res;
+const raising = async (decision, call, more = []) => (await drawing(decision, call, more)).res;
+
+/** The keep row a sealed raise draws. @param {string} raise */
+const sealedKeep = (raise) => /** @type {Record<string, any>} */ (seals())[raise].replaces.keep;
 
 /** Whose the decision a sealed raise would replace was. @param {string} raise */
 const sealedWhose = (raise) => /** @type {Record<string, any>} */ (seals())[raise].replaced_by;
 
 const THEIRS = 'You decided this yourself, so changing it always comes to you.';
 
-describe('a decision the migration carried, the person\'s by its line (21.6.16)', () => {
+describe('a decision from before Ledger, the person\'s by its line (21.6.16)', () => {
   it('is replaced through the ask rule as any call is, never asking for being theirs: a one-answer call goes ahead, landing as Claude\'s replacement; the same call on their decision made in Ledger always asks', async () => {
     const goes = await raising(made.carried, CALL);
     const landed = lastEntry();
@@ -106,7 +121,7 @@ describe('a decision the migration carried, the person\'s by its line (21.6.16)'
     assert.deepStrictEqual([asks.decision, asks.reason, sealedWhose(asks.raise)], ['ask', THEIRS, 'person']);
   });
 
-  it('asks for the mark under --always built-otherwise, sealed as carried over; once the person keeps it, its replacement always asks as theirs', async () => {
+  it('asks for the mark under --always built-otherwise, sealed as given carried; once the person keeps it, its replacement always asks as theirs', async () => {
     const marked = await raising(made.carried, KEEP_LEAN, ['--always', 'built-otherwise']);
     const whose = sealedWhose(marked.raise);
     answer(marked.raise, ['--pick', 'keep']);
@@ -116,9 +131,22 @@ describe('a decision the migration carried, the person\'s by its line (21.6.16)'
     assert.deepStrictEqual([after.decision, after.reason, sealedWhose(after.raise)], ['ask', THEIRS, 'person']);
   });
 
-  it('Claude\'s own ledger replace of it is refused, writing nothing, naming the raise', () => {
+  it('Claude\'s own ledger replace of it is refused, writing nothing, naming the raise it goes through', () => {
     const { error } = refusedPristine(dir, ['ledger', 'replace', NOTE, ...cited(made.carried)], { env: conversation(), stdin: JSON.stringify({ ...MADE, drops: [CARRIED], text: MAIN.text, why: 'The code opens it there.' }) });
 
-    assert.strictEqual(error, `ledger replace: ${made.carried} is the person's decision — Claude's change to it always comes to them: raise ${NOTE} --replaces ${made.carried} --reason new-fact --cause ${made.screens}`);
+    assert.strictEqual(error, `ledger replace: ${made.carried} is the person's decision — Claude's change to it goes through a raise: raise ${NOTE} --replaces ${made.carried} --reason new-fact --cause ${made.screens}`);
+  });
+
+  it('asked without the mark, its keep row says the build changes the code to match where the cause is a finding relying on it, and that nothing changes where the cause relies on no decision of its own', async () => {
+    const several = { ...CALL, sort: 'several' };
+    const drifted = await drawing(made.carried, several, [], made.drift);
+    const sizing = { ...several, question: 'How big should a new note open?', rows: [{ ...MAIN, text: 'A third of the screen' }, { ...LAST, text: 'The whole screen' }] };
+    const unrelated = (await drawing(made.sized, sizing)).res;
+
+    assert.deepStrictEqual([drifted.res.decision, sealedKeep(drifted.res.raise), unrelated.decision, sealedKeep(unrelated.raise)], [
+      'ask', { key: 'keep', name: 'Keep it as decided', text: CARRIED, notice: 'the build changes the code to match' },
+      'ask', { key: 'keep', name: 'Keep it as it stands', text: SIZED, notice: 'nothing changes' },
+    ]);
+    assert.ok(drifted.sections.includes('Keep it as decided'), 'the screen draws the keep row as sealed');
   });
 });

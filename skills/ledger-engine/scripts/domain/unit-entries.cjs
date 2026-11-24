@@ -17,18 +17,12 @@
 // streamed pass, and each entry's line read again from the file it opened;
 // a read drawing several units takes every unit's from that one fold
 // (`everyUnitEntries`).
-//
-// Beside them, whether a unit holds a current decision the migration
-// carried from before Ledger (`holdsCarried`), which the entry asks
-// (enter.cjs): each current decision made in the unit is read again for its
-// session alone, the first found ending the read.
 // ---------------------------------------------------------------------------
 
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { shortIds } = require('./ledger-ids.cjs');
 const { ID_FACTS, readFolded, isCurrent, standingOf, madeOn, decidedNow } = require('./ledger-fold.cjs');
 const { liveness } = require('./ledger-units.cjs');
-const { CARRIED_SESSION } = require('./ledger-events.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {import('./ledger-fold.cjs').Standing} Standing */
@@ -104,23 +98,4 @@ function unitEntries(cwd, unit, warnings = []) {
   return withUnitEntries(cwd, unit, warnings, ({ entries }) => entries);
 }
 
-/**
- * Whether the unit holds a current decision the migration carried from
- * before Ledger (the header's): a decision made in the unit, its line the
- * migration's (`CARRIED_SESSION`), that is current.
- * @param {string} cwd @param {string} unit @param {string[]} [warnings] what a landing the read's check finished said, pushed to
- * @returns {boolean}
- */
-function holdsCarried(cwd, unit, warnings = []) {
-  const root = stateRoot(cwd);
-  const live = liveness(root);
-  return readFolded(root, ID_FACTS, warnings, (facts, entryAt) => {
-    const folded = { facts, live };
-    for (const [id, { kind, unit: made, place }] of facts) {
-      if (kind === 'decision' && made === unit && isCurrent(folded, id) && entryAt(place).session === CARRIED_SESSION) return true;
-    }
-    return false;
-  });
-}
-
-module.exports = { withUnitEntries, everyUnitEntries, unitEntries, holdsCarried };
+module.exports = { withUnitEntries, everyUnitEntries, unitEntries };

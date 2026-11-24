@@ -33,13 +33,16 @@
 //   screen adds a row of its own, `keep`, keeping the decision as it
 //   stands, its answer as the draw found it, which the seal holds.
 //   `--always built-otherwise` (21.6.16) is a replacement's alone, of a
-//   decision the migration brought across, its session the migration's:
-//   the keep row says keeping it has the build change the code to match,
-//   and the lean may be keep, Claude's own read that the decision should
-//   stand — so the person's keep agrees with it, and their pick of a
-//   proposal stands over it. Without the mark, such a decision, no keep of
-//   the person's on it since, is replaced as any call is, whoever its line
-//   says made it: the ask rule decides whether it reaches the person.
+//   decision from before Ledger, its session the migration's: the lean may
+//   be keep, Claude's own read that the decision should stand — so the
+//   person's keep agrees with it, and their pick of a proposal stands over
+//   it. Without the mark, such a decision, no keep of the person's on it
+//   since, is replaced as any call is, whoever its line says made it: the
+//   ask rule decides whether it reaches the person. The keep row says
+//   keeping the decision has the build change the code to match under the
+//   mark, and wherever the decision stands from before Ledger and the
+//   raise's cause is a finding relying on it — a park's draw reading both
+//   from the ledger as it stands then — else that nothing changes.
 // - It refuses, drawing nothing: no session; no state; a place or a link
 //   `ledger decide` refuses — `ledger replace`, on a replacement — read and
 //   checked by that code before any lock (ledger-write.cjs), since the answer
@@ -121,10 +124,10 @@
 // - The decision point decides from the call and, beside it (E1): its label;
 //   where it is made, and whether it blocks build work — made in the build
 //   for a task, which a question asked parks; whose the entry a replacement
-//   would replace is — carried over where it stands as the migration
-//   carried it, whoever its line says made it; else who decided it, read
-//   from the entry, or the person where a keep of theirs stands on it since
-//   (16.5.7, `whoseReplaced`); the mark Claude gives
+//   would replace is — given `carried` where it stands from before Ledger,
+//   whoever its line says made it; else who decided it, read from the
+//   entry, or the person where a keep of theirs stands on it since (16.5.7,
+//   `whoseReplaced`); the mark Claude gives
 //   a question that always asks, `--always design-problem`, `--always
 //   live-server` or `--always built-otherwise` (19.4.22, 19.4.20, 21.6.16),
 //   which a fact, always asked, never takes; whether the question it
@@ -748,11 +751,12 @@ function checkProposals({ rows }, { keep }, short) {
 
 /**
  * The row keeping a decision as it stands, its answer `text`: where the
- * code was built otherwise than the decision, keeping it changes the code.
- * @param {string} text @param {Always|null} always @returns {Row}
+ * code was built otherwise than the decision (`builtOtherwise`), keeping it
+ * has the build change the code.
+ * @param {string} text @param {boolean} changesCode @returns {Row}
  */
-function keepRow(text, always) {
-  if (always === BUILT_OTHERWISE) return { key: KEEP, name: 'Keep it as decided', text, notice: 'the build changes the code to match' };
+function keepRow(text, changesCode) {
+  if (changesCode) return { key: KEEP, name: 'Keep it as decided', text, notice: 'the build changes the code to match' };
   return { key: KEEP, name: 'Keep it as it stands', text, notice: 'nothing changes' };
 }
 
@@ -1242,10 +1246,10 @@ function decided(cwd, raising, call, label) {
  * replace`'s where it names `--replaces`, else `ledger decide`'s — in the
  * raise's words: a question it answers still open; a decision it replaces
  * a decision, its answer as it stands kept for the screen's own row, worded
- * for the mark the raise `always` asks by, and whose it is — carried over
- * where it stands as the migration carried it, else who decided it, or as
- * the person's keep of it since was given, theirs or their "don't care"
- * (`whoseReplaced`). Its usage is a fact's where `fact`.
+ * for code built otherwise than it (`builtOtherwise`), and whose it is —
+ * given `carried` where it stands from before Ledger, else who decided it,
+ * or as the person's keep of it since was given, theirs or their "don't
+ * care" (`whoseReplaced`). Its usage is a fact's where `fact`.
  * @param {string} cwd @param {string[]} args @param {string[]} warnings @param {boolean} fact @param {Always|null} always
  * @returns {{place: Place, target: Target, replacedBy: DecidedBy|null, short: (id: string) => string, read: import('./ledger-fold.cjs').Folded}}
  */
@@ -1266,23 +1270,50 @@ function placedRaise(cwd, args, warnings, fact, always) {
   const kind = entryKind(replacing);
   if (kind !== 'decision') throw new Error(`raise --replaces names ${short(entry)}, a ${kind} — a raise replaces a decision, the person picking its answer`);
   if (always === BUILT_OTHERWISE && replacing.session !== CARRIED_SESSION) throw new Error(`raise: ${ALWAYS} ${BUILT_OTHERWISE} marks code built otherwise than a decision the migration brought across, and ${short(entry)} was decided in Ledger, its session not the migration's`);
-  const replaces = { entry, reason: /** @type {string} */ (linked.reason), cause: /** @type {string|null} */ (linked.cause), keep: keepRow(/** @type {string} */ (replacing.text), always) };
+  const cause = /** @type {string|null} */ (linked.cause);
+  const keep = keepRow(/** @type {string} */ (replacing.text), builtOtherwise(read, { entry, cause, replacing, always }));
+  const replaces = { entry, reason: /** @type {string} */ (linked.reason), cause, keep };
   return { place, target: { answers: null, relies_on: reliesOn, replaces }, replacedBy: whoseReplaced(read, entry, replacing), short, read };
 }
 
 /**
+ * Whether the decision `entry`, its line `replacing`, stands from before
+ * Ledger as a raise to replace it reads it (21.6.16): its line the
+ * migration's, whoever that line says made it, and no keep of the person's
+ * on it since.
+ * @param {Folded} read @param {string} entry @param {Record<string, unknown>} replacing
+ */
+function standsFromBefore(read, entry, replacing) {
+  return replacing.session === CARRIED_SESSION && keptOf(read, entry).length === 0;
+}
+
+/**
  * Whose the decision `entry`, its line `replacing`, is as a raise to replace
- * it reads it (16.5.7, 21.6.16): carried over where it stands as the
- * migration carried it from before Ledger — its line the migration's, and no
- * keep of the person's on it since — whoever that line says made it, so the
- * ask rule decides its replacement as any call's, and only the
- * built-otherwise mark always asks it; else as it stands decided
- * (`whoseDecision`), the person's own, made or kept in Ledger, always asking.
+ * it reads it (16.5.7, 21.6.16): given `carried` where it stands from before
+ * Ledger (`standsFromBefore`), whoever its line says made it, so the ask
+ * rule decides its replacement as any call's, and only the built-otherwise
+ * mark always asks it; else as it stands decided (`whoseDecision`), the
+ * person's own, made or kept in Ledger, always asking.
  * @param {Folded} read @param {string} entry @param {Record<string, unknown>} replacing
  * @returns {DecidedBy}
  */
 function whoseReplaced(read, entry, replacing) {
-  return replacing.session === CARRIED_SESSION && keptOf(read, entry).length === 0 ? 'carried' : whoseDecision(read, entry);
+  return standsFromBefore(read, entry, replacing) ? 'carried' : whoseDecision(read, entry);
+}
+
+/**
+ * Whether a raise replacing the decision `entry`, its line `replacing`, is
+ * about code built otherwise than it, so keeping it has the build change
+ * the code: under the built-otherwise mark; or where the decision stands
+ * from before Ledger (`standsFromBefore`) and the raise's cause is a
+ * finding relying on it.
+ * @param {Folded} read @param {{entry: string, cause: string|null, replacing: Record<string, unknown>, always: Always|null}} raising
+ */
+function builtOtherwise(read, { entry, cause, replacing, always }) {
+  if (always === BUILT_OTHERWISE) return true;
+  if (cause === null || !standsFromBefore(read, entry, replacing)) return false;
+  const found = factsOf(read, cause);
+  return found.kind === 'finding' && found.relies_on.includes(entry);
 }
 
 /**
@@ -1533,7 +1564,7 @@ function wentAhead(cwd, raising, sealed, warnings) {
   const entry = newId();
   const landed = proceeded(cwd, raising, sealed.call, sealed.label, warnings, entry);
   /** @type {Target} */
-  const asked = { answers: null, relies_on: target.relies_on, replaces: { entry, reason: ASKED_BLIND, cause: null, keep: keepRow(leanRow(sealed.call).text, null) } };
+  const asked = { answers: null, relies_on: target.relies_on, replaces: { entry, reason: ASKED_BLIND, cause: null, keep: keepRow(leanRow(sealed.call).text, false) } };
   const logs = () => drawEvent(entry, sealed.label, sealed.model);
   const parked = parkLanded(cwd, parking(place, asked, sealed, { task: null, wentAhead: task, logs }), askedAs({ blind: true, reason: sealed.why_asking }), warnings);
   return { ...parked, landed };
@@ -1601,13 +1632,14 @@ function drawParked(cwd, args) {
   const session = sessionOf(DRAW_SAID);
   /** @type {string[]} */
   const warnings = [];
-  const { question, line, asks, answers, keeps } = questions.foundPark(cwd, args[0], args[1], DRAW_SAID, DRAW_USAGE, warnings);
+  const { question, line, asks, answers, replacing, read } = questions.foundPark(cwd, args[0], args[1], DRAW_SAID, DRAW_USAGE, warnings);
   const place = { unit: line.unit, phase: line.phase, topic: null };
+  const { replaces: entry, reason, cause, always } = line;
   /** @type {Target} */
   const target = {
     answers,
     relies_on: line.relies_on,
-    replaces: line.replaces === null ? null : { entry: line.replaces, reason: line.reason, cause: line.cause, keep: keepRow(/** @type {string} */ (keeps), line.always) },
+    replaces: replacing === null ? null : { entry, reason, cause, keep: keepRow(replacing.text, builtOtherwise(read, { entry, cause, replacing, always })) },
   };
   const id = newId();
   const { lean, why, sort, ...fact } = line.call;

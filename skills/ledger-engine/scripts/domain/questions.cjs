@@ -151,8 +151,9 @@ const { parseShownTask } = require('./task-id.cjs');
 /**
  * A question found waiting: its parks, its first park's line, what it asks
  * now, its question's wording as it stands — null for a replacement — and,
- * for a replacement, the decision's answer as it stands.
- * @typedef {{question: Question, line: Record<string, any>, asks: string, answers: string|null, keeps: string|null}} FoundPark
+ * for a replacement, the decision's line, null for none; and the ledger as
+ * read.
+ * @typedef {{question: Question, line: Record<string, any>, asks: string, answers: string|null, replacing: Record<string, any>|null, read: Folded}} FoundPark
  */
 /**
  * The question of a unit waiting on a subject: its number, its first
@@ -466,7 +467,7 @@ function askedNow(read, entryAt, line) {
  * The question `name` names in `unit`, waiting — refused in the words of
  * `said` where none does — with its first park's line, what it asks and its
  * question's wording as they stand, and for a replacement the decision's
- * answer as it stands: what drawing it needs (raise.cjs).
+ * line, with the ledger as read: what drawing it needs (raise.cjs).
  * @param {string} cwd @param {string|undefined} unit @param {string|undefined} name @param {string} said @param {string} usage @param {string[]} warnings
  * @returns {FoundPark}
  */
@@ -476,8 +477,8 @@ function foundPark(cwd, unit, name, said, usage, warnings) {
   return readQuestions(root, warnings, (read, entryAt) => {
     const question = waitingNamed(read, /** @type {string} */ (unit), name, said);
     const line = entryAt(factsOf(read, question.park).place);
-    const keeps = line.replaces === null ? null : /** @type {string} */ (entryAt(factsOf(read, line.replaces).place).text);
-    return { question, line, ...askedNow(read, entryAt, line), keeps };
+    const replacing = line.replaces === null ? null : entryAt(factsOf(read, line.replaces).place);
+    return { question, line, ...askedNow(read, entryAt, line), replacing, read };
   });
 }
 

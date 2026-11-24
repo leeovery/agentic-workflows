@@ -1,6 +1,6 @@
 # Decisions From Before Ledger
 
-*Shared reference. Loaded where an entry's DATA names it as `decisions from before`, once the work meets code one of those decisions bears on.*
+*Shared reference. Loaded where an entry's DATA names it.*
 
 ---
 
@@ -8,10 +8,12 @@ A decision whose entry's `session` is `migration` came across from the documents
 
 ## Built Otherwise
 
-Record a finding on the decision, `how` naming the file and what in it shows this. Then weigh which stands, the decision or the code: when the decision's source was written against when the code last changed, from the git history of those lines; whether the change looks deliberate; how easily the call is undone.
+Where the work finds code built otherwise than such a decision, record a finding on the decision, `how` naming the file and what in it shows this. The work carries on past the finding unless it turns on which stands, the decision or the code; a build that would undo what the code does always turns on it.
+
+Then weigh which stands: when the decision was made against when the code last changed; whether the change looks deliberate; how easily the call is undone. Ledger's state has no history from before the migration, so the files a decision cites there all date from it: the decision's own date is in the old record's dates, or in the code repository's git history of `.workflows/`, where the record lived before Ledger. The code's date is in the git history of the lines that show it.
 
 - **The code clearly stands, and the call is easy to undo**: it is your call. Raise the decision's replacement with what the code does, citing the finding. The ask rule decides whether it reaches the person, as it does for any call; where it goes ahead, it lands as your call, among those the person sees made without them, and they can replace it.
-- **Otherwise** — either could be right, or the decision looks right and the later code wrong: the person decides, before the code changes. Raise the replacement under `--always built-otherwise`, which always asks, parking in the build the task that would change the code. Your lean is your own read of which should stand: one of the proposals, or `keep`.
+- **Otherwise** — either could be right, the decision looks right and the later code wrong, or the call is hard to undo: the person decides, before the code changes. Raise the replacement under `--always built-otherwise`, which always asks, parking in the build the task that would change the code. Your lean is your own read of which should stand: one of the proposals, or `keep`.
 
 The person's keep holds the decision, and the build changes the code to match; the work that changes it replaces the finding with what the code does then.
 

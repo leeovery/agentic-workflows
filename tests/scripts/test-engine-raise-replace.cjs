@@ -524,7 +524,7 @@ describe('Claude\'s own replacement of the person\'s decision (16.5.7)', () => {
   it('is refused, writing nothing, naming the raise in full: the person\'s decision as written, at once while a peer holds the lock, and Claude\'s once the person kept it, their keep landing while the write waited on the lock; the person\'s own replacement lands, and one they hand Claude', async (t) => {
     const theirs = ledgerHelpers(() => dir).write('decide', NOTE, ['--answers', made.focus], { by: 'person', who_moved_whom: 'none', text: 'It takes the focus', why: 'Typing starts at once.' }).id;
     const kept = await draw();
-    const refusal = (/** @type {string} */ entry, /** @type {string} */ why) => `ledger replace: ${entry} is the person's decision — Claude's change to it always comes to them: raise ${NOTE} --replaces ${entry} ${why}`;
+    const refusal = (/** @type {string} */ entry, /** @type {string} */ why) => `ledger replace: ${entry} is the person's decision — Claude's change to it goes through a raise: raise ${NOTE} --replaces ${entry} ${why}`;
     const newFact = ['--reason', 'new-fact', '--cause', made.screens];
     const lock = statePath(dir, layout.lock);
     fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));

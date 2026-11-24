@@ -29,12 +29,9 @@
 // the person wherever its file stands (16.18.4, person.cjs) — none while the
 // person has kept nothing — never reading either, so neither refuses an
 // entry. Beside the legacy folder, an entry into a phase whose work reads
-// the code against the record's decisions — discussion, investigation,
-// specification, the build, a quick-fix's among it, and review — names the
-// shared reference on decisions from before Ledger, with when to load it,
-// where the unit holds a current decision the migration carried
-// (unit-entries.cjs, `holdsCarried`): the migration never read the code for
-// them. None where it holds none. That read is taken with the row's, the
+// the code against the record's decisions names the shared reference on
+// decisions from before Ledger, where the work holds one
+// (decisions-from-before.cjs): that read is taken with the row's, the
 // ledger checked once for both (ledger.cjs, `withOneCheck`).
 //
 // A phase enters through its row of `ENTRIES`: its level — at a topic, or at
@@ -126,7 +123,7 @@ const { experimentRow } = require('./experiment-entry.cjs');
 const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
 const { recordToRead } = require('./person.cjs');
 const { PRODUCT_DIR } = require('./layout.cjs');
-const { holdsCarried } = require('./unit-entries.cjs');
+const { fromBeforeLines } = require('./decisions-from-before.cjs');
 const { withOneCheck } = require('./ledger.cjs');
 const { ontoEpic } = require('./topic-leave.cjs');
 
@@ -693,24 +690,6 @@ function legacyLines(cwd, unit) {
   const folder = statePath(cwd, `${unit === PRODUCT ? PRODUCT_DIR : unit}/assets/legacy`);
   if (!fs.existsSync(folder) || fs.readdirSync(folder).length === 0) return [];
   return [['legacy', `${folder} — files from before Ledger the migration had no other place for; look in it when the work needs them`]];
-}
-
-/** The shared reference on decisions from before Ledger, where it is installed beside the engine. */
-const FROM_BEFORE = path.resolve(__dirname, '..', '..', '..', 'ledger-shared', 'references', 'decisions-from-before.md');
-
-/** The phases whose work reads the code against the record's decisions; a quick-fix's enters through the build's. */
-const READS_THE_CODE = Object.freeze(['discussion', 'investigation', 'specification', 'implementation', 'review']);
-
-/**
- * The DATA's line naming the reference on decisions from before Ledger, in
- * a phase whose work reads the code against them, where the unit holds a
- * current one the migration carried (the header's); none elsewhere.
- * @param {string} cwd @param {string} phase @param {string} unit @param {string[]} notes what the ledger's read said, pushed to
- * @returns {Line[]}
- */
-function fromBeforeLines(cwd, phase, unit, notes) {
-  if (!READS_THE_CODE.includes(phase) || !holdsCarried(cwd, unit, notes)) return [];
-  return [['decisions from before', `${FROM_BEFORE} — the record holds decisions the migration carried from before Ledger, never checked against the code; load it when the work meets code one of them bears on`]];
 }
 
 /**

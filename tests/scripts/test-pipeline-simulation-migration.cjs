@@ -14,14 +14,16 @@
 // learning no call of the decisions the records carried (`given:
 // carried`). Then the build of the migrated feature, its entry naming the
 // reference on decisions from before Ledger, finds its code built otherwise
-// than two of its decisions, each marked the migration's (21.6.16): each a
-// finding relying on its decision, saying where the code shows it. Where
+// than two of its decisions, each marked the migration's (21.6.16), the
+// second the person's by its line: each a finding relying on its decision,
+// saying where the code shows it. Where
 // the code plainly stands, the decision's replacement is raised without the
 // mark and goes through the ask rule, landing as Claude's call, its finding
 // left unaffected; where either could stand, it is raised under the mark
-// that always asks, the task that would change the code parked and Claude
-// leaning to keep, and the person keeps it, its row saying the build
-// changes the code to match, the finding replaced once the code matches.
+// that always asks for the mark, never for being the person's, the task
+// that would change the code parked and Claude leaning to keep, and the
+// person keeps it, its row saying the build changes the code to match, the
+// finding replaced once the code matches.
 //
 // Layer: simulation. World: the project migrated whole (migration-sequence-
 // world.cjs), made ready for a sim once per process and copied for each
@@ -76,7 +78,7 @@ describe('pipeline simulation: the whole migration', () => {
     assert.deepStrictEqual(startMenu(sim).map(({ head }) => head).filter((head) => head.startsWith('Continue')), ['Continue feature: Memo', 'Continue epic: Gateway']);
   });
 
-  it('21.6.16: the build\'s entry names the reference on decisions from before Ledger, the unit holding two the migration carried; finding the code built otherwise than each, it records each as a finding relying on it, citing the code — on one the code plainly stands, and the decision\'s replacement, raised without the mark, goes through the ask rule and lands as Claude\'s call, the finding that caused it not affected; on the other either could stand, so it is raised under the mark that always asks, the task that would change the code parked and Claude leaning to keep: the person keeps it, its row saying the build changes the code to match, and once it does the finding is replaced with what the code does then', async () => {
+  it('21.6.16: the build\'s entry names the reference on decisions from before Ledger, the unit holding two from before Ledger, the second the person\'s by its line; finding the code built otherwise than each, it records each as a finding relying on it, citing the code — on one the code plainly stands, and the decision\'s replacement, raised without the mark, goes through the ask rule and lands as Claude\'s call, the finding that caused it not affected; on the other either could stand, so it is raised under the mark that always asks, asking for the mark, the task that would change the code parked and Claude leaning to keep: the person keeps it, its row saying the build changes the code to match, and once it does the finding is replaced with what the code does then', async () => {
     sim.run(['boot']);
     sim.run(['enter', 'implementation', 'memo']);
     assert.match(sim.sections, /^decisions from before: \S+\/ledger-shared\/references\/decisions-from-before\.md — /m, 'the build\'s entry names the reference');

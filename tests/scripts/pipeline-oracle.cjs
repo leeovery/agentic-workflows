@@ -51,7 +51,7 @@ const {
 const knowledgeStore = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/knowledge/store.cjs'));
 const chunker = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/knowledge/chunker.cjs'));
 const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/ledger-engine/content/knowledge/chunking/record.json'), 'utf8'));
-const { LEDGER, ROADMAP, PRODUCT } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/ledger-events.cjs'));
+const { LEDGER, ROADMAP, PRODUCT, CARRIED_SESSION } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/ledger-events.cjs'));
 const { isId, idFrom } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/ledger-ids.cjs'));
 const { openGate, gateShown, menuSection, MENU_INSTRUCTION } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/surfaces.cjs'));
 const { MENUS, menuBody } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/menus.cjs'));
@@ -1053,10 +1053,11 @@ function auditTrust(sim, label, ran = []) {
   };
   /** @type {(e: Record<string, any>) => boolean} */
   const waitedOn = (e) => parksWaited(e).length > 0;
-  /** Whose the decision `id` was as the ledger stood before line `at` (16.5.7): the person's where a keep of theirs stood on it, else its maker's where it was their own, else how it was given. @type {(id: string, at: number) => string} */
+  /** Whose the decision `id` was as the ledger stood before line `at` (16.5.7, 21.6.16): the person's where a keep of theirs stood on it; else `carried` where its line is the migration's, whoever made it; else its maker's where it was their own, else how it was given. @type {(id: string, at: number) => string} */
   const whose = (id, at) => {
     const decision = byId.get(id);
     if (entries.slice(0, at).some((k) => isKeep(k) && k.entry === id)) return 'person';
+    if (decision.session === CARRIED_SESSION) return 'carried';
     return decision.given === 'own' ? decision.by : decision.given;
   };
   /** Whether two parks are about the same thing: the question, by any wording, or the decision. @type {(a: Record<string, any>, b: Record<string, any>) => boolean} */
