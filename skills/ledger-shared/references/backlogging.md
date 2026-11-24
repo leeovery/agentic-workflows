@@ -91,6 +91,6 @@ node .claude/skills/ledger-engine/scripts/engine.cjs inbox capture {kind:[idea|b
 ITEM
 ```
 
-Then note it where the phase keeps a running record — the log an investigation or a discovery session is writing; the other phases keep none.
+Then note it where the phase keeps a running record — the log an investigation session is writing; the other phases keep none.
 
 → Return to caller.

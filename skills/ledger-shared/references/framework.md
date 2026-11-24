@@ -4,7 +4,11 @@
 
 ---
 
-How the engine's output reaches the person, and how their answer at a gate or a raise is taken. Where this conversation has loaded this file already, with no compaction since, carry on from that load.
+Where this conversation has loaded this file already, with no compaction since, carry on from that load.
+
+## Ledger
+
+Ledger carries a product's work through its phases and keeps the record of it. The ledger holds the work's questions, findings and decisions; the engine appends to it and never edits it, so what was decided, and on what, can always be read back. Claude makes calls for the person where the ask rule lets it, each recorded as Claude's, for the person to review and replace. Each kind of work takes its route through three stages — Discovery, where it is explored and decided (discovery, discussion, experiment, investigation); Definition, where it is specified; Delivery, where it is built and verified — and the engine routes between them: its verbs keep the record and move the work, and its gates put to the person what is theirs to answer.
 
 ## Engine Sections
 
@@ -13,6 +17,10 @@ Engine output arrives in sections, each opened by a marker, `=== NAME (instructi
 ## Before Boot
 
 Where a verb refuses because this conversation has not booted Ledger on this version, invoke `/ledger {words}`, the person's words as its arguments, and carry on where it routes.
+
+## Engine Calls
+
+`engine help {verb} [{sub}]` (`node .claude/skills/ledger-engine/scripts/engine.cjs help {verb} [{sub}]`) prints that verb's forms. A verb's refusal names the way on: take it where it is yours; where it is the person's, say it in a line.
 
 ## Showing and Saying
 
@@ -38,7 +46,7 @@ A gate takes a clear answer at any point while it waits, set aside or not: a pre
 node .claude/skills/ledger-engine/scripts/engine.cjs gate "{name}" --pick {row}
 ```
 
-`gate` logs the answer and returns `next`: an engine call to run, a handoff to make, a skill to invoke in this conversation, or carry on. Do what `next` says, and branch on nothing else. Where a row's `next` is null, the skill's own words for that row say what follows.
+`gate` logs the answer and returns `next`: an engine call to run, a handoff to make, a skill to invoke in this conversation, or carry on. Do what `next` says, then what each `next` a call answers after it says, until one answers none; branch on nothing else. Where a row's `next` is null, the skill's own words for that row say what follows.
 
 Any other reply to a gate not yet set aside — through the prompt row (Comment, Ask), or free text: a question, a thought, a request, a go-ahead that picks no row — goes to `gate` as typed, the call described as `Record your reply`: under the prompt row's key, such as `comment`, or with no key for free text, the person's words on stdin as they wrote them. The gate is then set aside.
 

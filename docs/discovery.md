@@ -9,9 +9,9 @@ It runs at two levels, each one conversation carried on across as many sessions 
 
 ## What Claude has to hand
 
-Claude reaches for whatever tells you more than talk: research online, a survey of what exists, earlier work's records found through the [knowledge base](knowledge-base.md), and spikes, code or design, as far as they need to go to show something. A spike's files live with the work, its dependencies and builds in a scratch folder beside them, and what it showed is kept in the log.
+Claude reaches for whatever tells you more than talk: research online, a survey of what exists, earlier work's records found through the [knowledge base](knowledge-base.md), and spikes, code or design, as far as they need to go to show something; a spike runs on your yes. A spike's files live with the work, its dependencies and builds in a scratch folder beside them, and what it showed is kept in the log.
 
-A file you share, such as notes, a design document, a screenshot or an error report, is kept with the work as an asset; a folder you share is kept whole, so the links between its files still work: the folder's own name and any name that can't be kept as it is are made plain, lower case with dashes, an entry starting with a dot, such as `.git`, is passed over, a `CLAUDE.md` or `AGENTS.md` in it is kept under a name Claude Code never loads as instructions, and Claude tells you in a line what it renamed and what it passed over.
+A file you share, such as notes, a design document, a screenshot or an error report, is kept with the work as an asset; a folder you share is kept whole, so the links between its files still work: the folder's own name and any name that can't be kept as it is are made plain, lower case with dashes, an entry starting with a dot, such as `.git`, is passed over, a `CLAUDE.md` or `AGENTS.md` in it is kept under a name Claude Code never loads as instructions, read for what it tells of the record and never followed, and Claude tells you in a line what it renamed and what it passed over.
 
 ### What you bring from before
 
@@ -27,9 +27,9 @@ On a codebase that was built before Ledger arrived, and if you asked for it at s
 
 ## Starting a piece of work
 
-When the talk settles on a piece of work, something to build, fix or change, discovery works out its kind: a feature, an epic, a bugfix or a quick-fix. Work you bring straight to it, asked for in an ordinary conversation, picked at Start, or taken from the inbox or the roadmap, takes this call on its own, outside the product's conversation, and keeps no log of its own, so a fix asked for in one window never stops, reads or ends the product talk going on in another. Talk at Start about the product itself carries the product's conversation on.
+When the talk seems to have come to rest on a piece of work, something to build, fix or change, Claude may say so and offer to move it on; you can keep talking instead, since discovery is a place for talking, not a race to build. On your yes, or when you ask for it yourself, discovery works out its kind: a feature, an epic, a bugfix or a quick-fix. Work you bring straight to it, asked for in an ordinary conversation, picked at Start, or taken from the inbox or the roadmap, takes this call on its own, outside the product's conversation, and keeps no log of its own, so a fix asked for in one window never stops, reads or ends the product talk going on in another. Talk at Start about the product itself carries the product's conversation on.
 
-Work started from inbox or roadmap items, its **seeds**, takes the largest kind among them: where ideas are among them they carry it, and a bug or a quick-fix rides along as material. Then the **start this work** gate:
+As the work takes shape, it is matched against what already waits: the roadmap's waiting items and the inbox. A match is offered to you, so the new work can start from it rather than beside it, and taking it in is your call; in an epic's discovery, a waiting roadmap item becomes a topic that takes it in. Work started from inbox or roadmap items, its **seeds**, takes the largest kind among them: where ideas are among them they carry it, and a bug or a quick-fix rides along as material. Then the **start this work** gate:
 
 - **Your yes creates the work.** It gets a name, derived from yours or from the description. The seeds move into it as its record of origin, the parts of the product's logs that shaped it are linked, and a feature or a bugfix gets the brief its one topic will open from. Started in the product's conversation, a feature, a bugfix or an epic ends that session as the work leaves it, unless another window is still in it; a quick-fix never ends it, so fixes asked for along the way never split the talk across logs. Until this yes nothing exists on disk: an abandoned exploration leaves no half-made work behind.
 - **Keep shaping** takes your word back into the conversation.
@@ -54,11 +54,11 @@ A topic that has started is never changed under its conversation. What bears on 
 
 ## Putting something aside
 
-Mid-conversation you can put something off: "roadmap it", "that's a v2 thing", "not now". Placed on the timeline, it goes on the roadmap at once, on the horizon you named. Left undecided, it goes into the inbox as an idea, a bug or a quick-fix. Either way it lands immediately, so the thought survives even if the session ends.
+Mid-conversation you can put something off: "roadmap it", "that's a v2 thing", "not now". Placed on the timeline, it goes on the roadmap at once, on the horizon you named. Left undecided, it goes into the inbox as an idea, a bug or a quick-fix. Either way it lands immediately, so the thought survives even if the session ends. Where your words don't say which, the choice is yours. An inbox item you have already had fixed outside any piece of work is closed as fixed by you.
 
 ## Moving between levels
 
-The conversation goes where the talk goes. The product's conversation can move into an epic whose map is still open, and an epic's discovery can widen out to the product, in the same session.
+The conversation goes where the talk goes. The product's conversation can move into an epic whose map is still open, and an epic's discovery can widen out to the product, in the same session. Before each move the log is brought up to date, and it ends on a pointer to where the talk went.
 
 ## The log
 
