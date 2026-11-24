@@ -18,6 +18,8 @@ The work unit's build: every phase of its cut, from its first phase's start to i
 
 Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.
 
+Load **[the-ask-rule.md](../ledger-shared/references/the-ask-rule.md)** and follow its instructions as written.
+
 ## Done When
 
 Every phase of the unit's cut has closed, and the review phase, entered straight from here, has reached finish's yes.
@@ -76,7 +78,6 @@ Append to the build's log, `.ledger/{work_unit}/build/log.md`, as the work goes:
 - A task landing → `task account {work_unit} {task}`, `render task-landed {work_unit} {task}`, `render step-gate {work_unit} {task}`, then `land open|chain {work_unit} {task}` and `task done {work_unit} {task}`; a task given up → `task close {work_unit} {task} --reason "{reason}"`; the phase's mutation run, the `next` of either ending its last task once its notes are consolidated, or named by `brief phase-review`'s refusal → `verify mutants {work_unit} {N}`.
 - A phase's merge → `render phase-merge-gate {work_unit} {N}`, `land phase {work_unit} {N}`; its close → `checklist show|close phase-close {work_unit} {N}`.
 - A call or a question → `ledger ask {work_unit}.implementation [--task {task}]`, then `raise {work_unit}.implementation --answers {question_id} [--parks {task}]`; a decision that must change → `raise {work_unit}.implementation --replaces {decision_id} --reason {reason} [--parks {task}]`; what relied on it → `ledger affected {work_unit}`, `ledger hold`.
-- A raise's call, on stdin → `{"question", "rows": [{"key", "name", "text", "notice"}], "lean", "why", "sort": "one|several", "mechanism", "product_wide"}`; a `--fact` takes no `lean`, `why` or `sort`.
 - A question waiting → `raise waiting|draw|aside {work_unit} …`, its answer `raise answer {id} …`.
 - The work leaving → `render cancel-gate {work_unit}`, whose `next` runs `workunit cancel`, which answers its receipt.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.

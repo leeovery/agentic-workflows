@@ -24,5 +24,5 @@ Every call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb} …`,
 - The finding → `ledger find {place} --relies-on {decision} [--task {task}]`, `{"text", "how", "known": "read", "by": "claude", "who_moved_whom": "none"}`.
 - Your call → `raise {place} --replaces {decision} --reason new-fact --cause {finding} [--parks {task}]`, `{task}` the one the work is in.
 - The person's → `raise {place} --replaces {decision} --reason new-fact --cause {finding} --always built-otherwise [--parks {task}]`, `{task}` the one that would change the code.
-- Either raise's call → `{"question", "rows": [{"key", "name", "text", "notice"}], "lean", "why", "sort": "one|several", "mechanism", "product_wide"}`, `lean` a row's key, or `keep` under `--always built-otherwise`.
+- Either raise's call is as the ask rule gives it, its `lean` a row's key, or `keep` under `--always built-otherwise`.
 - The finding, once the code matches the decision kept → `ledger replace {place} --replaces {finding} --reason was-wrong --relies-on {decision} [--task {task}]`, `{"drops": ["{what the finding said}"], "text", "how", "known": "read", "by": "claude", "who_moved_whom": "none"}`.

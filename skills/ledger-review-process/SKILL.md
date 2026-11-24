@@ -18,6 +18,8 @@ The third review, once every phase of the build has closed: the whole change hel
 
 Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.
 
+Load **[the-ask-rule.md](../ledger-shared/references/the-ask-rule.md)** and follow its instructions as written.
+
 ## Done When
 
 The person has said yes at finish: the engine then holds every phase of the build landed, the review's fix phases last, and the work unit completed.
@@ -122,7 +124,6 @@ Every question for the person goes through `raise`, at the review's place: one a
 - The builders' notes → `review notes {work_unit} --file {path}`, its file `{findings}`, each finding as the round's.
 - The round → `review reads|round|accept-tree {work_unit}`, the round's file `{can_now, findings, settled?}`: `can_now`, each line of what the person can now do that they could not; each finding's `area` by its name, `tests` for the test surface, `scope` `in` or `out`, `call`, `text` and `from`, the report items it answers as `{report}#{n}`, a note for later as `{report}#n{k}`, a builder's note as `notes#{k}`, a bugfix's reproducing test passing on the unfixed code again as `unfixed#1`, then where it landed — `fix` its task, `inbox` the item filed, or `drop` why — and `ledger`, your call's id, where you made one; `settled`, how a round that makes no fix task was settled. Its report → `render review-report {work_unit} [--round {r}]`.
 - A question for the person → `ledger ask {work_unit}.review [--task {task}]`, then `raise {work_unit}.review --answers {question_id} [--parks {task}]`.
-- A raise's call, on stdin → `{"question", "rows": [{"key", "name", "text", "notice"}], "lean", "why", "sort": "one|several", "mechanism", "product_wide"}`; a `--fact` takes no `lean`, `why` or `sort`.
 - A question waiting → `raise waiting|draw|aside {work_unit} …`, its answer `raise answer {id} …`.
 - An inbox item the work resolved → `inbox close {work_unit} {path} …`.
 - An inbox item closed wrongly, asked back → `inbox restore {path}`, its archived path, which answers its receipt.

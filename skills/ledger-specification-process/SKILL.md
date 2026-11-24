@@ -18,6 +18,8 @@ The work unit's one spec, `spec.md`: the document its build reads and the person
 
 Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.
 
+Load **[the-ask-rule.md](../ledger-shared/references/the-ask-rule.md)** and follow its instructions as written.
+
 ## Done When
 
 The person has picked the build's position at ready to build: the engine then holds the spec concluded, its phase cut on the unit's manifest, and the build begun in that position — a feature's topic decided with it, with the product-record lines and the candidates the pick covered, and a bugfix's investigation concluded.
@@ -51,7 +53,6 @@ The person meets this phase at approve the map after the sweep, at a gap the mat
 - The sweep's report → `sweep take {work_unit}`; its candidates → `render approve-map {work_unit} [--sweep]`, `approve-map strike|unstrike {work_unit} {n}`; the map changed at Keep shaping → discovery's `topic` verbs; a message to a started topic → `topic send {work_unit} {topic} --from {work_unit}.specification`, then `render send-report`.
 - The spec → `spec land {work_unit}`.
 - A gap → `raise {work_unit}.specification --replaces {decision_id} --reason {reason}` where it changes a decision; otherwise `ledger ask {work_unit}.specification`, then `raise {work_unit}.specification --answers {question_id}`; the person's own decision → `ledger decide|replace {work_unit}.specification`; a fact shown wrong → `ledger replace {work_unit}.specification --reason was-wrong`; what relied on it → `ledger affected {work_unit} {topic}`, `ledger hold {work_unit}.specification`.
-- A raise's call, on stdin → `{"question", "rows": [{"key", "name", "text", "notice"}], "lean", "why", "sort": "one|several", "mechanism", "product_wide"}`; a `--fact` takes no `lean`, `why` or `sort`.
 - The cut → `cut {work_unit}`.
 - The review page → `spec page|published|marks|push {work_unit}`.
 - The close → `checklist show|done|skip|close ready-to-build {work_unit}`, then `render ready-to-build {work_unit} [--page]`, whose picks run `ready-to-build yes`; a feature's topic close, restaged → `decided stage|unstrike {work_unit} {work_unit}`.

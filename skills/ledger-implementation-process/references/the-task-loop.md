@@ -36,7 +36,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs brief builder {work_unit} {
 
 Every later message to the task's builder goes to the id its Agent call answered, by SendMessage of a pointer `brief` issued — the id held in the entry's `in flight` after a compaction. A builder is never replaced while its task is in flight here. An agent this conversation holds no id for, one an earlier conversation dispatched, is sent nothing: its brief goes in an Agent call of its own, as **The Builder** and **The Reviewers** make them.
 
-When it reports, land what it lists first. Each call — a way it took that the record left open — goes on the ledger for its task, `ledger ask {work_unit}.{place} --task {task}`, then `raise {work_unit}.{place} --answers {question_id} --parks {task}`, its way your lean. Each question it lists goes the same way, put as the person meets the product. Each note goes into the notes for later, `task note {work_unit} --file {note}`, written to `.ledger/.cache/{work_unit}/build/note.md`. Then go on by its status:
+When it reports, land what it lists first. Each call — a way it took that the record left open — goes on the ledger for its task, `ledger ask {work_unit}.{place} --task {task}`, then `raise {work_unit}.{place} --answers {question_id} --parks {task}`, its way your lean. Each question it lists goes the same way. Each note goes into the notes for later, `task note {work_unit} --file {note}`, written to `.ledger/.cache/{work_unit}/build/note.md`. Then go on by its status:
 - **Built**, or **fixed** — its reviewers read it (**The Reviewers**).
 - **Stopped** — **A Builder That Stops**.
 - **Accounted** — its account is written (**Landing**).

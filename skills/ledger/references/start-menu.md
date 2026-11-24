@@ -40,7 +40,7 @@ Load **[environment-setup.md](../../ledger-shared/references/environment-setup.m
 
 ## The Matrix
 
-Asked for in the person's own words, the matrix is drawn as manage's `m/matrix` draws it, `render matrix`. Its `t/threshold` and `u/build`, and the replay's Comment, carry on here: the person names a number, and its replay comes first, `render matrix-replay --{setting:[threshold|build]} {n}`.
+Asked for in the person's own words, the matrix is drawn as manage's `m/matrix` draws it, `render matrix`. Its `t/threshold` and `u/build`, and the replay's Comment, carry on here: the person names a number, and its replay comes first, `render matrix-replay --{setting:[threshold|build]} {n}`. A question's kind or a verdict the person says is wrong is recorded against the entry the call or the answer landed as: `trust correct {entry_id} --kind {kind:[process|danger|contract|scope|look|words|behaviour|internals]}` or `trust correct {entry_id} --verdict {verdict:[nothing|fix|loss]}`.
 
 ## Managing a Unit
 

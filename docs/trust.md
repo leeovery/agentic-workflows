@@ -22,7 +22,9 @@ Whether an entry holds one decision or several is judged as it is written, by a 
 
 A question that reading the code, reading the record or running something can answer never reaches you: Claude checks it. Where there is more than one way and evidence can tell them apart, Claude finds out before it leans — a spike, research, the source of a library, how open-source products do it — and records the evidence beside the call.
 
-Only questions of intent and taste are yours, and only those go through the ask rule. A fact only you hold — a deadline, an outside constraint, an account Claude cannot reach — is asked plainly, with no lean, and counts for nothing in what Ledger learns about you.
+The record is read the same way. An answer it already states — a decision in force, the spec, the brief — is a fact: Claude works from it and decides nothing again. An answer Claude has to draw from the record, because what is decided leaves only one, is a new call, and goes through the ask rule as a call with one sensible answer.
+
+Only questions of intent and taste are yours, and only those go through the ask rule: what the product is and does, and equally a data model, a contract, the code's insides or how the work is run. Claude puts each through the ask rule, the obvious ones included, rather than settle it alone. A fact only you hold — a deadline, an outside constraint, an account Claude cannot reach — is asked plainly, with no lean, and counts for nothing in what Ledger learns about you.
 
 ## The ask rule
 
@@ -54,7 +56,7 @@ Some calls reach you whatever the counts say:
 
 ## How a question reaches you
 
-A question arrives cold and product first: what is being decided, Claude's lean, what you would notice either way, and, where a rule always brings it to you, that reason. The mechanism sits behind `t/technical`, beside how Claude's calls of its kind have gone where those sent it to you. `e/explain` says you don't follow: it counts as no answer, Claude explains again, and the question stays open.
+A question arrives cold and product first: what is being decided, Claude's lean, what you would notice either way, and, where a rule always brings it to you, that reason. The mechanism sits behind `t/technical`, beside how Claude's calls of its kind have gone where those sent it to you. `e/explain` says you don't follow: it counts as no answer, Claude explains again, and the question stays open. Answer in your own words whenever no row fits. Say you don't care, and Claude's lean lands as its own call, settling that one question.
 
 Questions come one at a time. In a discussion each is slotted into the conversation at a natural pause; where several wait at once they come back to back, each answered before the next shows. In the build a question parks only the tasks that depend on it, and the rest carry on.
 
@@ -86,7 +88,7 @@ A question's kind or a verdict you find wrong is corrected in your own words; th
 
 ## The record of you
 
-Alongside the counts, Ledger keeps your preferences in words, each with its reason and examples, across all your projects — never a decision tree, which breaks on the first case it did not foresee. Claude proposes an entry when you state a preference outright or your answers keep showing one, and a care entry when you want a kind always to come to you in a project. An entry Claude proposes steers nothing until you say yes on the screen that proposes it. The record shapes Claude's lean on the calls it makes or raises for you, and never whether Claude asks, save through the care entries it holds. If you keep saying "don't care" to a kind under a care entry, Claude proposes dropping the entry.
+Alongside the counts, Ledger keeps your preferences in words, each with its reason and examples, across all your projects — never a decision tree, which breaks on the first case it did not foresee. Claude proposes an entry when you state a preference outright or your answers keep showing one, and a care entry when you want a kind always to come to you in a project. A proposal waits for a natural pause, never dropped across what you are in the middle of, and an entry Claude proposes steers nothing until you say yes on the screen that proposes it. The record shapes Claude's lean on the calls it makes or raises for you, and never whether Claude asks, save through the care entries it holds. If you keep saying "don't care" to a kind under a care entry, Claude proposes dropping the entry.
 
 ## Where it lives
 
