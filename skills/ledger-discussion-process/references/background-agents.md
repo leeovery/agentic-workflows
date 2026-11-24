@@ -64,7 +64,7 @@ The background review's findings and the closing pass reader's each come with a 
 - **call** — a call the topic leaves open is worked through with the person while the topic's shape is still open, and raised once it is agreed. A fix you cannot stand behind is raised as a call with several defensible answers.
 - **route** — another topic's: a message, the question moving with it. Work no topic owns goes as the skill's **A message** says.
 
-A synthesis's tensions are told to the person; one they take up is a question on the map.
+A synthesis's tensions are told to the person; one they take up is a question on the map. Each of its Unresolved Questions is judged as a deep dive's Opened line is.
 
 A finding is a question the review asked, `ledger ask` with `"by": "review"`, unless it would change a decision, which is raised as that decision's replacement and asks none, or it asks nothing of the map: work no topic owns, a `product` line, a tension the person has not taken up. Each is recorded as it is taken, `agent surface {work_unit} discussion {topic} {agent} {finding}`, adding `--question {id}` for the question it was asked as, or `--replaces {decision_id} --reason {reason}` for the decision it was raised to replace; one that asked nothing takes neither.
 
