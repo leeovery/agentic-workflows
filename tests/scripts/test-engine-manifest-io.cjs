@@ -581,6 +581,7 @@ describe('structurally corrupt manifests refuse writes', () => {
  */
 const EXEMPT_CALLS = [
   ['knowledge', 'status'],
+  ['help', 'task'],
   ['presence', 'scan', 'payments'],
   ['conversation', 'position', 'sess-1'],
   ['enter', 'discussion', 'payments', 'auth-flow'],

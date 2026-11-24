@@ -299,7 +299,7 @@ describe('engine conversation end', () => {
   it('refuses an argument loudly — an authoring bug, never a silent no-op', () => {
     assert.match(harness.refuses(dir, ['conversation', 'end', 'sess-1']).error, /^Usage: engine conversation end$/);
     for (const args of [['conversation', 'begin'], ['conversation']]) {
-      assert.match(harness.refuses(dir, args).error, /^Usage: engine conversation <end\|position\|builder> …$/, args.join(' '));
+      assert.match(harness.refuses(dir, args).error, /^Usage: engine conversation <end\|position\|builder> … — its forms: engine help conversation$/, args.join(' '));
     }
   });
 });

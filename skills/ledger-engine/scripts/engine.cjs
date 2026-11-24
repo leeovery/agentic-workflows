@@ -260,6 +260,7 @@ const USAGE = `Usage: engine <command> [args]
 
 Commands:
   boot [--start-again]               (the person's words on stdin)
+  help <verb> [<sub>]                (that verb's usage alone)
   state-merge pick <1|2> <choice>
   github-rule <yes|no>
   github-squash <yes|no>
@@ -750,7 +751,7 @@ function runWorkunit(call, argv) {
     } else if (command === 'position') {
       respond(call, runPositionVerb(call.cwd, rest));
     } else {
-      throw new Error('Usage: engine workunit <create|cancel|reactivate|pivot|absorb|move|split|retire|position> …');
+      throw new Error('Usage: engine workunit <create|cancel|reactivate|pivot|absorb|move|split|retire|position> … — its forms: engine help workunit');
     }
   } catch (err) {
     failJson(call, err);
@@ -995,7 +996,7 @@ function runPresence(call, argv) {
       respond(call, cleanupPresence(hookProjectDir(call.cwd), hookSessionId(call, rest, 'Usage: engine presence cleanup [session-id]')));
       return;
     }
-    throw new Error('Usage: engine presence <beat|clear|scan|cleanup> …');
+    throw new Error('Usage: engine presence <beat|clear|scan|cleanup> … — its forms: engine help presence');
   } catch (err) {
     failJson(call, err);
   }
@@ -1038,7 +1039,7 @@ function runSession(call, argv) {
       respondOnStderr(call, resumeSessionLabel(hookProjectDir(call.cwd), hookSessionId(call, rest, 'Usage: engine session resume [session-id]')));
       return;
     }
-    throw new Error('Usage: engine session <label|label-config|repair|cleanup|resume> …');
+    throw new Error('Usage: engine session <label|label-config|repair|cleanup|resume> … — its forms: engine help session');
   } catch (err) {
     failJson(call, err);
   }
@@ -1100,7 +1101,7 @@ function runConversation(call, argv) {
       respond(call, recordBuilder(sessionId, agentId, briefId));
       return;
     }
-    throw new Error('Usage: engine conversation <end|position|builder> …');
+    throw new Error('Usage: engine conversation <end|position|builder> … — its forms: engine help conversation');
   } catch (err) {
     failJson(call, err);
   }
@@ -1165,7 +1166,7 @@ function runTopic(call, argv) {
       return;
     }
     if (!UNIT_VERBS.includes(command)) {
-      throw new Error(`Usage: engine topic <send|cancel|reactivate|postpone|mailbox|answered|${Object.keys(MAP_VERBS).join('|')}> <work-unit> …`);
+      throw new Error(`Usage: engine topic <send|cancel|reactivate|postpone|mailbox|answered|${Object.keys(MAP_VERBS).join('|')}> <work-unit> … — its forms: engine help topic`);
     }
     const [workUnit, phase, topic] = rest;
     if (!workUnit || !phase || !topic || rest.length !== 3) {
@@ -1261,7 +1262,7 @@ function runExperiment(call, argv) {
       respond(call, result);
       return;
     }
-    throw new Error('Usage: engine experiment <create|advance|approve|amend|runs|conclude|abandon> <work-unit> <topic> …');
+    throw new Error('Usage: engine experiment <create|advance|approve|amend|runs|conclude|abandon> <work-unit> <topic> … — its forms: engine help experiment');
   } catch (err) {
     failJson(call, err);
   }
@@ -1282,7 +1283,7 @@ function runExperiment(call, argv) {
 function runTask(call, argv) {
   const [command, ...rest] = argv;
   try {
-    if (!Object.hasOwn(TASK_VERBS, command)) throw new Error(`Usage: engine task <${Object.keys(TASK_VERBS).join('|')}> …`);
+    if (!Object.hasOwn(TASK_VERBS, command)) throw new Error(`Usage: engine task <${Object.keys(TASK_VERBS).join('|')}> … — its forms: engine help task`);
     const { opts, positional } = parseArgs(rest, []);
     respond(call, runTaskVerb(call.cwd, command, positional, opts));
   } catch (err) {
@@ -1806,7 +1807,7 @@ function runRoadmap(call, argv) {
         if (positional.length !== 1) throw new Error('Usage: engine roadmap horizon remove <name>');
         respond(call, roadmap.removeHorizon(cwd, positional[0]));
       } else {
-        throw new Error('Usage: engine roadmap horizon <add|rename|reorder|merge|split|remove> …');
+        throw new Error('Usage: engine roadmap horizon <add|rename|reorder|merge|split|remove> … — its forms: engine help roadmap horizon');
       }
       return;
     }
@@ -1860,7 +1861,7 @@ function runRoadmap(call, argv) {
       const pulled = roadmap.pullForwardItem(cwd, positional[0], { into: opts.into, forceDismissed: flags.has('force-dismissed') });
       respondWithReceipt(call, pulled, topicReceiptOf(cwd, 'restore', opts.into, /** @type {{topic: string}} */ (pulled)));
     } else {
-      throw new Error('Usage: engine roadmap <state|add|add-batch|edit|rename|move|archive|pull-forward|horizon> …');
+      throw new Error('Usage: engine roadmap <state|add|add-batch|edit|rename|move|archive|pull-forward|horizon> … — its forms: engine help roadmap');
     }
   } catch (err) {
     failJson(call, err);
@@ -1925,7 +1926,7 @@ function runAgent(call, argv) {
       answer(agentState.surfaceFinding(cwd, workUnit, phase, topic, id, finding, opts.replaces === undefined ? undefined : { decision: opts.replaces, reason: opts.reason }, opts.question));
       return;
     }
-    throw new Error('Usage: engine agent <dispatch|scan|ack|surface|incorporate> <work-unit> <phase> <topic> …');
+    throw new Error('Usage: engine agent <dispatch|scan|ack|surface|incorporate> <work-unit> <phase> <topic> … — its forms: engine help agent');
   } catch (err) {
     failJson(call, err);
   }
@@ -2557,7 +2558,7 @@ const RENDER_FLAGS = ['warn', 'from-system', 'content-only', 'calls', 'sweep', '
 const RENDER_LISTS = { 'migration-guard-stop': ['path'] };
 
 /** The render family's refusal of a surface it does not draw, naming every one it does, its three dev aids among them. */
-const RENDER_USAGE = `Usage: engine render <${[...Object.keys(SURFACES), 'signpost', 'tree', 'wrap'].join('|')}> …`;
+const RENDER_USAGE = `Usage: engine render <${[...Object.keys(SURFACES), 'signpost', 'tree', 'wrap'].join('|')}> … — its forms: engine help render`;
 
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
@@ -2599,6 +2600,47 @@ function runRender(call, argv) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// help — one verb's usage, its forms cut from the engine's whole usage
+// (`USAGE`), so the two never part: a form is a line said under the verb's
+// name and the deeper lines that carry it on, and a sub-verb's forms are
+// those whose second word is it or names it among its alternatives.
+// ---------------------------------------------------------------------------
+
+/** @param {string} usage @returns {Map<string, string[][]>} each verb's forms, each form its lines */
+function formsByVerb(usage) {
+  /** @type {Map<string, string[][]>} */
+  const forms = new Map();
+  /** @type {string[]} */
+  let form = [];
+  for (const line of usage.split('\n')) {
+    const verb = /^ {2}([a-z][a-z-]*)(?: |$)/.exec(line)?.[1];
+    if (verb) {
+      form = [line];
+      forms.set(verb, [...(forms.get(verb) ?? []), form]);
+    } else if (line.startsWith('   ')) {
+      form.push(line);
+    }
+  }
+  return forms;
+}
+
+const FORMS = formsByVerb(USAGE);
+
+const HELP_USAGE = 'Usage: engine help <verb> [<sub>]';
+
+/** Whether a form is one of the sub-verb's. @param {string[]} form @param {string} sub */
+const subVerbOf = ([line], sub) => (line.trim().split(/\s+/)[1] ?? '').replace(/^<|>$/g, '').split('|').includes(sub);
+
+/** @param {Call} call @param {string[]} argv */
+function runHelp(call, [verb, sub, ...extra]) {
+  const forms = FORMS.get(verb);
+  if (!forms || extra.length > 0) failJson(call, new Error(`${HELP_USAGE} — the verbs: ${[...FORMS.keys()].join(', ')}`));
+  const shown = sub === undefined ? forms : forms.filter((form) => subVerbOf(form, sub));
+  if (shown.length === 0) failJson(call, new Error(`${HELP_USAGE} — ${verb}'s forms: engine help ${verb}`));
+  call.out(shown.flat().map((line) => (line.startsWith('   ') ? `     ${line}` : `engine ${line.slice(2)}`)).join('\n') + '\n');
+}
+
 /**
  * Every command the engine dispatches, by name.
  * @type {Readonly<Record<string, (call: Call, argv: string[]) => void|Promise<void>>>}
@@ -2606,6 +2648,7 @@ function runRender(call, argv) {
 const COMMANDS = Object.freeze({
   knowledge: runKnowledge,
   boot: runBoot,
+  help: runHelp,
   'state-merge': runStateMerge,
   'github-rule': runGithubRule,
   'github-squash': runGithubSquash,
@@ -2699,7 +2742,7 @@ const COMMANDS = Object.freeze({
 // the trust log, under its own lock, or the topic's cache, which the state
 // ignores; `trust threshold` and `build-threshold` write the person's
 // settings file, outside the project; and the rest read:
-// `layout guard` among them, run before every file Claude writes, `brief
+// `help`, `layout guard` among them, run before every file Claude writes, `brief
 // guard`, before every dispatch of an agent, `shell guard`, before every
 // shell command, `checklist show`, `migrate check` and `review`,
 // `environment show`, `drivers check`, `measures` and `board`.
@@ -2709,6 +2752,7 @@ const COMMANDS = Object.freeze({
 const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */ (Object.freeze({
   knowledge: '*',
   boot: '*',
+  help: '*',
   ledger: '*',
   asset: '*',
   verdict: ['queue'],
@@ -2754,7 +2798,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
 // conversation; the capture line and the retry its note names, run from a
 // project the conversation may never boot (22.1.8, 18.6.8), each commit by
 // its scope's flag; the banner the bare command opens on, ahead of boot;
-// and the walkthrough's and help's screens. While the
+// the walkthrough's and help's screens; and `help`, a verb's usage. While the
 // migration waits on its commit — its finish stop, where boot never stamps —
 // the environment setup's `show` and `set` go through too, so the review's
 // linters check can be made (`FINISH_EXEMPT`). Nothing refuses a call with no
@@ -2762,6 +2806,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
 // (domain/boot-stamp.cjs).
 const BOOT_EXEMPT = /** @type {Readonly<Record<string, '*'|readonly string[]>>} */ (Object.freeze({
   boot: '*',
+  help: '*',
   'state-merge': ['pick'],
   render: Object.freeze([
     ...Object.values(BOOT_STOPS), 'migrations-applied', 'migration-gate', 'banner',
