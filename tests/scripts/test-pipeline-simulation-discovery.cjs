@@ -291,13 +291,13 @@ describe('pipeline simulation: discovery\'s entry', () => {
     inTheProduct(sim);
     const transcript = transcriptOf(sim, sim.env.CLAUDE_CODE_SESSION_ID);
     const atProduct = carryOn(sim).text;
-    for (const part of ['ledger-discovery/SKILL.md and its framework', `Catch the log, ${logPath(sim, PRODUCT, 2)}, up from this conversation's transcript, ${transcript}`]) {
+    for (const part of ['ledger-discovery/SKILL.md and what its Instructions section loads', `Catch the log, ${logPath(sim, PRODUCT, 2)}, up from this conversation's transcript, ${transcript}`]) {
       assert.ok(atProduct.includes(part), `the product's note names ${part}:\n${atProduct}`);
     }
 
     sim.run(['enter', 'discovery', EPIC, '--move']);
     const atEpic = carryOn(sim).text;
-    for (const part of ['ledger-discovery/SKILL.md and its framework', `render discovery-map ${EPIC}\``, `Catch the log, ${logPath(sim, EPIC, 2)}, up from this conversation's transcript, ${transcript}`]) {
+    for (const part of ['ledger-discovery/SKILL.md and what its Instructions section loads', `render discovery-map ${EPIC}\``, `Catch the log, ${logPath(sim, EPIC, 2)}, up from this conversation's transcript, ${transcript}`]) {
       assert.ok(atEpic.includes(part), `the epic's note names ${part}:\n${atEpic}`);
     }
   });

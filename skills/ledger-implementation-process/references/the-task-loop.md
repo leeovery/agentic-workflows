@@ -36,7 +36,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs brief builder {work_unit} {
 
 Every later message to the task's builder goes to the id its Agent call answered, by SendMessage of a pointer `brief` issued — the id held in the entry's `in flight` after a compaction. A builder is never replaced while its task is in flight here. An agent this conversation holds no id for, one an earlier conversation dispatched, is sent nothing: its brief goes in an Agent call of its own, as **The Builder** and **The Reviewers** make them.
 
-When it reports, land what it lists first. Each call — a way it took that the record left open — goes on the ledger for its task, `ledger ask {work_unit}.{place} --task {task}`, then `raise {work_unit}.{place} --answers {question_id} --parks {task}`, its way your lean. Each question it lists goes the same way, put as the person meets the product. Each note goes into the notes for later, `task note {work_unit} --file {note}`, written to `.ledger/.cache/{work_unit}/build/note.md`. Then go on by its status:
+When it reports, land what it lists first. Each call — a way it took that the record left open — goes on the ledger for its task, `ledger ask {work_unit}.{place} --task {task}`, then `raise {work_unit}.{place} --answers {question_id} --parks {task}`, its way your lean. Each question it lists goes the same way. Each note goes into the notes for later, `task note {work_unit} --file {note}`, written to `.ledger/.cache/{work_unit}/build/note.md`. Then go on by its status:
 - **Built**, or **fixed** — its reviewers read it (**The Reviewers**).
 - **Stopped** — **A Builder That Stops**.
 - **Accounted** — its account is written (**Landing**).
@@ -61,7 +61,7 @@ A finding it fixed coming back, or the builder and its reviewers going round on 
 
 ## A Builder That Stops
 
-A builder stops on a problem it cannot build past. Record the stop, `task stopped {work_unit} {task}`, then decide what to do: think it through, or where the answer needs the person, raise it for the task. Then put what the builder should know onto the task, written to `.ledger/.cache/{work_unit}/build/addition.md` — a fact about the code the task was written before, an answer to its question, or the person's instruction — `task add {work_unit} {task} --file .ledger/.cache/{work_unit}/build/addition.md --by {by:[orchestrator|person]}`, and send the builder back in, `brief builder {work_unit} {task}` by SendMessage. A decision goes to the ledger, never onto the task. Nothing onto a task sets how its builder works, where it looks or how big the work is, and the builder never edits its task.
+A builder stops on a problem it cannot build past. Record the stop, `task stopped {work_unit} {task}`, then decide what to do: think it through, or where it is a call, raise it for the task. Then put what the builder should know onto the task, written to `.ledger/.cache/{work_unit}/build/addition.md` — a fact about the code the task was written before, an answer to its question, or the person's instruction — `task add {work_unit} {task} --file .ledger/.cache/{work_unit}/build/addition.md --by {by:[orchestrator|person]}`, and send the builder back in, `brief builder {work_unit} {task}` by SendMessage. A decision goes to the ledger, never onto the task. Nothing onto a task sets how its builder works, where it looks or how big the work is, and the builder never edits its task.
 
 ## Waiting on the Person
 

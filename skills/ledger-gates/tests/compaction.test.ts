@@ -24,7 +24,7 @@ const COMPACTED = `${DEFAULT_CONFIG}/conversations/s0/compacted.json`
 
 const NOTE = [
   `The conversation was just compacted. This conversation is working in the discussion of "ledger" in the epic "payments". Before anything else, re-read these in full, running each engine call:`,
-  `- ${ROOT}/.claude/skills/ledger-discussion-process/SKILL.md and its framework`,
+  `- ${ROOT}/.claude/skills/ledger-discussion-process/SKILL.md and what its Instructions section loads`,
   `- ${ROOT}/.ledger/payments/discussion/ledger.md`,
   'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
 ].join('\n')

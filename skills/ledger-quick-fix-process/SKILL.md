@@ -18,6 +18,8 @@ Settled work of any size, needing no decision beyond a quick call, made in one s
 
 Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.
 
+Load **[raising-a-call.md](../ledger-shared/references/raising-a-call.md)** and follow its instructions as written.
+
 ## Done When
 
 The person has said yes at the close: `finish yes` has landed the quick-fix's pull request, and the engine holds the work unit completed. Where they asked for the review there, the review phase reaches that yes instead.
@@ -89,7 +91,6 @@ Append to the build's log, `.ledger/{work_unit}/build/log.md`, as the work goes:
 - A note for later → `task note {work_unit} --file {note}`; the notes answered at the close → `quick-fix notes {work_unit} --file {path}` (**Closing**).
 - Your call on a note → `ledger ask {work_unit}.implementation`, `{"text", "by": "claude", "who_moved_whom": "none"}`; then `ledger decide {work_unit}.implementation --answers {question_id}`, `{"text", "why", "by": "claude", "who_moved_whom": "none"}`; a note filed → `inbox file {work_unit} --file {item}`, `{"kind", "text", "call"}`: its kind `idea`, `bug` or `quick-fix`, its text opening on its `# Title`, its call your decision's id.
 - A call or a question → `ledger ask {work_unit}.implementation [--task {task}]`, then `raise {work_unit}.implementation --answers {question_id} [--parks {task}]`; a decision that must change → `raise {work_unit}.implementation --replaces {decision_id} --reason {reason} [--parks {task}]`; what relied on it → `ledger affected {work_unit}`, `ledger hold`.
-- A raise's call, on stdin → `{"question", "rows": [{"key", "name", "text", "notice"}], "lean", "why", "sort": "one|several", "mechanism", "product_wide"}`; a `--fact` takes no `lean`, `why` or `sort`.
 - A question waiting → `raise waiting|draw|aside {work_unit} …`, its answer `raise answer {id} …`.
 - Earlier work → `knowledge query "{term}" …`.
 - An inbox item the work resolved → `inbox close {work_unit} {path} …`.

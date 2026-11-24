@@ -8,6 +8,8 @@ The migration has reached a directive: a step of its work that this session carr
 
 Read the directive, `{file}`, and carry it out as written. Its head names the files it may touch and what it asks the person: touch no other file, and ask the person nothing else.
 
+A raise the directive draws is no gate. Beside the answers the directive names, it takes the person's `e/explain` → `raise answer {id} --didnt-follow`, explain it again, then `raise show {id}`; their `t/technical` → `raise show {id} --technical`; and a comment or a question about it, talked through, then `raise show {id}`.
+
 The directive's check tells the pieces done from the rest. A piece done is kept. A piece the check names is taken up as the directive says. See where the directive stands, and again whenever you need to:
 
 ```bash

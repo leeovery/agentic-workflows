@@ -904,7 +904,7 @@ function fileLine(file) {
 }
 
 /**
- * The note: the skill and its framework re-read, then the place's engine
+ * The note: the skill and what its Instructions section loads re-read, then the place's engine
  * calls and its documents; what else the phase holds open, a line each; its
  * log, where it keeps one, caught up (`logLines`); and the conversation
  * carried on.
@@ -914,7 +914,7 @@ function fileLine(file) {
 function wholeNote(where, skill, calls, files, log, sessionId, lines = [], picture = undefined) {
   return [
     `${COMPACTED} This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
-    `- ${skill} and its framework`,
+    `- ${skill} and what its Instructions section loads`,
     ...calls.map((c) => `- \`${c}\``),
     ...files.map(fileLine),
     ...lines,

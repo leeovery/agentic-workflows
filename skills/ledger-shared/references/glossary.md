@@ -211,10 +211,10 @@ The `t/technical` row, which retells a report from the code's side, and on a que
 _Avoid_: lens
 
 **lean**:
-Claude's own answer to a question it puts to the person, sealed before the person answers so it cannot change, and shown beside the question. An answer that changes Claude's lean is one the person later gives a verdict on.
+Claude's own answer to a question it puts to the person, sealed before the person answers so it cannot change, and shown beside the question. An answer that changes Claude's lean is one the person later gives a verdict on; answered "don't care", the lean lands as Claude's call, settling that one question.
 
 **the ask rule**:
-How Ledger decides whether a call reaches the person, as arithmetic over the person's own answers. Each kind's rate is the pessimistic bound, the high end of a 95% range on how often Claude's answer would have cost the product; a kind asks until its rate falls under the person's threshold, 20% unless they pick another, then goes quiet, and asks again only once its rate rises over a quarter above it, with half each line where a change would be hard to undo. Danger, a kind under a care entry, and replacing an answer the person gave always ask; Claude's calls with one sensible answer go ahead as its own, on a count of their own, until overrules lift their rate over the threshold. A call that goes ahead lands on the ledger as Claude's, and Claude's own confidence never decides.
+How Ledger decides whether a call reaches the person, as arithmetic over the person's own answers. Every call Claude would make for the person goes through it, the obvious ones included, but the few a phase names as Claude's own to land; a question the code, the record or a run can answer is no call, and Claude checks it instead. Each kind's rate is the pessimistic bound, the high end of a 95% range on how often Claude's answer would have cost the product; a kind asks until its rate falls under the person's threshold, 20% unless they pick another, then goes quiet, and asks again only once its rate rises over a quarter above it, with half each line where a change would be hard to undo. Danger, a kind under a care entry, and replacing an answer the person gave always ask; Claude's calls with one sensible answer go ahead as its own, on a count of their own, until overrules lift their rate over the threshold. A call that goes ahead lands on the ledger as Claude's, and Claude's own confidence never decides.
 
 **kind**:
 A question's kind — process, danger, contract, scope, look, words, behaviour or internals — composed from a separate Claude call's answers to twelve narrow yes-or-no questions about what was asked; the ask rule counts answers by it, apart from Claude's one-answer calls and the learned gates, which are counted on their own. An item's kind, in the inbox or on the roadmap, is idea, bug or quick-fix. When the two could collide, say "the question's kind" or "the item's kind".
@@ -233,13 +233,13 @@ Now and then, a call Claude would have made without asking is put to the person 
 After eight agreements in a row in a topic, or on the person's word, Claude offers to settle the rest: how many points are open, how many it would settle, and which still come to the person by the rule, by kind. On yes its points go on the ledger, the person's come one at a time, and the topic moves to its decided screen.
 
 **care entry**:
-A line in the record of the person naming one project and one kind, such as "Aircon: look". While it stands, that kind always asks in that project, however well Claude's calls have matched; answers to it still count. It never covers every project, and is added or dropped from the matrix's care entries.
+A line in the record of the person naming one project and one kind, such as "Aircon: look". While it stands, that kind always asks in that project, however well Claude's calls have matched; answers to it still count. It never covers every project. Claude proposes one where the person wants a kind always asked, and proposes dropping it where their answers to it keep being "don't care"; the matrix's care entries add or drop one too.
 
 **the matrix**:
 The project's screen of how the ask rule stands: for each kind, how often the person changed Claude's lean, how often Claude's answer would have cost the product, its rate, and whether it asks or has gone quiet, with Claude's one-answer calls on a row of their own. A new project starts from the person's answers across their other projects, at most ten answers' worth a kind. The threshold, the threshold mid-build and the care entries are set from it, and a kind or verdict found wrong is corrected in words.
 
 **the record of the person**:
-The person's preferences in words, each with its reason and examples, kept across all their projects; the care entries are part of it. An entry Claude proposes steers nothing until the person says yes. The screens call it the record of you.
+The person's preferences in words, each with its reason and examples, kept across all their projects; the care entries are part of it. Claude proposes an entry at a natural pause, when the person states a preference outright or their answers keep showing one, and it steers nothing until the person says yes. The screens call it the record of you.
 _Avoid_: profile, rules
 
 ## The product layer

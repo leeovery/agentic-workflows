@@ -40,13 +40,13 @@ A behaviour Ledger gets wrong is fixed by deleting the prose that causes it, nev
 
 ## The Phase Skill
 
-A phase skill fences its field and gives its corridors' moves (Fields and Corridors), and nothing else. Outside a corridor it never says how Claude converses, the order a conversation takes, its pacing, what Claude reads — the entry's DATA names what there is, and Claude reads what the work needs — or when Claude writes the record (lint check 39 catches the pacing it can decide). Its fence:
+A phase skill fences its field and gives its corridors' moves (Fields and Corridors), and nothing else. Outside a corridor it never says how Claude converses, the order a conversation takes, its pacing, what Claude reads — the entry's DATA names what there is, and Claude reads what the work needs — or orders when Claude writes the record (lint check 39 catches the pacing it can decide). A line saying loosely what is wanted — a log written as the talk goes, at the points where it makes sense — is explanation, and stays. Its fence:
 - **Which phase and which piece of work this is** — its arguments, as the engine's handoff table declares them.
 - **Its goal** — what the phase is for, and where it sits: what feeds it, and what reads what it leaves.
 - **Its done-condition** — what is true when the phase can be left, stated as what the engine holds.
 - **What it leaves in the record** — the content it writes, in the places the layout keeps for it.
 - **Its tools** — what it holds for Claude to reach for when the work needs it, such as research or a background agent, a line each saying what it is for.
-- **The verbs it names** — one line for each door that keeps the record or moves state, saying what it is for. A door line is complete: the call's form, its stdin payload, its quoting, and any field of its answer the skill must use or say. The rest of each verb's contract is in `docs/engine/commands.md`, which no skill loads. A refusal is the framework's to take; a door line adds to it only where the way on is not the one the refusal names.
+- **The verbs it names** — one line for each door that keeps the record or moves state, saying what it is for. A door line is complete: the call's form, its stdin payload, its quoting, and any field of its answer the skill must use or say. The rest of each verb's contract is in `docs/engine/commands.md`, which no skill loads. A refusal is the framework's to take; a door line adds to it only where the way on is not the one the refusal names. A raise's door line gives where the phase raises — its place and its flags; the call's payload, what the raise answers and how the person's answer is recorded are the ask rule's (The Framework Load).
 - **Its checklists** — each closing point it works towards, by name, where it has any: discussion's decided, at a topic's close; specification's ready to build; the build's phase start and phase close, for each phase of its cut; and the review phase's finish. Discovery, experiment and investigation have none. A feature's discussion closes into its spec with no gate, and specification works decided and ready to build together, on one screen; a quick-fix's finish runs at the close of its own session, and it reaches the review phase only when the person asks.
 - **Its hard edges** — what the engine can't enforce, a line each, where it has any.
 
@@ -98,6 +98,8 @@ allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 ## Instructions
 
 Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.
+
+{The load of `raising-a-call.md`, in a phase that raises (The Framework Load).}
 
 ## Done When
 
@@ -205,7 +207,7 @@ Nothing hands off inside a build, a quick-fix or a topic. An experiment's spawn 
 
 **Invoking** a skill is a Skill tool call: it adds the skill's instructions to the running context and clears nothing. Show the literal command — ``Invoke `/{skill} {args}`.`` — outside any fence; inside one it is printed, not run (lint check 14). **Loading** a reference reads it into the running context, nothing more.
 
-**Recovery.** After a compaction, a crash or a new session, the engine's note names the skill and each document to re-read, and the conversation carries on where it was. A skill carries no section of its own on resuming (lint check 38); a document its work needs re-read is named by the engine's note, never by prose. Re-reading the skill re-runs its framework load. What the verbs record outlasts a compaction. A log may lag the conversation, and after a compaction it is caught up from the transcript of the conversation that wrote it: a topic's log names the conversations that wrote it, and in discovery the note names the log's transcript.
+**Recovery.** After a compaction, a crash or a new session, the engine's note names the skill and each document to re-read, and the conversation carries on where it was. A skill carries no section of its own on resuming (lint check 38); a document its work needs re-read is named by the engine's note, never by prose. Re-reading the skill re-runs the loads of its `## Instructions`. What the verbs record outlasts a compaction. A log may lag the conversation, and after a compaction it is caught up from the transcript of the conversation that wrote it: a topic's log names the conversations that wrote it, and in discovery the note names the log's transcript.
 
 ## Display
 
@@ -254,22 +256,30 @@ One H1 per file, its title — except the skills that only hand the work on, the
 
 ### The Framework Load
 
-The framework loads once per conversation, at the head of the skill the conversation opens on — the person's way in, or a skill a handoff lands on (`HANDOFF_TARGETS` in `domain/handoff.cjs`). Each of those opens its `## Instructions` section with this line and nothing else:
+The framework loads once per conversation, at the head of the skill the conversation opens on — the person's way in, or a skill a handoff lands on (`HANDOFF_TARGETS` in `domain/handoff.cjs`). Each of those opens its `## Instructions` section with this line:
 
 ```markdown
 Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.
 ```
 
+A phase skill that raises a call — discussion, investigation, specification, the build, a quick-fix's and the review phase — loads `raising-a-call.md` on the line after it, and no other skill or reference loads it (lint check 40). The section holds nothing else:
+
+```markdown
+Load **[raising-a-call.md](../ledger-shared/references/raising-a-call.md)** and follow its instructions as written.
+```
+
+`raising-a-call.md` holds, once, what every raise needs and Claude cannot know untold: what a call is and why it goes through a raise, that facts are checked, the call's payload field by field, what the raise answers, and how the person's answer is recorded. A phase skill keeps its own door lines for where it raises, and restates nothing it says. Discovery raises nothing, and never loads it.
+
 An opening skill met later in a conversation — without the mod, a handoff invokes the next skill in the same one — carries on from the load already made. A skill only ever opened in place carries neither the section nor the load (lint check 27).
 
-The framework holds only what is true in every conversation and that Claude would not do untold: a short paragraph on what Ledger is, with no phase's detail; and what it needs to work the engine's structure, such as how a gate is answered and the one line on taking a refusal, where the engine's own output does not already say it. It never holds how Claude sounds, thinks, decides or follows instructions, and a rule only some places use is held where it is used. `framework.md` composes the shared references that hold it, each loaded from there alone (lint check 29); when it has nothing left to hold, it and its load go. A skill never restates a framework rule: a second copy is a second source of truth.
+The framework holds only what is true in every conversation and that Claude would not do untold: a short paragraph on what Ledger is and who the person reading it is, with no phase's detail; and what it needs to work the engine's structure, such as how a gate is answered and the one line on taking a refusal, where the engine's own output does not already say it. It never holds how Claude sounds, thinks, decides or follows instructions, and a rule only some places use is held where it is used. `framework.md` composes the shared references that hold it, each loaded from there alone (lint check 29); when it has nothing left to hold, it and its load go. A skill never restates a framework rule: a second copy is a second source of truth.
 
 ### References
 
 A part goes inline or into a reference by two weights: how often and how early its trigger comes, against its size and what its signpost must say.
 - **Inline** — what every turn needs, and the opening. A part of a line or two is inline wherever its trigger comes: it costs less than its signpost.
 - **A reference** — a part needed only at a rare or late moment — a request at any point, a closing, a once-a-project step, a corridor's move — loaded then and only then, even where the signpost and the file come to more words than the part would inline: until its moment, it stays out of the context.
-- **Standing guidance stays in SKILL.md.** A reference holds a procedure that runs to its end at its trigger. What holds across turns is in SKILL.md, which a compaction keeps and a loaded reference does not; SKILL.md opens on what matters most, all of it inside what a compaction keeps of it (Claude Code keeps an invoked skill's first 5,000 tokens).
+- **Standing guidance stays in SKILL.md.** A reference holds a procedure that runs to its end at its trigger. What holds across turns is in SKILL.md, which a compaction keeps and a loaded reference does not — the framework and `raising-a-call.md` aside, which the skill's re-read after a compaction loads again (Handoffs and Recovery); SKILL.md opens on what matters most, all of it inside what a compaction keeps of it (Claude Code keeps an invoked skill's first 5,000 tokens).
 
 A reference is:
 - **Named** for what it covers, in kebab-case: `closing-pass.md`, `sending-a-message.md`.

@@ -1139,6 +1139,60 @@ function checkBackToStartLoads(files, menus = BACK_TO_START_MENUS) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 40 — the ask rule loads with the framework in every skill that raises
+// (CONVENTIONS' The Framework Load). A skill raises where its backbone or one
+// of its references names the raise's draw: `raise` alone or with its place
+// or a flag, in a code span or an engine call — never the verbs that answer,
+// show or queue one. Such a skill loads raising-a-call.md on the line after the
+// framework load, and nothing else loads it: a skill that never draws a raise
+// carries no load, and no reference loads it. The shared references belong to
+// no skill, and a skill's scripts and content are no prose it loads.
+// ---------------------------------------------------------------------------
+
+const ASK_RULE_FILE = /\/skills\/ledger-shared\/references\/raising-a-call\.md$/;
+const ASK_RULE_LOAD = 'Load **[raising-a-call.md](../ledger-shared/references/raising-a-call.md)** and follow its instructions as written.';
+const RAISE_AFTER = '(?!(?:answer|show|draw|aside|waiting)\\b)';
+const RAISE_DRAW = new RegExp(`\`raise(?:\`| ${RAISE_AFTER}[^\`]*\`)|engine\\.cjs raise ${RAISE_AFTER}`);
+
+/** Whether a file is prose a skill loads: its backbone, or one of its references. @param {string} file */
+function isSkillProse(file) {
+  return /\/skills\/[^/]+\/(?:SKILL\.md|references\/.+\.md)$/.test(posix(file));
+}
+
+/** The lines written beneath a backbone's `## Instructions`, up to the next heading, blank ones aside, each with its index. */
+function instructionsLines(lines, inFence) {
+  const heading = lines.findIndex((l, i) => !inFence[i] && INSTRUCTIONS.test(l));
+  if (heading === -1) return { heading, written: [] };
+  const written = [];
+  for (let i = heading + 1; i < lines.length && !(!inFence[i] && /^#{1,6}\s/.test(lines[i])); i++) {
+    if (lines[i].trim() !== '') written.push({ text: lines[i], index: i });
+  }
+  return { heading, written };
+}
+
+function checkAskRuleLoad(files) {
+  const out = [];
+  const raising = new Set(files.filter((file) => isSkillProse(file) && readLines(file).some((line) => RAISE_DRAW.test(line))).map(skillFolderOf));
+  /** @type {Map<string, number>} */
+  const head = new Map();
+  for (const file of files) {
+    const name = skillNameOf(file);
+    if (!name || !isOurs(name) || !raising.has(name)) continue;
+    const lines = readLines(file);
+    const { heading, written } = instructionsLines(lines, parseFences(lines).inFence);
+    const second = written[1];
+    if (written[0]?.text.startsWith(FRAMEWORK_LOAD) && second?.text === ASK_RULE_LOAD) head.set(file, second.index + 1);
+    else out.push({ file, line: (heading === -1 ? firstContentIndex(lines) : heading) + 1, message: `${name} raises — its \`## Instructions\` section loads raising-a-call.md on the line after the framework load` });
+  }
+  for (const file of files) {
+    for (const { target, line } of loadsOf(file)) {
+      if (ASK_RULE_FILE.test(posix(target)) && head.get(file) !== line) out.push({ file, line, message: 'raising-a-call.md loads after the framework load of a skill that raises, and nowhere else' });
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -1169,6 +1223,7 @@ const CHECKS = [
   ['37: the start skill\'s description opens with its trigger, and every other skill a handoff lands on says it is reached only through one', checkDescriptions],
   ['38: no skill keeps a section of its own on resuming', checkNoResumeSections],
   ['39: no skill paces the person out of the work', checkNoPacing],
+  ['40: the ask rule loads with the framework in every skill that raises, and nowhere else', checkAskRuleLoad],
 ];
 
 function report(violations) {
@@ -2027,6 +2082,39 @@ test('check 28 (Bash grants carry a wildcard) — catches a bare grant inline or
     assert.match(v[1].message, /^Bash\(git log\) has no `\*`/);
     assert.match(v[3].message, /^Bash\(node \.claude\/skills\/\*\/scripts\/engine\.cjs\) is a script grant/);
     assert.match(v[4].message, /engine\.cjs\*\) is a script grant/);
+  });
+});
+
+test('check 40 (the ask rule\'s load) — catches a skill that raises with no load, with the load anywhere but the line after the framework load, a skill that never raises carrying it, and a reference loading it; permits the load in its place, a skill naming only the verbs that answer or show a raise, a draw in a shared reference, a migration\'s directive, and fenced content', () => {
+  withTemp((dir) => {
+    const FRAMEWORK = 'Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.';
+    const ASK = 'Load **[raising-a-call.md](../ledger-shared/references/raising-a-call.md)** and follow its instructions as written.';
+    const backbone = (...body) => ['# Phase', '', '## Instructions', '', ...body, '', '## Doors', ''];
+    write(dir, 'skills/ledger-shared/references/raising-a-call.md', '# Raising a Call\n');
+    const inPlace = write(dir, 'skills/ledger-a-process/SKILL.md', [...backbone(FRAMEWORK, '', ASK), '- A call → `raise {place} --answers {id}`.', ''].join('\n'));
+    const byReference = write(dir, 'skills/ledger-b-process/SKILL.md', backbone(FRAMEWORK, '', ASK).join('\n'));
+    const reference = write(dir, 'skills/ledger-b-process/references/gaps.md', '# Gaps\n\n```bash\nnode .claude/skills/ledger-engine/scripts/engine.cjs raise {place} --replaces {id} --reason {reason}\n```\n');
+    const answers = write(dir, 'skills/ledger/SKILL.md', [...backbone(FRAMEWORK), 'Its answer → `raise answer {id} --pick {key}`, then `raise show {id}`; the queue → `raise waiting|draw|aside {work_unit} …`.', '', '```markdown', ASK, '```', ''].join('\n'));
+    const shared = write(dir, 'skills/ledger-shared/references/decisions-from-before.md', '# Decisions\n\n- Your call → `raise {place} --replaces {decision}`.\n');
+    const directive = write(dir, 'skills/ledger-migrate/SKILL.md', '# Migrate\n');
+    const records = write(dir, 'skills/ledger-migrate/scripts/migrations/079-records.md', 'Raise each with `raise`.\n');
+    const ok = checkAskRuleLoad([inPlace, byReference, reference, answers, shared, directive, records]);
+    assert.strictEqual(ok.length, 0, `the load in its place, the answering verbs, a shared reference's draw, a directive and fenced content are clean, got ${report(ok)}`);
+
+    const none = write(dir, 'skills/ledger-c-process/SKILL.md', [...backbone(FRAMEWORK), 'A call goes to `raise`.', ''].join('\n'));
+    const late = write(dir, 'skills/ledger-d-process/SKILL.md', [...backbone(FRAMEWORK, '', 'Read the map first.', '', ASK), 'A fact → `raise --fact`.', ''].join('\n'));
+    const never = write(dir, 'skills/ledger-discovery/SKILL.md', backbone(FRAMEWORK, '', ASK).join('\n'));
+    const loading = write(dir, 'skills/ledger-a-process/references/closing.md', `# Closing\n\n${ASK.replace('../ledger-shared', '../../ledger-shared')}\n`);
+    const v = checkAskRuleLoad([inPlace, none, late, never, loading]);
+    assert.deepStrictEqual(v.map((x) => [rel(x.file).split(path.sep).slice(-2).join('/'), x.line]), [
+      ['ledger-c-process/SKILL.md', 3],
+      ['ledger-d-process/SKILL.md', 3],
+      ['ledger-d-process/SKILL.md', 9],
+      ['ledger-discovery/SKILL.md', 7],
+      ['references/closing.md', 3],
+    ], `each missing, misplaced and stray load is caught at its line, got ${report(v)}`);
+    assert.match(v[0].message, /^ledger-c-process raises — its `## Instructions` section loads raising-a-call\.md on the line after the framework load$/);
+    assert.match(v[3].message, /^raising-a-call\.md loads after the framework load of a skill that raises, and nowhere else$/);
   });
 });
 

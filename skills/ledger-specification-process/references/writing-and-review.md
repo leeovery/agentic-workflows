@@ -48,4 +48,4 @@ A gap is a detail the build would meet that no entry decides, two entries that c
 - **It changes a decision already made** — raise the replacement, `raise {work_unit}.specification --replaces {decision_id} --reason {reason}`, which stands on that decision's topic. A replacement answers no question: ask none. A review's finding raised so is surfaced with the decision (**A Pass's Report**); a gap the writer's status or the cut's names comes back in its next status while the records still leave it open.
 - **It decides something afresh** — its question goes on the ledger, `ledger ask {work_unit}.specification` with `{"text", "by": "claude|review", "who_moved_whom": "none"}` on stdin — `review` for a pass's finding — and is raised, `raise {work_unit}.specification --answers {question_id}`.
 
-Put the question and its rows as the person meets the product — what it does, or what its user meets — never by a spec section's number.
+A raise's question and rows never name a spec section by its number.

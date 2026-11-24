@@ -19,6 +19,8 @@ A bugfix's one topic: the product does something wrong and its cause is not yet 
 
 Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.
 
+Load **[raising-a-call.md](../ledger-shared/references/raising-a-call.md)** and follow its instructions as written.
+
 ## Done When
 
 `investigation stage` has answered: the engine holds the investigation closed into its spec, its recap staged for ready to build, and its `next` hands the work into the spec.
@@ -131,7 +133,6 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.investigation.{wo
 - A finding → `ledger find {place} [--relies-on {id} …]`, adding `"how"`, `"known"`, and `"command"` and `"result"` where exploratory.
 - A decision → `ledger decide {place} --answers {id} [--relies-on {id} …]`, `{"text", "why", "rules_out", "by", "who_moved_whom": "none"}`; a changed one → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|changed-mind|was-wrong]} [--cause {id}]`, the content of the kind it replaces with `"drops"`, a line for each part of the old it drops.
 - A call → `raise {place} --answers {id}`; a fix a validation changes for the person → `raise {place} --replaces {id} --reason new-fact --cause {id}`; a fix settled afresh once the person keeps shaping → `raise {place} --replaces {id} --reason changed-mind`; each of the fix direction's adding `--always design-problem` where the root cause is a design problem; a fact only the person holds → `raise {place} --answers {id} --fact`; a run against a live server → `ledger ask {work_unit}.investigation`, then `raise {work_unit}.investigation --answers {id} --always live-server`.
-- A raise's call, on stdin → `{"question", "rows": [{"key", "name", "text", "notice"}], "lean", "why", "sort": "one|several", "mechanism", "product_wide"}`; a `--fact` takes no `lean`, `why` or `sort`.
 - The topic as it stands → `ledger record|map {work_unit} {work_unit}`.
 - A validation's agent → `agent dispatch`, then `brief root-cause-validation|fix-validation`, then the Agent call; its report → `agent scan|ack|surface|incorporate`; a finding that reached the person → `agent surface {work_unit} investigation {work_unit} {id} {finding} --replaces {fix} --reason new-fact`, or `--question {question}`.
 - Earlier work → `knowledge query "{term}" …`.
