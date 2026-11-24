@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.2] - 2026-11-24
+
+Discussion reviews hunt for more gaps while a topic is still being talked through, and topics now close when you say so.
+
+✨ Added
+- Claude offers to close a topic once no question is open and the talk has come to rest — you can keep talking, or ask for the close yourself at any time.
+- Roadmap or inbox: say "inbox it" to send work no topic owns to the inbox instead of the roadmap.
+- Review reports now carry an Observations section for nits and preferences that fail the bar, so they are noted without being raised as findings.
+
+🔧 Changed
+- The background discussion review hunts more widely — untouched ground, security and error-handling concerns, each decision's why and trade-offs, every decided mechanism at its edges, and unchecked assumptions — and holds nothing back to spare you.
+- The review no longer re-raises findings you already struck or removed.
+- The closing-pass reader now carries the full gap review where none has run since the last decision, so a quick topic gets the same scrutiny as a long one.
+- Asking to close with questions still open now answers each one first, one at a time or by settling the rest.
+- "Your call" or "don't care" said at a question on screen is now treated as that question's "don't care", with Claude's lean recorded as Claude's decision.
+- Changing your own decision, or overruling one of Claude's, is recorded as yours and counts as a reversal in the trust evidence where the old answer was Claude's.
+- Experiments are now offered in the conversation first, with a quick measurement as the alternative, since an experiment holds the topic's close until it reports.
+- Every call Claude would make now goes on the map as a question and is raised at a natural pause, and the shape you agree for a topic is recorded as yours.
+- Topic openings are shorter, and the brief's open questions go on the map as the conversation starts so none are missed at the close.
+- Earlier work is searched each time a topic opens, building on decisions that still hold and replacing, never duplicating, those that must change.
+- The closing checklist no longer has a separate "replacements checked" step — that check is now part of the closing pass reader's work.
+
 ## [0.9.1] - 2026-11-24
 
 A new conversation picks up what the last one said, so you no longer have to recap after leaving mid-thought.
