@@ -326,6 +326,6 @@ Finance
 
 10.1.11 When verdicts are asked where an area closes from a conversation across the work. [open]
 
-10.1.12 Projects that already hold topics: the migration. [open]
+10.1.12 What this means for migrating existing projects: a project already on Ledger that holds topics, with their briefs, mailboxes and logs; and a project coming into Ledger from before it, whose migration today builds topics from its old records. [open; Lee, 25 Nov 2026: "We will have to discuss what the impact is here for this feature on migrating existing projects"]
 
 10.1.13 What the one kind of work (9.1.1) is called: "epic", or a new name. [open]
