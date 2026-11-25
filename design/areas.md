@@ -126,6 +126,13 @@ start with holding.
 4.1.4 An area can be filled in entirely by talk about the others, and never need a conversation of its own. [Lee, 25 Nov 2026: "that thing gets filled in just by default because it touches everything"]
 
 4.1.5 A small piece of work may never need a conversation on one area: with one or two areas, everything is covered across the work, at whatever depth it takes. [Lee's ruling, 25 Nov 2026: "we don't necessarily have to go deep. We might be able to just stay broad and cover everything… especially if there is effectively only one or two areas"]
+4.1.6 At its open, a conversation across the work reads the overview: each area with where it stands, every open question, your own decisions, and the decisions about the whole. [Lee's ruling, 25 Nov 2026]
+
+4.1.7 Claude's own calls are in the overview as a count for each area, with those made since you last looked listed. [Lee's ruling, 25 Nov 2026]
+
+4.1.8 When the talk turns to an area, Claude pulls that area's full record from the engine before deciding anything in it. This is an instruction to Claude, and nothing checks it (2.3.2). [Lee's ruling, 25 Nov 2026]
+
+4.1.9 No conversation loads the full record of every area at its open. On one real piece of work of four topics that record is about 34,000 words: 370 decisions, 74 questions and 30 findings. [Claude's derivation: 4.1.6, 2.3.3; the sizes are the Mint project's release tool]
 
 ### 4.2 A conversation on one area
 
@@ -306,8 +313,6 @@ Finance
 ### 10.1 To be talked through, one at a time
 
 10.1.1 The names: for an area, and for the two kinds of conversation. "Across the work" and "on one area" are working words; "broad" and "deep" are out, because they read as shallow against detailed, which is not the difference. [open; Lee, 25 Nov 2026: "Maybe we need better words for these things because they seem at odds with each other"]
-
-10.1.2 What a conversation across the work reads when the piece of work is large. The thought so far: the map and the decisions about the whole, never every area's entries. Untested at size. [open]
 
 10.1.6 Two conversations on one piece of work at once. The pass reading across is what catches what falls between them; whether that is enough. [open]
 
