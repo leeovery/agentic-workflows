@@ -2,7 +2,7 @@
 
 A design in discussion. Nothing here is built, and "area" is a working name.
 
-It replaces topics as they work today with areas: labels on one record, worked in broad and focused conversations. Sections 2 to 9 say how it would work. Section 10 lists what is still open, each point to be talked through one at a time.
+It replaces topics as they work today with areas: labels on one record, worked in conversations across the whole piece of work and conversations on one area. Sections 2 to 9 say how it would work. Section 10 lists what is still open, each point to be talked through one at a time.
 
 Each line ends with where it stands. "Lee's ruling" with a date is something you said yes to. "Claude's proposal" was put to you and you did not object, which is not a yes. "Open" is not settled. The examples use an invented piece of work, the financial part of a product, with five invented areas: paying in, holding the balance, paying out, identity checks, and fees.
 
@@ -44,7 +44,7 @@ Each line ends with where it stands. "Lee's ruling" with a date is something you
 
 2.1.4 A close shows its summary before your yes: what you decided, a count of Claude's calls by kind, the lines proposed for the product record, and any new work the decisions create. [Lee's ruling, 24 Nov 2026]
 
-### 2.2 Inside a focused conversation
+### 2.2 How an area is worked
 
 2.2.1 Until an area's shape is agreed — what it covers and how it broadly works — Claude makes no call in it: each point is worked through with you. [Lee's ruling, 25 Nov 2026: of how a topic runs today, "that actually feels really good"]
 
@@ -115,31 +115,33 @@ start with holding.
 
 ## 4. Conversations on a piece of work
 
-### 4.1 A broad conversation
+### 4.1 A conversation across the work
 
-4.1.1 A broad conversation is about the whole piece of work and can go to any area. [Lee's ruling, 25 Nov 2026: "we can move around freely using conversation, but still guided and structured"]
+4.1.1 A conversation across the work takes in every area, and can go to any of them at any depth. It is not a shallower kind of conversation: the difference between the two kinds is how many areas are in view, never how far the talk goes. [Lee's ruling, 25 Nov 2026: "Broad doesn't mean not deep… broad means that we're talking about multiple areas. We might stay at that level and go deep in all of them just in that one session"]
 
-4.1.2 A decision of yours made in a broad conversation is recorded at once, under the area it belongs to. [Claude's proposal]
+4.1.2 A decision of yours made in a conversation across the work is recorded at once, under the area it belongs to. [Claude's proposal]
 
 4.1.3 A decision about the whole is recorded against the piece of work itself (3.1.3). [Claude's proposal]
 
 4.1.4 An area can be filled in entirely by talk about the others, and never need a conversation of its own. [Lee, 25 Nov 2026: "that thing gets filled in just by default because it touches everything"]
 
-### 4.2 A focused conversation
+4.1.5 A small piece of work may never need a conversation on one area: with one or two areas, everything is covered across the work, at whatever depth it takes. [Lee's ruling, 25 Nov 2026: "we don't necessarily have to go deep. We might be able to just stay broad and cover everything… especially if there is effectively only one or two areas"]
 
-4.2.1 A focused conversation is on one area. You ask for it — "let's go deep on holding" — or Claude suggests it in a line and you say yes. [Claude's proposal]
+### 4.2 A conversation on one area
 
-4.2.2 Claude suggests one when the talk keeps returning to one area, when an area has gathered open questions, or when a question needs more depth than a broad conversation should spend. [Claude's proposal]
+4.2.1 A conversation on one area has only that area in view. It is for when one of you feels an area needs the whole attention: it keeps the context clear and keeps you both on the one problem. You ask for it — "let's focus on holding" — or Claude suggests it in a line and you say yes. [Lee's ruling, 25 Nov 2026: "If… even me or Claude feels like that actually we really need to focus on this one area, then we can go specific and then we only talk about that area, which helps keep the context clear"]
+
+4.2.2 Claude suggests one when the talk keeps returning to one area, when an area has gathered open questions, or when the other areas in view are getting in the way of one. [Claude's proposal]
 
 4.2.3 The conversation never moves into or out of an area by itself. [Claude's proposal]
 
-4.2.4 A focused conversation opens as a clean session, by a handoff, scoped by the engine. [Lee, 25 Nov 2026: "as long as it's set up technically, maybe even with a proper handoff into a clean session that's scoped"]
+4.2.4 A conversation on one area opens as a clean session, by a handoff, scoped by the engine. [Lee, 25 Nov 2026: "as long as it's set up technically, maybe even with a proper handoff into a clean session that's scoped"]
 
 4.2.5 The engine names what it reads: its area's part of the starting page, its area's entries, and the decisions about the whole. It reads nothing of another area unless it goes looking. [Claude's proposal]
 
 4.2.6 One session holds an area at a time. Several areas can be open at once in several windows, as several topics can today. [Claude's proposal]
 
-### 4.3 What a focused conversation may write
+### 4.3 What a conversation on one area may write
 
 4.3.1 Claude's own calls land in the conversation's area alone. The engine refuses one made in another area. [Claude's proposal; the refusal is today's, between topics]
 
@@ -149,34 +151,34 @@ start with holding.
 
 ### 4.4 A question under another area
 
-4.4.1 In a broad conversation it is answered then and there. [Claude's proposal]
+4.4.1 In a conversation across the work it is answered then and there. [Claude's proposal]
 
-4.4.2 In a focused conversation it is your choice: answered there where it is yours to decide and quick, otherwise left. [Claude's proposal]
+4.4.2 In a conversation on one area it is your choice: answered there where it is yours to decide and quick, otherwise left. [Claude's proposal]
 
-4.4.3 Left, it shows in four places: on the map under its area; in that area's count on the work's menu; first, at the next focused conversation on that area; and it holds the spec until it is answered. [Claude's proposal]
+4.4.3 Left, it shows in four places: on the map under its area; in that area's count on the work's menu; first, at the next conversation on that area; and it holds the spec until it is answered. [Claude's proposal]
 
 4.4.4 It changes nothing about the area it lands on: an area that is closed stays closed (5.2). [Claude's proposal]
 
 ### 4.5 The log
 
-4.5.1 Each sitting keeps one log, numbered as discovery's are, and marked broad or focused on an area. [Lee, 25 Nov 2026: "we do something similar to Discovery does, and we just increment the number, and maybe we tag them as if it's epic level or if it's focused"]
+4.5.1 Each sitting keeps one log, numbered as discovery's are, and marked as across the work or on one area. [Lee, 25 Nov 2026: "we do something similar to Discovery does, and we just increment the number, and maybe we tag them as if it's epic level or if it's focused"]
 
 4.5.2 A log is written in sections named for what they cover, and every entry links the section it came from. [Claude's proposal; discovery's logs are written so today]
 
-4.5.3 An area's history is its focused sittings' logs, plus the linked sections of the broad ones. Nothing is copied from one into another. [Claude's proposal]
+4.5.3 An area's history is the logs of the conversations on it, plus the linked sections of those across the work. Nothing is copied from one into another. [Claude's proposal]
 
-4.5.4 A new conversation is what starts a new log. Going deep is always a new conversation (4.2.4), so it always has a log of its own. [Lee's ruling, 25 Nov 2026: "I love all that. Let's lock it in"]
+4.5.4 A new conversation is what starts a new log. A conversation on one area is always a new conversation (4.2.4), so it always has a log of its own. [Lee's ruling, 25 Nov 2026: "I love all that. Let's lock it in"]
 
 Example, written by Claude: the logs of a piece of work after four conversations. [Lee's ruling, 25 Nov 2026]
 
 ```text
-session-001   broad                 the first conversation after the commit
-session-002   focused: holding      you went deep
-session-003   broad                 you came back out
-session-004   focused: paying out
+session-001   across the work           the first conversation after the commit
+session-002   on one area: holding      you focused on holding
+session-003   across the work           you came back out
+session-004   on one area: paying out
 ```
 
-4.5.5 Which log is which — its number, whether it is broad or focused, and the area a focused one is on — is held in the work's manifest by the engine. It is never front matter in the file, and never worked out by reading the file. [Lee's ruling, 25 Nov 2026: "That should be manifest knowledge, not text in the file… it should be engine derivable or state-driven as to which file relates to what"]
+4.5.5 Which log is which — its number, whether it is across the work or on one area, and which area — is held in the work's manifest by the engine. It is never front matter in the file, and never worked out by reading the file. [Lee's ruling, 25 Nov 2026: "That should be manifest knowledge, not text in the file… it should be engine derivable or state-driven as to which file relates to what"]
 
 4.5.6 The log's own text says the same, so that someone reading it knows what it is. [Lee's ruling, 25 Nov 2026]
 
@@ -186,13 +188,21 @@ session-004   focused: paying out
 
 4.6.1 After the commit, a piece of work goes straight into discussion. There is no separate step before it: no cut of topics, no map to approve. [Lee's ruling, 25 Nov 2026]
 
-4.6.2 Its first conversation is a broad one, opened from the starting page (6.3). [Lee's ruling, 25 Nov 2026: "we have to land somewhere in order to have the initial conversation"]
+4.6.2 Its first conversation is across the work, opened from the starting page (6.3). [Lee's ruling, 25 Nov 2026: "we have to land somewhere in order to have the initial conversation"]
 
-4.6.3 Discussion runs over as many conversations as it takes, broad and focused in any order, as much at your direction as at Claude's. [Lee's ruling, 25 Nov 2026: "it's all through discussion. It's as much driven by me as it is Claude, and it's collaborative"]
+4.6.3 Discussion runs over as many conversations as it takes, across the work and on one area in any order, as much at your direction as at Claude's. [Lee's ruling, 25 Nov 2026: "it's all through discussion. It's as much driven by me as it is Claude, and it's collaborative"]
 
 4.6.4 Before any handoff, into an area or back out, the log is brought fully up to date. [Lee's ruling, 25 Nov 2026: "making sure… everything's up to date before we hand off, fully logged and clean"]
 
-4.6.5 When a focused conversation is done, the work passes back to a broad one. [Lee's ruling, 25 Nov 2026]
+4.6.5 When a conversation on one area is done, the work passes back to one across the work. [Lee's ruling, 25 Nov 2026]
+
+### 4.7 Claude's calls
+
+4.7.1 Claude makes its own calls in either kind of conversation, under the one rule: only in an area whose shape you have agreed (2.2.1), each through the ask rule. [Lee's ruling, 25 Nov 2026: "it should be one rule. Otherwise, we're recreating the tension… we'd then have to go deep in order to get the benefit of Ledger in terms of the trust matrix"]
+
+4.7.2 So a question the ask rule brings to you can be drawn in a conversation across the work, at a natural pause, as it can in one on an area. [Claude's derivation: 4.7.1, 2.1.1]
+
+4.7.3 Example: talking across the work, "what happens to a payout that fails?" comes up. Where paying out's shape is agreed, Claude may answer it — "retry once, then return the money to the balance" — and it lands as Claude's call, shown on the map since you last looked, or drawn for you where the ask rule says so. Where the shape is not agreed, it is recorded as an open question under paying out. [Lee's ruling, 25 Nov 2026]
 
 ## 5. Closing an area
 
@@ -202,7 +212,7 @@ session-004   focused: paying out
 
 5.1.2 The close is a topic's close as it is today: a fresh reader's pass over the area, the summary, a verdict on each call you changed, your yes. [Claude's proposal]
 
-5.1.3 A small area that never had a conversation of its own is closed from a broad conversation. [Claude's proposal]
+5.1.3 A small area that never had a conversation of its own is closed from a conversation across the work. [Claude's proposal]
 
 ### 5.2 After the close
 
@@ -293,11 +303,9 @@ Finance
 
 ### 10.1 To be talked through, one at a time
 
-10.1.1 The name. [open]
+10.1.1 The names: for an area, and for the two kinds of conversation. "Across the work" and "on one area" are working words; "broad" and "deep" are out, because they read as shallow against detailed, which is not the difference. [open; Lee, 25 Nov 2026: "Maybe we need better words for these things because they seem at odds with each other"]
 
-10.1.2 What a broad conversation reads when the piece of work is large. The thought so far: the map and the decisions about the whole, never every area's entries. Untested at size. [open]
-
-10.1.3 Whether Claude makes its own calls in a broad conversation, or only records yours there and keeps its own for a focused one. [open]
+10.1.2 What a conversation across the work reads when the piece of work is large. The thought so far: the map and the decisions about the whole, never every area's entries. Untested at size. [open]
 
 10.1.4 Whether "the shape before any call" (2.2.1) is held by the engine. Today it is prose only. [open]
 
@@ -311,7 +319,7 @@ Finance
 
 10.1.10 The work's menu and the board. [open]
 
-10.1.11 When verdicts are asked where an area closes from a broad conversation. [open]
+10.1.11 When verdicts are asked where an area closes from a conversation across the work. [open]
 
 10.1.12 Projects that already hold topics: the migration. [open]
 
