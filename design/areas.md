@@ -165,6 +165,35 @@ start with holding.
 
 4.5.3 An area's history is its focused sittings' logs, plus the linked sections of the broad ones. Nothing is copied from one into another. [Claude's proposal]
 
+4.5.4 A new conversation is what starts a new log. Going deep is always a new conversation (4.2.4), so it always has a log of its own. [Lee's ruling, 25 Nov 2026: "I love all that. Let's lock it in"]
+
+Example, written by Claude: the logs of a piece of work after four conversations. [Lee's ruling, 25 Nov 2026]
+
+```text
+session-001   broad                 the first conversation after the commit
+session-002   focused: holding      you went deep
+session-003   broad                 you came back out
+session-004   focused: paying out
+```
+
+4.5.5 Which log is which — its number, whether it is broad or focused, and the area a focused one is on — is held in the work's manifest by the engine. It is never front matter in the file, and never worked out by reading the file. [Lee's ruling, 25 Nov 2026: "That should be manifest knowledge, not text in the file… it should be engine derivable or state-driven as to which file relates to what"]
+
+4.5.6 The log's own text says the same, so that someone reading it knows what it is. [Lee's ruling, 25 Nov 2026]
+
+4.5.7 The ledger holds the outcomes — each question, finding and decision as its own entry — and the log holds the story of how they were reached. The spec is written from the ledger; a later conversation and the reviewers read the log. [Claude's derivation: both are today's]
+
+### 4.6 The phase
+
+4.6.1 After the commit, a piece of work goes straight into discussion. There is no separate step before it: no cut of topics, no map to approve. [Lee's ruling, 25 Nov 2026]
+
+4.6.2 Its first conversation is a broad one, opened from the starting page (6.3). [Lee's ruling, 25 Nov 2026: "we have to land somewhere in order to have the initial conversation"]
+
+4.6.3 Discussion runs over as many conversations as it takes, broad and focused in any order, as much at your direction as at Claude's. [Lee's ruling, 25 Nov 2026: "it's all through discussion. It's as much driven by me as it is Claude, and it's collaborative"]
+
+4.6.4 Before any handoff, into an area or back out, the log is brought fully up to date. [Lee's ruling, 25 Nov 2026: "making sure… everything's up to date before we hand off, fully logged and clean"]
+
+4.6.5 When a focused conversation is done, the work passes back to a broad one. [Lee's ruling, 25 Nov 2026]
+
 ## 5. Closing an area
 
 ### 5.1 The close
@@ -254,9 +283,11 @@ Finance
 
 ### 9.1 Feature and epic
 
-9.1.1 A feature and an epic become one kind of work. A feature is a piece of work that never needed a second area. [open: your own thought, 25 Nov 2026 — "whether through conversation we develop additional lenses or not is a product of the conversation that happens and the size of the work rather than some arbitrary upfront label"]
+9.1.1 A feature and an epic become one kind of work. A feature is a piece of work that never needed a second area. [Lee's ruling, 25 Nov 2026: "We either create areas or we don't, and it really doesn't matter because whatever we talk about ultimately forms into one specification… I like the simplification"]
 
 9.1.2 A bugfix and a quick-fix stay kinds of their own, because their paths differ. [Claude's proposal]
+
+9.1.3 The one kind runs short or long by how much there is to build: its length and the number of phases in its build are a consequence of the work, never a label chosen at the start. [Lee's ruling, 25 Nov 2026]
 
 ## 10. Open
 
@@ -269,8 +300,6 @@ Finance
 10.1.3 Whether Claude makes its own calls in a broad conversation, or only records yours there and keeps its own for a focused one. [open]
 
 10.1.4 Whether "the shape before any call" (2.2.1) is held by the engine. Today it is prose only. [open]
-
-10.1.5 For a piece of work, discovery and discussion become one conversation that both shapes and decides. What the phases are then. [open]
 
 10.1.6 Two conversations on one piece of work at once. The pass reading across is what catches what falls between them; whether that is enough. [open]
 
@@ -285,3 +314,5 @@ Finance
 10.1.11 When verdicts are asked where an area closes from a broad conversation. [open]
 
 10.1.12 Projects that already hold topics: the migration. [open]
+
+10.1.13 What the one kind of work (9.1.1) is called: "epic", or a new name. [open]
