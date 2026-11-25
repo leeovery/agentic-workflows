@@ -46,9 +46,9 @@ Each line ends with where it stands. "Lee's ruling" with a date is something you
 
 ### 2.2 How an area is worked
 
-2.2.1 Until an area's shape is agreed — what it covers and how it broadly works — Claude makes no call in it: each point is worked through with you. [Lee's ruling, 25 Nov 2026: of how a topic runs today, "that actually feels really good"]
+2.2.1 Early on, before the talk has given a direction, each point is worked through with you and Claude makes no call. When there is a direction to fill in from is Claude's read of the conversation: it may be minutes in or hours in, and it rests on no decision of yours having been made first. [Lee's ruling, 25 Nov 2026: "Who's to say that we might not start making decisions right away? versus actually sometimes we might talk for hours… I might not make any decisions at all. That's possible and ok"]
 
-2.2.2 Once the shape is agreed, Claude fills in the rest, each call going through the ask rule: most land as Claude's without stopping you, some are drawn for you, a few are asked blind. [Lee's ruling, 25 Nov 2026]
+2.2.2 Once there is a direction, Claude fills in the rest, each call going through the ask rule: most land as Claude's without stopping you, some are drawn for you, a few are asked blind. [Lee's ruling, 25 Nov 2026]
 
 2.2.3 The map shows where every point stands, Claude's calls since you last looked first, so you can overrule one on the spot. [Lee's ruling, 25 Nov 2026]
 
@@ -60,7 +60,7 @@ Each line ends with where it stands. "Lee's ruling" with a date is something you
 
 2.3.1 Nothing from discovery goes on the ledger. The ledger is what discussion formalises. [Lee's ruling, 25 Nov 2026: "we shouldn't be filling the ledger with stuff from discovery. It's too early"]
 
-2.3.2 Where protection is needed, the engine holds it. Prose alone never does. [Lee's ruling, 25 Nov 2026: "we can't rely on prose protecting us where we need the protection"]
+2.3.2 Where protection is needed, the engine holds it. Not every rule needs it: one whose breach is seen and cheaply put right stays an instruction to Claude, and the engine guards what would be silent or costly. [Lee's ruling, 25 Nov 2026: "we can't rely on prose protecting us where we need the protection"; and of this line, "That doesn't mean every single time… Some are sharp, some are blunt, and we've got to use the right one in the right occasion… There are places we need it and places we don't. If the cost is low, then it's fine"]
 
 2.3.3 No single large document is ever the working surface. The record is separate entries, and what a conversation reads is a view the engine draws from them. [Lee's ruling, 25 Nov 2026]
 
@@ -198,11 +198,13 @@ session-004   on one area: paying out
 
 ### 4.7 Claude's calls
 
-4.7.1 Claude makes its own calls in either kind of conversation, under the one rule: only in an area whose shape you have agreed (2.2.1), each through the ask rule. [Lee's ruling, 25 Nov 2026: "it should be one rule. Otherwise, we're recreating the tension… we'd then have to go deep in order to get the benefit of Ledger in terms of the trust matrix"]
+4.7.1 Claude makes its own calls in either kind of conversation, by the one judgement of 2.2.1, each through the ask rule. [Lee's ruling, 25 Nov 2026: "it should be one rule. Otherwise, we're recreating the tension… we'd then have to go deep in order to get the benefit of Ledger in terms of the trust matrix"]
 
 4.7.2 So a question the ask rule brings to you can be drawn in a conversation across the work, at a natural pause, as it can in one on an area. [Claude's derivation: 4.7.1, 2.1.1]
 
-4.7.3 Example: talking across the work, "what happens to a payout that fails?" comes up. Where paying out's shape is agreed, Claude may answer it — "retry once, then return the money to the balance" — and it lands as Claude's call, shown on the map since you last looked, or drawn for you where the ask rule says so. Where the shape is not agreed, it is recorded as an open question under paying out. [Lee's ruling, 25 Nov 2026]
+4.7.3 Example: talking across the work, "what happens to a payout that fails?" comes up. Where the talk has given paying out a direction, Claude may answer it — "retry once, then return the money to the balance" — and it lands as Claude's call, shown on the map since you last looked, or drawn for you where the ask rule says so. Where it has not, it is talked through with you, or recorded as an open question under paying out. [Lee's ruling, 25 Nov 2026]
+
+4.7.4 Nothing in the engine checks that judgement, and nothing asks you more because of it. A call made too early shows on the map, is replaced on the spot, and the trust numbers learn from the replacement. [Lee's ruling, 25 Nov 2026: "I don't think we need it, and more so, I think it could be detrimental… Claude makes a call, it goes in, it's wrong, it either gets corrected or we figure it out later. That's the idea of the ledger… We don't micromanage, and that's the point"]
 
 ## 5. Closing an area
 
@@ -306,8 +308,6 @@ Finance
 10.1.1 The names: for an area, and for the two kinds of conversation. "Across the work" and "on one area" are working words; "broad" and "deep" are out, because they read as shallow against detailed, which is not the difference. [open; Lee, 25 Nov 2026: "Maybe we need better words for these things because they seem at odds with each other"]
 
 10.1.2 What a conversation across the work reads when the piece of work is large. The thought so far: the map and the decisions about the whole, never every area's entries. Untested at size. [open]
-
-10.1.4 Whether "the shape before any call" (2.2.1) is held by the engine. Today it is prose only. [open]
 
 10.1.6 Two conversations on one piece of work at once. The pass reading across is what catches what falls between them; whether that is enough. [open]
 
