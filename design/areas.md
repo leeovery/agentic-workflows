@@ -250,6 +250,16 @@ proceed if you know that session is no longer working.
 
 4.9.6 What the reviewer hunts for, the bar the close's reader reads at, and passing on what you struck so it is never raised again, are as today. [Lee's ruling, 25 Nov 2026]
 
+### 4.10 Experiments, spikes and shared files
+
+4.10.1 An experiment is spawned from either kind of conversation, when a measurement would settle a choice, as it is from a topic's discussion today. [Lee's ruling, 25 Nov 2026]
+
+4.10.2 Its record is kept in the work's own folder, an area having none, and the manifest holds which question it feeds. Its result comes back to the conversation that spawned it. [Lee's ruling, 25 Nov 2026]
+
+4.10.3 An experiment follows its question: where the question is relabelled to another area, the experiment goes with it. [Lee's ruling, 25 Nov 2026]
+
+4.10.4 Spikes and shared files are kept for the whole piece of work and read from any area, as today. [Lee's ruling, 25 Nov 2026]
+
 ## 5. Closing an area
 
 ### 5.1 The close
@@ -265,6 +275,18 @@ proceed if you know that session is no longer working.
 5.2.1 A closed area stays closed. A question that arrives later is added under it and answered, and the area is neither reopened nor closed a second time. [Claude's proposal: today a message to a finished topic reopens it, and it closes again through a whole fresh pass]
 
 5.2.2 The pass that reads across areas before the spec (7.1.3) is what checks that a late answer disturbed nothing. [Claude's proposal]
+
+### 5.3 What a close proposes
+
+5.3.1 Where a decision in an area is really a rule for the whole product, it is proposed at that area's close as a line of the product record, for you to strike or reword, as at a topic's close today. [Lee's ruling, 25 Nov 2026]
+
+5.3.2 Product-record lines that come from decisions about the whole are proposed at the pass that reads across areas before the spec, since they belong to no area's close. [Lee's ruling, 25 Nov 2026]
+
+5.3.3 A candidate is a suggested new area: ground a decision creates that no area covers. It is proposed as a new area where it belongs to this piece of work, or for the roadmap where it does not, and you can turn it down. No brief is written for it. [Lee's ruling, 25 Nov 2026: "I suppose a candidate does exist. It's a potentially new area"]
+
+5.3.4 Most new ground never waits for a close: it is added as the talk goes (3.2.5), and the piece of work takes whatever shape it needs. [Lee's ruling, 25 Nov 2026: "these probably would be added as we go because they can just, without the ceremony now, be molded through conversation"]
+
+5.3.5 Nothing limits how far a piece of work grows past where it started. You can widen it and are never blocked, and keeping it on track is yours as much as Claude's. [Lee's ruling, 25 Nov 2026: "I don't think we need any hard limitations or prescribed guardrails there… If I want to expand it, then I can and shouldn't be blocked. Conversely, it's up to me to keep it on track as much as Claude"]
 
 ## 6. From product discovery into a piece of work
 
@@ -350,8 +372,6 @@ Finance
 ### 10.1 To be talked through, one at a time
 
 10.1.1 The names: for an area, and for the two kinds of conversation. "Across the work" and "on one area" are working words; "broad" and "deep" are out, because they read as shallow against detailed, which is not the difference. [open; Lee, 25 Nov 2026: "Maybe we need better words for these things because they seem at odds with each other"]
-
-10.1.8 How experiments, spikes, shared files and product-record lines sit under areas. [open]
 
 10.1.9 Putting an area off, cancelling one, and moving one to the roadmap as the way a piece of work is split. [open]
 
