@@ -146,7 +146,7 @@ start with holding.
 
 4.2.5 The engine names what it reads: its area's part of the starting page, its area's entries, and the decisions about the whole. It reads nothing of another area unless it goes looking. [Claude's proposal]
 
-4.2.6 One session holds an area at a time. Several areas can be open at once in several windows, as several topics can today. [Claude's proposal]
+4.2.6 One conversation holds an area at a time, and several areas can be open at once in several windows, as several topics can today. [Lee's ruling, 25 Nov 2026]
 
 ### 4.3 What a conversation on one area may write
 
@@ -212,6 +212,29 @@ session-004   on one area: paying out
 4.7.3 Example: talking across the work, "what happens to a payout that fails?" comes up. Where the talk has given paying out a direction, Claude may answer it — "retry once, then return the money to the balance" — and it lands as Claude's call, shown on the map since you last looked, or drawn for you where the ask rule says so. Where it has not, it is talked through with you, or recorded as an open question under paying out. [Lee's ruling, 25 Nov 2026]
 
 4.7.4 Nothing in the engine checks that judgement, and nothing asks you more because of it. A call made too early shows on the map, is replaced on the spot, and the trust numbers learn from the replacement. [Lee's ruling, 25 Nov 2026: "I don't think we need it, and more so, I think it could be detrimental… Claude makes a call, it goes in, it's wrong, it either gets corrected or we figure it out later. That's the idea of the ledger… We don't micromanage, and that's the point"]
+
+### 4.8 More than one conversation at once
+
+4.8.1 Any number of conversations can be open on one piece of work. The engine knows which conversation holds which area and never blocks one, as today. [Lee's ruling, 25 Nov 2026]
+
+4.8.2 The overview a conversation across the work reads (4.1.6) says which areas are open in another conversation. [Lee's ruling, 25 Nov 2026]
+
+4.8.3 Before a conversation goes into an area another one holds, the engine asks, as it does today for a topic: leave it to that conversation, or proceed anyway. [Lee's ruling, 25 Nov 2026]
+
+Screen, drawn by the engine today for a topic open elsewhere: the question 4.8.3 keeps. [the engine as it is today]
+
+```text
+"Paying out" is open in another session — last active 4m ago.
+Proceeding starts a second concurrent session on the same
+discussion; its work could conflict with that session's. Only
+proceed if you know that session is no longer working.
+
+◆ Proceed anyway?
+  n/no   Leave it to that session   (recommended)
+  y/yes  Proceed anyway
+```
+
+4.8.4 Two conversations that decide one point differently corrupt nothing: both decisions show on the map, and the pass that reads across areas (7.1.3) catches the clash. No further guard is added. [Claude's derivation: 2.3.2]
 
 ## 5. Closing an area
 
@@ -313,8 +336,6 @@ Finance
 ### 10.1 To be talked through, one at a time
 
 10.1.1 The names: for an area, and for the two kinds of conversation. "Across the work" and "on one area" are working words; "broad" and "deep" are out, because they read as shallow against detailed, which is not the difference. [open; Lee, 25 Nov 2026: "Maybe we need better words for these things because they seem at odds with each other"]
-
-10.1.6 Two conversations on one piece of work at once. The pass reading across is what catches what falls between them; whether that is enough. [open]
 
 10.1.7 What the background reviewer and the close's fresh reader are given for an area, and what the pass reading across is given. [open]
 
