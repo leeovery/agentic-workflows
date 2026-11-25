@@ -236,6 +236,20 @@ proceed if you know that session is no longer working.
 
 4.8.4 Two conversations that decide one point differently corrupt nothing: both decisions show on the map, and the pass that reads across areas (7.1.3) catches the clash. No further guard is added. [Claude's derivation: 2.3.2]
 
+### 4.9 The reader agents
+
+4.9.1 The background reviewer and the close's fresh reader are given, for an area, what they are given for a topic today: the area's record and log, the other areas' records, the product record, and what you struck or removed. [Lee's ruling, 25 Nov 2026]
+
+4.9.2 An area's log, as they are given it, is the logs of the conversations on that area plus the sections of the logs across the work that link to it, put together by the engine from the manifest (4.5.5). [Lee's ruling, 25 Nov 2026]
+
+4.9.3 In a conversation across the work the background reviewer follows the talk: it reviews each area the conversation has written in since it last ran, one area at a time. A piece of work that never needs a conversation on one area is still reviewed. [Lee's ruling, 25 Nov 2026]
+
+4.9.4 The reviewer and the close's reader are also given their area's part of the starting page (6.3), so a point from discovery the talk never took up is seen. The pass that reads across areas (7.1.3) is given all of it. [Lee's ruling, 25 Nov 2026]
+
+4.9.5 All three are given the decisions about the whole, which bind every area. [Lee's ruling, 25 Nov 2026]
+
+4.9.6 What the reviewer hunts for, the bar the close's reader reads at, and passing on what you struck so it is never raised again, are as today. [Lee's ruling, 25 Nov 2026]
+
 ## 5. Closing an area
 
 ### 5.1 The close
@@ -336,8 +350,6 @@ Finance
 ### 10.1 To be talked through, one at a time
 
 10.1.1 The names: for an area, and for the two kinds of conversation. "Across the work" and "on one area" are working words; "broad" and "deep" are out, because they read as shallow against detailed, which is not the difference. [open; Lee, 25 Nov 2026: "Maybe we need better words for these things because they seem at odds with each other"]
-
-10.1.7 What the background reviewer and the close's fresh reader are given for an area, and what the pass reading across is given. [open]
 
 10.1.8 How experiments, spikes, shared files and product-record lines sit under areas. [open]
 
