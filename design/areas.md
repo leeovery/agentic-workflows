@@ -288,6 +288,18 @@ proceed if you know that session is no longer working.
 
 5.3.5 Nothing limits how far a piece of work grows past where it started. You can widen it and are never blocked, and keeping it on track is yours as much as Claude's. [Lee's ruling, 25 Nov 2026: "I don't think we need any hard limitations or prescribed guardrails there… If I want to expand it, then I can and shouldn't be blocked. Conversely, it's up to me to keep it on track as much as Claude"]
 
+### 5.4 An area that is not wanted now
+
+5.4.1 An area that is wanted, but for a later release, is put off: it goes to the roadmap whole, on a horizon you name, its entries keeping their label, and it stops holding the spec. A question that arrives for it waits under it. This is how a piece of work is split. [Lee's ruling, 25 Nov 2026; a topic is postponed so today]
+
+5.4.2 An area not worth pursuing is cancelled: it stays listed as raised and declined, stops holding the spec, and can be brought back. [Lee's ruling, 25 Nov 2026; a topic is cancelled so today]
+
+5.4.3 One piece of work can be folded into another under way: its entries are relabelled there as an area. [Lee's ruling, 25 Nov 2026; a feature is absorbed into an epic so today]
+
+5.4.4 Each is asked for in your own words, done and reported in a line. Only a cancel asks you first. [Lee's ruling, 25 Nov 2026]
+
+5.4.5 Cancelling closes once the spec is first written. Putting off stays open until your yes at ready to build, where a split is made. [Lee's ruling, 25 Nov 2026; as today]
+
 ## 6. From product discovery into a piece of work
 
 ### 6.1 Before the commit
@@ -353,9 +365,11 @@ Finance
 
 8.1.2 Messages between topics, and each topic's mailbox. [Claude's proposal]
 
-8.1.3 Reopening. [Claude's proposal]
+8.1.3 Reopening. [Lee's ruling, 25 Nov 2026]
 
-8.1.4 The pivot that turns a feature into an epic when it outgrows itself (9.1.1). [Claude's proposal]
+8.1.4 The pivot that turns a feature into an epic when it outgrows itself (9.1.1). [Lee's ruling, 25 Nov 2026]
+
+8.1.5 Removing a topic from the map. An area with nothing under it is only a name, and a mistaken one with entries is folded into another (3.2.7). [Lee's ruling, 25 Nov 2026]
 
 ## 9. One kind of work
 
@@ -372,8 +386,6 @@ Finance
 ### 10.1 To be talked through, one at a time
 
 10.1.1 The names: for an area, and for the two kinds of conversation. "Across the work" and "on one area" are working words; "broad" and "deep" are out, because they read as shallow against detailed, which is not the difference. [open; Lee, 25 Nov 2026: "Maybe we need better words for these things because they seem at odds with each other"]
-
-10.1.9 Putting an area off, cancelling one, and moving one to the roadmap as the way a piece of work is split. [open]
 
 10.1.10 The work's menu and the board. [open]
 
