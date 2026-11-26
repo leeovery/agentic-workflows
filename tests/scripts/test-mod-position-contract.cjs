@@ -51,6 +51,11 @@ const env = () => ({ LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1'
 /** The engine's answer for a conversation at a discussion: its whole output, and its POSITION line parsed. */
 function answer() {
   harness.ok(dir, ['session', 'label', 'pay', 'discussion', 'ledger'], { env: env() });
+  return position();
+}
+
+/** The engine's answer for the conversation where it stands: its whole output, and its POSITION line parsed. */
+function position() {
   const out = harness.output(dir, ['conversation', 'position'], { env: env() });
   const lines = out.split('\n');
   const at = lines.findIndex((line) => line.startsWith(literal('skills/ledger-gates/hooks/compaction.ts', 'POSITION_MARKER')));
@@ -114,6 +119,13 @@ describe('the mods read conversation position as the engine writes it', () => {
     assert.strictEqual(typeof json.text, 'string');
     assert.strictEqual(typeof json.skill, 'string');
     assert.strictEqual(json.place, 'pay › discussion › ledger');
+  });
+
+  it('the gate mod takes the migration\'s answer as any place\'s, its skill and its place each a line', () => {
+    fs.mkdirSync(path.join(dir, '.ledger/.cache/migrate'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.ledger/.cache/migrate/presence'), JSON.stringify({ session_id: 'sess-1', pid: 1 }));
+    const { json } = position();
+    assert.deepStrictEqual([json.position, typeof json.skill, json.place], [null, 'string', 'the migration']);
   });
 
   it('both mods name the record of the notes handed up alike, keyed by the note the row shows, valued by the engine\'s place', () => {

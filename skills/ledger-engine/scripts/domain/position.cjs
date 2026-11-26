@@ -98,8 +98,9 @@ const { carriesMigration } = require('./presence.cjs');
 
 const COMPACTED = 'The conversation was just compacted.';
 
-// The skill a conversation carrying the migration on re-reads, and what it
-// runs again there.
+// Where a conversation carrying the migration on works, the skill it
+// re-reads, and what it runs again there.
+const MIGRATION = 'the migration';
 const START_SKILL = 'ledger';
 const MIGRATION_BOOT = '- its boot, run again as it says: boot stops where the migration stands, and names what to carry on with';
 
@@ -927,7 +928,7 @@ function wholeNote(where, skill, calls, files, log, sessionId, lines = [], pictu
  * @typedef {object} PositionReads
  * @property {string} session_id
  * @property {Position|null} position
- * @property {string|null} place  the position as one line; null where there is none
+ * @property {string|null} place  where the conversation carries on, as one line: its position, or the migration it carries; null where there is neither
  * @property {string|null} skill  the skill that runs the work there, by absolute path; null where nothing carries on
  * @property {string[]} files     the topic's documents this project has, by absolute path, a section of one by its anchor, read after the skill
  * @property {string} text        the note naming where the conversation is and what to re-read
@@ -949,7 +950,7 @@ function positionReads(cwd, sessionId) {
   const nothing = (text) => ({ session_id: sessionId, position, place, skill: null, files: [], text });
   if (position === null && carriesMigration(cwd, sessionId)) {
     const skill = path.resolve(codeRoot(cwd), skillFile(START_SKILL));
-    return { session_id: sessionId, position, place, skill, files: [], text: wholeNote('the migration', skill, [], [], null, sessionId, [MIGRATION_BOOT]) };
+    return { session_id: sessionId, position, place: MIGRATION, skill, files: [], text: wholeNote(MIGRATION, skill, [], [], null, sessionId, [MIGRATION_BOOT]) };
   }
   if (position === null) return nothing('This conversation holds no position in Ledger, so there is nothing to carry on from.');
   const isUnit = !isProjectPlace(position.name, position.phase) && illegalNameReason('work unit', position.name) === null;

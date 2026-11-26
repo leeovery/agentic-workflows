@@ -497,14 +497,14 @@ describe('conversation position', () => {
     });
   });
 
-  it('a conversation carrying the migration on, at no position, carries on in the start skill, whose boot, run again, stops where the migration stands; another conversation\'s carrying it leaves this one nothing', () => {
+  it('a conversation carrying the migration on, at no position, carries on in the migration, in the start skill, whose boot, run again, stops where the migration stands; another conversation\'s carrying it leaves this one nothing', () => {
     write('.ledger/.cache/migrate/presence', JSON.stringify({ session_id: 'sess-1', pid: 1 }));
     const skill = abs('.claude/skills/ledger/SKILL.md');
 
     assert.deepStrictEqual(reads(), {
       session_id: 'sess-1',
       position: null,
-      place: null,
+      place: 'the migration',
       skill,
       files: [],
       text: [
@@ -514,7 +514,16 @@ describe('conversation position', () => {
         'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
       ].join('\n'),
     });
-    assert.deepStrictEqual(reads([], 'sess-2').skill, null);
+    const other = reads([], 'sess-2');
+    assert.deepStrictEqual([other.place, other.skill], [null, null]);
+  });
+
+  it('a conversation carrying the migration on at a position of its own carries on where it stands, not in the migration', () => {
+    write('.ledger/.cache/migrate/presence', JSON.stringify({ session_id: 'sess-1', pid: 1 }));
+    install('ledger-continue-epic');
+    ok(['session', 'label', 'pay']);
+    const { place, skill } = reads();
+    assert.deepStrictEqual([place, skill], ['pay', abs('.claude/skills/ledger-continue-epic/SKILL.md')]);
   });
 
   it('an epic\'s menu carries on in its skill, which draws the menu again', () => {
