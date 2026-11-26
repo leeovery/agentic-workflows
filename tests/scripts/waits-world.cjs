@@ -26,11 +26,11 @@ const { progressOf, progressWords } = require(path.join(SCRIPTS, 'domain/progres
 /**
  * What waits in each unit named, read in the conversation `session` — none
  * where it is not given — its seals in `config`; the read warns of nothing.
- * @param {string} dir @param {string[]} units @param {{verdicts?: boolean, config?: string, session?: string}} [opts]
+ * @param {string} dir @param {string[]} units @param {{config?: string, session?: string}} [opts]
  * @returns {Record<string, Listed[]>}
  */
-function waitsIn(dir, units, { verdicts = false, config, session } = {}) {
-  const read = () => waitsOf(dir, units.map((unit) => readManifest(dir, unit)), { verdicts, session: session ?? null });
+function waitsIn(dir, units, { config, session } = {}) {
+  const read = () => waitsOf(dir, units.map((unit) => readManifest(dir, unit)), { session: session ?? null });
   const { waits, warnings } = config === undefined ? read() : withEnv({ LEDGER_CONFIG_DIR: config }, read);
   assert.deepStrictEqual(warnings, []);
   return Object.fromEntries([...waits].map(([unit, listed]) => [unit, listed.map(({ seal, ...wait }) => (seal === undefined ? wait : { ...wait, seal: seal.id }))]));

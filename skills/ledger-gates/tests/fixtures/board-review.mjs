@@ -7,7 +7,7 @@ export default {
   "type": "feature",
   "built": 99,
   "round": 2,
-  "waiting": [{ "kind": "finish", "id": "finish", "text": "Finish: the report of every round, and your verdict on each call you changed", "page": null }],
+  "waiting": [{ "kind": "finish", "id": "finish", "text": "Finish: the report of every round", "page": null }],
   "stopped": false,
   "recorded": true,
   "areas": [

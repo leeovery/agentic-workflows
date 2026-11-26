@@ -25,10 +25,10 @@ const { isId } = require('./ledger-ids.cjs');
  */
 
 /**
- * A field of an event: its name and type, and, for a field a release after
- * the first added, that version and the default a line written before it
- * takes.
- * @typedef {{name: string, type: Type, added?: {version: number, default: unknown}}} Field
+ * A field of an event: its name and type; for a field a release after the
+ * first added, that version and the default a line written before it
+ * takes; and for one a later release dropped, the version it ends at.
+ * @typedef {{name: string, type: Type, added?: {version: number, default: unknown}, until?: number}} Field
  */
 
 /**
@@ -91,6 +91,15 @@ function field(name, fieldType, added) {
 }
 
 /**
+ * `f`, held by the lines written before version `version` alone.
+ * @param {Field} f @param {number} version
+ * @returns {Field}
+ */
+function endedAt(f, version) {
+  return { ...f, until: version };
+}
+
+/**
  * An event, of the first version unless `since` names a later, and the rule
  * its fields keep together, where there is one.
  * @param {Field[]} fields @param {number} [since] @param {EventSchema['holds']} [holds]
@@ -144,11 +153,22 @@ function addedIn(f) {
   return f.added?.version ?? 1;
 }
 
+/** The version that last changed whether a line holds a field: the one that added it, or the one it ends at. @param {Field} f */
+function changedIn(f) {
+  return f.until ?? addedIn(f);
+}
+
+/** Whether a line of version `v` holds a field. @param {Field} f @param {number} v */
+function heldAt(f, v) {
+  return addedIn(f) <= v && (f.until === undefined || v < f.until);
+}
+
 /**
  * `value` read as event `name` of version `v`, whose line holds `fields`:
  * each field that version holds, in their order, and each a later version
- * added at its default. Or why it is no such event: a field missing, one of
- * the wrong type, or one version `v` does not hold.
+ * added at its default; none that ended at `v` or before it. Or why it is
+ * no such event: a field missing, one of the wrong type, or one version `v`
+ * does not hold.
  * @param {Record<string, unknown>} value @param {Field[]} fields @param {number} v @param {string} name
  * @returns {{event: Record<string, unknown>} | {not: string}}
  */
@@ -158,6 +178,8 @@ function readFields(value, fields, v, name) {
   for (const f of fields) {
     if (addedIn(f) > v) {
       event[f.name] = structuredClone(f.added?.default);
+    } else if (!heldAt(f, v)) {
+      continue;
     } else if (!Object.hasOwn(value, f.name)) {
       return { not: `the ${name} event needs ${f.name}` };
     } else if (!f.type.test(value[f.name])) {
@@ -166,9 +188,9 @@ function readFields(value, fields, v, name) {
       event[f.name] = value[f.name];
     }
   }
-  const stray = Object.keys(value).find((key) => !fields.some((f) => f.name === key && addedIn(f) <= v));
+  const stray = Object.keys(value).find((key) => !fields.some((f) => f.name === key && heldAt(f, v)));
   if (stray !== undefined) return { not: `the ${name} event has no field ${stray} at version ${v}` };
   return { event };
 }
 
-module.exports = { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, CARE_KINDS, ALWAYS_MARKS, ALWAYS_MARK, EXPERIMENT, MODEL, LABEL, oneOf, nullable, listOf, shaped, field, event, addedIn, readFields };
+module.exports = { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, CARE_KINDS, ALWAYS_MARKS, ALWAYS_MARK, EXPERIMENT, MODEL, LABEL, oneOf, nullable, listOf, shaped, field, endedAt, event, addedIn, changedIn, readFields };

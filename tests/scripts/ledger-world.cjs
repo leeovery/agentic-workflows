@@ -256,15 +256,16 @@ function leaningCall(lean, other) {
  * The person's answer to Claude's lean on `question` at `address`: a raise
  * drawn and answered in the conversation `env` names, Claude leaning to
  * `lean` over `other`, the person picking the row the screen numbers `key` —
- * `1` the lean, `2` the other — who moved whom on stdin where `moved` gives it. Answers the
- * entry's short id.
+ * `1` the lean, `2` the other — who moved whom on stdin where `moved` gives it. Answers
+ * `raise answer`'s answer: the entry's short id, and the verdict it owes
+ * where it owes one.
  * @param {string} dir @param {string} address @param {string} question
  * @param {{lean: string, other: string, key: '1'|'2', moved?: string, env: Record<string, string|undefined>}} answer
  */
 async function answeredRaise(dir, address, question, { lean, other, key, moved, env }) {
   const { res } = await okSectionsAsync(dir, ['raise', address, '--answers', question], { env, stdin: JSON.stringify(leaningCall(lean, other)) });
   const given = { why: 'The person said why.', ...(moved === undefined ? {} : { who_moved_whom: moved }) };
-  return ok(dir, ['raise', 'answer', res.raise, '--pick', key], { env, stdin: JSON.stringify(given) }).id;
+  return ok(dir, ['raise', 'answer', res.raise, '--pick', key], { env, stdin: JSON.stringify(given) });
 }
 
 // ---------------------------------------------------------------------------

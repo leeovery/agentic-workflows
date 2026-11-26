@@ -346,6 +346,11 @@
 //   to raise again on. The seal is marked answered after the commit, with
 //   the answer the ledger holds, and keeps the first it was marked with:
 //   the ledger, not the seal, says whether a raise is answered.
+// - An answer that lands a departure — the person's answer standing over
+//   Claude's lean, a keep among them, or a blind answer differing from the
+//   sealed one — says its verdict is owed, `verdict_owed`, the entry's
+//   short id, where this machine owes it one (ledger-verdicts.cjs), a
+//   rerun's while it still does: it is asked at that moment (verdict.cjs).
 // - Once the person's answer to Claude's call lands in a topic's
 //   discussion — never a fact's, nor one answered already — the decision
 //   point is asked whether Claude offers to settle the rest of the topic
@@ -379,7 +384,7 @@ const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, no
 const { liveness, manifestOf, measuredBy } = require('./ledger-units.cjs');
 const { topicTitle, quickFixBuild, investigationUnderWay, fixesUnderWay } = require('./derivations.cjs');
 const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('./ledger-write.cjs');
-const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdicts.cjs');
+const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove, verdictOwed } = require('./ledger-verdicts.cjs');
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
 const { labelledBeside, questionText, kindOf, hardToUndo } = require('./labeller.cjs');
 const { readOnRaise } = require('./answer-reader.cjs');
@@ -2233,6 +2238,17 @@ function dropCued(cwd, seal, recorded, care) {
 }
 
 /**
+ * The verdict owed on the entry the person's answer landed, where it is a
+ * departure this machine owes one (the header's); none for an answer that
+ * logged no raise.
+ * @param {string} cwd @param {Seal} seal @param {Answering} given @param {{id: string}} recorded
+ */
+function verdictCued(cwd, seal, given, recorded) {
+  const root = findStateRoot(cwd);
+  return given.logged === null || root === null ? {} : verdictOwed(root, seal.id, recorded.id);
+}
+
+/**
  * The cue to offer to settle the rest of the topic, once the person's answer
  * to Claude's call has landed in a topic's discussion (the header's): the
  * unit, the topic and the agreements in a row there, where the decision
@@ -2279,8 +2295,8 @@ function shownOnAnswer(cwd, seal, form, given, recorded) {
  * --didnt-follow)`: the person's answer to a raise this conversation drew
  * — a row, by its number or its own key (`keyPicked`), the keep row on a
  * replacement among them, their own words, their "don't care",
- * or that they didn't follow — and what a blind raise's answer shows
- * (`shownOnAnswer`). A "don't care" reads the care entries before anything
+ * or that they didn't follow — the verdict it owes (`verdictCued`), and
+ * what a blind raise's answer shows (`shownOnAnswer`). A "don't care" reads the care entries before anything
  * lands, so care entries that do not read refuse it with nothing
  * written. An answer to Claude's call in a topic's discussion cues the
  * convergence offer where it is due (`convergenceCued`).
@@ -2295,7 +2311,7 @@ function answerRaise(cwd, args, stdin) {
   const care = form === 'dont-care' ? careEntries() : null;
   const given = answering(cwd, session, seal, form, pick === null ? null : keyPicked(seal, pick), stdin);
   const recorded = recordAnswer(cwd, session, seal, given);
-  const answered = { ...recorded, ...(care === null ? {} : dropCued(cwd, seal, recorded, care)), ...convergenceCued(cwd, seal, recorded) };
+  const answered = { ...recorded, ...verdictCued(cwd, seal, given, recorded), ...(care === null ? {} : dropCued(cwd, seal, recorded, care)), ...convergenceCued(cwd, seal, recorded) };
   return { answered, reveal: shownOnAnswer(cwd, seal, form, given, recorded) };
 }
 

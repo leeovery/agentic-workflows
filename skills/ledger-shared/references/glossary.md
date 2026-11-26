@@ -72,7 +72,7 @@ _Avoid_: research (as a phase), the discussion document
 The final review of a topic's discussion, run on the person's yes to the close Claude offers, on their asking for it, or on the convergence yes: a fresh reader goes over the topic's entries and log against the other topics' records and the product record, and the Claude that was in the conversation checks that every decision made in it has an entry. It looks for a question with no answer, a contradiction with another record, a replacement that does not hold up against what it replaced, and work the decision creates that no topic owns.
 
 **decided**:
-The authority gate that closes a topic, after its closing pass: the person signs off on what was decided, with the ledger in view, and gives a verdict on each call they changed. A feature's decided shares one screen with its ready to build.
+The authority gate that closes a topic, after its closing pass: the person signs off on what was decided, with the ledger in view. A feature's decided shares one screen with its ready to build.
 
 **experiment**:
 A controlled measurement in its own laboratory, designed before it is run, spawned from a discussion when a decision is about to rest on a number nobody has measured. It is never started directly, though one waiting can be continued from the epic's menu; its result goes back to the conversation that asked, as a finding saying it was measured.
@@ -98,7 +98,7 @@ The specification's cut into build phases, in the order they are built, each nam
 _Avoid_: the plan, planning
 
 **ready to build**:
-The authority gate that closes the specification: one screen showing the spec's outline and its phase cut, where the person approves both and picks the build's position, auto or step. The drivers are checked there, the environment setup is asked for the first time, and verdicts are asked for the calls the person changed in the spec's review. A feature's shares the screen with its decided, a bugfix's with its investigation's recap and verdicts.
+The authority gate that closes the specification: one screen showing the spec's outline and its phase cut, where the person approves both and picks the build's position, auto or step. The drivers are checked there, and the environment setup is asked for the first time. A feature's shares the screen with its decided, a bugfix's with its investigation's recap.
 
 **implementation**:
 The building phase, which the screens call the build. One conversation runs it across every phase of the cut, and straight into the review phase.
@@ -108,7 +108,7 @@ The last phase: the whole change held up against the specification, area by area
 _Avoid_: review (alone: the review phase, the phase review and the closing pass are three things)
 
 **finish**:
-The authority gate that ends a piece of work, after its review phase: the finish report, a verdict on each call the person changed in the build and the review phase, and the inbox items the work resolved archived and named. A quick-fix's close is its finish.
+The authority gate that ends a piece of work, after its review phase: the finish report, and the inbox items the work resolved archived and named. A quick-fix's close is its finish.
 
 ## The build
 
@@ -211,7 +211,7 @@ The `t/technical` row, which retells a report from the code's side, and on a que
 _Avoid_: lens
 
 **lean**:
-Claude's own answer to a question it puts to the person, sealed before the person answers so it cannot change, and shown beside the question. An answer that changes Claude's lean is one the person later gives a verdict on; answered "don't care", the lean lands as Claude's call, settling that one question.
+Claude's own answer to a question it puts to the person, sealed before the person answers so it cannot change, and shown beside the question. An answer that changes Claude's lean is one the person gives a verdict on; answered "don't care", the lean lands as Claude's call, settling that one question.
 
 **the ask rule**:
 How Ledger decides whether a call reaches the person, as arithmetic over the person's own answers. Every call Claude would make for the person goes through it, the obvious ones included, but the few a phase names as Claude's own to land; a question the code, the record or a run can answer is no call, and Claude checks it instead. Each kind's rate is the pessimistic bound, the high end of a 95% range on how often Claude's answer would have cost the product; a kind asks until its rate falls under the person's threshold, 20% unless they pick another, then goes quiet, and asks again only once its rate rises over a quarter above it, with half each line where a change would be hard to undo. Danger, a kind under a care entry, and replacing an answer the person gave always ask; Claude's calls with one sensible answer go ahead as its own, on a count of their own, until overrules lift their rate over the threshold. A call that goes ahead lands on the ledger as Claude's, and Claude's own confidence never decides.
@@ -221,10 +221,7 @@ A question's kind — process, danger, contract, scope, look, words, behaviour o
 _Avoid_: category; kind of work (another thing)
 
 **verdict**:
-What Claude's answer would have cost the product, given for each call where the person's answer changed Claude's lean: nothing, a fix later, or a real loss. It is asked where the person signs off — decided, ready to build, finish and a quick-fix's close — and skip leaves it in the verdict queue. Every call not yet judged counts as a real loss until it is; verdicts are what the ask rule learns from.
-
-**the verdict queue**:
-The verdicts still waiting, reached from the Verdicts row on the start menu or an epic's menu while any wait, and given one at a time, oldest first.
+What Claude's answer would have cost the product, given for each call where the person's answer changed Claude's lean: nothing, a fix later, or a real loss. It is asked once, as the person changes the call — or taken from their words where those already say it — and never again; one they can't call yet counts as a real loss, as does a call never judged. Verdicts are what the ask rule learns from.
 
 **blind question**:
 Now and then, a call Claude would have made without asking is put to the person cold, Claude's answer held back; once they have answered, it shows what Claude would have picked. It keeps the ask rule honest about calls that have gone quiet, and in the build a task built on Claude's call waits for the answer before it lands.

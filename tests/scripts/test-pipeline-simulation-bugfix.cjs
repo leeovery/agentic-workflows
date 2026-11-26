@@ -16,8 +16,8 @@
 // this time the unit whose code the bug is in; then the specification,
 // where a Comment at ready to build changes the fix direction — replaced at
 // the spec, the writer, its review and the cut again, the recap staged
-// again over it with the investigation frozen — its verdict asked, into the
-// build. And a bugfix moved to a feature from its investigation, its
+// again over it with the investigation frozen, its verdict asked as it is
+// replaced — into the build. And a bugfix moved to a feature from its investigation, its
 // cause in the design: the root cause's validation taken in, the fix
 // direction reworking the area as a feature with no validation of its own,
 // start this work's screen and its yes, the feature's discussion reading
@@ -26,9 +26,9 @@
 // decision point stepping it: the plan run as a learned step, logged as
 // one; on a remote on GitHub, the squash default offered in ready to
 // build's place at its first showing, then ready to build, one screen with
-// the investigation's conclude, asking the verdict of the fix the person
-// changed at the conclusion, then drawn alone at its gate, which, its count
-// as long, stops before any code; then the replay of a lower threshold,
+// the investigation's conclude, the verdict on the fix the person changed
+// asked as they changed it, its gate, which, its count as long, stops
+// before any code; then the replay of a lower threshold,
 // which would have stopped at that step.
 //
 // Layer: simulation. World: the project every scenario starts from
@@ -45,7 +45,7 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const {
-  Sim, startUnit, enterEntry, handoff, answerGate, typeAtGate, gatesAnswered, continueUnit, startRow, startNew, specWritten, specLanded, specReviewed, cutTheSpec, readyClosed, readyToBuild, intoTheBuild,
+  Sim, startUnit, enterEntry, handoff, answerGate, verdictAsked, typeAtGate, gatesAnswered, continueUnit, startRow, startNew, specWritten, specLanded, specReviewed, cutTheSpec, readyClosed, readyToBuild, intoTheBuild,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded,
 } = require('./pipeline-world.cjs');
 const { history, lines, DAY } = require('./trust-world.cjs');
@@ -193,12 +193,13 @@ describe('pipeline simulation: bugfix', () => {
     // at the spec (ready-to-build.md, A Change Asked For): the writer goes
     // again, its land reviewed, the cut made again and the checklist closed
     // again, and the recap is staged again over the replacement, the
-    // investigation frozen, carrying on at the spec; the screen draws the
-    // new fix and asks its verdict, and its pick begins the build.
+    // investigation frozen, carrying on at the spec; the replacement's
+    // verdict asked there and then, the screen draws the new fix, and its
+    // pick begins the build.
     assert.strictEqual(typeAtGate(sim, 'ready to build', 'Write it to a temporary file and rename it instead').next, null);
     const atomic = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions.find((/** @type {{text: string}} */ d) => d.text === 'The save does atomic').id;
-    const renamed = sim.run(['ledger', 'replace', `${wu}.specification`, '--replaces', atomic, '--reason', 'changed-mind'], null,
-      JSON.stringify({ drops: ['atomically'], text: 'Write the save to a temporary file, then rename it', why: 'A rename is atomic where it ships.', by: 'person' })).id;
+    const renamed = verdictAsked(sim, sim.run(['ledger', 'replace', `${wu}.specification`, '--replaces', atomic, '--reason', 'changed-mind'], null,
+      JSON.stringify({ drops: ['atomically'], text: 'Write the save to a temporary file, then rename it', why: 'A rename is atomic where it ships.', by: 'person' }))).id;
     specLanded(sim, wu, [wu], [renamed]);
     specReviewed(sim, wu);
     cutTheSpec(sim, wu, CUT);
@@ -206,8 +207,6 @@ describe('pipeline simulation: bugfix', () => {
     const recap = sim.write(investigationCache(wu, 'recap.json'), { hunt: 'Two hypotheses; the save wrote a null on every crash, and a rename keeps it whole.', fixes: 'saving' });
     assert.deepStrictEqual(sim.run(['investigation', 'stage', wu, '--file', recap]).next, { kind: 'continue' });
     assert.match(sim.render(['ready-to-build', wu], { expect: 'content' }), /^FIX DIRECTION\n {2}Write the save to a temporary file, then rename it$/m);
-    sim.run(answerGate(sim, 'verdict', '--pick', 'n').next.argv);
-    sim.render(['ready-to-build', wu, '--alone'], { expect: 'content' });
     intoTheBuild(sim, wu, sim.run(answerGate(sim, 'ready to build', '--pick', 's').next.argv));
     assert.strictEqual(sim.manifest(wu).phases.investigation.items[wu].status, 'completed');
   });
@@ -245,7 +244,7 @@ describe('pipeline simulation: bugfix', () => {
     assert.deepStrictEqual(JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions.map((d) => d.text), ['The save writes a null that nothing checks.', 'Rework saving as a feature']);
   });
 
-  it('a bugfix whose investigation\'s plan the person always says yes at (19.S17, 16.10.5, 3.S4): the plan runs as a learned step, nothing answered at it, logged as a step; ready to build, after the squash default\'s offer on a remote on GitHub, one screen with the conclude, asks the verdict of the fix the person changed at the conclusion, then is drawn alone at its gate, which, as long answered alike, still stops before any code; and a lower threshold\'s replay would have stopped at that step', async (t) => {
+  it('a bugfix whose investigation\'s plan the person always says yes at (19.S17, 16.10.5, 3.S4): the plan runs as a learned step, nothing answered at it, logged as a step; ready to build, after the squash default\'s offer on a remote on GitHub, one screen with the conclude, its gate — the verdict on the fix the person changed asked as they changed it — which, as long answered alike, still stops before any code; and a lower threshold\'s replay would have stopped at that step', async (t) => {
     // Each showing told by its place and the frozen instant it was entered
     // at alone, no key: none blind here.
     const wu = 'save-null';
@@ -273,14 +272,9 @@ describe('pipeline simulation: bugfix', () => {
     sim.env = { ...sim.env, ...githubOffline(sim.configDir), GIT_SSH_COMMAND: 'false' };
     assert.match(readyToBuild(sim, wu), /^=== MENU: github squash gate /m, 'the squash default offered in the screen\'s place');
     assert.strictEqual(sim.run(answerGate(sim, 'github squash gate', '--pick', 'n').next.argv).github_squash, 'declined');
-    assert.match(sim.render(['ready-to-build', wu], { expect: 'content' }), /^THE HUNT$/m, 'the screen drawn whole once, the recap on it');
-    const verdict = answerGate(sim, 'verdict', '--pick', 'n').next.argv;
-    assert.deepStrictEqual(verdict.slice(-2), ['--at', 'conclusion'], 'the changed fix is asked at the conclusion');
-    sim.run(verdict);
-    const alone = sim.render(['ready-to-build', wu, '--alone'], { expect: 'content' });
-    assert.doesNotMatch(alone, /THE HUNT|THE OUTLINE/, 'after the verdict, the gate is drawn alone');
+    assert.match(sim.render(['ready-to-build', wu], { expect: 'content' }), /^THE HUNT$/m, 'the screen drawn whole, the recap on it');
     intoTheBuild(sim, wu, sim.run(answerGate(sim, 'ready to build', '--pick', 's').next.argv));
-    assert.deepStrictEqual(gatesAnswered(sim).slice(seeded.events.length), ['start menu', 'start this work', 'environment setup', 'github squash gate', 'verdict', 'ready to build']);
+    assert.deepStrictEqual(gatesAnswered(sim).slice(seeded.events.length), ['start menu', 'start this work', 'verdict', 'environment setup', 'github squash gate', 'ready to build']);
     const steps = [...new Map(trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'step').map((step) => [step.id, [step.gate, step.row]])).values()];
     assert.deepStrictEqual(steps, [['plan gate', 'y']]);
     const replayed = sim.render(['matrix-replay', '--threshold', '15'], { expect: 'content' }).replace(/\s+/g, ' ');

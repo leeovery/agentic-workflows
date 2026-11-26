@@ -66,9 +66,11 @@ Questions come one at a time. In a discussion each is slotted into the conversat
 
 ## Verdicts
 
-A departure is an answer of yours that changes Claude's lean. Each one gets a **verdict**: what the product would have lost had Claude built its own answer — nothing, a fix later, or a real loss. Verdicts are what the ask rule learns from, and they are asked where you already sign off, so none is left to a page you would have to remember to open: a topic's decided screen, ready to build, finish, and a quick-fix's close. Where you changed nothing, nothing is added.
+A departure is an answer of yours that changes Claude's lean. Each one gets a **verdict**: what the product would have lost had Claude built its own answer — nothing, a fix later, or a real loss. A blind answer that differs from Claude's is a departure too, and so is a later reversal: an "I agree" given in fatigue and overturned later counts as an overturn.
 
-A verdict you can't call yet can be skipped. It waits in the **verdict queue**, reached from the Verdicts row on the start menu or an epic's menu while any wait, one at a time, oldest first. Until judged, a departure counts as a real loss, so a backlog only makes Claude ask more. A blind answer that differs from Claude's is a departure too, and so is a later reversal: an "I agree" given in fatigue and overturned later counts as an overturn.
+The verdict is asked once, at the moment you make the change, in whatever phase you are in, while the reason is fresh. Where what you said as you changed it already makes it plain — "that would have broken refunds", "I just prefer it this way" — Claude records the verdict from your words and says so in a line, for you to correct; otherwise you are asked, and can answer that you can't call it yet. Claude never takes a "nothing" from silence. Whatever you give is final: nothing is asked again later, and no close waits on a verdict.
+
+Verdicts are what the ask rule learns from. A departure left without one counts as a real loss, so a kind of question you keep overruling keeps coming to you; "nothing" is how you say a change was taste, and Claude should carry on deciding that kind.
 
 ## Routine gates are learned
 

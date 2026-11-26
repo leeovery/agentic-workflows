@@ -69,8 +69,7 @@ Portal · from your inbox note · one session · started 15 Jul
 1 of 1 done · ⚑ close waits on you
 
 WAITING ON YOU ───────────────── 1 · asked in the conversation
-⚑ Close: what was proven; you changed none of Claude's calls,
-  so there is no verdict to give
+⚑ Close: what was proven
 
 THE CHANGE ───────────────────────────────── your note pins it
 Pressing m on a highlighted session marks it as the first

@@ -520,22 +520,36 @@ describe('corrections in words (16.15.4, 16.S67)', () => {
     ]);
   });
 
-  it('refuses a kind on a question no answer of this machine\'s names, a verdict on an answer that took the lean or one waiting on its verdict, a kind or a verdict there is none of, and argv of another shape — logging nothing', () => {
+  it('corrects a skip as any verdict given: the departure the person could not call is corrected once they can, and its loss leaves the counts', () => {
+    const { dir, id } = fumi();
+    const h = history({ project: id });
+    const unsure = h.depart('skip', 'behaviour');
+    logHolding(h.events);
+    callsHolding(dir, [unsure]);
+    const before = matrix(dir);
+
+    const corrected = run(dir, ['trust', 'correct', unsure, '--verdict', 'nothing']);
+
+    assert.deepStrictEqual([corrected.verdict, logged('correction').map(({ entry, verdict }) => [entry, verdict])], ['nothing', [[unsure, 'nothing']]]);
+    assert.deepStrictEqual([before, matrix(dir)].map((drawn) => rowOf(drawn, 'behaviour')?.slice(0, 28)), ['  behaviour     1 of 1     1', '  behaviour     1 of 1     0']);
+  });
+
+  it('refuses a kind on a question no answer of this machine\'s names, a verdict on an answer that took the lean or one owed its verdict, a kind or a verdict there is none of, and argv of another shape — logging nothing', () => {
     const { dir, id } = fumi();
     const h = history({ project: id });
     const [agreed] = h.agree(1, 'behaviour');
-    const waiting = h.depart(null, 'behaviour');
+    const owed = h.depart(null, 'behaviour');
     logHolding(h.events);
     const unlogged = newId();
-    callsHolding(dir, [agreed, waiting, unlogged]);
+    callsHolding(dir, [agreed, owed, unlogged]);
     const usage = 'Usage: engine trust correct <entry> --kind <process|danger|contract|scope|look|words|behaviour|internals> | --verdict <nothing|fix|loss>';
     /** @type {[string[], string|RegExp][]} */
     const refusals = [
       [[unlogged, '--kind', 'look'], /^trust correct: \S+ is no question this machine's trust log holds an answer or a call for — a kind is corrected where the counts read it$/],
       [[agreed, '--verdict', 'fix'], /^trust correct: \S+ is no departure this machine logged — a verdict is corrected on the machine where it was given$/],
-      [[waiting, '--verdict', 'fix'], /^trust correct: \S+ waits on its verdict — give it with verdict give; only a verdict given is corrected$/],
+      [[owed, '--verdict', 'fix'], /^trust correct: \S+ is owed its verdict — give it with verdict give; only a verdict given is corrected$/],
       [[agreed, '--kind', 'flow'], 'trust correct: "flow" is no kind — process, danger, contract, scope, look, words, behaviour, internals'],
-      [[waiting, '--verdict', 'skip'], 'trust correct: "skip" is no verdict to correct to — nothing, fix, loss; a skip is no verdict given'],
+      [[owed, '--verdict', 'skip'], 'trust correct: "skip" is no verdict to correct to — nothing, fix, loss'],
       [[agreed, '--kind'], usage],
       [[agreed, '--kind', 'look', '--verdict', 'fix'], usage],
       [['--kind', 'look'], usage],

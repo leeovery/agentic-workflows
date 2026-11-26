@@ -49,8 +49,7 @@ describe('the review phase\'s This session (20.10)', () => {
       'round 2 · 19 of 19 areas read · ⚑ finish waits on you',
       '',
       'WAITING ON YOU ───────────────── 1 · asked in the conversation',
-      '⚑ Finish: the report of every round, and your verdict on each',
-      '  call you changed',
+      '⚑ Finish: the report of every round',
       '',
       'FIX TASKS · PHASE 9 ────────────────────────────── 3 of 3 done',
       '✓ 9.1 The notes stage\'s live line after a failed check    done',
@@ -279,15 +278,14 @@ describe('the review phase\'s This session (20.10)', () => {
   })
 
   test('a quick-fix\'s review names its gate the close: the facts line flags the close waiting, and WAITING ON YOU asks for it in the conversation', () => {
-    const close = { kind: 'finish', id: 'close', text: 'Close: what was proven; you changed none of Claude\'s calls, so there is no verdict to give', page: null }
+    const close = { kind: 'finish', id: 'close', text: 'Close: what was proven', page: null }
     const rows = drawnRows(reviewLines(review({ type: 'quick-fix', waiting: [close] }), kitAt(NOW)))
 
-    expect(rows.slice(2, 7)).toEqual([
+    expect(rows.slice(2, 6)).toEqual([
       'round 2 · 19 of 19 areas read · ⚑ close waits on you',
       '',
       'WAITING ON YOU ───────────────── 1 · asked in the conversation',
-      '⚑ Close: what was proven; you changed none of Claude\'s calls,',
-      '  so there is no verdict to give',
+      '⚑ Close: what was proven',
     ])
   })
 

@@ -3,8 +3,8 @@
 // ---------------------------------------------------------------------------
 // The close a topic's decided gate stands on (ledger-engine/scripts/
 // domain/checklist.cjs, domain/decided.cjs): a topic a message set back in
-// progress closed afresh before its gate shows again, counting the verdicts
-// its close asks, a decision the record widens already taking no second
+// progress closed afresh before its gate shows again, a decision the
+// record widens already taking no second
 // line, the yes refused while a line widens a decision replaced since, a
 // line widening the replacement replacing it and a withdrawal taking a line
 // out, each labelled from the question it answers, one rule standing, a yes
@@ -36,15 +36,13 @@ const { close, payload, screen, staged, answer, run, reverse } = decidedHelpers(
 const { entries } = ledgerHelpers(dir);
 
 describe('a topic set back in progress (P9, 10.2.7)', () => {
-  it('shows its gate again only once closed afresh, counting the verdicts this close asks; a decision widened already takes no second line, the yes refuses while a line widens a decision replaced since, until a line widening the replacement at the end of its chain replaces it or a withdrawal takes it out, each labelled from the question it answers, one rule standing once a yes killed after they landed runs again', () => {
+  it('shows its gate again only once closed afresh; a decision widened already takes no second line, the yes refuses while a line widens a decision replaced since, until a line widening the replacement at the end of its chain replaces it or a withdrawal takes it out, each labelled from the question it answers, one rule standing once a yes killed after they landed runs again', () => {
     close();
     reverse(NOTE_MAP.title.answer, 'Hello.');
     staged({ lines: [
       { text: 'Sync is on once a folder is picked.', why: 'It holds for the product.', widens: NOTE_MAP.sync.answer },
       { text: 'First run shows the product before it asks.', why: 'The tour first holds everywhere.', widens: NOTE_MAP.shape.answer },
     ], candidates: [] });
-    run(answer('verdict', 'n'));
-    screen();
     run(answer('decided', 'y'));
     const scratch = statePath(dir(), '.cache', 'scratch', 'note.md');
     fs.writeFileSync(scratch, 'A login item needs a banner\n\nThe space-homing topic found one.\n');
@@ -59,9 +57,7 @@ describe('a topic set back in progress (P9, 10.2.7)', () => {
     markAllButTheClosingPass(dir(), UNIT, 'note-window');
     close();
     reverse(NOTE_MAP.price.answer, 'A price line at the end.');
-    assert.match(output(dir(), shown, { env: SESSION }), /YOUR VERDICT \(1 of 1 call you changed\)\n {2}└─ Is pricing mentioned\?/, 'the departure given its verdict at the earlier close is not this close\'s');
-    run(answer('verdict', 'n'));
-    assert.match(screen(), /WHAT YOU DECIDED \(4\)\n {2}├─ How does first run open\?\n {2}├─ What is the screen titled\?\n {2}├─ Is pricing mentioned\?\n {2}└─ Does a login item need a banner\?\n\nCLAUDE'S CALLS \(3\)[\s\S]*MENU: decided/,
+    assert.match(output(dir(), shown, { env: SESSION }), /WHAT YOU DECIDED \(4\)\n {2}├─ How does first run open\?\n {2}├─ What is the screen titled\?\n {2}├─ Is pricing mentioned\?\n {2}└─ Does a login item need a banner\?\n\nCLAUDE'S CALLS \(3\)[\s\S]*MENU: decided/,
       'the call the product-record line widened is still Claude\'s');
     assert.strictEqual(readManifest(dir(), UNIT).phases.discussion.items['note-window'].status, 'in-progress', 'the topic is decided only by the gate\'s yes');
     const [widened, tour] = ok(dir(), ['ledger', 'product']).decisions;

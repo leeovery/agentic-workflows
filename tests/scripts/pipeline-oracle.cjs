@@ -964,9 +964,10 @@ function auditCopies(root, events, shownAt, placed, headings, full, ctx) {
 // that raised it (9.1.11, 16.17.4). Every verdict
 // names a departure the trust log holds — a raise answered against the
 // lean, a keep among them, or a reversal — that the ledger holds as a
-// decision whose answer stood over the lean, or a keep (16.13.6), and none
-// follows one that is no skip (16.10.1); the verdict a command that `ran`
-// gave has its line, the latest.
+// decision whose answer stood over the lean, or a keep (16.13.6), and each
+// departure has one at most, a skip among them (16.10.1); the verdict a
+// command that `ran` gave has its line, the latest, given as it says: read
+// from the person's words with --from-words, asked otherwise.
 // Every call and raise carries the kind its label composes (16.11.3), and
 // the decision it names the kind and hard-to-undo mark that label gives; a
 // raise drawn from a park holds the label the park sealed, so the question
@@ -1155,17 +1156,13 @@ function auditTrust(sim, label, ran = []) {
       ctx(`the raise ${raise.id} and the line it landed disagree on whether the person's answer took Claude's lean`));
   }
   const departures = new Set([...answers.filter((e) => !tookTheLean(e)), ...ofType('reversal')].map((e) => e.entry));
-  /** @type {Map<string, Record<string, any>[]>} */
-  const given = new Map();
+  const given = new Set();
   for (const v of ofType('verdict')) {
     assert.ok(departures.has(v.entry), ctx(`the verdict ${v.id} names ${v.entry}, which is no departure the trust log holds`));
     const judged = byId.get(v.entry) ?? {};
     assert.ok((isDecision(judged) || isKeep(judged)) && judged.who_moved_whom === 'person-moved-claude', ctx(`the verdict ${v.id} names ${v.entry}, which is no departure in the ledger`));
-    given.set(v.entry, [...(given.get(v.entry) ?? []), v]);
-  }
-  for (const [entry, verdicts] of given) {
-    const judged = verdicts.slice(0, -1).filter((v) => v.verdict !== 'skip');
-    assert.deepStrictEqual(judged, [], ctx(`${entry} was given a verdict after one that was no skip`));
+    assert.ok(!given.has(v.entry), ctx(`${v.entry} was given a second verdict — a verdict is given once`));
+    given.add(v.entry);
   }
   for (const e of [...ofType('call'), ...ofType('raise')]) {
     assert.strictEqual(e.kind, kindOf(e.label), ctx(`the ${e.type} ${e.id} carries the kind ${e.kind}, which its label does not compose`));
@@ -1200,9 +1197,10 @@ function auditTrust(sim, label, ran = []) {
       ctx(`the care entry the drop ${drop.id} names, ${drop.kind} added ${drop.added}, still stands in the record, or was dropped before it was added`));
   }
   if (ran[0] === 'verdict' && ran[1] === 'give') {
-    const [, , prefix, verdict, , point] = ran;
+    const [, , prefix, verdict] = ran;
     const latest = ofType('verdict').at(-1);
-    assert.ok(latest !== undefined && latest.entry.startsWith(prefix) && latest.verdict === verdict && latest.point === point, ctx(`the trust log's latest verdict is not ${ran.slice(2).join(' ')}`));
+    const how = ran.includes('--from-words') ? 'words' : 'asked';
+    assert.ok(latest !== undefined && latest.entry.startsWith(prefix) && latest.verdict === verdict && latest.given === how, ctx(`the trust log's latest verdict is not ${ran.slice(2).join(' ')}`));
   }
 }
 

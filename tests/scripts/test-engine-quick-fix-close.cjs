@@ -15,8 +15,8 @@
 // its runs made through `verify setup` and `verify run` on the quick-fix's
 // one branch, or the one line saying the project has no way to run it
 // (19.5.13, 19.S21, P9); each fix's verdict from its pair, one the
-// orchestrator settled said so; and each call the person changed asked its
-// verdict first, at the point `close` (16.S36, 19.S22). Its yes is
+// orchestrator settled said so; and no verdict asked of a call the person
+// changed in it (16.S36, 19.S22). Its yes is
 // test-engine-quick-fix-close-yes.cjs's, its notes for later
 // test-engine-quick-fix-close-notes.cjs's; a review asked for at the close
 // is test-engine-quick-fix-review.cjs's; a fix's record is
@@ -171,7 +171,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     assert.deepStrictEqual([refused(['render', 'finish', UNIT]), refused(['land', 'finish', UNIT])], [`render finish: ${said}`, `land: ${said}`]);
   });
 
-  it('19.S21: says what running the product proved of each fix, no review step on its checklist, and nothing changed by the person, no verdict — then the yes, a review asked for, and questions about the change', () => {
+  it('19.S21: says what running the product proved of each fix, no review step on its checklist — then the yes, a review asked for, and questions about the change', () => {
     dir = provenWorld();
     closeable();
     const out = screen();
@@ -202,7 +202,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
   });
 
   it('offers a yes that merges nothing, where no fix is done', () => {
-    const view = { unit: UNIT, title: 'Typo', closed: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, filed: [], fixes: 0, landing: null, pair: [], kept: [] };
+    const view = { unit: UNIT, title: 'Typo', closed: [], warnings: [], aside: null, product: 'app', proven: null, filed: [], fixes: 0, landing: null, pair: [], kept: [] };
     const out = closeScreen(view);
 
     assert.match(sectionOf(out, 'MENU: finish'), /\*\*`y\/yes`\*\* {4}→ Close it — mark it complete\n/);
@@ -210,7 +210,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
   });
 
   it('says what its notes for later sent to the inbox, as the close answered them', () => {
-    const view = { unit: UNIT, title: 'Typo', closed: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, filed: [{ title: 'Spell --colour in the man page', kind: 'idea' }], fixes: 0, landing: null, pair: [], kept: [] };
+    const view = { unit: UNIT, title: 'Typo', closed: [], warnings: [], aside: null, product: 'app', proven: null, filed: [{ title: 'Spell --colour in the man page', kind: 'idea' }], fixes: 0, landing: null, pair: [], kept: [] };
 
     assert.match(sectionOf(closeScreen(view), 'DISPLAY: finish'), /\n\nWENT TO THE INBOX \(1\)\n {2}└─ Spell --colour in the man page \(idea\)\n/);
   });
@@ -268,7 +268,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     ].join('\n'));
   });
 
-  it('16.S36, 19.S22: asks a verdict on the call the person changed in it, at the close, before its gate — the yes refused until it is given', () => {
+  it('16.S36, 19.S22: asks no verdict of the call the person changed in it: it was owed as it was changed, and the close draws its gate', () => {
     dir = world();
     closeable();
     const { ask, decide } = ledgerReadHelpers(() => dir);
@@ -276,14 +276,8 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     ok(dir, ['ledger', 'replace', PLACE, '--replaces', call, '--reason', 'changed-mind'], {
       ...as(), stdin: JSON.stringify({ by: 'person', text: 'It is dropped.', why: 'The person wants it so.', drops: ['the alias'] }),
     });
-    const first = screen();
-    const yes = refused(['finish', 'yes', UNIT]);
-    const { argv } = run(['gate', 'verdict', '--pick', 'n']).next;
-    run(argv);
+    const out = screen();
 
-    assert.match(sectionOf(first, 'DISPLAY: finish'), /\n\nYOUR VERDICT \(1 of 1 call you changed\)\n {2}└─ Does --color still work\?\n {8}My answer: It stays as an alias\.\n {8}Yours: It is dropped\.\n$/);
-    assert.ok(!first.includes('MENU: finish'), 'the gate waits on the verdict');
-    assert.deepStrictEqual([yes, argv.filter((_, at) => at !== 2)], ['finish yes: a verdict is still to ask — render finish asks each before the yes', ['verdict', 'give', 'nothing', '--at', 'close']]);
-    assert.match(screen(), /=== MENU: finish /);
+    assert.deepStrictEqual([out.includes('VERDICT'), out.includes('MENU: finish')], [false, true]);
   });
 });

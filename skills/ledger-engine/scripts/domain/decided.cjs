@@ -60,17 +60,9 @@
 //   which never pass as theirs (21.6.5), and from Claude's calls, counted by
 //   the kind each decision carries; a call the labeller gave no label is
 //   counted as unlabelled (16.11).
-// - Each departure the person made on the topic that this machine logged —
-//   an answer that stood over Claude's lean, or a keep (16.10.1) — is asked
-//   its verdict there, one at a time, in the ledger's order, until each has
-//   one, a skip among them (16.10.2, 16.10.6); none asked where none was
-//   made (16.10.5). The count is of the departures this close asks: one
-//   given its verdict before it is not among them. The verdict is
-//   `verdict give … --at decided`.
 // - The decided gate never learns: it stops in every position (3.2.3), and
 //   its name is `decided` for good (16.11.9). Its yes, `decided yes`, stands
-//   on the screen as drawn: the close the payload was staged against, and
-//   no verdict still to ask. Every line and every candidate not struck is
+//   on the screen as drawn: the close the payload was staged against. Every line and every candidate not struck is
 //   checked against the ledger and the map as they stand, by the checks
 //   their landing makes, before anything is written, so a refused yes
 //   writes nothing. Then it lands each line — its question, then the
@@ -111,7 +103,6 @@ const { carrying } = require('./ledger.cjs');
 const { newId, resolveId } = require('./ledger-ids.cjs');
 const { factsOf, productOf, notCurrent, currentsOf, wordingOf } = require('./ledger-fold.cjs');
 const { readShown, answerMap } = require('./ledger-read.cjs');
-const { verdictAsked } = require('./ledger-verdicts.cjs');
 const { landRaised, checkRaised } = require('./ledger-write.cjs');
 const { labelsAtOnce } = require('./labeller.cjs');
 const { itemOf, topicTitle, dismissedNames } = require('./derivations.cjs');
@@ -517,11 +508,10 @@ const decidedDraws = (cwd, unit, topic) => stands(() => decidedStanding(cwd, uni
 /**
  * The record's side of the decided screen, read in one pass of the ledger:
  * the topic's map rows, what the person decided and what was carried over,
- * how many rows went on, Claude's calls with the kind each carries, and the
- * verdict asked.
- * @param {Shower} shower @param {string} root @param {string} unit @param {string} topic @param {string} closed when the checklist closed
+ * how many rows went on, and Claude's calls with the kind each carries.
+ * @param {Shower} shower @param {string} root @param {string} unit @param {string} topic
  */
-function recordSide(shower, root, unit, topic, closed) {
+function recordSide(shower, root, unit, topic) {
   const rows = /** @type {Row[]} */ (answerMap(shower, { unit, topic }, root).questions);
   const textsOf = (/** @type {string} */ standing) => rows.filter((row) => rowStanding(row) === standing).map((row) => row.text);
   const calls = claudesCalls(rows).map(({ answer, question }) => ({
@@ -530,7 +520,7 @@ function recordSide(shower, root, unit, topic, closed) {
     kind: /** @type {string|null} */ (shower.show(resolveId(answer.id, shower.folded.facts.keys())).kind),
     handed: handedTag(answer),
   }));
-  return { rows, decided: textsOf('yours'), carried: textsOf('carried'), moved: textsOf('moved').length, calls, verdict: verdictAsked(shower, root, (facts) => (facts.unit === unit && facts.topic === topic ? closed : null)) };
+  return { rows, decided: textsOf('yours'), carried: textsOf('carried'), moved: textsOf('moved').length, calls };
 }
 
 /**
@@ -551,7 +541,7 @@ function onClosedTopic(cwd, unit, topic, then, open = gateTopic) {
     const manifest = open(cwd, unit, topic);
     const { closed, skips } = decidedClose(cwd, unit, topic);
     const root = stateRoot(cwd);
-    return readShown(root, warnings, (shower) => then({ shower, root, manifest, closed, skips, side: recordSide(shower, root, unit, topic, closed) }));
+    return readShown(root, warnings, (shower) => then({ shower, root, manifest, closed, skips, side: recordSide(shower, root, unit, topic) }));
   } catch (err) {
     throw carrying(err, warnings);
   }
@@ -579,14 +569,13 @@ function closeShown(manifest, topic, side, staged) {
 }
 
 /**
- * `render decided <unit>.<topic> [--file <payload.json>] [--calls] [--alone]`: the
+ * `render decided <unit>.<topic> [--file <payload.json>] [--calls]`: the
  * decided screen, Claude's payload staged from `--file` or read back as
- * staged, its calls listed with `--calls`, drawn after a verdict with
- * `--alone` (projections/closing.cjs, `verdictPoint`).
- * @param {string} cwd @param {{dotpath?: string, file?: string, calls?: string, alone?: string}} args
+ * staged, its calls listed with `--calls`.
+ * @param {string} cwd @param {{dotpath?: string, file?: string, calls?: string}} args
  * @returns {string}
  */
-function decidedSurface(cwd, { dotpath, file, calls, alone }) {
+function decidedSurface(cwd, { dotpath, file, calls }) {
   try {
     const { unit, topic } = topicAddress(stateRoot(cwd), dotpath, 'decided');
     return onClosedTopic(cwd, unit, topic, ({ shower, manifest, closed, skips, side }) => {
@@ -597,8 +586,6 @@ function decidedSurface(cwd, { dotpath, file, calls, alone }) {
         calls: side.calls,
         listed: calls !== undefined,
         skips: skips.map(({ text, reason }) => ({ text, reason })),
-        verdict: side.verdict,
-        alone: alone !== undefined,
       });
     });
   } catch (err) {
@@ -841,9 +828,8 @@ function closingYes(cwd, unit, topic, staged, warnings) {
 function decidedYes(cwd, unit, topic) {
   /** @type {string[]} */
   const warnings = [];
-  const staged = onClosedTopic(cwd, unit, topic, ({ shower, manifest, closed, side }) => {
+  const staged = onClosedTopic(cwd, unit, topic, ({ shower, manifest, closed }) => {
     const ready = stagedFor(cwd, manifest, topic, closed);
-    if (side.verdict !== null) throw new Error('a verdict is still to ask — render decided asks each before the yes');
     const unreplaced = unreplacedLine(shower, manifest, topic, ready);
     if (unreplaced !== null) throw new Error(unreplaced);
     return ready;
@@ -881,7 +867,7 @@ function featureClose(shower, root, cwd, manifest, closed, warnings) {
   const unit = manifest.name;
   const staged = stagedFor(cwd, manifest, unit, closed);
   checkLines(cwd, manifest, unit, staged, warnings);
-  const side = recordSide(shower, root, unit, unit, closed);
+  const side = recordSide(shower, root, unit, unit);
   return { close: closeShown(manifest, unit, side, staged), calls: side.calls, staged, unreplaced: unreplacedLine(shower, manifest, unit, staged) };
 }
 

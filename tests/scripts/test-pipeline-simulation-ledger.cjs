@@ -23,14 +23,14 @@ const { LEDGER } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/
 const { launcher } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/call.cjs'));
 const { stateGit, startItem } = require('./engine-harness.cjs');
 const { statePath } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/state-root.cjs'));
-const { Sim, sessionLog, mappedEpic } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, mappedEpic, verdictAsked } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: ledger', () => {
   let sim;
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, and read back as its records, its maps, the product record, what a replacement affects, Claude\'s calls since the person last looked and the departures waiting on a verdict, and rendered to the knowledge base\'s copies, the records indexed; a decision the one-decision check could not judge is checked at a later start', (t) => {
+  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, and read back as its records, its maps, the product record, what a replacement affects, Claude\'s calls since the person last looked and a departure owing its verdict as it is made, and rendered to the knowledge base\'s copies, the records indexed; a decision the one-decision check could not judge is checked at a later start', (t) => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window', 'space-homing']);
     startItem(sim.dir, wu, 'discussion', 'note-window');
@@ -224,12 +224,11 @@ describe('pipeline simulation: ledger', () => {
     assert.deepStrictEqual(answer('note-window', eitherGlowing), ['answered', [glows]]);
     sim.run(['workunit', 'reactivate', mint]);
 
-    // The verdict queue: nothing waits while every answer is Claude's; the
-    // person's replacement of Claude's own call, for a mistake, stands over
-    // its lean and waits on a verdict.
-    assert.deepStrictEqual(sim.run(['verdict', 'queue']).departures, []);
-    const departed = ledger(['replace', note, '--replaces', sized, '--reason', 'was-wrong'],
-      { by: 'person', who_moved_whom: 'person-moved-claude', drops: ['its own size'], text: 'A note fits its text.', why: 'A note is read, not placed.' });
-    assert.deepStrictEqual(ids(sim.run(['verdict', 'queue']).departures), [departed]);
+    // The person's replacement of Claude's own call, for a mistake, stands
+    // over its lean and owes its verdict, there and then.
+    const departed = sim.run(['ledger', 'replace', note, '--replaces', sized, '--reason', 'was-wrong'], null,
+      JSON.stringify({ by: 'person', who_moved_whom: 'person-moved-claude', drops: ['its own size'], text: 'A note fits its text.', why: 'A note is read, not placed.' }));
+    assert.strictEqual(departed.verdict_owed, departed.id);
+    verdictAsked(sim, departed);
   });
 });

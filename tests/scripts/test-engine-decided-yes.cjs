@@ -18,8 +18,8 @@
 // (test-engine-ready-to-build-feature.cjs, 8.S31); a refused yes writing
 // nothing, and a yes run again after a kill
 // landing nothing twice — a restage after it taking no second line; the
-// yes refused with nothing staged, a verdict still to ask, or no
-// conversation; a product-record line changed through a comment, never
+// yes refused with nothing staged or no conversation, and never held back
+// by a call the person changed; a product-record line changed through a comment, never
 // struck (9.S55); and each line landing with the kind and hard-to-undo mark
 // its question's label gives, the labels put at once, so a spec line
 // restating one reads by its mark.
@@ -214,14 +214,15 @@ describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
       `decided stage: ${UNIT} is an epic, whose topic closes at its decided screen — render decided ${UNIT}.note-window --file <payload.json> stages Claude's lines and candidates`);
   });
 
-  it('refuses with nothing staged, while a verdict is still to ask, and without a conversation, writing nothing', () => {
+  it('refuses with nothing staged and without a conversation, writing nothing; a call the person changed holds it back no more than any write — its verdict was owed as it was changed', () => {
     close();
     const yes = ['decided', 'yes', UNIT, 'note-window'];
     assert.match(refusedPristine(dir(), yes, { env: SESSION }).error, /^decided yes: nothing is staged for note-window — render decided fumi\.note-window --file <payload\.json> stages Claude's lines and candidates$/);
     staged(NO_PAYLOAD);
     assert.match(refusedPristine(dir(), yes, { env: { CLAUDE_CODE_SESSION_ID: undefined } }).error, /^decided yes: no conversation to write in/);
     reverse(NOTE_MAP.title.answer, 'Hello.');
-    assert.strictEqual(refusedPristine(dir(), yes, { env: SESSION }).error, 'decided yes: a verdict is still to ask — render decided asks each before the yes');
+    ok(dir(), yes, { env: SESSION });
+    assert.strictEqual(readManifest(dir(), UNIT).phases.discussion.items['note-window'].status, 'completed');
   });
 
   it('offers no strike for a product-record line: a comment changes it (9.S55)', () => {

@@ -2,8 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The decided screen as drawn from its view (ledger-engine/scripts/domain/
-// projections/decided.cjs): the verdict's question cut to the map's length,
-// as the other rows are, the gate's yes saying the small counts it covers
+// projections/decided.cjs): the gate's yes saying the small counts it covers
 // in words, as 9.7.3 draws it, and a one-topic unit's candidates spoken of
 // as the items its yes parks on the roadmap (8.10.2).
 //
@@ -21,7 +20,7 @@ const { decidedScreen, strikePick } = require('../../skills/ledger-engine/script
 const VIEW = {
   unit: 'fumi', topic: 'note-window', title: 'Note Window',
   decided: [], carried: [], moved: 0, calls: [], listed: false,
-  lines: [], withdrawals: [], parks: false, candidates: [], skips: [], verdict: null,
+  lines: [], withdrawals: [], parks: false, candidates: [], skips: [],
 };
 
 /** What the decided gate says the yes covers. @param {Partial<typeof VIEW>} view */
@@ -31,11 +30,6 @@ const covers = (view) => /^Your yes marks .*$/m.exec(decidedScreen({ ...VIEW, ..
 const many = (n, make) => Array.from({ length: n }, (_, at) => make(at));
 
 describe('the decided screen drawn', () => {
-  it('cuts the verdict\'s question to the map\'s length', () => {
-    const verdict = { entry: 'abc', at: 1, of: 1, question: 'Which corner of the screen does a new note open in?', lean: 'Top left.', yours: 'Bottom right.' };
-    assert.match(decidedScreen({ ...VIEW, verdict }), /\nYOUR VERDICT \(1 of 1 call you changed\)\n {2}└─ Which corner of the screen does a new n…\n/);
-  });
-
   it('says the counts its yes covers in words, up to nine', () => {
     const line = (/** @type {number} */ at) => ({ text: `Rule ${at}.`, replaces: null });
     const withdrawal = (/** @type {number} */ at) => ({ text: `Old ${at}.`, why: `Why ${at}.` });

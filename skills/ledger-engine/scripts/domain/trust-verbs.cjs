@@ -31,8 +31,8 @@
 //   follow (trust-evidence.cjs). The entry is named by a prefix of its id,
 //   as a ledger link names one. A kind is corrected on a question this
 //   machine logged an answer or a call for; a verdict, on a departure this
-//   machine logged whose latest verdict is no skip — one waiting is given
-//   its verdict, never corrected. It holds the writer lock, as `verdict
+//   machine logged that has one, a skip among them — one owed its verdict
+//   is given it, never corrected. It holds the writer lock, as `verdict
 //   give` does, and writes nothing the state holds.
 // ---------------------------------------------------------------------------
 
@@ -208,7 +208,7 @@ function readCorrection(args) {
   const [prefix, flag, value, ...rest] = args;
   if (prefix === undefined || prefix.startsWith('--') || value === undefined || rest.length > 0 || (flag !== '--kind' && flag !== '--verdict')) throw new Error(`Usage: engine ${CORRECT_USAGE}`);
   if (flag === '--kind' && !KINDS.includes(/** @type {Kind} */ (value))) throw new Error(`trust correct: "${value}" is no kind — ${KINDS.join(', ')}`);
-  if (flag === '--verdict' && !JUDGED.includes(value)) throw new Error(`trust correct: "${value}" is no verdict to correct to — ${JUDGED.join(', ')}; a skip is no verdict given`);
+  if (flag === '--verdict' && !JUDGED.includes(value)) throw new Error(`trust correct: "${value}" is no verdict to correct to — ${JUDGED.join(', ')}`);
   return flag === '--kind' ? { prefix, kind: /** @type {Kind} */ (value), verdict: null } : { prefix, kind: null, verdict: value };
 }
 
@@ -231,10 +231,10 @@ function correct(cwd, args) {
       throw new Error(`trust correct: ${messageOf(err)}`);
     }
     const entry = shortId(id, facts.keys());
-    const { answers, departures, judged } = evidenceOf(root);
+    const { answers, departures, verdicts } = evidenceOf(root);
     if (kind !== null && !answers.some(({ event }) => event.entry === id)) throw new Error(`trust correct: ${entry} is no question this machine's trust log holds an answer or a call for — a kind is corrected where the counts read it`);
     if (verdict !== null && !departures.has(id)) throw new Error(`trust correct: ${entry} is no departure this machine logged — a verdict is corrected on the machine where it was given`);
-    if (verdict !== null && !judged.has(id)) throw new Error(`trust correct: ${entry} waits on its verdict — give it with verdict give; only a verdict given is corrected`);
+    if (verdict !== null && !verdicts.has(id)) throw new Error(`trust correct: ${entry} is owed its verdict — give it with verdict give; only a verdict given is corrected`);
     record('correction', { entry: id, kind, verdict }, { cwd, warnings });
     const answered = kind === null ? { entry, verdict } : { entry, kind };
     return warnings.length > 0 ? { ...answered, warnings } : answered;

@@ -85,7 +85,7 @@ The close also proposes what goes beyond the topic:
 - **Product-record lines** — a decision here that is really a rule for the whole product, such as a principle you stated, is proposed as a line of the product record, which every later topic reads first. A line already in the record that should go is proposed for withdrawal.
 - **Candidates** — work the decision creates that no topic owns, and that holds a call you would want to make. In an epic it is proposed as a new topic, with a brief; in a feature it is proposed for the roadmap, on a horizon you name.
 
-An epic's topic then stops at its **decided** gate: what it decided, with the ledger in view, the product-record lines and the candidates, any of which you can strike or reword. Before the gate it asks a verdict on each call you changed: what Claude's answer would have cost, nothing, a fix later, or a real loss. Your yes marks the topic decided and returns you to the epic's menu. A feature's topic has no gate of its own: what it decided is shown with the specification at [ready to build](specification.md#ready-to-build), and that yes takes both.
+An epic's topic then stops at its **decided** gate: what it decided, with the ledger in view, the product-record lines and the candidates, any of which you can strike or reword. Your yes marks the topic decided and returns you to the epic's menu. A feature's topic has no gate of its own: what it decided is shown with the specification at [ready to build](specification.md#ready-to-build), and that yes takes both.
 
 ## When a decided topic comes back
 

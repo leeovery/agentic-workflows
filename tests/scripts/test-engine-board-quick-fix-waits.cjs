@@ -7,7 +7,7 @@
 // its review, until answered, drawn after a /clear as before it, open in
 // the ledger, and a replacement raised there in the conversation that
 // raised it;
-// the close once its screen draws, with whether a verdict is owed; the
+// the close once its screen draws, saying what was proven; the
 // session followed to All work once it closes, which leaves the
 // conversation's place, the banner the unit's close, its tab dated by the
 // close;
@@ -22,7 +22,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { output, okSectionsAsync, readManifest, cleanupFixture } = require('./engine-harness.cjs');
+const { okSectionsAsync, readManifest, cleanupFixture } = require('./engine-harness.cjs');
 const { ledgerReadHelpers, leaningCall } = require('./ledger-world.cjs');
 const { UNIT, PLACE, FLAG } = require('./quick-fix-world.cjs');
 const { fixture, misfits, emptyLists, place } = require('./board-world.cjs');
@@ -31,7 +31,7 @@ const { CALL, working, closable, fix, quickFixBoard } = require('./quick-fix-boa
 /** The quick-fix's review's place. */
 const REVIEW = `${UNIT}.review`;
 
-const NONE_CHANGED = 'Close: what was proven; you changed none of Claude\'s calls, so there is no verdict to give';
+const CLOSE = Object.freeze({ kind: 'finish', id: 'close', text: 'Close: what was proven', page: null });
 
 let dir = ''; // the project
 const { env, run, board, atTheFixes, reported, parkedOn, replaced } = quickFixBoard(() => dir);
@@ -79,7 +79,7 @@ describe('what waits on the person in a quick-fix, and its close (20.14)', () =>
     assert.deepStrictEqual(afterClear, view.waiting.slice(0, 1), 'the question open in the ledger drawn with no raise of it; the replacement waits in the conversation that raised it');
   });
 
-  it('while its close waits: what was proven and that no verdict is owed, flagged on the banner; each fix done with the round its pair passed it in; its record from summary.md (20.14.1, 16.10.4, 19.5.17)', () => {
+  it('while its close waits: what was proven, flagged on the banner; each fix done with the round its pair passed it in; its record from summary.md (20.14.1, 16.10.4, 19.5.17)', () => {
     dir = closable();
     atTheFixes();
     reported('1.1', 1, false);
@@ -87,26 +87,20 @@ describe('what waits on the person in a quick-fix, and its close (20.14)', () =>
     const { view, banner } = board();
     const line = board(['--tab', 'all']).view.units.find((/** @type {{unit: string}} */ held) => held.unit === UNIT);
 
-    assert.deepStrictEqual([view.standing, view.progress, view.waiting], ['close', { done: 1, total: 1, written: true }, [{ kind: 'finish', id: 'close', text: NONE_CHANGED, page: null }]]);
+    assert.deepStrictEqual([view.standing, view.progress, view.waiting], ['close', { done: 1, total: 1, written: true }, [CLOSE]]);
     assert.deepStrictEqual(view.fixes, [fix('1.1', FLAG, 'done', { rounds: { sent_back: 1, passed: 2 } })]);
     assert.deepStrictEqual(view.record, [{ title: FLAG, changed: 'The flag parser reads --colour.', why: 'The flag was spelt the American way.', leaves: 'Old scripts passing --color.' }]);
     assert.deepStrictEqual(banner, { name: 'Typo', state: 'needs', facts: [place('quick-fix'), { text: '1 of 1 done', needs: false }, { text: '1 waiting on you', needs: true }] });
     assert.strictEqual(line.standing, 'close waits on you');
   });
 
-  it('16.10.4: the close says a verdict is owed on a call the person changed in it, and once given, that each is', () => {
+  it('16.10.4: the close says what was proven, and no more where the person changed a call of Claude\'s in it: its verdict was owed as it was changed', () => {
     dir = closable();
     atTheFixes();
     const { ask, decide } = ledgerReadHelpers(() => dir);
     replaced(decide(PLACE, ask(PLACE, 'Does --color still work?'), 'It stays as an alias.'), 'person', 'It is dropped.');
-    const owed = board().view.waiting;
-    output(dir, ['render', 'finish', UNIT], { env: env() });
-    run(run(['gate', 'verdict', '--pick', 'n']).next.argv);
 
-    assert.deepStrictEqual([owed, board().view.waiting.map(({ text }) => text)], [
-      [{ kind: 'finish', id: 'close', text: 'Close: what was proven; you changed 1 call of Claude\'s, so there is a verdict to give', page: null }],
-      ['Close: what was proven; you changed 1 call of Claude\'s and gave each its verdict'],
-    ]);
+    assert.deepStrictEqual(board().view.waiting, [CLOSE]);
   });
 
   it('20.14.2: once closed, This session follows the session to All work, the banner the unit\'s close, its place left; with no review asked for, its tab dates its implementation by the close (20.15.1)', () => {

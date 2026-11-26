@@ -8,10 +8,10 @@
 // kind, the outline, the phase cut read from the manifest (11.S31), auto
 // first and recommended (3.S18), the review row only where the session can
 // publish a page (11.S22, 11.S27), and, while the page is open, its foot
-// counting the review by the marks last stored (11.11.7); a verdict asked
-// of each call the person changed among the spec's gap answers before the
-// gate (16.10.11); no construction, finding, re-loop or sign-off gate left
-// to raise before it (11.S12); and the units that never come to it, those
+// counting the review by the marks last stored (11.11.7); no verdict
+// asked of a call the person changed among the spec's gap answers, its
+// verdict given as it was changed; no construction, finding, re-loop or
+// sign-off gate left to raise before it (11.S12); and the units that never come to it, those
 // the spec's entry refuses. Every refusal writes and commits nothing.
 //
 // Layer: verb. World: the ready to build world closed
@@ -23,7 +23,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const { ok, sectionOf, statePath, layout, readState, readManifest, commitAll } = require('./engine-harness.cjs');
+const { ok, sectionOf, statePath, layout, readState, commitAll } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 const { NB, unwrap } = require('./render-surfaces-world.cjs');
@@ -140,35 +140,18 @@ describe('the screen (11.8.8, 3.S18)', () => {
   });
 });
 
-describe('a verdict on each call the person changed among the spec\'s gap answers (16.10.11)', () => {
-  it('asks it before the gate, one at a time, given at ready to build, the yes refused until each is asked — a change made in a topic never asked here', () => {
+describe('a call the person changed among the spec\'s gap answers (16.10.11)', () => {
+  it('asks no verdict at ready to build: its verdict was owed as it was changed, and the screen draws its gate', () => {
     const call = answered(dir(), SPEC_AT, 'Is a refund ever partial?', { ...MADE, text: 'Never.' });
     const changed = write(dir(), 'replace', SPEC_AT, ['--replaces', call, '--reason', 'changed-mind'], { by: 'person', drops: ['never partial'], text: 'When the person asks.', why: 'The person wants it so.' });
     const spec = readState(dir(), layout.unit(UNIT, 'spec.md'));
     fs.rmSync(statePath(dir(), layout.unit(UNIT, 'spec.md')));
-    const cards = (/** @type {string} */ status) => {
-      const manifest = readManifest(dir(), UNIT);
-      manifest.phases.discussion.items.cards.status = status;
-      createManifest(dir(), UNIT, manifest);
-    };
-    cards('in-progress');
-    const elsewhere = answered(dir(), `${UNIT}.discussion.cards`, 'Is a card saved?', { ...MADE, text: 'Never.' });
-    write(dir(), 'replace', `${UNIT}.discussion.cards`, ['--replaces', elsewhere, '--reason', 'changed-mind'], { by: 'person', drops: ['never saved'], text: 'When asked.', why: 'The person wants it so.' });
-    cards('completed');
     written(dir(), spec.replace('\n## 2-S.', `\n2.1.3 A refund is partial when the person asks. [${changed}]\n\n## 2-S.`));
     cut(dir(), [CARDS, REFUNDS]);
     closeReady(dir());
-    const first = screen();
+    const drawn = screen();
 
-    assert.match(sectionOf(first, 'DISPLAY: ready to build'), /YOUR VERDICT \(1 of 1 call you changed\)\n {2}└─ Is a refund ever partial\?\n {8}My answer: Never\.\n {8}Yours: When the person asks\.\n$/);
-    assert.ok(!first.includes('MENU: ready to build'), 'the gate waits on the verdict');
-    assert.strictEqual(refused(['ready-to-build', 'yes', UNIT, '--position', 'auto']), 'ready-to-build yes: a verdict is still to ask — render ready-to-build asks each before the yes');
-    const { argv } = pick('verdict', 'f');
-    assert.deepStrictEqual([argv[2].startsWith(changed), argv.filter((_, at) => at !== 2)], [true, ['verdict', 'give', 'fix', '--at', 'ready-to-build']]);
-    ok(dir(), ['verdict', 'give', changed, 'fix', '--at', 'ready-to-build'], { env: SESSION });
-    assert.match(screen(), /=== MENU: ready to build /);
-    const alone = screen(['--alone']);
-    assert.deepStrictEqual([alone.includes('=== DISPLAY'), alone.includes('=== MENU: ready to build ')], [false, true], 'after a verdict, --alone draws the gate with none of the screen');
+    assert.deepStrictEqual([drawn.includes('VERDICT'), /=== MENU: ready to build /.test(drawn)], [false, true]);
   });
 });
 

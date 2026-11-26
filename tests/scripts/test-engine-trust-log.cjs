@@ -69,7 +69,7 @@ const SAMPLES = Object.freeze({
     blocks_build: false, replaced_by: null, always: null, measured: 'E1.2', chain: QUESTION, raised: '2026-10-28T09:58:00.000Z', blind: false, from_before: false,
   },
   call: { entry: ENTRY, kind: null, label: null, sort: 'one', blocks_build: false },
-  verdict: { entry: ENTRY, verdict: 'skip', point: 'decided' },
+  verdict: { entry: ENTRY, verdict: 'skip', given: 'words' },
   'blind-draw': { entry: ENTRY, kind: 'look' },
   reversal: { entry: ENTRY, reverses: REVERSED },
   'position-switch': { unit: 'fumi', to: 'step' },
@@ -92,7 +92,7 @@ function readAll(dir) {
 }
 
 describe('record (16.13.4)', () => {
-  it('records every event, a line each ended by LF, its own fields in the schema\'s order after the fields the engine sets, at the version its shape last changed in — a raise\'s at 2, which added from_before, every other at 1', () => {
+  it('records every event, a line each ended by LF, its own fields in the schema\'s order after the fields the engine sets, at the version its shape last changed in — a raise\'s at 2, which added from_before, a verdict\'s at 3, which gave how it was given in place of where, every other at 1', () => {
     assert.deepStrictEqual(Object.keys(SAMPLES), Object.keys(SCHEMA.events), 'a sample of every event the schema holds');
     const dir = project('fumi');
 
@@ -105,7 +105,7 @@ describe('record (16.13.4)', () => {
       const { id, at, ...rest } = recorded[i];
       assert.ok(isId(id), `${type}: ${id}`);
       assert.match(/** @type {string} */ (at), /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/, `${type}: to the millisecond`);
-      assert.deepStrictEqual(rest, { v: type === 'raise' ? 2 : 1, type, project: PROJECT_ID, project_name: 'fumi', model: null, session: null, ...fields }, type);
+      assert.deepStrictEqual(rest, { v: ({ raise: 2, verdict: 3 })[type] ?? 1, type, project: PROJECT_ID, project_name: 'fumi', model: null, session: null, ...fields }, type);
       assert.deepStrictEqual(Object.keys(recorded[i]), [...HEADER_FIELDS, ...Object.keys(fields)], `${type}: in the schema's order`);
     }
     assert.strictEqual(new Set(recorded.map((event) => event.id)).size, recorded.length, 'each its own id');
@@ -594,6 +594,16 @@ describe('reading', () => {
     fs.appendFileSync(logPath(), lines(before, { ...before, id: idOf('Stray'), from_before: true }));
 
     assert.deepStrictEqual(readAll(dir), [raise, { ...before, from_before: false }]);
+  });
+
+  it('reads a verdict written before version 3 with the point it was given at, as asked, and one at version 3 as it holds it; never a version-3 field on an earlier line, nor the point on a version-3 one', () => {
+    const dir = project('fumi');
+    const verdict = record('verdict', SAMPLES.verdict, from(dir));
+    const { given: _added, ...shape } = verdict;
+    const before = { ...shape, v: 2, id: idOf('Before'), point: 'finish' };
+    fs.appendFileSync(logPath(), lines(before, { ...before, id: idOf('Stray'), given: 'words' }, { ...verdict, id: idOf('Pointed'), point: 'finish' }));
+
+    assert.deepStrictEqual(readAll(dir), [verdict, { ...before, given: 'asked' }]);
   });
 
   it('skips each line it cannot read — a newer release\'s version, a type it does not know, a line no event, one of the wrong shape, a time that is none, a session that is no session id, one followed by words or one in capitals, words for a model, an unterminated last line — and never stops', () => {

@@ -6,8 +6,9 @@
 // and Claude's calls since the person last looked (ledger-since.cjs) — each
 // a projection of the ledger worked out when read, never kept (5.8.2),
 // answered as JSON; what the person sees of them is drawn later. The
-// verdict queue is read the same way (verdict.cjs), and so are the files a
-// unit's current entries link as canonical, which its spec links (11.6.3).
+// departure a verdict is asked on is read the same way (verdict.cjs), and
+// so are the files a unit's current entries link as canonical, which its
+// spec links (11.6.3).
 //
 // - Each read folds the ledger in one streamed pass (ledger-fold.cjs) and
 //   reads again the lines of the entries it shows alone, from the file the

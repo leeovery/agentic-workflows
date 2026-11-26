@@ -16,7 +16,7 @@
 //   read. An earlier round's report that does not read leaves the fix's
 //   rounds untold, said among the warnings.
 // - Where it stands: the close waiting on the person once its screen draws
-//   (finish.cjs, `closeVerdicts`); else working — stopped where nothing of
+//   (finish.cjs, `finishDraws`); else working — stopped where nothing of
 //   its fixes can go on without an answer, by the build's rule, as the
 //   unit's standing reads it (board-standing.cjs, `tasksStopped`). Once a
 //   review is asked for at its close, it stands in the review as any unit
@@ -25,8 +25,7 @@
 // - What waits on the person is the unit's one list (board-standing.cjs,
 //   waits.cjs): the questions a fix's builder parked its task on, as the
 //   build's; each question asked in the conversation, parking nothing
-//   (19.5.25); and the close, with whether a verdict is owed on a call the
-//   person changed (16.10.4).
+//   (19.5.25); and the close.
 // - The change is the unit's description, pinned by the note it began
 //   from — the inbox's or the roadmap's, else none.
 // - CLAUDE'S CALLS are every current decision made in the quick-fix that
@@ -50,12 +49,11 @@ const { heldBackIn } = require('../questions.cjs');
 const { pairPassed, beingRead, reviewedNone } = require('../round-report.cjs');
 const { parseShownTask } = require('../task-id.cjs');
 const { fixesUnderWay, startedOn, FIXES_PHASE } = require('../derivations.cjs');
-const { closeVerdicts } = require('../finish.cjs');
+const { finishDraws } = require('../finish.cjs');
 const { summaryRecords, RECORD_SECTIONS } = require('../quick-fix-record.cjs');
 const { seedOrigin } = require('../inbox.cjs');
 const { titlecase } = require('../conventions.cjs');
 const { projectName } = require('../state-checks.cjs');
-const { counted } = require('./map.cjs');
 const { taskLine, standingAt, questionsOf, roundsRead } = require('./board-build.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
@@ -132,24 +130,16 @@ const ledgerAt = (at) => at.once('quick-fix-ledger', () => readShown(at.root, at
   };
 }));
 
-/** The close's verdict words: none to give, each given, or how many are owed. @param {{changed: number, owed: number}} verdicts */
-function verdictWords({ changed, owed }) {
-  if (changed === 0) return 'you changed none of Claude\'s calls, so there is no verdict to give';
-  const yours = `you changed ${counted(changed, 'call')} of Claude's`;
-  if (owed === 0) return `${yours} and gave each its verdict`;
-  return `${yours}, so ${owed === 1 ? 'there is a verdict' : `there are ${owed} verdicts`} to give`;
-}
+/** The close, as what waits on the person. @type {WaitingLine} */
+const CLOSE = Object.freeze({ kind: 'finish', id: 'close', text: 'Close: what was proven', page: null });
 
 /**
  * The close, as what waits on the person once its screen draws (the
- * header's): what was proven, and whether a verdict is owed; null where it
- * does not draw, read once a call.
+ * header's): what was proven; null where it does not draw, read once a
+ * call.
  * @param {BoardAt} at @returns {WaitingLine|null}
  */
-const closeWait = (at) => at.once('quick-fix-close', () => {
-  const verdicts = fixing(at) ? closeVerdicts(at.cwd, at.unit, at.warnings) : null;
-  return verdicts === null ? null : { kind: 'finish', id: 'close', text: `Close: what was proven; ${verdictWords(verdicts)}`, page: null };
-});
+const closeWait = (at) => at.once('quick-fix-close', () => (fixing(at) && finishDraws(at.cwd, at.unit) ? CLOSE : null));
 
 /** Where the quick-fix stands (the header's). @param {BoardAt} at @returns {QuickFixView['standing']} */
 const standingOf = (at) => (closeWait(at) === null ? 'working' : 'close');

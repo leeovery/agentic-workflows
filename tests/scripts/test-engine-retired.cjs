@@ -168,7 +168,7 @@ describe('the command catalogue (6.S3)', () => {
   const NEW = {
     ledger: ['ask', 'find', 'decide', 'replace', 'hold', 'move', 'merge', 'record', 'map', 'product', 'since', 'affected'],
     raise: ['answer'],
-    verdict: ['queue', 'give'],
+    verdict: ['give'],
     task: ['note'],
     land: ['open', 'chain', 'phase', 'finish'],
     brief: [],

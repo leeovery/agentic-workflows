@@ -162,14 +162,14 @@ describe('the catch-up at boot (4.7.8)', () => {
     const pinned = process.env.LEDGER_CONFIG_DIR;
     process.env.LEDGER_CONFIG_DIR = path.join(world(), 'config');
     try {
-      const verdictFrom = (/** @type {string} */ cwd) => record('verdict', { entry: newId(), verdict: 'fix', point: 'decided' }, { cwd, warnings: [] }).entry;
+      const verdictFrom = (/** @type {string} */ cwd) => record('verdict', { entry: newId(), verdict: 'fix', given: 'asked' }, { cwd, warnings: [] }).entry;
       const onFirst = verdictFrom(first);
       verdictFrom(second);
 
       assert.strictEqual(boot(second).state, 'ready');
 
       assert.strictEqual(projectIdOf(second), firstId);
-      assert.deepStrictEqual([...evidenceOf(statePath(second)).judged], [onFirst]);
+      assert.deepStrictEqual([...evidenceOf(statePath(second)).verdicts.keys()], [onFirst]);
     } finally {
       process.env.LEDGER_CONFIG_DIR = pinned;
     }

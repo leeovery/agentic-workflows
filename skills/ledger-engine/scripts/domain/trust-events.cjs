@@ -71,7 +71,11 @@
 //   Claude's, no experiment measuring its question, no label sending it to
 //   check.
 // - verdict: a departure's verdict (16.10.9), by its ledger entry — nothing,
-//   a fix later, a real loss, or a skip — and the point it was given at.
+//   a fix later, a real loss, or a skip, the person unable to call it yet —
+//   and how it was given: asked, the person's pick of the verdict question,
+//   or read from their words as they made the departure (`given`, added at
+//   version 3, `asked` on a line before it). A line before version 3 holds
+//   the point it was given at, which nothing reads.
 // - blind-draw: a call drawn as a blind question (16.17.5), with its kind,
 //   by the ledger line that holds Claude's call: the line the person's
 //   answer lands at, which seals it; in the build, the park the question
@@ -140,7 +144,7 @@
 // ---------------------------------------------------------------------------
 
 const {
-  type, TEXT, ID, FLAG, TIME, VERSION, KEY, KINDS, CARE_KINDS, ALWAYS_MARK, EXPERIMENT, MODEL, LABEL: A_LABEL, oneOf, nullable, field, event, addedIn, readFields,
+  type, TEXT, ID, FLAG, TIME, VERSION, KEY, KINDS, CARE_KINDS, ALWAYS_MARK, EXPERIMENT, MODEL, LABEL: A_LABEL, oneOf, nullable, field, endedAt, event, changedIn, readFields,
 } = require('./event-fields.cjs');
 const { DECIDED_BY } = require('./ledger-events.cjs');
 const { KEBAB_SLUG_PATTERN, BUILD_POSITIONS } = require('../kernel/manifest-schema.cjs');
@@ -164,10 +168,9 @@ const SORT = nullable(oneOf('one', 'several'));
 const LABEL = nullable(A_LABEL);
 const JUDGED = ['nothing', 'fix', 'loss'];
 const VERDICTS = [...JUDGED, 'skip'];
-// Where a verdict is given: a topic's decided screen, ready to build, an
-// investigation's conclusion, the finish gate, a quick-fix's close
-// (16.10.10), and the verdict queue (16.10.7).
-const VERDICT_POINTS = ['decided', 'ready-to-build', 'conclusion', 'finish', 'close', 'queue'];
+// How a verdict was given: the person's pick of the verdict question, or
+// read from their own words.
+const GIVEN = ['asked', 'words'];
 
 /** @type {Field[]} */
 const HEADER = [
@@ -190,7 +193,7 @@ const HOW_ANSWERED = [
 
 /** @type {Schema} */
 const SCHEMA = {
-  version: 2,
+  version: 3,
   events: {
     gate: event([
       field('gate', GATE),
@@ -220,7 +223,7 @@ const SCHEMA = {
       field('from_before', FLAG, { version: 2, default: false }),
     ]),
     call: event([field('entry', ID), field('kind', KIND), field('label', LABEL), field('sort', SORT), field('blocks_build', nullable(FLAG))]),
-    verdict: event([field('entry', ID), field('verdict', oneOf(...VERDICTS)), field('point', oneOf(...VERDICT_POINTS))]),
+    verdict: event([field('entry', ID), field('verdict', oneOf(...VERDICTS)), endedAt(field('point', KEY), 3), field('given', oneOf(...GIVEN), { version: 3, default: 'asked' })]),
     'blind-draw': event([field('entry', ID), field('kind', KIND)]),
     reversal: event([field('entry', ID), field('reverses', ID)]),
     'position-switch': event([field('unit', SLUG), field('to', oneOf(...BUILD_POSITIONS))]),
@@ -298,7 +301,7 @@ const AGREEMENT = {
  */
 function lineVersion(type) {
   const { since, fields } = SCHEMA.events[type];
-  return Math.max(since, ...[...HEADER, ...fields].map(addedIn));
+  return Math.max(since, ...[...HEADER, ...fields].map(changedIn));
 }
 
 /**
@@ -340,4 +343,4 @@ function trustEvent(type, header, fields) {
   return read.event;
 }
 
-module.exports = { SCHEMA, SESSION, VERDICTS, VERDICT_POINTS, readTrustEvent, trustEvent };
+module.exports = { SCHEMA, SESSION, VERDICTS, GIVEN, readTrustEvent, trustEvent };

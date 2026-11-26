@@ -591,7 +591,6 @@ const EXEMPT_CALLS = [
   ['topic', 'mailbox', 'payments', 'auth-flow'],
   ['roadmap', 'state'],
   ['scratch', 'remove', 'payments-1.1-a'],
-  ['verdict', 'queue'],
   ['session', 'label', 'payments'],
   ['session', 'repair'],
   ['session', 'cleanup', 'sess-1'],

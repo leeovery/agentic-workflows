@@ -7,9 +7,9 @@
 // shown once the topic's checklist is closed — what the person decided, the
 // rows carried over apart from it, Claude's calls counted by kind and
 // listed on asking, the product-record lines and the candidates the payload
-// stages, every skip with its reason (6.S12) — a verdict asked of each
-// departure on the topic one at a time (16.S33), none where the person
-// changed none (16.S34), then the decided gate (9.S21); a payload the map
+// stages, every skip with its reason (6.S12) — no verdict asked, a call
+// the person changed on the topic given its verdict as it was changed —
+// then the decided gate (9.S21); a payload the map
 // or the record refuses staging nothing; `engine decided strike|unstrike`
 // and `render decided-strike` (P8); and the wait for the topic's agents
 // still running (9.S63), a learned gate (9.S47), its showing held at the
@@ -72,7 +72,6 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
       '    else moved',
       '',
     ].join('\n'));
-    assert.ok(!out.includes('YOUR VERDICT'), 'the person changed no call, so no verdict is asked (16.S34)');
     const gate = sectionOf(out, 'MENU: decided');
     assert.match(gate, /^Your yes marks Note Window decided, with the product-record line and the candidate\.$/m);
     assert.deepStrictEqual([...gate.matchAll(/^\*\*`?([a-z/]+|Comment)`?\*\*/gm)].map((m) => m[1]), ['y/yes', 'c/calls', 's/strike', 'Comment']);
@@ -91,41 +90,12 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
     assert.match(output(dir(), shown, { env: SESSION }), /⚑ Skipped: the closing pass run, and its last re-read changing\n {4}nothing — one reader ran/);
   });
 
-  it('asks a verdict of each call the person changed on the topic, one at a time, a skip moving on, then the gate (16.S33)', () => {
-    close();
-    const homing = answeredIn(dir(), SPACE, 'Does a space remember its notes?', { ...MADE, text: 'Yes.' });
-    const elsewhere = writeIn(dir(), 'replace', SPACE, ['--replaces', homing.answer, '--reason', 'changed-mind'], { by: 'person', drops: ['the old answer'], text: 'No.', why: 'The person wants it so.' });
-    const sync = reverse(NOTE_MAP.sync.answer, 'Off until you turn it on.');
-    const price = reverse(NOTE_MAP.price.answer, 'A price line at the end.');
-    const first = staged(NO_PAYLOAD);
-    assert.match(sectionOf(first, 'DISPLAY: decided'), /YOUR VERDICT \(1 of 2 calls you changed\)\n {2}└─ Is sync on at first run\?\n {8}My answer: On, once a folder is picked\.\n {8}Yours: Off until you turn it on\.\n$/);
-    assert.ok(!first.includes('MENU: decided'), 'the gate waits on the verdicts');
-    const rows = [...sectionOf(first, 'MENU: verdict').matchAll(/^\*\*`([a-z]\/[a-z]+)`\*\*/gm)].map((m) => m[1]);
-    assert.deepStrictEqual(rows, ['n/nothing', 'f/fix', 'l/loss', 's/skip']);
-    const given = run(answer('verdict', 'n'));
-    assert.deepStrictEqual(given, { ok: true, entry: sync, verdict: 'nothing', point: 'decided' });
-    assert.match(screen(), /YOUR VERDICT \(2 of 2 calls you changed\)\n {2}└─ Is pricing mentioned\?/);
-    assert.strictEqual(run(answer('verdict', 's')).entry, price);
-    const last = screen();
-    assert.ok(!last.includes('YOUR VERDICT'), 'a skip was asked: it waits in the verdict queue, never asked here again');
-    assert.match(last, /MENU: decided/);
-    assert.deepStrictEqual(ok(dir(), ['verdict', 'queue']).departures.map((/** @type {{id: string}} */ d) => d.id), [elsewhere, price], 'the skipped verdict waits in the queue (16.10.6), and the departure on another topic, never asked here');
-  });
-
-  it('verdicts drawn once: after a verdict, `--alone` draws the next verdict with none of the screen, then the gate alone', () => {
+  it('asks no verdict of a call the person changed on the topic: its verdict was owed as it was changed, and the screen draws its gate (16.S33)', () => {
     close();
     reverse(NOTE_MAP.sync.answer, 'Off until you turn it on.');
-    const price = reverse(NOTE_MAP.price.answer, 'A price line at the end.');
-    staged(NO_PAYLOAD);
-    run(answer('verdict', 'n'));
+    const drawn = staged(NO_PAYLOAD);
 
-    const next = screen(['--alone']);
-    run(answer('verdict', 'n'));
-    const gate = screen(['--alone']);
-
-    assert.match(sectionOf(next, 'DISPLAY: decided'), /^YOUR VERDICT \(2 of 2 calls you changed\)\n {2}└─ Is pricing mentioned\?/);
-    assert.ok(next.includes('MENU: verdict'), `the verdict on ${price} is asked`);
-    assert.deepStrictEqual([gate.includes('=== DISPLAY'), gate.includes('MENU: decided')], [false, true]);
+    assert.deepStrictEqual([drawn.includes('VERDICT'), drawn.includes('MENU: decided')], [false, true]);
   });
 
   it('refuses a payload that names no decision on the map, a withdrawal of no line of the product record, a candidate the map cannot take, an epic\'s with no brief in the cache (8.S59) and a one-topic unit\'s with no horizon, and one of another shape, staging nothing', () => {

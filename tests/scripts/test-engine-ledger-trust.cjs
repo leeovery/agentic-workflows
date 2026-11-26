@@ -149,21 +149,21 @@ describe('calls and reversals (16.13.3, 16.13.4, 16.12.1)', () => {
     assert.deepStrictEqual(logged(), [callOf(call), callOf(own), callOf(persons)]);
   });
 
-  it('reads an answer the person handed over or left to the builder as Claude\'s call: each logs a call, and the person\'s change of mind over it a reversal, waiting on a verdict with it as the lean; one the migration carried over is no call, and the person\'s replacement of it no reversal (9.2.14, 9.2.16, 21.6.5)', () => {
+  it('reads an answer the person handed over or left to the builder as Claude\'s call: each logs a call, and the person\'s change of mind over it a reversal, owed its verdict; one the migration carried over is no call, and the person\'s replacement of it no reversal (9.2.14, 9.2.16, 21.6.5)', () => {
     const handed = decide(question, { given: 'your-call' }).id;
     const builders = decide(ask('Does a note snap?').id, { text: 'Notes snap to the grid.', given: 'dont-care' }).id;
     const carried = carriedOver(NOTE, ask('Does a note dim?').id, 'Notes dim after a minute.');
     assert.deepStrictEqual(logged(), [callOf(handed), callOf(builders)]);
 
-    const reversal = overrule(handed).id;
-    overrule(carried);
+    const reversal = overrule(handed);
+    const notReversed = overrule(carried);
 
-    assert.deepStrictEqual(logged(), [callOf(handed), callOf(builders), reversalOf(reversal, handed)]);
-    assert.deepStrictEqual(ok(dir, ['verdict', 'queue']).departures.map((/** @type {Record<string, unknown>} */ d) => [d.id, d.lean]), [[reversal, 'A near-frameless floating note.']]);
+    assert.deepStrictEqual(logged(), [callOf(handed), callOf(builders), reversalOf(reversal.id, handed)]);
+    assert.deepStrictEqual([reversal.verdict_owed, notReversed.verdict_owed], [reversal.id, undefined]);
   });
 
   it('logs a reversal of the person\'s own answer that took Claude\'s lean, made from another unit, as of Claude\'s call', async () => {
-    const agreed = await answeredRaise(dir, NOTE, question, { lean: 'A near-frameless floating note.', other: 'A sheet.', key: '1', env: SESSION });
+    const agreed = (await answeredRaise(dir, NOTE, question, { lean: 'A near-frameless floating note.', other: 'A sheet.', key: '1', env: SESSION })).id;
     createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
     const raised = logged();
 
@@ -181,7 +181,7 @@ describe('calls and reversals (16.13.3, 16.13.4, 16.12.1)', () => {
   it('logs nothing for a write that is neither Claude\'s answer nor a replacement the departure rule holds standing over a lean the entry it replaces held: Claude\'s question, its finding and its replacement of one, a replacement for a new fact, the person\'s third answer after their own departure from Claude\'s lean, and the person\'s merge', async () => {
     const fact = find().id;
     const first = decide(question).id;
-    const departed = await answeredRaise(dir, NOTE, ask('Is a note a panel?').id, { lean: 'A floating panel.', other: 'A sheet.', key: '2', env: SESSION });
+    const departed = (await answeredRaise(dir, NOTE, ask('Is a note a panel?').id, { lean: 'A floating panel.', other: 'A sheet.', key: '2', env: SESSION })).id;
     const calls = logged();
     const persons = (/** @type {string} */ old, /** @type {string[]} */ flags, /** @type {Record<string, unknown>} */ made) => write('replace', NOTE, ['--replaces', old, ...flags], { by: 'person', drops: ['the old answer'], text: `Not ${old}.`, why: 'Because.', ...made }).id;
 

@@ -59,3 +59,7 @@ A raise is no gate: its answer never goes to `gate`. `{id}` is the one the draw 
 - **A comment or a question** about it is talked through, then `raise show {id}`.
 
 Where the answer carries `care_drop`, propose dropping that care entry, as the framework's **The Record of the Person** says.
+
+## A Changed Call's Verdict
+
+An answer carrying `verdict_owed` — a raise's, or a `ledger replace` reversing a decision — is the person changing your call, and owes their verdict now, once: what your answer would have cost the product. Where their words as they changed it make it plain ("that would have broken refunds", "I just prefer it this way"), record it from them, `verdict give {verdict_owed} {verdict:[nothing|fix|loss|skip]} --from-words`, and say in a line what you recorded, for them to correct. Otherwise draw the question, `render verdict {verdict_owed}`. Never take a `nothing` from silence. Whatever they give, "I can't call it yet" among it, is the verdict for good: it is never asked again.

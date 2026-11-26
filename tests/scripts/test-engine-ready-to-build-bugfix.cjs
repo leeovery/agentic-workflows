@@ -6,9 +6,8 @@
 // investigation-conclude.cjs, drawn by projections/ready-to-build.cjs): its
 // investigation closed into its spec with no gate, `render ready-to-build`
 // draws the recap — the hunt, the symptoms, the root cause and the fix
-// direction — before the outline and the cut, and asks the investigation's
-// verdicts at the conclusion before the spec's (19.4.23, 11.8.5, 16.10.5);
-// it stands on the close and the recap its mark keeps, so a cancel and a
+// direction — before the outline and the cut, asking no verdict of a
+// call the person changed in the hunt (19.4.23, 11.8.5, 16.10.5); it stands on the close and the recap its mark keeps, so a cancel and a
 // reactivate keep it; a root cause or a fix the person changes there is the
 // spec's replacement, the recap staged again over it with the investigation
 // frozen, and the spec's writer briefed with it (11.8.5); its yes concludes the investigation with the build
@@ -132,7 +131,7 @@ describe('a root cause or a fix the person changes at ready to build (11.8.5, 19
     ['the fix', 'fix', 'FIX DIRECTION', 'Check a capture before saving it.'],
     ['the root cause', 'cause', 'ROOT CAUSE', 'A save trusts a capture taken mid-shutdown.'],
   ])) {
-    it(`${what} replaced at the spec refuses the screen until the recap is staged again, which takes the replacement with the investigation frozen — no validation asked again — and, its verdict given, the yes concludes the investigation`, () => {
+    it(`${what} replaced at the spec refuses the screen until the recap is staged again, which takes the replacement with the investigation frozen — no validation asked again, nor any verdict — and the yes concludes the investigation`, () => {
       const replacement = changedAtTheSpec(made[decision], text);
       specAgain(replacement);
       const stale = refused(['render', 'ready-to-build', BUGFIX]);
@@ -141,7 +140,6 @@ describe('a root cause or a fix the person changes at ready to build (11.8.5, 19
       assert.strictEqual(stale, `render ready-to-build: the root cause or the fix has been replaced since the recap was staged — engine investigation stage ${BUGFIX} --file <recap.json> stages it again`);
       assert.deepStrictEqual(restaged.next, { kind: 'continue' });
       assert.match(recapShown(), new RegExp(`^${heading}\n  ${text}$`, 'm'));
-      ok(dir(), pick('verdict', 'n').argv, { env: SESSION });
       const answer = yes(['--position', 'auto']);
       assert.deepStrictEqual(readManifest(dir(), BUGFIX).phases.investigation.items[BUGFIX], { status: 'completed', concluded_at: answer.concluded });
     });
@@ -175,17 +173,12 @@ describe('a root cause or a fix the person changes at ready to build (11.8.5, 19
   });
 });
 
-describe('the one screen\'s verdicts (16.10.5, 16.10.11)', () => {
-  it('asks the investigation\'s first, given at the conclusion, the yes refused until it is', () => {
+describe('a call the person changed in the hunt (16.10.5, 16.10.11)', () => {
+  it('asks no verdict at the conclusion: its verdict was owed as it was changed, and the screen draws its gate', () => {
     process.env.LEDGER_CONFIG_DIR = worldConfig(dir());
     const out = screen();
 
-    assert.match(out, /^YOUR VERDICT \(1 of 1 call you changed\)$/m);
-    assert.strictEqual(refused(['ready-to-build', 'yes', BUGFIX, '--position', 'auto']), 'ready-to-build yes: a verdict is still to ask — render ready-to-build asks each before the yes');
-    const { argv } = pick('verdict', 'n');
-    assert.deepStrictEqual([argv[2].startsWith(made.inHunt), argv.at(-1)], [true, 'conclusion']);
-    ok(dir(), argv, { env: SESSION });
-    assert.match(screen(), /^=== MENU: ready to build /m);
+    assert.deepStrictEqual([out.includes('VERDICT'), /^=== MENU: ready to build /m.test(out)], [false, true]);
   });
 });
 

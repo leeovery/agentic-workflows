@@ -236,15 +236,15 @@ describe('the person\'s own words, read (16.19.1, 16.19.6)', () => {
   const AGREES = 'Wherever I am looking when I make it';
   const DEPARTS = 'Always on the main screen';
 
-  it('read against Claude\'s rows, each whole as shown, by the call on Opus before the entry lands: read as the lean\'s row — the second, on a call leaning to it — an agreement, the entry moving no one and its event the row read, owed no verdict; read as another, standing over the lean, a departure waiting in the queue; the words kept in the entry and its knowledge copy alone', async () => {
+  it('read against Claude\'s rows, each whole as shown, by the call on Opus before the entry lands: read as the lean\'s row — the second, on a call leaning to it — an agreement, the entry moving no one and its event the row read, owed no verdict; read as another, standing over the lean, a departure, its answer saying its verdict is owed; the words kept in the entry and its knowledge copy alone', async () => {
     const agreeing = await draw(asked.where, { call: { ...CALL, lean: MAIN.key } });
     const departing = await draw(asked.size);
     const log = path.join(config(), 'reader-calls.jsonl');
     const env = { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ [AGREES]: { row: '2' }, [DEPARTS]: { row: '2' } }) };
 
-    answer(agreeing, ['--own'], { text: AGREES, why: WHY }, env);
+    const agreement = answer(agreeing, ['--own'], { text: AGREES, why: WHY }, env);
     const agreed = lastEntry();
-    answer(departing, ['--own'], { text: DEPARTS, why: WHY }, env);
+    const departure = answer(departing, ['--own'], { text: DEPARTS, why: WHY }, env);
 
     assert.deepStrictEqual([agreed, lastEntry()], [
       entryOf(agreeing, asked.where, { text: AGREES, rules_out: [], sealed: MAIN.text }),
@@ -252,8 +252,7 @@ describe('the person\'s own words, read (16.19.1, 16.19.6)', () => {
     ]);
     const own = { answer: null, with_text: true, reading: MAIN.key };
     assert.deepStrictEqual(logged(), [raiseEvent(agreeing, { ...own, sealed: MAIN.key }), raiseEvent(departing, { ...own, chain: full(asked.size) })]);
-    const queued = ok(dir, ['verdict', 'queue'], { env: conversation() }).departures.map((/** @type {{id: string}} */ d) => full(d.id));
-    assert.deepStrictEqual(queued, [departing]);
+    assert.deepStrictEqual([agreement.verdict_owed, full(departure.verdict_owed)], [undefined, departing]);
     const options = CALL.rows.map((row, i) => `- ${i + 1}: ${row.text}\n  What you'd notice — ${row.name}: ${row.notice}`).join('\n');
     const made = fs.readFileSync(log, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
     assert.deepStrictEqual(made.map(({ argv, input }) => [argv[argv.indexOf('--model') + 1], input]), [AGREES, DEPARTS].map((words) => ['opus', `The question: ${CALL.question}\n\nThe options:\n${options}\n\nThe reply: ${words}`]));
@@ -296,7 +295,6 @@ describe('"don\'t care" (16.5.4, 16.S19, P6)', () => {
     assert.deepStrictEqual(lastEntry(), entryOf(id, asked.where, { by: 'claude', why: CALL.why, sealed: null, given: 'dont-care' }));
     assert.deepStrictEqual(entries().filter((e) => e.event === 'decided').map((e) => e.id), [id], 'it settled another question');
     assert.deepStrictEqual(logged(), [raiseEvent(id, { dont_care: true })]);
-    assert.deepStrictEqual(ok(dir, ['verdict', 'queue'], { env: conversation() }).departures, []);
   });
 
   it('the third in a row on a kind under a care entry in this project cues the drop, naming the entry by the project\'s name now, its kind and the run; the second cues nothing, nor the third given again', async () => {
@@ -422,7 +420,7 @@ describe('once (E3)', () => {
     assert.ok(!fs.existsSync(inFolder(PENDING)), 'an event the killed runs kept still waits');
   });
 
-  it('killed between the ledger\'s append and the landing: the rerun appends nothing, lands the event the killed run kept and commits the ledger, saying the raise was answered already, with the row the ledger holds — not the rerun\'s — and marks the seal with it', async () => {
+  it('killed between the ledger\'s append and the landing: the rerun appends nothing, lands the event the killed run kept and commits the ledger, saying the raise was answered already, with the row the ledger holds — not the rerun\'s — the departure still owed its verdict, and marks the seal with it', async () => {
     const id = await draw();
     killedPick(APPENDED, id, '2');
     const lines = entries().length;
@@ -430,14 +428,14 @@ describe('once (E3)', () => {
 
     const res = answer(id, ['--pick', '1']);
 
-    assert.deepStrictEqual(res, { ok: true, raise: id, id: res.id, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), already: true, answer: 'main' });
+    assert.deepStrictEqual(res, { ok: true, raise: id, id: res.id, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), already: true, answer: 'main', verdict_owed: res.id });
     assert.strictEqual(full(res.id), id);
     assert.strictEqual(stateGit(dir, ['show', `HEAD:${layout.ledger}`]), ledgerText());
     assert.deepStrictEqual([entries().length, logged()], [lines, [raiseEvent(id, { answer: 'main' })]]);
     assert.strictEqual(seals()[id].answered.answer, 'main');
   });
 
-  it('killed between the state commit and marking its seal: the ledger says the raise is answered, and the rerun writes no second entry and no second event, saying the raise was answered already, with the row the ledger holds, and marks the seal with it', async () => {
+  it('killed between the state commit and marking its seal: the ledger says the raise is answered, and the rerun writes no second entry and no second event, saying the raise was answered already, with the row the ledger holds, the departure still owed its verdict, and marks the seal with it', async () => {
     const id = await draw();
 
     killedPick(COMMITTED, id, '2');
@@ -451,7 +449,7 @@ describe('once (E3)', () => {
 
     const res = answer(id, ['--pick', '1']);
 
-    assert.deepStrictEqual(res, { ok: true, raise: id, id: row.answers[0].id, committed: null, already: true, answer: 'main' });
+    assert.deepStrictEqual(res, { ok: true, raise: id, id: row.answers[0].id, committed: null, already: true, answer: 'main', verdict_owed: row.answers[0].id });
     assert.deepStrictEqual([entries().length, logged()], [lines, [raiseEvent(id, { answer: 'main' })]]);
     assert.strictEqual(seals()[id].answered.answer, 'main');
   });

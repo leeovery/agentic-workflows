@@ -128,8 +128,10 @@
 //   composed from, and its sort, null where no raise sorted it; the person's
 //   replacement the departure rule holds standing over a lean the entry it
 //   replaces held logs a reversal, naming the entry it reverses (16.12.1,
-//   ledger-verdicts.cjs). A decision carried over is no call of Claude's,
-//   and logs nothing (21.1.5, 21.6.5). Any other write logs nothing. What a
+//   ledger-verdicts.cjs), and answers that its verdict is owed,
+//   `verdict_owed`, the entry's short id, where this machine owes it one,
+//   so it is asked at that moment (verdict.cjs). A decision carried over is
+//   no call of Claude's, and logs nothing (21.1.5, 21.6.5). Any other write logs nothing. What a
 //   raise lands logs the event the raise gives it: a raise answered, or a
 //   call carrying the decision point's sort; a fact's answer logs none, as
 //   it counts for nothing in the trust layer (16.3.8). The event is built
@@ -195,7 +197,7 @@ const { HELD_NOTE } = require('./commit.cjs');
 const { checkOneDecision } = require('./ledger-one-decision.cjs');
 const { startLabel, questionText, labelFields } = require('./labeller.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
-const { derivedMove, movedRefusal, reverses } = require('./ledger-verdicts.cjs');
+const { derivedMove, movedRefusal, reverses, verdictOwed } = require('./ledger-verdicts.cjs');
 const { heldAgainst } = require('./ledger-affected.cjs');
 const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
 const { checkUnparked } = require('./questions.cjs');
@@ -310,8 +312,8 @@ const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manife
 
 /**
  * A write landed: the entry's short id, the commit, a note where the commit
- * is pending, and any warnings.
- * @typedef {{id: string, committed: string|null, note?: string, warnings?: string[]}} Landed
+ * is pending, any warnings, and the verdict a reversal is owed.
+ * @typedef {{id: string, committed: string|null, note?: string, warnings?: string[], verdict_owed?: string}} Landed
  */
 
 /**
@@ -1550,7 +1552,7 @@ function landed(cwd, request, warnings) {
 /**
  * `ledger <verb>`: one event appended and committed, then the knowledge
  * base's copies rendered and indexed. Answers the entry's short id, the
- * commit, and any warnings; a commit git refused is pending, and the next
+ * commit, any warnings, and a reversal's verdict owed; a commit git refused is pending, and the next
  * write's commit, or boot's, takes the ledger whole.
  * @param {string} cwd @param {string} verb @param {string[]} args @param {() => string} stdin
  * @returns {Landed}
@@ -1559,7 +1561,10 @@ function writeLedger(cwd, verb, args, stdin) {
   /** @type {string[]} */
   const warnings = [];
   try {
-    return landed(cwd, checkedAndLabelled(cwd, requestOf(cwd, verb, args, stdin, warnings), warnings), warnings).landed;
+    const request = checkedAndLabelled(cwd, requestOf(cwd, verb, args, stdin, warnings), warnings);
+    const { landed: result, line, held } = landed(cwd, request, warnings);
+    if (request.logs !== REVERSAL_LOGGED) return result;
+    return { ...result, ...verdictOwed(request.at.root, /** @type {string} */ ((line ?? held)?.id), result.id) };
   } catch (err) {
     throw carrying(err, warnings);
   }

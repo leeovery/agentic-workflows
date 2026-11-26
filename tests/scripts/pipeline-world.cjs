@@ -745,6 +745,18 @@ function gateAnswered(sim, args, words) {
 /** A row picked or a typed row, by its key. @param {Sim} sim @param {string} name @param {...string} answer */
 const answerGate = (sim, name, ...answer) => gateAnswered(sim, [name, ...answer], '');
 
+// The verdict a write's answer owes, where it owes one, asked as the prose
+// asks it there and then (raising-a-call.md, A Changed Call's Verdict): its
+// question drawn and the person's row `key` picked. Answers the write's
+// answer.
+/** @template {Record<string, any>} T @param {Sim} sim @param {T} answer @param {string} [key] @returns {T} */
+function verdictAsked(sim, answer, key = 'n') {
+  if (answer.verdict_owed === undefined) return answer;
+  sim.render(['verdict', answer.verdict_owed], { expect: 'content' });
+  sim.run(answerGate(sim, 'verdict', '--pick', key).next.argv);
+  return answer;
+}
+
 /** Free text naming no row, the person's `words`. @param {Sim} sim @param {string} name @param {string} words */
 const typeAtGate = (sim, name, words) => gateAnswered(sim, [name, '--typed'], words);
 
@@ -947,7 +959,7 @@ async function fixDirected(sim, wu, { pick = '1', design = false } = {}) {
     lean: 'a', why: 'The null is the cause.', sort: 'several', mechanism: 'The save checks the field.', product_wide: false,
     stepped_back: ['The save was right for the fields it knew; a null is a case it never met.'],
   }));
-  sim.run(['raise', 'answer', raise, '--pick', pick], null, JSON.stringify({ why: 'It stops the crash at its cause.' }));
+  verdictAsked(sim, sim.run(['raise', 'answer', raise, '--pick', pick], null, JSON.stringify({ why: 'It stops the crash at its cause.' })));
   sim.run(['investigation-log', 'fix-direction', wu, '--question', fix]);
   return fix;
 }
@@ -1867,7 +1879,7 @@ function pickedRow(sim, wu, question, text) {
   const { raise } = sim.run(['raise', 'draw', wu, question]);
   const seals = JSON.parse(fs.readFileSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID, RAISE_SHOWN), 'utf8'));
   const { key } = seals[raise].call.rows.find((/** @type {{text: string}} */ row) => row.text === text);
-  return sim.run(['raise', 'answer', raise, '--pick', key], null, JSON.stringify({ why: 'The person said why.' })).receipt;
+  return verdictAsked(sim, sim.run(['raise', 'answer', raise, '--pick', key], null, JSON.stringify({ why: 'The person said why.' }))).receipt;
 }
 
 // Finish (14.5): its checklist closed where `closed` does not say it is
@@ -1882,7 +1894,7 @@ function finished(sim, wu, { closed = false } = {}) {
 }
 
 module.exports = {
-  Sim, worldFrom, worlds, readyForSim, shownRows, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, labEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, roadmapMenu, pullFromRoadmap, decideTopic, discussed, askedOn,
+  Sim, worldFrom, worlds, readyForSim, shownRows, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, labEntry, specEntry, handoff, answerGate, verdictAsked, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, roadmapMenu, pullFromRoadmap, decideTopic, discussed, askedOn,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, startBare, startWith, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, triagePick, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
   DECIDED_ITEMS, specWritten, specLanded, specBuilt, readyClosed, builders, taskBuilt, fixTree, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic, wentAheadBlind, pickedRow,
 };

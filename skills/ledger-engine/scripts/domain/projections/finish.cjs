@@ -8,13 +8,8 @@
 // warned of, each a callout, so nothing they took off the checklist goes
 // unsaid — never a checklist item skipped, Ledger's own bookkeeping (6.4.5);
 // what the review's put backs set aside, where they set aside anything,
-// which stays until the person removes it (review-tree.cjs); then the first
-// departure the person made in the build and the review phase still to be
-// asked its verdict, under the verdict gate at the point `finish` — one at a
-// time, as ready to build asks its own, the screen drawn whole once and each
-// later verdict alone (16.10.3, 16.10.14, closing.cjs); and once none is,
-// finish's gate, an authority gate
-// that always stops: an invitation to ask about what was built, answered
+// which stays until the person removes it (review-tree.cjs); then finish's
+// gate, an authority gate that always stops: an invitation to ask about what was built, answered
 // before finishing, then yes and a comment. No measure adds a line to it
 // (17.2.2).
 //
@@ -29,33 +24,29 @@
 // WENT TO THE INBOX, as a round's report lists it (19.5.26, review-phase.cjs);
 // each fix's work a question's park set aside and
 // none put back, a ⚑ line naming where it is kept and the calls that show
-// it and bring it into the checkout (R26); each departure asked its verdict at the verdict
-// point `close` (16.10.4); and its gate, `Close it?`: the yes, merging its
+// it and bring it into the checkout (R26); and its gate, `Close it?`: the yes, merging its
 // pull request where a fix done is still to land — landing its commits
 // where the driver opens none — or saying its fixes have landed; a review asked for, `review ask`, until one has been; and
 // questions about the change. Its rows and words are Claude's in the spec
 // (18.10.8).
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, promptOption, callout, treeList, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { section, menu, cmdOption, promptOption, callout, treeList, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
 const { TREE_WIDTH } = require('../conventions.cjs');
 const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
-const { block, verdictBlock, verdictPoint } = require('./closing.cjs');
+const { block } = require('./closing.cjs');
 const { asideBlock, filedBlock } = require('./review-phase.cjs');
 
 /**
  * Finish as it is drawn: the unit and its title, the inbox items it closed,
- * the verdict asked, null where none waits, what its reads warned of, what
- * put back set aside, null where it set aside nothing, the unit's own
- * branch and the default branch it lands on, null for a unit with no branch
- * of its own (14.5.2), and whether it is drawn alone after a verdict.
+ * what its reads warned of, what put back set aside, null where it set
+ * aside nothing, and the unit's own branch and the default branch it lands
+ * on, null for a unit with no branch of its own (14.5.2).
  * @typedef {{
  *   unit: string, title: string, lands: {branch: string, into: string}|null,
  *   closed: {title: string, kind: string}[],
- *   verdict: import('../ledger-verdicts.cjs').AskedVerdict|null,
  *   warnings: string[],
  *   aside: import('../review-phase.cjs').SetAside|null,
- *   alone: boolean,
  * }} FinishView
  */
 
@@ -69,11 +60,10 @@ function closedBlock({ title, closed }) {
 
 /** The blocks under the screen's title, each that has something to show. @param {FinishView} view @returns {string[]} */
 function finishBlocks(view) {
-  const { verdict, warnings, aside } = view;
+  const { warnings, aside } = view;
   const blocks = [...closedBlock(view)];
   if (warnings.length > 0) blocks.push(warnings.map((warning) => callout(warning, { width: TREE_WIDTH })).join('\n'));
   blocks.push(...asideBlock(aside));
-  if (verdict !== null) blocks.push(verdictBlock(verdict));
   return blocks;
 }
 
@@ -95,13 +85,12 @@ function finishGate({ unit, lands }) {
 }
 
 /**
- * Finish: its display, then the verdict gate while a departure waits to be
- * asked, else finish's gate — drawn alone after a verdict.
+ * Finish: its display, then its gate.
  * @param {FinishView} view
  * @returns {string}
  */
 function finishScreen(view) {
-  return verdictPoint({ name: 'finish', display: () => finishDisplay(view), verdict: view.verdict, point: 'finish', gate: () => finishGate(view), alone: view.alone });
+  return section('DISPLAY: finish', CONTINUE_INSTRUCTION, finishDisplay(view)) + finishGate(view);
 }
 
 /**
@@ -172,14 +161,12 @@ function closeGate(view) {
 }
 
 /**
- * A quick-fix's close (19.5.13): its display, then the verdict gate while a
- * departure waits to be asked, else its own gate — drawn alone after a
- * verdict.
+ * A quick-fix's close (19.5.13): its display, then its gate.
  * @param {CloseView} view
  * @returns {string}
  */
 function closeScreen(view) {
-  return verdictPoint({ name: 'finish', display: () => closeDisplay(view), verdict: view.verdict, point: 'close', gate: () => closeGate(view), alone: view.alone });
+  return section('DISPLAY: finish', CONTINUE_INSTRUCTION, closeDisplay(view)) + closeGate(view);
 }
 
 module.exports = { finishScreen, closeScreen };

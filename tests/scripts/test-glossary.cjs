@@ -73,7 +73,7 @@ const ADDED = [
   'discussion', 'record', 'log', 'ledger', 'entry', 'map', 'product record', 'phase cut', 'builder', 'task loop',
   'reviewer pair', 'notes for later', 'stack', 'the ask rule', 'kind', 'verdict', 'blind question', 'auto and step',
   'proven and not proven', 'verify setup', 'feature map', 'driver', 'state branch',
-  'convergence', 'care entry', 'the matrix', 'the verdict queue', 'the record of the person',
+  'convergence', 'care entry', 'the matrix', 'the record of the person',
   'record from before', 'reference file', 'product picture',
 ];
 

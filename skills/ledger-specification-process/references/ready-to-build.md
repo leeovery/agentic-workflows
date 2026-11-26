@@ -28,7 +28,7 @@ Where a tool the drivers need is missing, too old or failing, the screen is the 
 
 A refusal names what to fix: work it, close the checklist again, and draw the screen again. Where a feature's staged line can no longer land: in the payload, the line widens that decision's replacement, in the same words where the rule still holds, or goes where it no longer does; stage it again, then draw the screen again.
 
-After each verdict the screen asks before its gate, draw it again with `--alone` added. A `next` that takes the page's marks — a position's while the page is open, or the review's — names the file they are read back to: read them back fresh into it before running it.
+A `next` that takes the page's marks — a position's while the page is open, or the review's — names the file they are read back to: read them back fresh into it before running it.
 - **A position** runs the yes. A feature's yes refused for a product-record line resting on a decision replaced since: where its rule still holds, add to the payload a line widening the replacement, in the same words; where it should go, withdraw the line; stage it again, then draw the screen again. Any other refused yes names what to fix: fix it, then draw the screen again.
 - **The review** builds the page, or once it is open reads the comments left on it, as review-page.md says.
 

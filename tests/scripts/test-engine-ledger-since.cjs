@@ -332,7 +332,7 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
 });
 
 describe('nothing on disk (4.11.9)', () => {
-  it('leaves no record, map, product record, list of calls, list of what a replacement affects or verdict queue on the state branch or in the unit\'s folder, a look\'s mark in the cache alone (4.S24, 5.S18)', () => {
+  it('leaves no record, map, product record, list of calls, or list of what a replacement affects on the state branch or in the unit\'s folder, a look\'s mark in the cache alone (4.S24, 5.S18)', () => {
     const relied = call(NOTE, 'A note is a panel.');
     writeIn(dir, 'find', SPACE, ['--relies-on', relied], { ...MADE, text: 'A panel takes no focus.', how: 'a spike', known: 'spike', product_wide: true });
     writeIn(dir, 'replace', NOTE, ['--replaces', relied, '--reason', 'changed-mind'], { by: 'person', who_moved_whom: 'person-moved-claude', drops: ['a panel'], text: 'A frameless window.', why: 'Lighter.' });
@@ -347,7 +347,7 @@ describe('nothing on disk (4.11.9)', () => {
     const answers = [
       ok(dir, ['ledger', 'record', UNIT]).decisions, ok(dir, ['ledger', 'record', UNIT, 'note-window']).decisions,
       ok(dir, ['ledger', 'map', UNIT, 'note-window']).questions, ok(dir, ['ledger', 'product']).findings,
-      ok(dir, ['ledger', 'affected', UNIT]).affected, ok(dir, ['verdict', 'queue']).departures,
+      ok(dir, ['ledger', 'affected', UNIT]).affected,
       ok(dir, ['ledger', 'since', UNIT]).calls, ok(dir, ['ledger', 'shown', UNIT]).calls,
     ];
 

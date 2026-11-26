@@ -16,8 +16,6 @@
 //   its door, read once with what waits in every unit (waits.cjs): the
 //   authority gates, the questions, a decided topic a changed answer holds;
 //   a topic a wait is about is that wait's row alone, never listed again.
-//   The verdicts waiting on the epic's departures are one row among them,
-//   e/verdicts, its door the verdict page, drawn after the numbered waits.
 // - Then the topics by what they need (18.4.3): those in progress, then
 //   those not started, each need in the map's order; a topic not started
 //   reads Start, one in progress Continue, each with mail waiting where
@@ -37,9 +35,8 @@
 //   the start menu.
 // - The recommended row leads, never one another conversation holds
 //   (18.4.21): the first of what waits; else the first topic in the map's
-//   foundations-first order that can be worked (18.4.7); else, while
-//   nothing but verdicts waits, the spec, the build or its review; else, in
-//   discovery, d. Rows follow it in their order, numbered as drawn.
+//   foundations-first order that can be worked (18.4.7); else the spec,
+//   the build or its review; else, in discovery, d. Rows follow it in their order, numbered as drawn.
 //
 // An epic this project lacks, a unit of another type, and an epic not in
 // progress — cancelled or finished — are refused.
@@ -160,10 +157,10 @@ function shown(detail, waiting) {
   ];
 }
 
-/** The rows of what waits but verdicts (the header's). @param {EpicDetail} detail @param {Wait[]} waits @returns {Row[]} */
+/** The rows of what waits (the header's). @param {EpicDetail} detail @param {Wait[]} waits @returns {Row[]} */
 function waitRows(detail, waits) {
   const titles = new Map(detail.map.map((row) => [row.name, row.title]));
-  return waits.filter((wait) => wait.kind !== 'verdict').map((wait) => ({
+  return waits.map((wait) => ({
     label: WAIT_LABELS[wait.kind](wait, titles.get(wait.topic ?? '') ?? ''),
     next: wait.next,
     ...(wait.topic === null ? {} : { topic: wait.topic, heldIn: TOPIC_PHASE }),
@@ -216,14 +213,6 @@ function onwardRows(cwd, manifest, phase, { spec, summary }, waits) {
   };
 }
 
-/** The verdicts' row, while verdicts wait on the epic's departures. @param {Wait[]} waits @returns {Row[]} */
-function verdictRows(waits) {
-  const verdicts = waits.filter((wait) => wait.kind === 'verdict');
-  if (verdicts.length === 0) return [];
-  const head = verdicts.length === 1 ? 'Give the verdict waiting on a call you changed' : `Give the ${verdicts.length} verdicts waiting on calls you changed`;
-  return [{ key: 'e', word: 'verdicts', label: { head }, next: verdicts[0].next }];
-}
-
 /**
  * What strikes each row about a topic another conversation holds in the
  * phase the row opens, naming when it was last active (the header's).
@@ -273,14 +262,13 @@ function ordered(drawn, recommended) {
 }
 
 /**
- * What waits on the person in the epic, its verdicts among it, read in the
- * conversation `session` — its seals counted, none where it is null
- * (waits.cjs).
+ * What waits on the person in the epic, read in the conversation `session`
+ * — its seals counted, none where it is null (waits.cjs).
  * @param {string} cwd @param {Record<string, any>} manifest @param {string|null} session
  * @returns {Wait[]}
  */
 function epicWaits(cwd, manifest, session) {
-  return /** @type {Wait[]} */ (waitsOf(cwd, [manifest], { verdicts: true, session }).waits.get(manifest.name));
+  return /** @type {Wait[]} */ (waitsOf(cwd, [manifest], { session }).waits.get(manifest.name));
 }
 
 /**
@@ -294,7 +282,7 @@ function epicMenuScreen(cwd, manifest, waits) {
   const detail = epicDetail(cwd, manifest);
   const { phase } = nowOf(unitRead(cwd, manifest));
   const title = `${titlecase(phase)} — ${titlecase(epic)}`;
-  const waiting = new Set(waits.flatMap((wait) => (wait.kind === 'verdict' || wait.topic === null ? [] : [wait.topic])));
+  const waiting = new Set(waits.flatMap((wait) => (wait.topic === null ? [] : [wait.topic])));
   const onward = onwardRows(cwd, manifest, phase, detail, waits);
   const strike = striker(cwd, epic);
   const waitsDrawn = waitRows(detail, waits).map(strike);
@@ -305,7 +293,7 @@ function epicMenuScreen(cwd, manifest, waits) {
   return {
     title,
     shows: shown(detail, waiting),
-    rows: ordered([...waitsDrawn, ...verdictRows(waits), ...topics, ...onward.numbered, ...onward.spec, ...discovery], recommended),
+    rows: ordered([...waitsDrawn, ...topics, ...onward.numbered, ...onward.spec, ...discovery], recommended),
     back: BACK,
   };
 }

@@ -5,9 +5,8 @@
 // (ledger-engine/scripts/domain/projections/epic-menu.cjs; 18.4.2, 18.4.17,
 // 18.4.18): what the waits read lists (domain/waits.cjs) drawn first, each
 // a numbered row with its door, the first recommended; a topic a wait is
-// about drawn as that wait alone, off DECIDED; the verdicts waiting as one
-// row, e/verdicts, after the numbered waits and before the topics, the
-// verdict page its door; a wait about a topic another conversation holds
+// about drawn as that wait alone, off DECIDED; a call the person changed
+// drawing no row; a wait about a topic another conversation holds
 // struck and never recommended; the spec's and the build's rows never
 // recommended while a wait stands; every topic decided, the spec not
 // entered, the epic in its specification, an affected topic's door the
@@ -44,11 +43,7 @@ const { WAIT_KINDS } = require(path.join(SCRIPTS, 'domain/waits.cjs'));
 
 /** @typedef {import('../../skills/ledger-engine/scripts/domain/waits.cjs').Wait} Wait */
 
-const VERDICTS = Object.freeze({ kind: 'engine', argv: ['render', 'verdicts', '--unit', FUMI] });
 const PEER = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'peer-session', CLAUDE_PID: String(process.ppid) });
-
-/** A verdict waiting, by its id. @param {string} id */
-const verdict = (id) => wait('verdict', id, 'Off until you turn it on.', VERDICTS);
 
 describe('what waits, drawn first (18.4.2)', () => {
   const dir = useDecidedWorld();
@@ -80,24 +75,23 @@ describe('what waits, drawn first (18.4.2)', () => {
     createManifest(dir(), FUMI, { ...readManifest(dir(), FUMI), build: { position: 'auto' }, cut: { phases: [{ name: 'Notes', scenarios: [], sections: ['1'], relies_on: [] }] } });
   }
 
-  it('18.S9: approve the map staged and a verdict waiting — the gate first and recommended, its door the epic\'s discovery; the verdict on e/verdicts straight after it, before the topics, its door the verdict page', () => {
+  it('18.S9: approve the map staged — the gate first and recommended, its door the epic\'s discovery, then the topics; a call the person changed draws no row', () => {
     output(dir(), ['render', 'approve-map', FUMI, '--file', payload({ topics: [{ name: 'note-window' }, { name: 'space-homing' }], parks: [] })], { env: SESSION });
     reverse(NOTE_MAP.sync.answer, 'Off until you turn it on.');
     const rows = rowsOf(menu());
     const gate = answer('epic menu', '1');
     menu();
 
-    assert.deepStrictEqual([rows, gate, answer('epic menu', 'e')], [[
+    assert.deepStrictEqual([rows, gate], [[
       '1           → Approve the map — the map waits on your yes',
       '              (recommended)',
-      'e/verdicts  → Give the verdict waiting on a call you changed',
       '2           → Continue "Note Window" — in progress',
       '3           → Continue "Space Homing" — in progress',
       'd/discovery → Change the map — a new topic, cancel, postpone,',
       '              pull forward, reactivate, or reopen a decided topic',
       'h/help      → What this menu is for, row by row',
       'b/back      → Back to the start menu',
-    ], { kind: 'handoff', skill: 'ledger-discovery', args: ['none', FUMI] }, VERDICTS]);
+    ], { kind: 'handoff', skill: 'ledger-discovery', args: ['none', FUMI] }]);
   });
 
   it('a topic whose decided waits is drawn as that wait alone, its door the topic; the board at the menu lists it too, opening the topic (20.8.5)', () => {
@@ -141,36 +135,30 @@ describe('what waits, drawn first (18.4.2)', () => {
     createManifest(dir(), FUMI, manifest);
     const out = menu();
 
-    assert.deepStrictEqual([screenOf(out, 'DISPLAY: epic-menu'), rowsOf(out).slice(0, 4), answer('epic menu', '1')], [['2 topics · 1 decided · 1 in progress'], [
+    assert.deepStrictEqual([screenOf(out, 'DISPLAY: epic-menu'), rowsOf(out).slice(0, 3), answer('epic menu', '1')], [['2 topics · 1 decided · 1 in progress'], [
       '1           → "Note Window": a decision it relies on changed —',
       '              confirm it still holds, or replace it (recommended)',
-      'e/verdicts  → Give the verdict waiting on a call you changed',
       '2           → Continue "Space Homing" — in progress',
     ], topicDoor(FUMI, 'note-window')]);
   });
 
-  it('20.S32, 20.8.5: at the epic\'s menu, the board\'s WAITING ON YOU lists what the menu lists — the decided topic a replaced answer holds, opening the topic, and the verdict — counted unflagged on the banner', () => {
-    const verdictOn = affected();
+  it('20.S32, 20.8.5: at the epic\'s menu, the board\'s WAITING ON YOU lists what the menu lists — the decided topic a replaced answer holds, opening the topic — counted unflagged on the banner', () => {
+    affected();
     const manifest = readManifest(dir(), FUMI);
     manifest.phases.discussion.items['note-window'].status = 'completed';
     createManifest(dir(), FUMI, manifest);
-    const rows = rowsOf(menu()).filter((row) => /^(1|e\/verdicts) /.test(row));
+    const rows = rowsOf(menu()).filter((row) => /^1 /.test(row));
     const { view, banner } = board();
-    const sameEntry = (/** @type {string} */ a, /** @type {string} */ b) => a.startsWith(b) || b.startsWith(a);
 
-    assert.deepStrictEqual([rows, view.at_menu, view.waiting.map(({ id, ...line }) => line), sameEntry(view.waiting[1].id, verdictOn), banner.facts.at(-1)], [
-      ['1           → "Note Window": a decision it relies on changed —', 'e/verdicts  → Give the verdict waiting on a call you changed'],
+    assert.deepStrictEqual([rows, view.at_menu, view.waiting.map(({ id, ...line }) => line), banner.facts.at(-1)], [
+      ['1           → "Note Window": a decision it relies on changed —'],
       true,
-      [
-        { kind: 'affected', text: 'Note Window: a decision it relies on changed', page: 'topic:note-window' },
-        { kind: 'verdict', text: 'Verdict on a call you changed: It does not.', page: null },
-      ],
-      true,
-      { text: '2 waiting on you', needs: false, waits: true },
+      [{ kind: 'affected', text: 'Note Window: a decision it relies on changed', page: 'topic:note-window' }],
+      { text: '1 waiting on you', needs: false, waits: true },
     ]);
   });
 
-  it('20.2.4, 20.8.5, 20.11.1: the epic\'s own waits — the affected topic and the verdict — stand on its page and its tab alone: a phase\'s banner counts none of them, nor does discovery\'s WAITING ON YOU list them', () => {
+  it('20.2.4, 20.8.5, 20.11.1: the epic\'s own wait — the affected topic — stands on its page and its tab alone: a phase\'s banner counts none of them, nor does discovery\'s WAITING ON YOU list them', () => {
     affected();
     const manifest = readManifest(dir(), FUMI);
     manifest.phases.discussion.items['note-window'].status = 'completed';
@@ -185,7 +173,7 @@ describe('what waits, drawn first (18.4.2)', () => {
     };
 
     assert.deepStrictEqual([waiting.map((/** @type {{kind: string}} */ { kind }) => kind), ...[[FUMI, 'discussion', 'space-homing'], [FUMI, 'discovery', FUMI], [FUMI, 'specification', FUMI]].map(inPlace)], [
-      ['affected', 'verdict'],
+      ['affected'],
       ['running', ['epic', 'discussion', 'Space Homing', 'nothing of yours open'], null],
       ['running', ['epic', 'discovery', '2 topics on the map'], []],
       ['running', ['epic', 'specification', 'being written'], []],
@@ -216,7 +204,7 @@ describe('what waits, drawn first (18.4.2)', () => {
     ]);
   });
 
-  it('20.16, 18.2.3: All work counts what waits in the epic as the start menu\'s row does — the decided topic a replaced answer holds, never the verdict, which waits on the queue', () => {
+  it('20.16, 18.2.3: All work counts what waits in the epic as the start menu\'s row does — the decided topic a replaced answer holds', () => {
     affected();
     const manifest = readManifest(dir(), FUMI);
     manifest.phases.discussion.items['note-window'].status = 'completed';
@@ -226,7 +214,7 @@ describe('what waits, drawn first (18.4.2)', () => {
     assert.deepStrictEqual([view.units.map((/** @type {{unit: string, waiting: number}} */ { unit, waiting }) => [unit, waiting]), view.waiting], [[[FUMI, 1], [SOLO, 0]], 1]);
   });
 
-  it('20.2.4: what holds the phase the unit is in is what is asked in the conversation and holds it — the map, ready to build, finish, a gap, an investigation\'s raise — never a build\'s question, a quick-fix\'s, a topic\'s decided, an affected topic or a verdict', () => {
+  it('20.2.4: what holds the phase the unit is in is what is asked in the conversation and holds it — the map, ready to build, finish, a gap, an investigation\'s raise — never a build\'s question, a quick-fix\'s, a topic\'s decided or an affected topic', () => {
     assert.deepStrictEqual(WAIT_KINDS.filter((kind) => holds({ kind })), ['map', 'ready', 'finish', 'gap', 'raise']);
   });
 
@@ -245,9 +233,9 @@ describe('what waits, drawn first (18.4.2)', () => {
     return Object.fromEntries(PHASES.map((phase) => [phase, takes(phase)]));
   }
 
-  it('20.2.4: each phase takes its own of the unit\'s one list, as its banner draws it — discovery the map, an investigation its raises, the specification the map its sweep staged, its gaps and ready to build, the build and the review their questions and finish — a discussion and an experiment none, an epic\'s decided topics, its affected ones and its verdicts no phase\'s, whichever phase their door hands into', () => {
+  it('20.2.4: each phase takes its own of the unit\'s one list, as its banner draws it — discovery the map, an investigation its raises, the specification the map its sweep staged, its gaps and ready to build, the build and the review their questions and finish — a discussion and an experiment none, an epic\'s decided topics and its affected ones no phase\'s, whichever phase their door hands into', () => {
     const intoSpec = door('ledger-specification-process', 'epic', FUMI);
-    const every = WAIT_KINDS.map((kind) => wait(kind, kind, kind, ['decided', 'affected'].includes(kind) ? intoSpec : VERDICTS));
+    const every = WAIT_KINDS.map((kind) => wait(kind, kind, kind, intoSpec));
 
     assert.deepStrictEqual(takenIn('epic', every), {
       discovery: ['map'],
@@ -312,33 +300,31 @@ describe('what waits, drawn first (18.4.2)', () => {
     settled();
     const ready = wait('ready', 'ready-to-build', 'Ready to build', door('ledger-specification-process', 'epic', FUMI));
 
-    assert.deepStrictEqual([composed([ready]).map(([key, label]) => [key, label]), composed([verdict('0a1b')]).map(([key]) => key)], [[
+    assert.deepStrictEqual(composed([ready]).map(([key, label]) => [key, label]), [
       ['1', 'Ready to build — *the spec waits on your yes* (recommended)'],
       ['s', 'Start the specification — *every topic is decided*'],
       ['d', 'Change the map — a new topic, cancel, postpone, pull forward, reactivate, or reopen a decided topic'],
-    ], ['s', 'e', 'd']]);
+    ]);
   });
 
-  it('18.4.21: in the build its row never takes the recommendation from a question waiting, and leads the verdicts once nothing else waits', () => {
+  it('18.4.21: in the build its row never takes the recommendation from a question waiting, and takes it once nothing waits', () => {
     building();
     const question = wait('question', 'Q1', 'Is the receipt mailed or printed?', door('ledger-implementation-process', 'epic', FUMI));
 
-    assert.deepStrictEqual([composed([question]).map(([key, label]) => [key, label]), composed([verdict('0a1b')]).map(([key, label]) => [key, label])], [[
+    assert.deepStrictEqual([composed([question]).map(([key, label]) => [key, label]), composed([]).map(([key, label]) => [key, label])], [[
       ['1', 'Is the receipt mailed or printed? — *a question waiting for you* (recommended)'],
       ['2', 'Continue the build — *phase 1 of 1, not yet written*'],
     ], [
       ['1', 'Continue the build — *phase 1 of 1, not yet written* (recommended)'],
-      ['e', 'Give the verdict waiting on a call you changed'],
     ]]);
   });
 
-  it('a question waiting and ready to build each read as their own row; several verdicts are counted on the one row', () => {
+  it('a question waiting and ready to build each read as their own row', () => {
     const question = wait('question', 'Q1', 'Is the receipt mailed or printed?', door('ledger-implementation-process', 'epic', FUMI));
     const ready = wait('ready', 'ready-to-build', 'Ready to build', door('ledger-specification-process', 'epic', FUMI));
-    assert.deepStrictEqual(composed([question, ready, verdict('0a1b'), verdict('0c2d')]).filter(([key]) => ['1', '2', 'e'].includes(key)), [
+    assert.deepStrictEqual(composed([question, ready]).filter(([key]) => ['1', '2'].includes(key)), [
       ['1', 'Is the receipt mailed or printed? — *a question waiting for you* (recommended)', question.next],
       ['2', 'Ready to build — *the spec waits on your yes*', ready.next],
-      ['e', 'Give the 2 verdicts waiting on calls you changed', VERDICTS],
     ]);
   });
 

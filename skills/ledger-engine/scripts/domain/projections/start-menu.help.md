@@ -5,7 +5,6 @@ s → Start takes whatever you bring, in your own words: a new piece of work, it
 p → Product goes straight to the conversation about the product as a whole: what it is, who it serves and where it is going.
 t → Triage works through the inbox, the things you noted down to come back to: work on them now, put them on the roadmap, or archive them.
 r → The roadmap holds what you've shaped but not yet committed to build, by horizon.
-e → Verdicts appears while a call you changed waits for your word on what Claude's answer would have cost.
 v → View lists completed and cancelled work, each opening in manage.
 m → Manage pivots, absorbs, cancels or brings back a piece of work, and changes the project's setup, its drivers and the matrix.
 

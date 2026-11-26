@@ -35,7 +35,7 @@
 // ---------------------------------------------------------------------------
 
 /** The view model's version (the header's). */
-const BOARD_VERSION = 10;
+const BOARD_VERSION = 11;
 
 /** The board's tabs (20.3.1). */
 const TABS = Object.freeze(['this', 'unit', 'all']);
@@ -414,12 +414,11 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * close among it; a raise its investigation asks in this conversation,
  * held with what raised it as its view holds it (HuntWait); a question
  * Claude raised in a quick-fix's conversation, parking nothing (`raised`);
- * a decided topic an answer it relied on, replaced since, holds
- * (`affected`, 10.2.6); or, an epic's, a verdict waiting on an answer that
- * departed from Claude's lean — by its number or entry, a topic's by the
- * topic, a gate by its name (`finish`, `close`), its words, and the page a
- * press on it opens, null where none.
- * @typedef {{kind: 'map'|'decided'|'gap'|'ready'|'question'|'finish'|'raise'|'raised'|'affected'|'verdict', id: string, text: string, page: string|null}} WaitingLine
+ * or a decided topic an answer it relied on, replaced since, holds
+ * (`affected`, 10.2.6) — by its number or entry, a topic's by the topic, a
+ * gate by its name (`finish`, `close`), its words, and the page a press on
+ * it opens, null where none.
+ * @typedef {{kind: 'map'|'decided'|'gap'|'ready'|'question'|'finish'|'raise'|'raised'|'affected', id: string, text: string, page: string|null}} WaitingLine
  */
 /**
  * A unit's tab (20.15.1), and an epic's while discovery runs before any

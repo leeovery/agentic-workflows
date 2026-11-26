@@ -258,7 +258,7 @@ function history({ project: here = PROJECT_ID, model: current = MODEL, start = F
       log('raise', (at) => ({ entry: null, replaces: null, kind, label: label(kind), sort, sealed: '1', answer: null, via: 'pressed', with_text: false, reading: null, didnt_follow: true, dont_care: false, blocks_build: false, replaced_by: null, always: null, measured: null, chain: UNDRAWN, raised: at, blind: false, from_before: false }));
     },
     /** @param {string} entry @param {string} verdict @param {Where} [where] */
-    verdict: (entry, verdict, where = {}) => log('verdict', { entry, verdict, point: 'decided' }, { project: where.project }),
+    verdict: (entry, verdict, where = {}) => log('verdict', { entry, verdict, given: 'asked' }, { project: where.project }),
     /** @param {string} entry @param {{kind?: Kind|null, verdict?: string|null}} to */
     correct: (entry, { kind = null, verdict = null }) => log('correction', { entry, kind, verdict }),
     /**

@@ -62,22 +62,20 @@ WAITING ON YOU ───────────────── 1 · asked in
     )
   })
 
-  test('20.S32: WAITING ON YOU lists what the epic\'s menu lists — a topic\'s decided and a decided topic a changed answer holds, each opening its topic, and a verdict, opening nothing', () => {
+  test('20.S32: WAITING ON YOU lists what the epic\'s menu lists — a topic\'s decided and a decided topic a changed answer holds, each opening its topic', () => {
     const waiting = [
       { kind: 'decided', id: 'note-window', text: 'Decided: what Note window decided, for your yes', page: 'topic:note-window' },
       { kind: 'affected', id: 'space-homing', text: 'Space homing: a decision it relies on changed', page: 'topic:space-homing' },
-      { kind: 'verdict', id: 'k3Vd8q', text: 'Verdict on a call you changed: Notes open where made', page: null },
     ]
     const page = drawn(EPIC, { ...FUMI, waiting } as View, { now: NOW })
 
-    expect(page.text.slice(6, 10)).toEqual([
-      'WAITING ON YOU ───────────────── 3 · asked in the conversation',
+    expect(page.text.slice(6, 9)).toEqual([
+      'WAITING ON YOU ───────────────── 2 · asked in the conversation',
       '⚑ Decided: what Note window decided, for your yes',
       '⚑ Space homing: a decision it relies on changed',
-      '⚑ Verdict on a call you changed: Notes open where made',
     ])
-    expect(waiting.map(({ id }) => pressOf(page.lines, `unit:waiting:${id}`))).toEqual(['page:topic:note-window', 'page:topic:space-homing', undefined])
-    expect(ownMarkOf(page.lines, 'unit:waiting:k3Vd8q')).toEqual({ text: `${MARK.needs} `, color: COLOUR.needs })
+    expect(waiting.map(({ id }) => pressOf(page.lines, `unit:waiting:${id}`))).toEqual(['page:topic:note-window', 'page:topic:space-homing'])
+    expect(ownMarkOf(page.lines, 'unit:waiting:space-homing')).toEqual({ text: `${MARK.needs} `, color: COLOUR.needs })
   })
 
   test('N4: a title too long for the head gives way with "…", the type and "at its menu" kept whole', () => {
@@ -385,7 +383,7 @@ PHASES ────────────────────────�
   test('S1: its build stopped, flagged as stopped; its review waiting on finish, flagged, finish listed under what waits; approve the map listed with what it holds, discovery flagged', () => {
     const at = (phases: object[], waiting: object[] = []) => drawn(UNIT, { ...MINT, here: false, waiting, phases: [...(MINT.phases as object[]).slice(0, 3), ...phases] } as View).text
     const stopped = at([phase('build', 'stopped', '62 of 68 tasks done'), phase('review', 'later')])
-    const finish = at([phase('build', 'complete', '99 tasks done', { on: '2026-10-21T12:00:00' }), phase('review', 'waits', 'round 2')], [{ kind: 'finish', id: 'finish', text: 'Finish: the report of every round, and your verdict on each call you changed', page: null }])
+    const finish = at([phase('build', 'complete', '99 tasks done', { on: '2026-10-21T12:00:00' }), phase('review', 'waits', 'round 2')], [{ kind: 'finish', id: 'finish', text: 'Finish: the report of every round', page: null }])
     const shaping = drawn(UNIT, {
       ...MINT,
       type: 'epic',
@@ -397,7 +395,7 @@ PHASES ────────────────────────�
 
     expect(stopped).toContain('⚑ Build · 62 of 68 tasks done                          stopped')
     expect(finish).toContain('⚑ Review · round 2                                waits on you')
-    expect(finish).toContain('⚑ Finish: the report of every round, and your verdict on each')
+    expect(finish).toContain('⚑ Finish: the report of every round')
     expect(shaping.slice(6, 13)).toEqual(
       block(`
 WAITING ON YOU ───────────────── 1 · asked in the conversation

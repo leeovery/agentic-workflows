@@ -109,8 +109,8 @@ const START_HELP = Object.freeze({
 
 /** Every menu, by the name its render takes (the header's). @type {Readonly<Record<string, Menu>>} */
 const MENUS = Object.freeze({
-  'start-menu': registered('start-menu', 'start menu', 'the start menu', 'none', [NUMBERED, 'p', 's', 't', 'r', 'e', 'v', 'm'], START_HELP),
-  'epic-menu': registered('epic-menu', 'epic menu', 'the epic menu', 'unit', [NUMBERED, 'e', 's', 'd', BACK]),
+  'start-menu': registered('start-menu', 'start menu', 'the start menu', 'none', [NUMBERED, 'p', 's', 't', 'r', 'v', 'm'], START_HELP),
+  'epic-menu': registered('epic-menu', 'epic menu', 'the epic menu', 'unit', [NUMBERED, 's', 'd', BACK]),
   triage: registered('triage', 'triage', 'triage', 'none', ['w', 'r', 'a', 'c', 'v', BACK]),
   archived: registered('archived', 'archived items', 'the archived items', 'none', [NUMBERED, BACK]),
   'archived-item': registered('archived-item', 'archived item', 'the archived item', 'none', ['u', 'd', BACK]),
@@ -118,7 +118,6 @@ const MENUS = Object.freeze({
   manage: registered('manage', 'manage', 'manage', 'none', [NUMBERED, 's', 'd', 'm', BACK]),
   'manage-unit': registered('manage-unit', 'manage unit', 'managing the unit', 'none', ['p', 'o', 'c', 'r', BACK]),
   closed: registered('closed', 'closed units', 'the closed units', 'none', [NUMBERED, BACK]),
-  verdicts: registered('verdicts', 'verdicts', 'the verdict queue', 'none', ['n', 'f', 'l', 'b'], { label: 'What this screen is for, row by row' }),
   care: registered('care', 'care entries', 'the care entries', 'none', ['n', 'd', 'b'], { label: 'What this screen is for, row by row' }),
   matrix: registered('matrix', 'matrix', 'the matrix', 'none', ['t', 'u', 'c', BACK], { label: 'What this screen is for, row by row' }),
   drivers: registered('drivers', 'drivers', 'the drivers', 'none', [NUMBERED, BACK]),

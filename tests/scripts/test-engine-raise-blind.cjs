@@ -10,7 +10,7 @@
 // back while the seal keeps it, the draw logged once (16.S52, 16.S65); its
 // answer revealed beside Claude's, with how often Claude picked as the
 // person did on its kind, its raise event marked blind, and a differing
-// answer a departure waiting on its verdict (16.17.7, 16.S66), and the
+// answer a departure, owed its verdict (16.17.7, 16.S66), and the
 // person's "don't care" the builder's, revealing no pick but naming
 // Claude's answer, weighing nothing though it counts towards a care entry's
 // drop, and on a call gone ahead keeping it handed over, so replacing it
@@ -229,8 +229,8 @@ function blindScreen(id, { header = 'Fumi · Note Window', technical = false, ro
 /** The trust log's events of `type` logged in the conversation, the quiet kind's history passed over. @param {string} type */
 const loggedOf = (type) => logged().filter((event) => event.type === type && event.session === SESSION);
 
-/** The verdict queue's departures, by id. */
-const queued = () => ok(dir, ['verdict', 'queue'], { env: conversation() }).departures.map((/** @type {{id: string}} */ d) => d.id);
+/** The verdict an answer says is owed, null where it owes none. @param {Record<string, unknown>} res */
+const owed = (res) => res.verdict_owed ?? null;
 
 describe('the draw (16.17.1–16.17.5)', () => {
   it('16.S52, 16.S65: a call the rule lets proceed whose question\'s id draws blind is asked cold — answered blind, its screen holding Claude\'s answer back, no lean, no row recommended and no reason it asks, with the mechanism shown or not, its payload alike — Claude\'s answer sealed all the same, its rows, its lean and the rows judged rekeyed in the order the id gives, the draw logged once with the call\'s kind, naming the raise, and the same question raised again drawn as sealed (6.S24)', async (t) => {
@@ -359,7 +359,7 @@ describe('the reveal (16.17.7, 16.10.10)', () => {
     assert.deepStrictEqual(readReveal(sections), [REVEALED, `You picked: On the main screen. I'd have picked: On the screen the cursor is on. On behaviour in ${projectName(dir)}, that's the first answer you've given.`]);
   });
 
-  it('16.S66: a pick other than Claude\'s answer is revealed beside it, and is a departure waiting in the verdict queue; the person\'s own words, which the reader cannot read as a row, are revealed as said, a departure too (16.10.10)', async (t) => {
+  it('16.S66: a pick other than Claude\'s answer is revealed beside it, and is a departure, its answer saying its verdict is owed; the person\'s own words, which the reader cannot read as a row, are revealed as said, a departure too (16.10.10)', async (t) => {
     drawingBlind(t);
     quietOn('behaviour');
     const env = labelledAs(CALL, 'behaviour');
@@ -374,7 +374,7 @@ describe('the reveal (16.17.7, 16.10.10)', () => {
       [REVEALED, `You picked: On the main screen. I'd have picked: On the screen the cursor is on. On behaviour in ${project}, I've picked the same as you 24 of the last 25 times.`],
       [REVEALED, `You said: Where I last left one. I'd have picked: On the screen the cursor is on. On behaviour in ${project}, I've picked the same as you 23 of the last 25 times.`],
     ]);
-    assert.deepStrictEqual(queued(), [other.res.id, own.res.id]);
+    assert.deepStrictEqual([owed(other.res), owed(own.res)], [other.res.id, own.res.id]);
   });
 });
 
@@ -502,7 +502,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
     assert.strictEqual(res.receipt, 'Q1 answered · task 2.3 stands as built · nothing waiting on you');
     assert.deepStrictEqual(loggedOf('raise').map(({ entry, sealed, answer, blind }) => [entry, sealed, answer, blind]), [[full(landed.id), '2', '2', true]]);
     assert.match(sections, /^I'd have picked the same\. /m);
-    assert.deepStrictEqual([queued(), ok(dir, ['raise', 'waiting', BUILT]).waiting, marked()], [[], [], null]);
+    assert.deepStrictEqual([owed(res), ok(dir, ['raise', 'waiting', BUILT]).waiting, marked()], [null, [], null]);
     const { by, given } = recordOf(landed.id);
     assert.deepStrictEqual([by, given, callsOn(), sinceCalls('since').includes(full(landed.id)), reviewListed(CURSOR.text)], ['person', 'own', [], false, false]);
     assert.deepStrictEqual([again.already, again.answer], [true, '2']);
@@ -526,7 +526,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
     assert.match(readReveal(sections)[1], /^You said: Where my cursor is, as you built it\. I'd have picked the same\. /);
   });
 
-  it('16.S53: the person\'s answer that is not Claude\'s replaces its call for the task, asked-blind, standing over it — a departure waiting on its verdict — the task, its pair reading round 1, marked changed against that round so the build reads it again, the receipt saying so, and what relied on the call affected (P12)', async (t) => {
+  it('16.S53: the person\'s answer that is not Claude\'s replaces its call for the task, asked-blind, standing over it — a departure owed its verdict — the task, its pair reading round 1, marked changed against that round so the build reads it again, the receipt saying so, and what relied on the call affected (P12)', async (t) => {
     drawingBlind(t);
     quietOn('behaviour');
     const { landed } = (await raisedInBuild()).res;
@@ -543,7 +543,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
     assert.strictEqual(movedRefusal(replaced, 'decision', 'asked-blind', foldLedger(statePath(dir), ID_FACTS, []).get(full(landed.id))), null, 'the departure rule holds the replacement\'s line');
     assert.deepStrictEqual(marked(), { round: 1, n: 1, passed_until: null });
     assert.strictEqual(res.receipt, 'Q1 answered · task 2.3 is built again on your answer · nothing waiting on you');
-    assert.deepStrictEqual(queued(), [res.id]);
+    assert.strictEqual(owed(res), res.id);
     assert.deepStrictEqual(ok(dir, ['ledger', 'affected', BUILT]).affected.map((/** @type {{id: string}} */ e) => e.id), [relying]);
   });
 

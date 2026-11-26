@@ -32,9 +32,6 @@
 //   (unit-handoff.cjs): the topic's own while the unit is in the phase its
 //   topics are talked through, else that phase, whose entry reads what the
 //   change affected.
-// - Asked for, the verdicts waiting on the departures that stand in the
-//   unit, in the ledger's order (ledger-verdicts.cjs), each its door the
-//   verdict page drawn for the unit.
 //
 // The call reads the ledger once, checked once, however many units it reads
 // and however many of their rules read it (ledger-fold.cjs, `readOnce`), or
@@ -45,8 +42,6 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { readShownOnce, holdingShown } = require('./ledger-read.cjs');
 const { factsOf } = require('./ledger-fold.cjs');
 const { answerAffected } = require('./ledger-affected.cjs');
-const { queueOf, inUnit } = require('./ledger-verdicts.cjs');
-const { evidenceOf } = require('./trust-evidence.cjs');
 const { sealsAt, sealWaits, raisePlaces } = require('./raise.cjs');
 const { waitingIn, askedOpenIds } = require('./questions.cjs');
 const { waitingGaps } = require('./spec-passes.cjs');
@@ -66,7 +61,7 @@ const {
 /** @typedef {import('./raise.cjs').Seal} Seal */
 
 /** Every kind of wait (the header's). */
-const WAIT_KINDS = Object.freeze(/** @type {const} */ (['map', 'decided', 'ready', 'finish', 'gap', 'question', 'raise', 'raised', 'affected', 'verdict']));
+const WAIT_KINDS = Object.freeze(/** @type {const} */ (['map', 'decided', 'ready', 'finish', 'gap', 'question', 'raise', 'raised', 'affected']));
 
 /** @typedef {typeof WAIT_KINDS[number]} WaitKind */
 /**
@@ -79,9 +74,9 @@ const WAIT_KINDS = Object.freeze(/** @type {const} */ (['map', 'decided', 'ready
 
 /**
  * What a call reads of the person and the ledger for every unit: the
- * ledger shown, the conversation reading, its seals counted, the verdicts
- * waiting asked for, and what the reads said.
- * @typedef {{shower: Shower, session: string|null, queue: string[], now: number, warnings: string[]}} Read
+ * ledger shown, the conversation reading, its seals counted, and what the
+ * reads said.
+ * @typedef {{shower: Shower, session: string|null, now: number, warnings: string[]}} Read
  */
 
 /**
@@ -92,9 +87,6 @@ const intoPhase = (manifest, phase) => ({ kind: 'handoff', skill: phaseSkill(pha
 
 /** The door into a topic of the unit, refused where the pick has gone stale (handoff.cjs, `topicHandoff`). @param {Record<string, any>} manifest @param {string} topic @returns {Next} */
 const intoTopic = (manifest, topic) => ({ kind: 'engine', argv: ['handoff', 'topic', manifest.name, topic] });
-
-/** The verdict page's door, drawn for the unit. @param {string} unit @returns {Next} */
-const verdictsOf = (unit) => ({ kind: 'engine', argv: ['render', 'verdicts', '--unit', unit] });
 
 /** The phase a unit's tasks are built in now: its review once its build has finished, or a quick-fix's review asked for; else its build. @param {Record<string, any>} manifest */
 const buildPlace = (manifest) => ((quickFixBuild(manifest) ? reviewAsked(manifest) : buildFinished(manifest)) ? 'review' : 'implementation');
@@ -214,28 +206,26 @@ function unitWaits(cwd, root, read, manifest) {
     ...questions,
     ...(questions.length === 0 ? finishGate(cwd, manifest) : []),
     ...affectedWaits(cwd, shower, root, manifest),
-    ...inUnit(shower.folded, read.queue, manifest.name).map((id) => wait('verdict', shower.short(id), String(shower.show(id).text), verdictsOf(manifest.name))),
   ];
 }
 
 /**
  * What waits on the person in each unit given, in its order (the header's),
  * the ledger read once: the seals of the conversation `session` counted,
- * none with no session; the verdicts with `verdicts`; and, where a caller
- * hands its own read of the ledger, `shower`, that read met. With what the
- * reads said.
+ * none with no session; and, where a caller hands its own read of the
+ * ledger, `shower`, that read met. With what the reads said.
  * @param {string} cwd @param {Record<string, any>[]} manifests units in progress
- * @param {{verdicts?: boolean, session?: string|null, shower?: Shower|null}} [opts]
+ * @param {{session?: string|null, shower?: Shower|null}} [opts]
  * @returns {{waits: Map<string, Wait[]>, warnings: string[]}}
  */
-function waitsOf(cwd, manifests, { verdicts = false, session = null, shower = null } = {}) {
+function waitsOf(cwd, manifests, { session = null, shower = null } = {}) {
   /** @type {string[]} */
   const warnings = [];
   const root = stateRoot(cwd);
   /** @param {Shower} shown */
   const readAll = (shown) => {
     /** @type {Read} */
-    const read = { shower: shown, session, queue: verdicts ? queueOf(shown.folded, evidenceOf(root)) : [], now: Date.now(), warnings };
+    const read = { shower: shown, session, now: Date.now(), warnings };
     return new Map(manifests.map((manifest) => [manifest.name, unitWaits(cwd, root, read, manifest)]));
   };
   const waits = shower === null ? readShownOnce(root, warnings, readAll) : holdingShown(root, shower, () => readAll(shower));

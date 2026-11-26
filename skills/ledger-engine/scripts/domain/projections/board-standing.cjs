@@ -17,8 +17,8 @@
 //   a gap, ready to build's yes, finish or a quick-fix's
 //   close; else under way.
 // - What waits on the person is the list the unit's menu reads (waits.cjs;
-//   20.8.5), read in this conversation, its verdicts for an epic as the
-//   epic's menu asks for them — so the board and the menus never differ —
+//   20.8.5), read in this conversation — so the board and the menus never
+//   differ —
 //   each wait with the board's words and the page a press on it opens,
 //   where it opens one: approve the map with the topics it holds and what
 //   it parks, or the sweep's candidates still standing (8.10.9); a topic's
@@ -29,9 +29,8 @@
 //   it parks, one parking none its question's entry — a replacement's, the
 //   decision it would replace (questions.cjs); an investigation's raise
 //   with what raised it (board-investigation.cjs); a
-//   quick-fix's question asked in its conversation; finish, a quick-fix's
-//   its close with whether a verdict is owed (board-quick-fix.cjs); and a
-//   verdict waiting, by the words of the answer it judges.
+//   quick-fix's question asked in its conversation; and finish, a
+//   quick-fix's its close (board-quick-fix.cjs).
 // - The whole list stands on the epic's page and the unit's tab, and the
 //   banner at the unit's menu counts it (20.8.5, 20.2.4). A phase's view
 //   and its banner take the phase's own waits alone (`phaseWaiting`), as
@@ -42,7 +41,7 @@
 //   close; a discussion and an experiment none. Any other unit's wait
 //   counts too in the phase its door hands into: a decided topic a changed
 //   answer holds, in the phase the unit is in (12.15.4). An epic's decided
-//   topics, those a changed answer holds and its verdicts are no phase's.
+//   topics and those a changed answer holds are no phase's.
 // - The banner counts what it takes, flagged — the map alone by its own
 //   words — and at a menu says it unflagged (D40).
 // ---------------------------------------------------------------------------
@@ -99,7 +98,7 @@ function questionLine(at, wait) {
 }
 
 /** Finish, as what waits on the person. @type {WaitingLine} */
-const FINISH = Object.freeze({ kind: 'finish', id: 'finish', text: 'Finish: the report of every round, and your verdict on each call you changed', page: null });
+const FINISH = Object.freeze({ kind: 'finish', id: 'finish', text: 'Finish: the report of every round', page: null });
 
 /** A wait by its own words, opening `page`. @param {Wait} wait @param {string|null} [page] @returns {WaitingLine} */
 const plainLine = ({ kind, id, text }, page = null) => ({ kind, id, text, page });
@@ -118,12 +117,11 @@ const LINES = Object.freeze({
   raise: raiseLine,
   raised: (_, wait) => plainLine(wait),
   affected: (_, wait) => topicLine(wait),
-  verdict: (_, wait) => ({ ...plainLine(wait), text: `Verdict on a call you changed: ${wait.text}` }),
 });
 
 /** What waits on the person in the unit (the header's), each wait with the board's line for it, read once a call. @param {BoardAt} at @returns {{wait: Wait, line: WaitingLine}[]} */
 const waitsAt = (at) => at.once('waiting-on', () => readShownOnce(at.root, at.warnings, (shower) => {
-  const { waits, warnings } = waitsOf(at.cwd, [at.manifest], { verdicts: at.manifest.work_type === 'epic', session: at.session, shower });
+  const { waits, warnings } = waitsOf(at.cwd, [at.manifest], { session: at.session, shower });
   at.warnings.push(...warnings);
   return /** @type {Wait[]} */ (waits.get(at.unit)).map((wait) => ({ wait, line: LINES[wait.kind](at, wait) }));
 }));
@@ -159,8 +157,8 @@ function phaseWaiting(at) {
 /**
  * Whether a wait holds the phase (`HOLDING`): never a build's question,
  * which waits on the board, a quick-fix's, asked in the conversation and
- * holding nothing, a topic's decided, which holds its topic alone, a
- * decided topic a changed answer holds, nor a verdict.
+ * holding nothing, a topic's decided, which holds its topic alone, nor a
+ * decided topic a changed answer holds.
  * @param {WaitingLine} line
  */
 const holds = ({ kind }) => HOLDING.includes(kind);

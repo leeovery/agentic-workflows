@@ -5,8 +5,8 @@
 // — each answer the trust log holds and where it stands, and with them the
 // departures and the verdicts given on them, read in one pass. It counts
 // nothing and stores nothing (16.13.6): the ask rule's counts are read from
-// its answers (trust-counts.cjs), the verdict queue and `verdict give` from
-// its departures and verdicts (ledger-verdicts.cjs, verdict.cjs).
+// its answers (trust-counts.cjs), the verdict owed on a departure from its
+// departures and verdicts (ledger-verdicts.cjs, verdict.cjs).
 //
 // - The read: the project's events on this machine, whose trust log it is
 //   (16.13.1) — landed in the log; waiting in a conversation after an append
@@ -51,14 +51,8 @@
 // - The verdicts: each entry's, in the order given, by time, the order read
 //   breaking a tie — the log's, then each conversation's — as a verdict
 //   that waited lands after the log's; a correction of a verdict is one
-//   given at its own time (16.15.4), at no point. Each with the point it
-//   was given at, so the verdict page says where a skip was given.
-// - The judged: the entries whose latest verdict is one — nothing, a fix
-//   later or a real loss — and not a skip, which leaves a departure waiting
-//   (16.10.6).
-// - The asked: the entries given any verdict, a skip among them, each with
-//   when its latest was given — the departures a verdict point has put to
-//   the person, which a decided screen asks no more (16.10.2, decided.cjs).
+//   given at its own time (16.15.4). A departure given one, a skip among
+//   them, is owed none (ledger-verdicts.cjs).
 // ---------------------------------------------------------------------------
 
 const { readProjectEvents } = require('./trust-log.cjs');
@@ -73,13 +67,11 @@ const { readProjectEvents } = require('./trust-log.cjs');
  * whose call it was, null where its session's was unread.
  * @typedef {{event: Record<string, unknown>, standing: AnswerStanding, cancelled_by: string|null, kind: Kind|null, sort: Sort|null, model: string|null}} Answer
  */
-/** A verdict given on an entry: when, which, and the point it was given at — null for a correction. @typedef {{at: number, verdict: string, point: string|null}} Given */
+/** A verdict given on an entry, or a correction of one: when, and which. @typedef {{at: number, verdict: string}} Given */
 /**
  * What this machine logged: its answers in the order read; the entries of
- * its departures; the verdicts given on each entry, in the order given; the
- * entries given a verdict; and those given any verdict, a skip among them,
- * by when the latest was given.
- * @typedef {{answers: Answer[], departures: Set<string>, verdicts: Map<string, Given[]>, judged: Set<string>, asked: Map<string, number>}} Evidence
+ * its departures; and the verdicts given on each entry, in the order given.
+ * @typedef {{answers: Answer[], departures: Set<string>, verdicts: Map<string, Given[]>}} Evidence
  */
 
 /** @typedef {(event: Record<string, unknown>, drawn: Set<unknown>, answered: Map<unknown, Record<string, unknown>>) => AnswerStanding} StandsBy */
@@ -116,7 +108,7 @@ function verdictsByEntry(events) {
     if (event.verdict === null) continue;
     const entry = /** @type {string} */ (event.entry);
     const given = verdicts.get(entry) ?? [];
-    given.push({ at: timeOf(event), verdict: /** @type {string} */ (event.verdict), point: /** @type {string|undefined} */ (event.point) ?? null });
+    given.push({ at: timeOf(event), verdict: /** @type {string} */ (event.verdict) });
     verdicts.set(entry, given);
   }
   return verdicts;
@@ -167,14 +159,10 @@ function evidenceIn(events) {
     cancelled_by: cancels.get(event.entry) ?? null,
     ...questionOf(event, event.type === 'reversal' ? questions.get(event.reverses) : event, corrected),
   }));
-  const verdicts = verdictsByEntry(ordered.filter(({ type }) => type === 'verdict' || type === 'correction'));
-  const latest = [...verdicts].map(([entry, given]) => /** @type {[string, Given]} */ ([entry, given[given.length - 1]]));
   return {
     answers,
     departures: new Set(answers.filter(({ standing }) => standing === 'departure').map(({ event }) => /** @type {string} */ (event.entry))),
-    verdicts,
-    judged: new Set(latest.filter(([, { verdict }]) => verdict !== 'skip').map(([entry]) => entry)),
-    asked: new Map(latest.map(([entry, { at }]) => [entry, at])),
+    verdicts: verdictsByEntry(ordered.filter(({ type }) => type === 'verdict' || type === 'correction')),
   };
 }
 

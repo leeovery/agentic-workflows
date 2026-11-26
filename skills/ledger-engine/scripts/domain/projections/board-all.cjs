@@ -7,8 +7,8 @@
 //
 // - Each unit's phase is its standing's (board-standing.cjs), as its tab
 //   and its banner have it. What waits on the person in it is counted from
-//   its one list as the start menu's row counts it (start-menu.cjs, 18.2.3),
-//   never its verdicts; the project's total sums them.
+//   its one list as the start menu's row counts it (start-menu.cjs, 18.2.3);
+//   the project's total sums them.
 // - How far a unit has come, by the phase it is in: the gate ending it
 //   waiting on the person, by its name — finish, or a quick-fix's close; an
 //   epic's discovery its topics on the map,

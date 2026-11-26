@@ -34,13 +34,8 @@
 //   (`pairVerdict`).
 // - It lists every inbox item the unit closed, read from the record
 //   `inbox close` keeps (18.6.7, inbox.cjs, `closedBy`), and no checklist
-//   item skipped, those kept on the unit's manifest alone (6.4.5, 6.4.12);
-//   then asks, one at a time, the verdict of each departure this machine logged in the build
-//   and the review phase — the person's answer at `{unit}.implementation`
-//   or `{unit}.review` standing over Claude's lean — given at the verdict
-//   point `finish` (16.10.3, ledger-verdicts.cjs), a quick-fix's at its
-//   close, `close` (16.10.4); where the person changed none, nothing
-//   is added (16.10.5). Finish then invites questions about what was built,
+//   item skipped, those kept on the unit's manifest alone (6.4.5, 6.4.12).
+//   Finish then invites questions about what was built,
 //   answered before finishing (14.5.1); and what the review's put backs set
 //   aside, where they set aside anything, said to stay until the person
 //   removes it; its yes saying it lands the unit's own branch on the
@@ -57,8 +52,8 @@
 //   What its reads warned of — a knowledge base set up that does not read
 //   among it (finish-checks.cjs) — is said on the screen, and on the yes's
 //   answer.
-// - The yes stands on the screen as drawn: the close it shows and no
-//   verdict still to ask; a quick-fix's refuses besides its worktree
+// - The yes stands on the screen as drawn: the close it shows; a
+//   quick-fix's refuses besides its worktree
 //   holding changes not committed outside the state, naming each
 //   (fix-branch.cjs). It lands every phase still
 //   standing (`land finish`, landing.cjs) — the review phase's fix phases,
@@ -81,18 +76,14 @@
 //   the work completed, since the board follows the conversation there.
 // - What the yes stands on before it lands anything is `land finish`'s
 //   refusal too, and a quick-fix's `land phase`'s, which lands its one pull
-//   request whole (landing.cjs): one read, the screen's standing and no
-//   verdict still to ask, a quick-fix's worktree clean among it
+//   request whole (landing.cjs): one read, the screen's standing, a
+//   quick-fix's worktree clean among it
 //   (`finishLandRefusal`, `refuseLanding`), so neither lands what the
 //   other would refuse. The yes reads it once and lands past it
 //   (`finishMerge`); `land finish` called on its own reads it itself.
 // ---------------------------------------------------------------------------
 
-const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
-const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
-const { readShown } = require('./ledger-read.cjs');
-const { verdictAsked, closeDepartures } = require('./ledger-verdicts.cjs');
 const {
   itemTitle, buildRefusal, quickFixBuild, reviewAsked, buildLength,
 } = require('./derivations.cjs');
@@ -188,40 +179,6 @@ function stillToLand(cwd, unit, manifest) {
 }
 
 /**
- * What the screen and the yes stand on, refused where finish cannot show:
- * the unit's manifest, a quick-fix's fixes done, and the verdict asked of
- * the first departure in the build still owed one.
- * @param {string} cwd @param {string} unit
- */
-function standing(cwd, unit) {
-  const { manifest, fixes, closed, warnings } = finishStanding(cwd, unit);
-  const root = stateRoot(cwd);
-  const verdict = carryingAll(warnings, () => readShown(root, warnings, (shower) => verdictAsked(shower, root, closesIn(unit, closed))));
-  return { manifest, fixes, warnings, verdict };
-}
-
-/** What finish closes of a departure: the unit's work in the build's places, closed when its checklist did. @param {string} unit @param {string} closed */
-const closesIn = (unit, closed) => (/** @type {import('./ledger-fold.cjs').IdFacts} */ facts) => (facts.unit === unit && BUILD_PHASES.includes(facts.phase) ? closed : null);
-
-/**
- * The calls the person changed in the work finish closes, and the verdicts
- * on them still owed, as its screen asks them, the board reading the close
- * it waits on; null where the screen does not draw.
- * @param {string} cwd @param {string} unit @param {string[]} warnings
- * @returns {{changed: number, owed: number}|null}
- */
-function closeVerdicts(cwd, unit, warnings) {
-  /** @type {string|null} */
-  let closed = null;
-  if (!stands(() => ({ closed } = finishStanding(cwd, unit, false)))) return null;
-  const root = stateRoot(cwd);
-  return readShown(root, warnings, (shower) => {
-    const { departures, waiting } = closeDepartures(shower.folded, root, closesIn(unit, /** @type {string} */ (closed)));
-    return { changed: departures.length, owed: waiting.length };
-  });
-}
-
-/**
  * What running the product proved of each fix done, a scenario a line, in
  * the fixes' order — null where the project has no way to run it, no verify
  * setup recorded (P9).
@@ -254,23 +211,20 @@ function landsAt(cwd, unit) {
 }
 
 /**
- * `render finish <unit> [--alone]`: the screen — a quick-fix's, its close —
- * drawn after a verdict with `--alone`.
- * @param {string} cwd @param {{dotpath?: string, alone?: string}} args
+ * `render finish <unit>`: the screen — a quick-fix's, its close.
+ * @param {string} cwd @param {{dotpath?: string}} args
  * @returns {string}
  */
-function finishSurface(cwd, { dotpath: unit = '', alone }) {
+function finishSurface(cwd, { dotpath: unit = '' }) {
   return refusing('render finish', () => {
-    const { manifest, fixes, verdict, warnings } = standing(cwd, unit);
+    const { manifest, fixes, warnings } = finishStanding(cwd, unit);
     const view = {
       unit,
       title: itemTitle(manifest, 'review', unit),
       lands: landsAt(cwd, unit),
       closed: closedBy(cwd, unit),
-      verdict,
       warnings,
       aside: setAsideHeld(cwd, unit),
-      alone: alone !== undefined,
     };
     if (fixes === null) return finishScreen(view);
     return closeScreen({
@@ -291,17 +245,12 @@ function finishSurface(cwd, { dotpath: unit = '', alone }) {
 /** Where a finish but a quick-fix's close goes: on in the conversation (the header's). @type {import('./projections/surfaces.cjs').Next} */
 const CONTINUE = Object.freeze({ kind: 'continue' });
 
-/** The yes's refusal while the screen still has a verdict to ask. */
-const VERDICT_OWED = 'a verdict is still to ask — render finish asks each before the yes';
-
 /**
- * Refuse a finish that stands from landing: a verdict still to ask; or,
- * for a quick-fix, its worktree holding changes not committed
- * (fix-branch.cjs).
- * @param {string} cwd @param {string} unit @param {{verdict: unknown, fixes: TaskDetail[]|null}} standing
+ * Refuse a quick-fix's finish from landing while its worktree holds changes
+ * not committed (fix-branch.cjs).
+ * @param {string} cwd @param {string} unit @param {{fixes: TaskDetail[]|null}} standing
  */
-function refuseLanding(cwd, unit, { verdict, fixes }) {
-  if (verdict !== null) throw new Error(VERDICT_OWED);
+function refuseLanding(cwd, unit, { fixes }) {
   if (fixes !== null) refuseDirtyClose(cwd, unit);
 }
 
@@ -319,14 +268,13 @@ function refuseAskedOpen(unit, open) {
 
 /**
  * Why the unit's finish cannot land yet, as the yes refuses before it lands
- * anything (the header's): what its screen stands on refused, a verdict
- * still to ask, or a quick-fix's worktree holding changes not committed —
- * null where it can.
+ * anything (the header's): what its screen stands on refused, or a
+ * quick-fix's worktree holding changes not committed — null where it can.
  * @param {string} cwd @param {string} unit @returns {string|null}
  */
 function finishLandRefusal(cwd, unit) {
   try {
-    refuseLanding(cwd, unit, standing(cwd, unit));
+    refuseLanding(cwd, unit, finishStanding(cwd, unit));
     return null;
   } catch (err) {
     return messageOf(err);
@@ -337,7 +285,7 @@ function finishLandRefusal(cwd, unit) {
  * Every phase still standing landed, refused as `refuseLanding` refuses,
  * and for a quick-fix its code then left as its close leaves it — a refusal carrying
  * what finish's standing warned.
- * @param {string} cwd @param {string} unit @param {{verdict: unknown, warnings: string[], fixes: TaskDetail[]|null}} standing
+ * @param {string} cwd @param {string} unit @param {{warnings: string[], fixes: TaskDetail[]|null}} standing
  * @returns {{repos: Record<string, any>[], warnings?: string[]}}
  */
 function landStanding(cwd, unit, standing) {
@@ -356,7 +304,7 @@ function landStanding(cwd, unit, standing) {
  * @param {string} cwd @param {string} unit
  */
 function finishYes(cwd, unit) {
-  const stands = standing(cwd, unit);
+  const stands = finishStanding(cwd, unit);
   const { manifest, warnings } = stands;
   const landed = landStanding(cwd, unit, stands);
   readersDone(cwd, READERS.unit(unit));
@@ -381,4 +329,4 @@ function runFinishVerb(cwd, [verb, ...args], opts) {
   return refusing('finish yes', () => finishYes(cwd, args[0]));
 }
 
-module.exports = { FINISH_USAGE, finishStanding, finishSurface, finishDraws, finishLandRefusal, runFinishVerb, closeVerdicts };
+module.exports = { FINISH_USAGE, finishStanding, finishSurface, finishDraws, finishLandRefusal, runFinishVerb };

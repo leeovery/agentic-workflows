@@ -29,21 +29,17 @@
 // - It shows the short outline, the landed spec's areas; the phase cut, read
 //   from the manifest (11.S31); Claude's calls at the spec — the current
 //   decisions of Claude's made there — counted by kind; and every checklist
-//   item skipped. Each departure the person made among the spec's gap
-//   answers that this machine logged is asked its verdict there, one at a
-//   time, until each has one (16.10.11).
+//   item skipped.
 // - A feature's is one screen with its topic's decided (9.7.6, 11.8.5): it
 //   stands on decided's close too, as the decided gate stands on it, and on
 //   the payload staged for it (decided.cjs); it shows the topic's close
 //   beside the spec's — what the person decided, the product-record lines,
 //   the candidates and their strike — Claude's calls on the topic counted
-//   with those at the spec, and decided's skips before ready to build's;
-//   and it asks decided's verdicts, at decided, before the spec's. A
+//   with those at the spec, and decided's skips before ready to build's. A
 //   bugfix's is one screen with its investigation's conclude alike
 //   (investigation-conclude.cjs): it stands on the investigation's close
-//   into its spec and the recap staged for it, shows the recap before the
-//   spec's parts, and asks the investigation's verdicts, at the conclusion,
-//   before the spec's. Then the gate offers the build's
+//   into its spec and the recap staged for it, and shows the recap before
+//   the spec's parts. Then the gate offers the build's
 //   position, auto first and recommended, nothing preselected (3.3.9), the
 //   review page where the session can publish one (`--page`, 11.11.11), the
 //   calls, and a comment. While the review page is open (spec-review.cjs)
@@ -51,8 +47,7 @@
 //   those carrying Claude's tick they let stand, and those passing without
 //   review (11.11.7); its review row reads the comments, and its picks take
 //   the marks read back into `.cache/{unit}/specification/read-back.json`.
-// - The yes stands on the screen as drawn: the close it shows and no
-//   verdict still to ask. While the page is open it takes the page's marks,
+// - The yes stands on the screen as drawn: the close it shows. While the page is open it takes the page's marks,
 //   read back fresh — nothing on the page reaches Claude by itself (11.11.5)
 //   — and settles the review on them in one call (`settleReview`), storing
 //   them first: a comment waiting for Claude refuses the yes, listing each,
@@ -85,10 +80,8 @@ const { BUILD_POSITIONS, DRIVER_KINDS } = require('../kernel/manifest-schema.cjs
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { claudesCall } = require('./ledger-events.cjs');
-const { isCurrent, factsOf, decidedNow } = require('./ledger-fold.cjs');
-/** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
+const { isCurrent, decidedNow } = require('./ledger-fold.cjs');
 const { readShown } = require('./ledger-read.cjs');
-const { verdictAsked } = require('./ledger-verdicts.cjs');
 const { buildBegun, itemTitle, cutPhases, quickFixBuild } = require('./derivations.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { knownUnit, noUnit, unitClosure } = require('./topic-standing.cjs');
@@ -180,33 +173,17 @@ const readyDraws = (cwd, unit) => stands(() => readyStanding(cwd, unit));
  * What the screen and the yes stand on, refused where ready to build
  * cannot show: the unit's manifest, the skips its checklists show, the
  * landed spec the close seals, a bugfix's investigation's close, and, read
- * in one pass of the ledger, a feature's topic's close, Claude's calls, and
- * the verdict asked — counted across a feature's topic's departures, or a
- * bugfix's investigation's, and the spec's, the topic's or the
- * investigation's first — with the point it is given at.
+ * in one pass of the ledger, a feature's topic's close and Claude's calls.
  * @param {string} cwd @param {string} unit
  */
 function standing(cwd, unit) {
-  const { closed, skips, warnings, landed, decided, concluded } = readyStanding(cwd, unit);
+  const { skips, warnings, landed, decided, concluded } = readyStanding(cwd, unit);
   const root = stateRoot(cwd);
   try {
     const manifest = loadWorkUnitManifest(cwd, unit);
-    /** The verdict point a departure is asked at on this screen, and the close it is asked under, or null. @param {IdFacts} facts */
-    const pointOf = (facts) => {
-      if (facts.unit !== unit) return null;
-      if (decided !== null && facts.topic === unit) return { point: 'decided', closed: decided.closed };
-      if (concluded !== null && facts.phase === 'investigation') return { point: 'conclusion', closed: concluded.closed };
-      return facts.phase === PHASE ? { point: 'ready-to-build', closed } : null;
-    };
     const read = readShown(root, warnings, (shower) => {
       const topic = decided === null ? null : featureClose(shower, root, cwd, manifest, decided.closed, warnings);
-      const verdict = verdictAsked(shower, root, (facts) => pointOf(facts)?.closed ?? null);
-      return {
-        topic,
-        calls: [...(topic?.calls ?? []), ...callsAtSpec(shower, unit)],
-        verdict,
-        point: verdict === null ? 'ready-to-build' : /** @type {{point: string}} */ (pointOf(factsOf(shower.folded, verdict.entry))).point,
-      };
+      return { topic, calls: [...(topic?.calls ?? []), ...callsAtSpec(shower, unit)] };
     });
     return { manifest, skips: [...(decided?.skips ?? []), ...skips], warnings: [...(decided?.warnings ?? []), ...warnings], landed, concluded, ...read };
   } catch (err) {
@@ -227,13 +204,12 @@ function reviewCounts(cwd, unit) {
 }
 
 /**
- * `render ready-to-build <unit> [--page] [--calls] [--alone]`: the screen,
- * the review row offered with `--page`, Claude's calls listed with
- * `--calls`, drawn after a verdict with `--alone`.
- * @param {string} cwd @param {{dotpath?: string, page?: string, calls?: string, alone?: string}} args
+ * `render ready-to-build <unit> [--page] [--calls]`: the screen, the review
+ * row offered with `--page`, Claude's calls listed with `--calls`.
+ * @param {string} cwd @param {{dotpath?: string, page?: string, calls?: string}} args
  * @returns {string}
  */
-function readyToBuildSurface(cwd, { dotpath: unit = '', page, calls, alone }) {
+function readyToBuildSurface(cwd, { dotpath: unit = '', page, calls }) {
   return refusing('render ready-to-build', () => {
     const ready = standing(cwd, unit);
     const stop = driversStop(cwd);
@@ -249,14 +225,11 @@ function readyToBuildSurface(cwd, { dotpath: unit = '', page, calls, alone }) {
       outline: headings.filter(({ kind }) => kind === 'area').map(({ number, title }) => ({ number: /** @type {string} */ (number), title })),
       phases: cutPhases(ready.manifest).map((/** @type {any} */ { name, scenarios, sections }) => ({ name, scenarios: scenarios.length, sections })),
       skips: ready.skips.map(({ text, reason }) => ({ text, reason })),
-      verdict: ready.verdict,
-      point: ready.point,
       close: ready.topic?.close ?? null,
       recap: ready.concluded?.recap ?? null,
       page: page !== undefined,
       review: open ? reviewCounts(cwd, unit) : null,
       readBack: readBackFile(cwd, unit),
-      alone: alone !== undefined,
     });
   });
 }
@@ -287,7 +260,6 @@ function readyToBuildYes(cwd, unit, position, marks) {
   const { warnings, topic } = ready;
   const stop = driversStop(cwd);
   if (stop !== null) throw new Error(stop.reason);
-  if (ready.verdict !== null) throw new Error('a verdict is still to ask — render ready-to-build asks each before the yes');
   if (topic !== null && topic.unreplaced !== null) throw new Error(topic.unreplaced);
   if (marks !== undefined && !pageOpen(cwd, unit)) throw new Error(`${unit}'s review page is not open, so the yes takes no marks — the build starts with no review recorded`);
   const yes = topic === null ? null : closingYes(cwd, unit, unit, topic.staged, warnings);

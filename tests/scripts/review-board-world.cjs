@@ -21,7 +21,7 @@ const area = (area, title, state, { ran = 0, found = 0, since = null } = {}) => 
 const tests = (state, more) => area('tests', 'Tests held against the specification', state, more);
 
 /** Finish, waiting on the person, as the unit's one list holds it. */
-const FINISH = { kind: 'finish', id: 'finish', text: 'Finish: the report of every round, and your verdict on each call you changed', page: null };
+const FINISH = { kind: 'finish', id: 'finish', text: 'Finish: the report of every round', page: null };
 
 /** The banner's facts, each plain unless flagged. @param {...(string|[string])} facts */
 const facts = (...facts) => facts.map((fact) => (typeof fact === 'string' ? { text: fact, needs: false } : { text: fact[0], needs: true }));

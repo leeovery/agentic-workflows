@@ -4,9 +4,9 @@
 // Finish's screen (ledger-engine/scripts/domain/finish.cjs, its screen
 // domain/projections/finish.cjs): `engine render finish <unit>`, standing on
 // finish's close — no checklist item skipped drawn, read by a later
-// conversation, no measure (17.S2), each call the person changed in the build and the review phase
-// asked its verdict before the gate (14.S9, 16.S35) and nothing added where
-// they changed none (16.10.5), questions about what was built invited, then
+// conversation, no measure (17.S2), no verdict asked of a call the person
+// changed in the build or the review phase (14.S9, 16.S35), questions about
+// what was built invited, then
 // yes — saying it lands the unit's own branch on the default branch, for a
 // unit with one (14.5.2, 14.S19) — and a comment; and the units it refuses, `land finish` refusing each
 // as it does. Every refusal writes and commits nothing. The inbox items the
@@ -36,7 +36,7 @@ const overruled = (at, entry, text) => ok(dir, ['ledger', 'replace', at, '--repl
 }).id;
 
 describe('render finish (14.5.1)', () => {
-  it('14.S9, 17.S2: draws no skip on the way, the skips kept on the manifest alone, read by a later conversation, no measure, and, nothing changed by the person, no verdict — then questions invited, the yes running finish and a comment', () => {
+  it('14.S9, 17.S2: draws no skip on the way, the skips kept on the manifest alone, read by a later conversation, no measure — then questions invited, the yes running finish and a comment', () => {
     reviewPassed();
     checklist(['skip', 'phase-start', UNIT, '1', 'design-settled', '--reason', 'One task alone.']);
     checklist(['skip', 'finish', UNIT, 'build-log-closed', '--reason', 'The build kept no log.']);
@@ -66,42 +66,13 @@ describe('render finish (14.5.1)', () => {
     assert.match(sectionOf(screen('later-session'), 'MENU: finish'), new RegExp(`^\\*\\*\`y/yes\`\\*\\*   → Land feat/${UNIT} on main, and complete the work$`, 'm'));
   });
 
-  it('16.S35: asks a verdict on each call the person changed in the build and the review phase, one at a time, at finish, before the gate — a change at the spec never asked here — the yes refused until each is given', () => {
+  it('16.S35: asks no verdict of a call the person changed in the build or the review phase: each was owed as it was changed, and the screen draws its gate', () => {
     finishReady();
-    const retry = overruled(`${UNIT}.implementation`, calls.retry, 'A charge is retried once.');
-    overruled(`${UNIT}.specification`, calls.copy, 'The receipt names the brand.');
-    const dropped = overruled(`${UNIT}.review`, reviewCall('The expiry finding is filed.', 'It is out of the change.'), 'The expiry finding is dropped.');
-    const first = screen();
-    const yes = refused(['finish', 'yes', UNIT]);
-    const landing = refused(['land', 'finish', UNIT]);
-    const { argv } = ok(dir, ['gate', 'verdict', '--pick', 'n'], { env: env() }).next;
-    ok(dir, ['verdict', 'give', retry, 'nothing', '--at', 'finish'], { env: env() });
-    const second = screen();
-    ok(dir, ['verdict', 'give', dropped, 'nothing', '--at', 'finish'], { env: env() });
+    overruled(`${UNIT}.implementation`, calls.retry, 'A charge is retried once.');
+    overruled(`${UNIT}.review`, reviewCall('The expiry finding is filed.', 'It is out of the change.'), 'The expiry finding is dropped.');
+    const out = screen();
 
-    assert.match(sectionOf(first, 'DISPLAY: finish'), /\n\nYOUR VERDICT \(1 of 2 calls you changed\)\n {2}└─ How often is a charge retried\?\n {8}My answer: A charge is retried twice\.\n {8}Yours: A charge is retried once\.\n$/);
-    assert.match(sectionOf(second, 'DISPLAY: finish'), /\n\nYOUR VERDICT \(2 of 2 calls you changed\)\n {2}└─ Is this finding filed or dropped\?\n {8}My answer: The expiry finding is filed\.\n {8}Yours: The expiry finding is dropped\.\n$/);
-    assert.ok(![first, second].some((shown) => shown.includes('MENU: finish')), 'the gate waits on the verdicts');
-    assert.deepStrictEqual([yes, landing, argv[2].startsWith(retry), argv.filter((_, at) => at !== 2)], [
-      'finish yes: a verdict is still to ask — render finish asks each before the yes', 'land: a verdict is still to ask — render finish asks each before the yes', true, ['verdict', 'give', 'nothing', '--at', 'finish'],
-    ]);
-    assert.match(screen(), /=== MENU: finish /);
-  });
-
-  it('verdicts drawn once: after a verdict, `--alone` draws the next verdict with none of the screen, then the gate alone', () => {
-    finishReady();
-    const retry = overruled(`${UNIT}.implementation`, calls.retry, 'A charge is retried once.');
-    const dropped = overruled(`${UNIT}.review`, reviewCall('The expiry finding is filed.', 'It is out of the change.'), 'The expiry finding is dropped.');
-    screen();
-    ok(dir, ['verdict', 'give', retry, 'nothing', '--at', 'finish'], { env: env() });
-    const alone = () => output(dir, ['render', 'finish', UNIT, '--alone'], { env: env() });
-
-    const next = alone();
-    ok(dir, ['verdict', 'give', dropped, 'nothing', '--at', 'finish'], { env: env() });
-    const gate = alone();
-
-    assert.match(sectionOf(next, 'DISPLAY: finish'), /^YOUR VERDICT \(2 of 2 calls you changed\)\n {2}└─ Is this finding filed or dropped\?/);
-    assert.deepStrictEqual([gate.includes('=== DISPLAY'), gate.includes('MENU: finish')], [false, true]);
+    assert.deepStrictEqual([out.includes('VERDICT'), out.includes('MENU: finish')], [false, true]);
   });
 
   it('refuses a unit the project lacks, one not in progress, a build not begun, its review phase not over, a checklist open, and an engine item failing since its close, writing nothing — land finish refusing each as it does', () => {

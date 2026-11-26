@@ -8,9 +8,8 @@
 // topic's close — what the person decided, the product-record lines, the
 // candidates parking on the roadmap and their strike — beside the outline and
 // the cut, Claude's calls on the topic counted with those at the spec,
-// decided's skips first, and decided's verdicts asked at decided before the
-// spec's, counted across the whole close (3.S5, 9.S23, 11.S14, 9.7.3, 9.7.6,
-// 11.8.2); a staged line whose decision changed at the spec refused until
+// decided's skips first, and no verdict asked of a call the person changed
+// on the topic or at the spec (3.S5, 9.S23, 11.S14, 9.7.3, 9.7.6, 11.8.2); a staged line whose decision changed at the spec refused until
 // staged afresh; a strike draws it again, `--page` carried; and its yes takes
 // the close as the decided gate's yes does — the line landed through the
 // ledger, then in the yes's own commit the candidates parked, the struck
@@ -109,25 +108,17 @@ describe('the one screen (3.S5, 9.S23, 11.S14)', () => {
   });
 });
 
-describe('the one screen\'s verdicts (16.10.2, 16.10.11)', () => {
+describe('calls the person changed on the topic and at the spec (16.10.2, 16.10.11)', () => {
   const dir = useReadyWorld(featureDeparted);
-  const { screen, pick, refused } = readyHelpers(dir, FEATURE);
+  const { screen } = readyHelpers(dir, FEATURE);
   beforeEach(() => {
     process.env.LEDGER_CONFIG_DIR = worldConfig(dir());
   });
 
-  it('asks decided\'s first, given at decided, then the spec\'s, given at ready to build, counted across the whole close, the yes refused until each is asked (9.7.3)', () => {
-    const asked = [];
-    const counts = [];
-    for (let out = screen(); !out.includes('MENU: ready to build'); out = screen()) {
-      counts.push(/YOUR VERDICT \((.*?) you changed\)/.exec(out)?.[1]);
-      assert.strictEqual(refused(['ready-to-build', 'yes', FEATURE, '--position', 'auto']), 'ready-to-build yes: a verdict is still to ask — render ready-to-build asks each before the yes');
-      const { argv } = pick('verdict', 'n');
-      asked.push([argv[2], argv.at(-1)]);
-      ok(dir(), argv, { env: SESSION });
-    }
-    assert.deepStrictEqual(asked.map(([entry, at]) => [[made.onTopic, made.atSpec].findIndex((id) => entry.startsWith(id)), at]), [[0, 'decided'], [1, 'ready-to-build']]);
-    assert.deepStrictEqual(counts, ['1 of 2 calls', '2 of 2 calls']);
+  it('asks no verdict at the one screen: each was owed as it was changed, and the screen draws its gate (9.7.3)', () => {
+    const out = screen();
+
+    assert.deepStrictEqual([out.includes('VERDICT'), out.includes('MENU: ready to build')], [false, true]);
   });
 });
 

@@ -4,9 +4,9 @@
 // What the menus read of an epic and a feature before the build: what waits
 // on the person there (ledger-engine/scripts/domain/waits.cjs; 18.2.3,
 // 18.4.2) — approve the map staged, an epic's topic's decided once its
-// screen draws, the decided topics an answer replaced since holds (10.2.6),
-// and, asked for, the verdicts waiting on the unit's departures — each with
-// its door, a topic's by `handoff topic`; and how far the unit has come, as
+// screen draws, and the decided topics an answer replaced since holds
+// (10.2.6) — each with its door, a topic's by `handoff topic`, and a call
+// the person changed waiting on nothing; and how far the unit has come, as
 // a menu's row says it (domain/progress.cjs; 7.4.1). The spec's: test-
 // engine-waits-spec.cjs; a bug's: test-engine-waits-bug.cjs; the build's,
 // and the read's cost: test-engine-waits-build.cjs; a quick-fix's:
@@ -32,7 +32,7 @@ const { UNIT: FUMI, SESSION, MADE, NOTE, SPACE } = require('./ledger-world.cjs')
 const { SOLO, SOLO_AT, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers, decidedBoardHelpers } = require('./decided-world.cjs');
 const { waitsIn, progress, door, topicDoor, wait } = require('./waits-world.cjs');
 
-describe('an epic\'s gates, the topics a changed answer holds, and the verdicts waiting (18.2.3, 10.2.6)', () => {
+describe('an epic\'s gates and the topics a changed answer holds (18.2.3, 10.2.6)', () => {
   const dir = useDecidedWorld();
   const { close, payload, staged, reverse } = decidedHelpers(dir);
   const { made } = decidedBoardHelpers(dir);
@@ -122,16 +122,12 @@ describe('an epic\'s gates, the topics a changed answer holds, and the verdicts 
     ]);
   });
 
-  it('asked for, each verdict waiting on a departure standing in the unit, by its entry and words, its door the verdict page drawn for the unit (18.4.2) — never unasked, and never another unit\'s', () => {
-    const sync = reverse(NOTE_MAP.sync.answer, 'Off until you turn it on.');
+  it('a call the person changed waits on nothing in its unit: its verdict is owed as it is changed, never later', () => {
+    reverse(NOTE_MAP.sync.answer, 'Off until you turn it on.');
     const tally = answeredIn(dir(), SOLO_AT, 'Does a tally show a total?', { ...MADE, text: 'It does.' });
-    const total = writeIn(dir(), 'replace', SOLO_AT, ['--replaces', tally.answer, '--reason', 'changed-mind'], { by: 'person', drops: ['the total'], text: 'No total.', why: 'The person wants it so.' });
-    const pageOf = (/** @type {string} */ unit) => ({ kind: 'engine', argv: ['render', 'verdicts', '--unit', unit] });
+    writeIn(dir(), 'replace', SOLO_AT, ['--replaces', tally.answer, '--reason', 'changed-mind'], { by: 'person', drops: ['the total'], text: 'No total.', why: 'The person wants it so.' });
 
-    assert.deepStrictEqual([waitsIn(dir(), [FUMI, SOLO]), waitsIn(dir(), [FUMI, SOLO], { verdicts: true })], [
-      { [FUMI]: [], [SOLO]: [] },
-      { [FUMI]: [wait('verdict', sync, 'Off until you turn it on.', pageOf(FUMI))], [SOLO]: [wait('verdict', total, 'No total.', pageOf(SOLO))] },
-    ]);
+    assert.deepStrictEqual(waitsIn(dir(), [FUMI, SOLO]), { [FUMI]: [], [SOLO]: [] });
   });
 
   it('7.4.1: an epic in discovery says its topics on the map, in discussion its topics decided of all; a feature\'s discussion has no measure', () => {

@@ -19,28 +19,25 @@
 // Claude's calls at the spec counted by kind (closing.cjs), THE OUTLINE —
 // the spec's areas — and THE PHASE CUT, each phase with its scenarios
 // counted and the sections it draws on; every checklist item skipped, with
-// its reason (6.4.5); then the first departure still to be asked its
-// verdict (16.10.11), at the point the view names — the verdict gate, one
-// at a time, the screen drawn whole once and each later verdict alone
-// (16.10.14, closing.cjs) — and once none is, ready to build's gate, an authority gate
-// that always stops (11.8.1): the build's position, auto first and
+// its reason (6.4.5); then ready to build's gate, an authority gate that
+// always stops (11.8.1): the build's position, auto first and
 // recommended, nothing preselected (3.3.9); the review page, offered only
 // where the session can publish one (11.11.11); Claude's calls opened; and
 // a comment. Its foot says what the pick does — and, while the review page
 // is open, what it records of the review (11.11.7).
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, promptOption, callout, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { section, menu, cmdOption, promptOption, callout, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
 const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH } = require('../conventions.cjs');
 const { counted } = require('./map.cjs');
-const { runs, block, series, callsBlock, decidedBlocks, recordBlocks, marksDecided, strikeRows, verdictBlock, verdictPoint } = require('./closing.cjs');
+const { runs, block, series, callsBlock, decidedBlocks, recordBlocks, marksDecided, strikeRows } = require('./closing.cjs');
 const { recapBlocks } = require('./investigation.cjs');
 
 /**
  * Ready to build as it is drawn: the unit and its title; Claude's calls,
  * listed or counted; the spec's areas; the cut's phases; the checklists'
- * skips; the verdict asked and the point it is given at; a feature's
+ * skips; a feature's
  * topic's close, null for any other unit; a bugfix's recap, null for any
  * other unit; whether the session can publish
  * the review page; and, while it is open, its counts by the marks last
@@ -52,14 +49,11 @@ const { recapBlocks } = require('./investigation.cjs');
  *   outline: {number: string, title: string}[],
  *   phases: {name: string, scenarios: number, sections: string[]}[],
  *   skips: {text: string, reason: string}[],
- *   verdict: import('../ledger-verdicts.cjs').AskedVerdict|null,
- *   point: string,
  *   close: import('./closing.cjs').TopicClose|null,
  *   recap: import('./investigation.cjs').RecapView|null,
  *   page: boolean,
  *   review: {ticked: number, claudes: number, other: number}|null,
  *   readBack: string,
- *   alone: boolean,
  * }} ReadyView
  */
 
@@ -83,7 +77,7 @@ const heading = ({ title, close }) => `${title} — ${close === null ? '' : 'dec
 
 /** The screen's display: each block that has something to show, a feature's topic's close around Claude's calls, a bugfix's recap first. @param {ReadyView} view */
 function readyDisplay(view) {
-  const { calls, listed, outline, phases, skips, verdict, close, recap } = view;
+  const { calls, listed, outline, phases, skips, close, recap } = view;
   const blocks = [heading(view)];
   if (recap !== null) blocks.push(...recapBlocks(recap));
   if (close !== null) blocks.push(...decidedBlocks(close));
@@ -91,7 +85,6 @@ function readyDisplay(view) {
   if (close !== null) blocks.push(...recordBlocks(close));
   blocks.push(outlineBlock(outline), cutBlock(phases));
   if (skips.length > 0) blocks.push(skips.map(({ text, reason }) => callout(`Skipped: ${text} — ${reason}`, { width: TREE_WIDTH })).join('\n'));
-  if (verdict !== null) blocks.push(verdictBlock(verdict));
   return blocks.join('\n\n');
 }
 
@@ -149,14 +142,12 @@ function readyGate(view) {
 }
 
 /**
- * Ready to build: its display, then the verdict gate while a departure
- * waits to be asked, else ready to build's gate — drawn alone after a
- * verdict.
+ * Ready to build: its display, then its gate.
  * @param {ReadyView} view
  * @returns {string}
  */
 function readyToBuildScreen(view) {
-  return verdictPoint({ name: 'ready to build', display: () => readyDisplay(view), verdict: view.verdict, point: view.point, gate: () => readyGate(view), alone: view.alone });
+  return section('DISPLAY: ready to build', CONTINUE_INSTRUCTION, readyDisplay(view)) + readyGate(view);
 }
 
 module.exports = { readyToBuildScreen };

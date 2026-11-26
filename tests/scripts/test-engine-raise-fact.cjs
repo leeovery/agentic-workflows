@@ -9,7 +9,7 @@
 // fact and drawn with no lean and no row recommended (16.S75, 16.3.8); its
 // answer, a row or the person's own words, landing as the person's
 // decision, sealing no lean and moving no one, and nothing it does reaching
-// the trust log or the verdict queue (16.3.2); the redraw rule holding
+// the trust log or owing a verdict (16.3.2); the redraw rule holding
 // across a fact and a call; and its refusals.
 //
 // Layer: verb. World: the ledger suites' unit with two questions asked on
@@ -239,15 +239,15 @@ describe('the answer (16.S75, 16.3.2)', () => {
     assert.ok(!fs.existsSync(log), 'the person\'s words on a fact were read');
   });
 
-  it('no answer to a fact reads as Claude\'s call or waits on a verdict: ledger since shows none, and the verdict queue holds only the departure a call\'s answer in the person\'s own words made', async () => {
+  it('no answer to a fact reads as Claude\'s call or owes a verdict: ledger since shows none, and only a call\'s answer in the person\'s own words, a departure, owes one', async () => {
     const fact = (await raiseFact()).res.raise;
     const call = (await okSectionsAsync(dir, ['raise', NOTE, '--answers', asked.team], { env: conversation(), stdin: JSON.stringify(leaningCall('Monday', 'Later')) })).res.raise;
 
-    answer(fact, ['--own'], { text: 'The beta ships on Friday', why: WHY });
-    answer(call, ['--own'], { text: 'Team ABCDE12345', why: WHY });
+    const facts = answer(fact, ['--own'], { text: 'The beta ships on Friday', why: WHY });
+    const calls = answer(call, ['--own'], { text: 'Team ABCDE12345', why: WHY });
 
     assert.deepStrictEqual(ok(dir, ['ledger', 'since', UNIT], { env: conversation() }).calls, []);
-    assert.deepStrictEqual(ok(dir, ['verdict', 'queue'], { env: conversation() }).departures.map((/** @type {{id: string}} */ d) => full(d.id)), [call]);
+    assert.deepStrictEqual([facts.verdict_owed, full(calls.verdict_owed)], [undefined, call]);
   });
 
   it('"I don\'t follow" writes nothing to the trust log and no ledger line; the seal counts it and the fact stays open, answered after', async () => {

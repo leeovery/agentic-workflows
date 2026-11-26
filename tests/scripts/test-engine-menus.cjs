@@ -20,7 +20,7 @@
 // trust log in a config folder of its own. The frame draws the registry's
 // entries with their keys and screens given here, in process, as a command
 // draws them; a menu's own screen is its suite's (the start menu's,
-// test-engine-start-menu.cjs; the verdict page's, test-engine-verdict.cjs).
+// test-engine-start-menu.cjs).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -124,14 +124,14 @@ const markers = (out) => out.split('\n').filter((line) => line.startsWith('=== '
 
 
 /** The registry's start menu, its rows' keys as §18 draws them. */
-const START = drawn('start-menu', ['#', 'p', 's', 't', 'r', 'e', 'v', 'm']);
+const START = drawn('start-menu', ['#', 'p', 's', 't', 'r', 'v', 'm']);
 
 describe('the menus\' registry', () => {
   it('names every menu once, under a gate the trust log keys, none sharing a gate with another or with help', () => {
     const keyable = SCHEMA.events.gate.fields.find((/** @type {{name: string}} */ f) => f.name === 'gate').type;
     const gates = [...Object.values(MENUS).map(({ gate }) => gate), HELP_GATE];
 
-    assert.deepStrictEqual(gates, ['start menu', 'epic menu', 'triage', 'archived items', 'archived item', 'roadmap', 'manage', 'manage unit', 'closed units', 'verdicts', 'care entries', 'matrix', 'drivers', 'help topics', 'help']);
+    assert.deepStrictEqual(gates, ['start menu', 'epic menu', 'triage', 'archived items', 'archived item', 'roadmap', 'manage', 'manage unit', 'closed units', 'care entries', 'matrix', 'drivers', 'help topics', 'help']);
     assert.deepStrictEqual(gates.filter((gate) => !keyable.test(gate)), []);
     assert.deepStrictEqual(Object.values(MENUS).filter(({ id }, i) => Object.keys(MENUS)[i] !== id), []);
   });
@@ -140,7 +140,7 @@ describe('the menus\' registry', () => {
     const arrivals = Object.fromEntries(Object.values(MENUS).map(({ id, arrival }) => [id, arrival]));
 
     assert.deepStrictEqual(arrivals, {
-      'start-menu': 'none', 'epic-menu': 'unit', triage: 'none', archived: 'none', 'archived-item': 'none', roadmap: 'roadmap', manage: 'none', 'manage-unit': 'none', closed: 'none', verdicts: 'none', care: 'none', matrix: 'none', drivers: 'none', 'help-topics': 'none',
+      'start-menu': 'none', 'epic-menu': 'unit', triage: 'none', archived: 'none', 'archived-item': 'none', roadmap: 'roadmap', manage: 'none', 'manage-unit': 'none', closed: 'none', care: 'none', matrix: 'none', drivers: 'none', 'help-topics': 'none',
     });
   });
 });
@@ -204,7 +204,6 @@ describe('§18\'s screens drawn through the frame (18.2.12, 18.3.4, 18.7.11)', (
         { key: 'p', word: 'product', label: 'Talk about the product — 4 sessions, last on 19 Oct', next: ON },
         { key: 't', word: 'triage', label: 'Triage the inbox', next: ON },
         { key: 'r', word: 'roadmap', label: 'Open the product roadmap', next: ON },
-        { key: 'e', word: 'verdicts', label: 'Give the 2 verdicts waiting on calls you changed', next: ON },
         { key: 'v', word: 'view', label: 'View completed & cancelled work units', next: ON },
         { key: 'm', word: 'manage', label: 'Manage work units, the project\'s setup and drivers, and the matrix', next: ON },
       ],
@@ -215,22 +214,21 @@ describe('§18\'s screens drawn through the frame (18.2.12, 18.3.4, 18.7.11)', (
       '· · · · · · · · · · · ·',
       '◆ What would you like to do?',
       '',
-      '1          → Continue bugfix: Killing All Sessions Wipes Restore',
-      '             State — investigation · 1 question waiting for you',
-      '2          → Continue feature: Lazy Resume On Attach — build,',
-      '             phase 5 of 7',
-      '3          → Continue epic: Agent First Portal — discussion, 0 of',
-      '             7 topics decided',
-      's/start    → Start — say what\'s on your mind: something new, or',
-      '             the product',
-      'p/product  → Talk about the product — 4 sessions, last on 19 Oct',
-      't/triage   → Triage the inbox',
-      'r/roadmap  → Open the product roadmap',
-      'e/verdicts → Give the 2 verdicts waiting on calls you changed',
-      'v/view     → View completed & cancelled work units',
-      'm/manage   → Manage work units, the project\'s setup and drivers,',
-      '             and the matrix',
-      'h/help     → How Ledger works',
+      '1         → Continue bugfix: Killing All Sessions Wipes Restore',
+      '            State — investigation · 1 question waiting for you',
+      '2         → Continue feature: Lazy Resume On Attach — build,',
+      '            phase 5 of 7',
+      '3         → Continue epic: Agent First Portal — discussion, 0 of',
+      '            7 topics decided',
+      's/start   → Start — say what\'s on your mind: something new, or',
+      '            the product',
+      'p/product → Talk about the product — 4 sessions, last on 19 Oct',
+      't/triage  → Triage the inbox',
+      'r/roadmap → Open the product roadmap',
+      'v/view    → View completed & cancelled work units',
+      'm/manage  → Manage work units, the project\'s setup and drivers,',
+      '            and the matrix',
+      'h/help    → How Ledger works',
     ]]);
   });
 
@@ -347,7 +345,7 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
   const TOPICS = Object.freeze({ kind: 'engine', argv: ['render', 'help-topics'] });
   /** The start menu with its help as 23.2.3 draws it — before the product's row joined the menu (18.2.13) — "■ Help", its own closing line, and the walkthrough and the topics rows of its own. */
   const START_HELPED = Object.freeze({
-    ...drawn('start-menu', ['#', 's', 't', 'r', 'e', 'v', 'm']),
+    ...drawn('start-menu', ['#', 's', 't', 'r', 'v', 'm']),
     help: {
       label: 'How Ledger works',
       heading: 'Help',
@@ -365,7 +363,6 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
     's → Start begins something new: describe it, and the kind of work is settled as we talk.',
     't → Triage works through the inbox, the things you noted down to come back to: work on them now, put them on the roadmap, or archive them.',
     'r → The roadmap holds what you\'ve shaped but not yet committed to build, by horizon.',
-    'e → Verdicts appears while a call you changed waits for your word on what Claude\'s answer would have cost.',
     'v → View lists completed and cancelled work.',
     'm → Manage pivots, absorbs, cancels or brings back a piece of work, and changes the project\'s setup, its drivers and the matrix.',
     '',
@@ -413,8 +410,6 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
       '    archive them.',
       '  · The roadmap holds what you\'ve shaped but not yet committed to',
       '    build, by horizon.',
-      '  · Verdicts appears while a call you changed waits for your word',
-      '    on what Claude\'s answer would have cost.',
       '  · View lists completed and cancelled work.',
       '  · Manage pivots, absorbs, cancels or brings back a piece of',
       '    work, and changes the project\'s setup, its drivers and the',
@@ -458,7 +453,7 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
     const exists = fs.existsSync;
     t.mock.method(fs, 'existsSync', (/** @type {fs.PathLike} */ file) => !unwritten.includes(String(file)) && exists(file));
 
-    assert.strictEqual(refuses(dir, ['render', 'help', 'inbox']).error, 'there is no menu "inbox" — the menus: start-menu, epic-menu, triage, archived, archived-item, roadmap, manage, manage-unit, closed, verdicts, care, matrix, drivers, help-topics');
+    assert.strictEqual(refuses(dir, ['render', 'help', 'inbox']).error, 'there is no menu "inbox" — the menus: start-menu, epic-menu, triage, archived, archived-item, roadmap, manage, manage-unit, closed, care, matrix, drivers, help-topics');
     assert.deepStrictEqual([refuses(dir, ['render', 'help', 'triage', '--file', 'pick.json']).error, refuses(dir, ['render', 'help', 'archived']).error], [
       'there is no help for triage yet — its help is triage.help.md, beside its projection',
       'there is no help for the archived items yet — its help is archived.help.md, beside its projection',

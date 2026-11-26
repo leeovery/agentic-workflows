@@ -58,10 +58,7 @@
 //   kept, refused where its root cause or its fix has been replaced since —
 //   staged again, it is drawn again; it draws THE HUNT, Claude's recap, the
 //   symptoms from the log, and the root cause told against them and the fix
-//   direction in their entries' words, and asks each
-//   departure the person made in the investigation that this machine logged
-//   its verdict at the conclusion, one at a time (16.10.5, 16.10.11). Its
-//   yes, checking what the bug is in again, a refusal naming the restage,
+//   direction in their entries' words. Its yes, checking what the bug is in again, a refusal naming the restage,
 //   concludes the investigation in the manifest's one save
 //   (`concludingYes`): it completes the investigation's item and stamps its
 //   close, `concluded_at`, the instant (P2) — what the board dates the

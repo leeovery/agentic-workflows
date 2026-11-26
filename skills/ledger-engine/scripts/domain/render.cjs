@@ -76,7 +76,7 @@ const { OLD_STATE } = require('../../../ledger-migrate/scripts/old-layout.cjs');
 const { gitFloorStopSurface } = require('./git-floor.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { helpSurface } = require('./projections/help.cjs');
-const { verdictsSurface } = require('./verdict.cjs');
+const { verdictSurface } = require('./verdict.cjs');
 const { startMenuSurface } = require('./projections/start-menu.cjs');
 const { epicMenuSurface } = require('./projections/epic-menu.cjs');
 const { manageSurface, manageUnitSurface, closedSurface, absorbTargetSurface, absorbConfirmSurface } = require('./projections/manage.cjs');
@@ -940,7 +940,7 @@ const SURFACES = {
   'investigation-plan': investigationPlanSurface,
   'investigation-check-in': investigationCheckInSurface,
   'help': (_cwd, { dotpath, item, ...flags }) => helpSurface(dotpath, { arg: item, flags }),
-  'verdicts': (cwd, { unit }) => verdictsSurface(cwd, unit ?? null),
+  verdict: (cwd, { dotpath }) => verdictSurface(cwd, dotpath),
   'start-menu': (cwd) => startMenuSurface(cwd),
   'epic-menu': (cwd, { dotpath }) => epicMenuSurface(cwd, dotpath),
   manage: (cwd) => manageSurface(cwd),

@@ -37,7 +37,7 @@ type TopicLine = {
 
 type Stage<State> = { state: State; session: Session }
 type Waiting =
-  | { kind: 'map' | 'decided' | 'gap' | 'ready' | 'question' | 'finish' | 'raised' | 'affected' | 'verdict'; id: string; text: string; page: string | null }
+  | { kind: 'map' | 'decided' | 'gap' | 'ready' | 'question' | 'finish' | 'raised' | 'affected'; id: string; text: string; page: string | null }
   | (RaiseWait & { kind: 'raise' })
 
 type Epic = {

@@ -18,14 +18,13 @@
 //   p/product, always, with its sessions' count and last date once it
 //   has sessions holding talk, and the brownfield research while it is owed (18.2.13,
 //   8.12.13); t/triage (18.2.9, projections/triage.cjs); r/roadmap, always;
-//   e/verdicts, only while verdicts wait (18.2.11); v/view, once a unit
-//   has closed (18.2.18), into the closed units; and m/manage (18.3.4),
+//   v/view, once a unit has closed (18.2.18), into the closed units; and m/manage (18.3.4),
 //   each a menu of its own (projections/manage.cjs). The frame adds h/help.
 //
 // After a feature's, a bugfix's or an epic's finish, or its cancel from
 // inside it, no menu is drawn: one line says, from the menu's own read,
-// what waits on the person — each unit's count, the verdicts, the inbox
-// where it holds anything — and that the menu is one `/ledger` away, a
+// what waits on the person — each unit's count, the inbox where it holds
+// anything — and that the menu is one `/ledger` away, a
 // finish's opening on the work done, a cancel's after its own receipt
 // (`endedReceipt`). A quick-fix's close says where a branch here stands
 // behind what it landed, and how to bring it up, and where it put the
@@ -131,13 +130,6 @@ function productRow({ product: { sessions, last }, researchOwed }) {
   return { key: 'p', word: 'product', label, next: handoff('ledger-discovery', 'none', 'none') };
 }
 
-/** The verdict row, while verdicts wait. @param {number} n @returns {MenuRow[]} */
-function verdictRows(n) {
-  if (n === 0) return [];
-  const label = n === 1 ? 'Give the verdict waiting on a call you changed' : `Give the ${n} verdicts waiting on calls you changed`;
-  return [{ key: 'e', word: 'verdicts', label, next: drawing('verdicts') }];
-}
-
 /**
  * The start menu's screen over its read (the header's).
  * @param {StartMenuRead} read @returns {MenuScreen}
@@ -151,7 +143,6 @@ function startMenuScreen(read) {
       productRow(read),
       { key: 't', word: 'triage', label: 'Triage the inbox', next: drawing('triage') },
       { key: 'r', word: 'roadmap', label: 'Open the product roadmap', next: handoff('ledger-roadmap') },
-      ...verdictRows(read.verdicts),
       ...(read.closed ? [{ key: 'v', word: 'view', label: 'View completed & cancelled work units', next: drawing('closed') }] : []),
       { key: 'm', word: 'manage', label: 'Manage work units, the project\'s setup and drivers, and the matrix', next: drawing('manage') },
     ],
@@ -176,13 +167,10 @@ function startMenuSurface(cwd) {
  * @param {string|null} opening @param {StartMenuRead} read @returns {string}
  */
 function endedReceipt(opening, read) {
-  const waits = [
-    ...listed(read.units).flatMap(({ name, waiting }) => {
-      const words = waitsCounted(waiting);
-      return words === null ? [] : [`${titlecase(name)} — ${words}`];
-    }),
-    ...(read.verdicts === 0 ? [] : [counted(read.verdicts, 'verdict')]),
-  ];
+  const waits = listed(read.units).flatMap(({ name, waiting }) => {
+    const words = waitsCounted(waiting);
+    return words === null ? [] : [`${titlecase(name)} — ${words}`];
+  });
   const inbox = read.inbox.ideas + read.inbox.bugs + read.inbox.quickfixes === 0 ? [] : [`${inboxLine(read.inbox)}.`];
   const waiting = waits.length === 0 ? 'Nothing waits on you.' : `Waiting on you: ${waits.join('; ')}.`;
   return section('DISPLAY: ended', timedInstruction('markdown', 'after the response'), [...(opening === null ? [] : [opening]), waiting, ...inbox, 'The menu is one `/ledger` away.'].join(' '));

@@ -13,8 +13,8 @@
 // row it registers. Each menu's own screen is its suite's.
 //
 // Layer: verb. World: the project from the fixture library, built once and
-// only read: an epic whose topic's call of Claude's the person replaced, a
-// departure waiting on its verdict; an epic every topic of which is decided;
+// only read: an epic whose topic is in its discussion; an epic every topic
+// of which is decided;
 // a feature in its discussion an epic could take in; a cancelled unit and a
 // closed one; an idea in the inbox and one archived; an item waiting on the
 // roadmap; and a care entry — every menu drawn over it in each of those
@@ -31,7 +31,6 @@ const path = require('path');
 
 const { ok, output, cleanupFixture, sectionOf, git } = require('./engine-harness.cjs');
 const { setupFixture, createManifest, createFile, writeState, readState, statePath, layout } = require('./discovery-test-utils.cjs');
-const { MADE } = require('./ledger-world.cjs');
 
 const PROJECTIONS = path.join(__dirname, '../../skills/ledger-engine/scripts/domain/projections');
 const TOPICS = path.join(__dirname, '../../skills/ledger-engine/content/walkthrough/topics');
@@ -77,9 +76,6 @@ function drawn(argv) {
 /** A topic on an approved map. @param {number} order @param {string} summary */
 const row = (order, summary) => ({ order, summary, source: 'discovery' });
 
-/** A ledger write at the epic's topic, in the conversation: its short id. @param {string} verb @param {string[]} flags @param {Record<string, unknown>} content */
-const ledger = (verb, flags, content) => ok(dir, ['ledger', verb, `${EPIC}.discussion.auth`, ...flags], { env: conversation(), stdin: JSON.stringify(content) }).id;
-
 /** The first kind the care entries offer, added through their screens as the person adds one. */
 function cared() {
   output(dir, ['render', 'care'], { env: conversation() });
@@ -97,8 +93,6 @@ before(() => {
   writeState(dir, layout.doc(SOLO, 'discussion', SOLO), '# Solo\n');
   createManifest(dir, CANCELLED, { status: 'cancelled' });
   createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
-  const call = ledger('decide', ['--answers', ledger('ask', [], { ...MADE, text: 'Is sync on?' })], { ...MADE, text: 'On.', why: 'Because.' });
-  ledger('replace', ['--replaces', call, '--reason', 'changed-mind'], { by: 'person', drops: ['the old answer'], text: 'Off.', why: 'The person wants it so.' });
   cared();
   createFile(dir, `.ledger/${IDEA}`, '# An idea\n');
   createFile(dir, `.ledger/${ARCHIVED}`, '# Old idea\n');
@@ -120,7 +114,6 @@ before(() => {
     ['manage-unit', [SOLO]],
     ['manage-unit', [CANCELLED]],
     ['closed', []],
-    ['verdicts', []],
     ['care', []],
     ['matrix', []],
     ['help-topics', []],

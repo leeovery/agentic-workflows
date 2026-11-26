@@ -436,13 +436,13 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render walkthrough-topic --name <slug> [--content-only]
   render send-report <work-unit>.<topic> --sent <path>
   render map <work-unit>.<topic>
-  render decided <work-unit>.<topic> [--file <payload.json>] [--calls] [--alone]
+  render decided <work-unit>.<topic> [--file <payload.json>] [--calls]
   render decided-strike <work-unit>.<topic> [--page]
   render wait-agents <work-unit>.<topic>   (empty when no agent of the topic is running)
   render start-this-work [--file <payload.json>]
   render approve-map <work-unit> [--file <payload.json> | --sweep]
   render approve-map-strike <work-unit>
-  render ready-to-build <work-unit> [--page] [--calls] [--alone]
+  render ready-to-build <work-unit> [--page] [--calls]
   render build-headline <work-unit> --file <payload.json>
   render task-landed <work-unit> <task>
   render task-account <work-unit> <task>
@@ -453,7 +453,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render review-report <work-unit> [--round <N>]
   render review-calls <work-unit>
   render review-tree <work-unit>
-  render finish <work-unit> [--alone]
+  render finish <work-unit>
   render investigation-plan <bugfix> --file <plan.json> [--revised]
   render investigation-check-in <bugfix> --file <check-in.json>
   render discovery-map <work-unit>
@@ -476,7 +476,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render migration-taken-stop --at <directive id|checks> --active <seconds>
   render migration-leaving <work-unit> --directive <id>
   render help <menu> [<arg>] [--<name> <value> …]
-  render verdicts [--unit <unit>]
+  render verdict <entry>
   render start-menu
   render epic-menu <epic>
   render manage
@@ -586,10 +586,8 @@ function runAsset(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// verdict — the verdicts on departures (domain/verdict.cjs): `queue` answers
-// the departures this machine logged waiting on one, the ledger read as the
-// ledger's reads are through the trust log, holding no lock; `give` logs one
-// in the trust log, under the writer lock runCli takes, writing nothing the
+// verdict — a departure's verdict (domain/verdict.cjs): `give` logs it in
+// the trust log, under the writer lock runCli takes, writing nothing the
 // state holds.
 // ---------------------------------------------------------------------------
 
@@ -2551,7 +2549,7 @@ function runHandoff(call, argv) {
   }
 }
 
-const RENDER_FLAGS = ['warn', 'from-system', 'content-only', 'calls', 'sweep', 'page', 'revised', 'asked', 'alone'];
+const RENDER_FLAGS = ['warn', 'from-system', 'content-only', 'calls', 'sweep', 'page', 'revised', 'asked'];
 // The flags a surface takes more than once, each value its own, by surface:
 // every other surface takes each flag once.
 /** @type {Record<string, string[]>} */
@@ -2755,7 +2753,6 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   help: '*',
   ledger: '*',
   asset: '*',
-  verdict: ['queue'],
   presence: '*',
   conversation: '*',
   enter: '*',

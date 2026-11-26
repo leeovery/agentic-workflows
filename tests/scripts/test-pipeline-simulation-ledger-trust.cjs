@@ -31,7 +31,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { startItem } = require('./engine-harness.cjs');
-const { Sim, mappedEpic, answerGate, startPick, startUnit, handoff, enterEntry, decideTopic, specEntry, passTakenIn, passSurfaced } = require('./pipeline-world.cjs');
+const { Sim, mappedEpic, answerGate, verdictAsked, startPick, startUnit, handoff, enterEntry, decideTopic, specEntry, passTakenIn, passSurfaced } = require('./pipeline-world.cjs');
 const { trustLines } = require('./pipeline-oracle.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
@@ -59,7 +59,7 @@ describe('pipeline simulation: the trust log', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the verdict page the start menu\'s row opens (16.S37) — Claude\'s call replacing it on the person\'s word, the person\'s answers to Claude\'s lean through a raise, one taking it, one standing over it and one in their own words read as it, owed no verdict, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none, nor does their answer to a fact or their not following one; then the matrix, opened from manage (16.S49), the threshold and its raise mid-build each picked from its replay, a lower one replayed and kept from, and the person\'s corrections of a call\'s kind and of the verdict they gave', async () => {
+  it('the trust log: Claude\'s call, the person\'s reversal of it, owed its verdict and given it on the question drawn there and then — a real loss — Claude\'s call replacing it on the person\'s word, the person\'s answers to Claude\'s lean through a raise, one taking it, one standing over it, its verdict read from their words, and one in their own words read as it, owed no verdict, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none, nor does their answer to a fact or their not following one; then the matrix, opened from manage (16.S49), the threshold and its raise mid-build each picked from its replay, a lower one replayed and kept from, and the person\'s corrections of a call\'s kind and of the verdict they gave', async () => {
     const wu = 'fumi';
     sim.env = {
       ...sim.env,
@@ -81,31 +81,28 @@ describe('pipeline simulation: the trust log', () => {
 
     const question = ledger(['ask', note], { ...made, text: 'Is a note a window?' });
     const call = ledger(['decide', note, '--answers', question], { ...made, text: 'A floating panel.', why: 'It follows the person.' });
-    const reversal = ledger(['replace', note, '--replaces', call, '--reason', 'changed-mind'], { by: 'person', drops: ['a panel'], text: 'A document window.', why: 'Notes are documents.' });
-    sim.run(['verdict', 'give', reversal, 'skip', '--at', 'decided']);
-    sim.run(['verdict', 'queue']);
-    sim.render(['verdicts', '--unit', wu], { expect: 'content' });
-    startPick(sim, 'e');
-    const given = answerGate(sim, 'verdicts', '--pick', 'l').next;
-    assert.deepStrictEqual(sim.run(given.argv).next, { kind: 'engine', argv: ['render', 'start-menu'] }, '16.S37: the verdict given from the start menu\'s row, the last waiting, goes back to the start menu');
-    sim.render(['verdicts'], { expect: 'empty' });
+    const reversed = sim.run(['ledger', 'replace', note, '--replaces', call, '--reason', 'changed-mind'], null, JSON.stringify({ by: 'person', drops: ['a panel'], text: 'A document window.', why: 'Notes are documents.' }));
+    const reversal = reversed.id;
+    assert.strictEqual(reversed.verdict_owed, reversal, 'the reversal says its verdict is owed');
+    verdictAsked(sim, reversed, 'l');
     ledger(['replace', note, '--replaces', reversal, '--reason', 'changed-mind'], { ...made, given: 'your-call', drops: ['a document window'], text: 'A floating panel after all.', why: 'It follows the person.' });
 
-    /** Claude's lean on a question of its own, raised, and the person's pick of row `key`. @param {string} text @param {'1'|'2'} key */
+    /** Claude's lean on a question of its own, raised, and the person's pick of row `key`: the answer. @param {string} text @param {'1'|'2'} key */
     const raised = async (text, key) => {
       const question = ledger(['ask', note], { ...made, text });
       const { raise } = await sim.runAsync(['raise', note, '--answers', question], null, JSON.stringify(leaningCall('It floats.', 'It stays put.')));
-      sim.run(['raise', 'answer', raise, '--pick', key], null, JSON.stringify({ why: 'The person said why.' }));
+      return sim.run(['raise', 'answer', raise, '--pick', key], null, JSON.stringify({ why: 'The person said why.' }));
     };
-    await raised('Does a note float?', '1');
-    await raised('Does a note take focus?', '2');
+    assert.strictEqual((await raised('Does a note float?', '1')).verdict_owed, undefined, 'the lean taken owes no verdict');
+    const departed = await raised('Does a note take focus?', '2');
+    sim.run(['verdict', 'give', departed.verdict_owed, 'nothing', '--from-words']);
 
     // The person's own words, which the separate call reads as the lean's
     // row, the second: an agreement, owed no verdict.
     const stacking = ledger(['ask', note], { ...made, text: 'Does a note stay above other windows?' });
     const stacked = (await sim.runAsync(['raise', note, '--answers', stacking], null, JSON.stringify({ ...leaningCall('It stays put.', 'It floats.'), lean: 'other' }))).raise;
-    sim.run(['raise', 'answer', stacked, '--own'], null, JSON.stringify({ text: 'Keep it floating over the rest.', why: 'The person said why.' }));
-    assert.ok(!sim.run(['verdict', 'queue']).departures.some((/** @type {{id: string}} */ d) => stacked.startsWith(d.id)), 'own words read as the lean wait on a verdict');
+    const read = sim.run(['raise', 'answer', stacked, '--own'], null, JSON.stringify({ text: 'Keep it floating over the rest.', why: 'The person said why.' }));
+    assert.strictEqual(read.verdict_owed, undefined, 'own words read as the lean owe a verdict');
 
     // Claude proposing to change an earlier call of its own, and the person
     // keeping it as it stands: a keep at the raise's id, its raise event
@@ -128,8 +125,8 @@ describe('pipeline simulation: the trust log', () => {
     // no lean on it, so it is no departure.
     const titled = ledger(['ask', note], { ...made, text: 'Does a note have a title?' });
     const untitled = ledger(['decide', note, '--answers', titled], { by: 'person', text: 'A note has no title.', why: 'Its first line is enough.' });
-    const retitled = ledger(['replace', note, '--replaces', untitled, '--reason', 'changed-mind'], { by: 'person', drops: ['no title'], text: 'A note has a title.', why: 'Titles help search.' });
-    assert.ok(!sim.run(['verdict', 'queue']).departures.some((/** @type {{id: string}} */ d) => d.id === retitled), 'the person\'s own decision, changed, waits on a verdict');
+    const retitled = sim.run(['ledger', 'replace', note, '--replaces', untitled, '--reason', 'changed-mind'], null, JSON.stringify({ by: 'person', drops: ['no title'], text: 'A note has a title.', why: 'Titles help search.' }));
+    assert.strictEqual(retitled.verdict_owed, undefined, 'the person\'s own decision, changed, owes a verdict');
     const kinds = trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'call' || type === 'raise').map(({ type, kind }) => `${type} ${kind}`);
     assert.deepStrictEqual(kinds, ['call look', 'call look', 'raise behaviour', 'raise behaviour', 'raise behaviour', 'call null', 'raise behaviour'], 'the calls and raises carry no labels for the oracle to hold');
 

@@ -8,10 +8,9 @@
 // first, then by type, no topic on any row (18.2.1–18.2.6), read from the
 // ledger in any conversation (12.13.7) and a raise sealed in the
 // conversation that drew it; mail waiting for a unit's topic beside the
-// count, never in it (10.4.3); the count leaving the verdicts out, which
-// have the project's own row while they wait (18.2.11), a feature's among
-// them, its Continue going where it stands; the inbox as one
-// line (18.2.8); one Start row, the product's row with its sessions and the
+// count, never in it (10.4.3); a call the person changed counted nowhere
+// and drawing no row, its verdict given when it was changed; the inbox as
+// one line (18.2.8); one Start row, the product's row with its sessions and the
 // research owed (18.2.13, 8.12.13), triage, the roadmap, the view once a
 // unit has closed (18.2.18), manage and help, its walk carried on in the
 // start skill; and where each row leads, a unit's by Continue (19.1.3).
@@ -57,9 +56,6 @@ const CLOSED = Object.freeze({ items: {}, closed: '2026-10-01T09:00:00.000Z' });
 
 /** A cut of three phases. */
 const CUT = Object.freeze({ phases: [1, 2, 3].map((n) => ({ name: `Phase ${n}`, goal: 'A tally counts.', scenarios: [], sections: [String(n)], relies_on: [] })) });
-
-/** The verdict page, where the e row leads (29.19's). */
-const VERDICTS = Object.freeze({ kind: 'engine', argv: ['render', 'verdicts'] });
 
 /**
  * The start menu drawn in `dir` in the conversation `env` names: its shown
@@ -137,7 +133,7 @@ describe('the start menu (18.2.12)', () => {
       '24.S16: each row continues its unit where it stands');
   });
 
-  it('18.2.3, 20.12.5: every kind of wait lands in exactly one count — approve the map, decided, ready to build and finish the gates, a question wherever it is asked the questions, a decided topic a replaced answer holds the topics — and a verdict in none', () => {
+  it('18.2.3, 20.12.5: every kind of wait lands in exactly one count — approve the map, decided, ready to build and finish the gates, a question wherever it is asked the questions, a decided topic a replaced answer holds the topics', () => {
     /** The count each kind of wait lands in. */
     const landsIn = Object.fromEntries(WAIT_KINDS.map((kind) => {
       const waiting = counts([/** @type {any} */ ({ kind })]);
@@ -145,76 +141,66 @@ describe('the start menu (18.2.12)', () => {
     }));
 
     assert.deepStrictEqual(landsIn, {
-      map: 'gates', decided: 'gates', ready: 'gates', finish: 'gates', gap: 'questions', question: 'questions', raise: 'questions', raised: 'questions', affected: 'topics', verdict: null,
+      map: 'gates', decided: 'gates', ready: 'gates', finish: 'gates', gap: 'questions', question: 'questions', raise: 'questions', raised: 'questions', affected: 'topics',
     });
   });
 
-  it('18.S44, 18.S6: a unit\'s count takes in the gate waiting in it and never its verdict, which has the e row while it waits, leading to the verdict page, which draws — and none waiting, no e row', () => {
-    const before = startMenu().menu;
+  it('18.S44, 18.S6: a unit\'s count takes in the gate waiting in it, and a call the person changed there adds nothing to it and draws no row — its verdict is given as it is changed', () => {
     close();
     staged(NO_PAYLOAD);
+    const before = startMenu().menu;
     reverse(NOTE_MAP.sync.answer, 'Off until you turn it on.');
-    const { menu } = startMenu();
 
-    assert.deepStrictEqual([before.some((row) => row.startsWith('e/')), menu[0]], [false, '1 → Continue epic: Fumi — discussion, 0 of 2 topics decided · 1 gate waiting for you']);
-    assert.ok(menu.includes('e/verdicts → Give the verdict waiting on a call you changed'), menu.join('\n'));
-    assert.deepStrictEqual(rowsShown().e, VERDICTS);
-    const page = output(dir(), VERDICTS.argv, { env: { CLAUDE_CODE_SESSION_ID: HERE } });
-    assert.match(sectionOf(page, 'MENU: verdicts'), /n\/nothing/);
+    assert.deepStrictEqual(startMenu().menu, before);
+    assert.strictEqual(before[0], '1 → Continue epic: Fumi — discussion, 0 of 2 topics decided · 1 gate waiting for you');
   });
 
-  it('19.1.3, 18.2.11: a linear unit has no menu — a feature\'s verdict waits on the e row, the queue across every unit, never in its count, and its Continue goes where it stands, never to its verdicts', () => {
+  it('19.1.3: a linear unit has no menu — its Continue goes where it stands, a call the person changed in it counted nowhere', () => {
     const { answer } = answeredIn(dir(), SOLO_AT, 'Is a tally kept per day?', { ...MADE, text: 'Per day.', kind: 'behaviour' });
     writeIn(dir(), 'replace', SOLO_AT, ['--replaces', answer, '--reason', 'changed-mind'], { by: 'person', drops: ['per day'], text: 'Per week.', why: 'The person wants it so.' });
     const { menu } = startMenu();
     const solo = /** @type {string} */ (menu.find((row) => row.includes('Solo')));
-    const { e, [solo.split(' ')[0]]: continued } = rowsShown();
+    const { [solo.split(' ')[0]]: continued } = rowsShown();
 
-    assert.deepStrictEqual([solo.replace(/^\S+ /, ''), lettered(menu).find((row) => row.startsWith('e/')), e, continued], [
-      '→ Continue feature: Solo — discussion', 'e/verdicts → Give the verdict waiting on a call you changed', VERDICTS, { kind: 'engine', argv: ['handoff', 'unit', SOLO] },
-    ]);
+    assert.deepStrictEqual([solo.replace(/^\S+ /, ''), continued], ['→ Continue feature: Solo — discussion', { kind: 'engine', argv: ['handoff', 'unit', SOLO] }]);
     assert.match(output(dir(), ['handoff', 'unit', SOLO], { env: { CLAUDE_CODE_SESSION_ID: HERE } }), /^skill: ledger-discussion-process\nargs: feature solo$/m);
   });
 
-  it('18.2.3: the count says each kind waiting — the gates, the questions and the topics a changed answer holds — and the verdicts\' row how many wait', () => {
-    /** @param {{gates: number, questions: number, topics: number}} waiting @param {number} verdicts */
-    const screen = (waiting, verdicts) => startMenuScreen({
+  it('18.2.3: the count says each kind waiting — the gates, the questions and the topics a changed answer holds', () => {
+    /** @param {{gates: number, questions: number, topics: number}} waiting */
+    const cue = (waiting) => /** @type {{cue: string}} */ (startMenuScreen({
       units: [{ name: 'tally', type: 'feature', progress: 'specification', waiting, mail: false }],
-      inbox: { ideas: 0, bugs: 0, quickfixes: 0 }, product: { sessions: 0, last: null }, researchOwed: false, verdicts, closed: false, warnings: [],
-    }).rows;
-    const cue = (/** @type {ReturnType<typeof screen>} */ rows) => /** @type {{cue: string}} */ (rows[0].label).cue;
-    const verdictRow = (/** @type {ReturnType<typeof screen>} */ rows) => rows.find(({ key }) => key === 'e')?.label;
+      inbox: { ideas: 0, bugs: 0, quickfixes: 0 }, product: { sessions: 0, last: null }, researchOwed: false, closed: false, warnings: [],
+    }).rows[0].label).cue;
 
     assert.deepStrictEqual([
-      cue(screen({ gates: 0, questions: 1, topics: 0 }, 0)),
-      cue(screen({ gates: 1, questions: 1, topics: 0 }, 0)),
-      cue(screen({ gates: 1, questions: 2, topics: 1 }, 0)),
-      cue(screen({ gates: 0, questions: 0, topics: 2 }, 0)),
-      cue(screen({ gates: 0, questions: 0, topics: 0 }, 3)),
-      verdictRow(screen({ gates: 0, questions: 0, topics: 0 }, 3)),
+      cue({ gates: 0, questions: 1, topics: 0 }),
+      cue({ gates: 1, questions: 1, topics: 0 }),
+      cue({ gates: 1, questions: 2, topics: 1 }),
+      cue({ gates: 0, questions: 0, topics: 2 }),
+      cue({ gates: 0, questions: 0, topics: 0 }),
     ], [
       '1 question waiting for you',
       '1 gate and 1 question waiting for you',
       '1 gate, 2 questions and 1 topic waiting for you',
       '2 topics waiting for you',
       undefined,
-      'Give the 3 verdicts waiting on calls you changed',
     ]);
   });
 
-  it('after a finish or a cancel from inside the work, one line in the menu\'s place says what waits on the person — each unit\'s count, the verdicts, the inbox where it holds anything — and that the menu is one `/ledger` away, a finish opening on the work done', () => {
-    /** The line, `units` waiting, `verdicts` and `ideas` in the inbox, `opening` first. @param {string|null} opening @param {Array<[string, {gates: number, questions: number, topics: number}]>} units @param {number} verdicts @param {number} ideas */
-    const line = (opening, units, verdicts, ideas) => endedReceipt(opening, {
+  it('after a finish or a cancel from inside the work, one line in the menu\'s place says what waits on the person — each unit\'s count, the inbox where it holds anything — and that the menu is one `/ledger` away, a finish opening on the work done', () => {
+    /** The line, `units` waiting and `ideas` in the inbox, `opening` first. @param {string|null} opening @param {Array<[string, {gates: number, questions: number, topics: number}]>} units @param {number} ideas */
+    const line = (opening, units, ideas) => endedReceipt(opening, {
       units: units.map(([name, waiting]) => ({ name, type: 'feature', progress: 'specification', waiting, mail: false })),
-      inbox: { ideas, bugs: 0, quickfixes: 0 }, product: { sessions: 0, last: null }, researchOwed: false, verdicts, closed: false, warnings: [],
+      inbox: { ideas, bugs: 0, quickfixes: 0 }, product: { sessions: 0, last: null }, researchOwed: false, closed: false, warnings: [],
     }).split('\n')[1];
     const none = { gates: 0, questions: 0, topics: 0 };
 
     assert.deepStrictEqual([
-      line('Tally is done.', [['tally', { gates: 1, questions: 2, topics: 0 }], ['search', none]], 3, 2),
-      line(null, [['search', none]], 0, 0),
+      line('Tally is done.', [['tally', { gates: 1, questions: 2, topics: 0 }], ['search', none]], 2),
+      line(null, [['search', none]], 0),
     ], [
-      'Tally is done. Waiting on you: Tally — 1 gate and 2 questions; 3 verdicts. Inbox: 2 ideas. The menu is one `/ledger` away.',
+      'Tally is done. Waiting on you: Tally — 1 gate and 2 questions. Inbox: 2 ideas. The menu is one `/ledger` away.',
       'Nothing waits on you. The menu is one `/ledger` away.',
     ]);
   });
@@ -315,10 +301,9 @@ describe('the start menu (18.2.12)', () => {
     ]);
   });
 
-  it('18.2.3, 18.2.12: the rows in their order — the units with something waiting first, then features, bugfixes, quick-fixes and epics, each type in the project\'s order; then start, product, triage, roadmap, verdicts, view, manage and help', () => {
+  it('18.2.3, 18.2.12: the rows in their order — the units with something waiting first, then features, bugfixes, quick-fixes and epics, each type in the project\'s order; then start, product, triage, roadmap, view, manage and help', () => {
     close();
     staged(NO_PAYLOAD);
-    reverse(NOTE_MAP.sync.answer, 'Off until you turn it on.');
     createManifest(dir(), 'atlas', { work_type: 'epic' });
     createManifest(dir(), 'crash', { work_type: 'bugfix' });
     createManifest(dir(), 'typo', { work_type: 'quick-fix' });
@@ -334,7 +319,6 @@ describe('the start menu (18.2.12)', () => {
       'p/product → Talk about the product',
       't/triage → Triage the inbox',
       'r/roadmap → Open the product roadmap',
-      'e/verdicts → Give the verdict waiting on a call you changed',
       'v/view → View completed & cancelled work units',
       'm/manage → Manage work units, the project\'s setup and drivers, and the matrix',
       'h/help → How Ledger works',
