@@ -1,8 +1,8 @@
 # Areas: a piece of work as one record
 
-A design in discussion. Nothing here is built, and "area" is a working name.
+A design in discussion. Nothing here is built.
 
-It replaces topics as they work today with areas: labels on one record, worked in conversations across the whole piece of work and conversations on one area. Sections 2 to 9 say how it would work. Section 10 lists what is still open, each point to be talked through one at a time.
+It replaces topics as they work today with areas: labels on one record, worked in the main thread, which is the conversation across the whole piece of work, and in focused sessions on one area. Sections 2 to 9 say how it would work. Section 10 lists what is still open, each point to be talked through one at a time.
 
 Each line ends with where it stands. "Lee's ruling" with a date is something you said yes to. "Claude's proposal" was put to you and you did not object, which is not a yes. "Open" is not settled. The examples use an invented piece of work, the financial part of a product, with five invented areas: paying in, holding the balance, paying out, identity checks, and fees.
 
@@ -40,7 +40,7 @@ Each line ends with where it stands. "Lee's ruling" with a date is something you
 
 2.1.2 Now and then the engine takes a call Claude would have made alone and asks you cold, Claude's answer sealed until you have answered: one call in ten, or one in five while that kind of call has little history. [Lee's ruling, 24 Nov 2026]
 
-2.1.3 At a close, each call of Claude's that you changed gets your verdict: what Claude's answer would have cost the product — nothing, a fix later, or a real loss. [Lee's ruling, 24 Nov 2026]
+2.1.3 Each call of Claude's that you change gets your verdict: what Claude's answer would have cost the product — nothing, a fix later, or a real loss. When it is asked is in 5.5. [Lee's ruling, 24 Nov 2026]
 
 2.1.4 A close shows its summary before your yes: what you decided, a count of Claude's calls by kind, the lines proposed for the product record, and any new work the decisions create. [Lee's ruling, 24 Nov 2026]
 
@@ -75,6 +75,14 @@ Each line ends with where it stands. "Lee's ruling" with a date is something you
 3.1.2 An area has no folder, no brief and no mailbox of its own. [Lee's ruling, 25 Nov 2026]
 
 3.1.3 Every entry has exactly one owner: one area, or the piece of work itself. A rule that cuts across areas — "a recipient never sees the sender's bank details" — is owned by the work itself, so it is stated once. [Claude's proposal]
+
+3.1.4 An area can be as large as a topic was, or a small part of what a topic would have been. [Lee's ruling, 26 Nov 2026: "An area could be the same as a topic. An area could also be a small part of a wider topic"]
+
+3.1.5 The areas are what the headings would be if the whole piece of work were one document: a loose guide to what is being covered, never buckets with a life of their own. [Lee's ruling, 26 Nov 2026: "They're almost headings, aren't they? If we were just putting all this into one document, they would be headings… they have become quite a loose guidance system rather than specific buckets"]
+
+3.1.6 An area does three jobs and no others: it is the scope of a focused session, it shows what is still waiting in one part of the work, and it is what the reader agents take one at a time. [Lee's ruling, 26 Nov 2026]
+
+3.1.7 Nothing that protects the work rests on areas. That rests on each point: no question open, no point from discovery left, and the pass that reads across the whole (7.1). [Lee's ruling, 26 Nov 2026]
 
 ### 3.2 How areas come to exist
 
@@ -123,7 +131,7 @@ start with holding.
 
 3.5.4 A small piece of work is one area that is the whole: the item taken from the roadmap. No area is made for the sake of having one. [Lee's ruling, 26 Nov 2026: "if it's a small feature, then the item that's pulled off the roadmap is just an area of itself"]
 
-3.5.5 The quality of the result never depends on a conversation on one area having happened. Staying across the work throughout still goes as far into each thing as it needs. [Lee's ruling, 26 Nov 2026: "If I was to say, 'I don't want to go deep on anything,'… we should still produce something of quality"]
+3.5.5 The quality of the result never depends on a focused session having happened. Staying across the work throughout still goes as far into each thing as it needs. [Lee's ruling, 26 Nov 2026: "If I was to say, 'I don't want to go deep on anything,'… we should still produce something of quality"]
 
 3.5.6 The spec is not bound to areas. They shape the discussion, never the document written from it. [Lee's ruling, 26 Nov 2026: "The document that we're creating isn't bound to areas. The areas just facilitate discussion"]
 
@@ -131,24 +139,25 @@ start with holding.
 
 3.6.1 The whole gets as much attention as any area, all the time. What lies between areas is talked through as the discussion goes, in either kind of conversation. [Lee's ruling, 26 Nov 2026: "We should be addressing the whole all the time so we're not building in areas because we have the whole"]
 
-3.6.2 The closes and the pass that reads across areas are there to catch what was missed. They are never where a gap that was known and left is filled. [Lee's ruling, 26 Nov 2026: "The end parts, the closing reviews, etc. are there to catch the gaps that we might have missed, not to fill in the gaps between areas that we know exist but which we've ignored"]
+3.6.2 The fresh readers, the pass that reads across areas and the close of the whole are there to catch what was missed. They are never where a gap that was known and left is filled. [Lee's ruling, 26 Nov 2026: "The end parts, the closing reviews, etc. are there to catch the gaps that we might have missed, not to fill in the gaps between areas that we know exist but which we've ignored"]
 
-3.6.3 A conversation on one area still talks about the whole where its area touches it. Being scoped is for depth, never a reason to leave the whole out. [Lee's ruling, 26 Nov 2026: "Being scoped and explicit in order to achieve a scoped depth on a particular area doesn't preclude us still discussing the whole"]
+3.6.3 A focused session still talks about the whole where its area touches it. Being scoped is for depth, never a reason to leave the whole out. [Lee's ruling, 26 Nov 2026: "Being scoped and explicit in order to achieve a scoped depth on a particular area doesn't preclude us still discussing the whole"]
 
 ## 4. Conversations on a piece of work
 
-### 4.1 A conversation across the work
+### 4.1 The main thread
 
-4.1.1 A conversation across the work takes in every area, and can go to any of them at any depth. It is not a shallower kind of conversation: the difference between the two kinds is how many areas are in view, never how far the talk goes. [Lee's ruling, 25 Nov 2026: "Broad doesn't mean not deep… broad means that we're talking about multiple areas. We might stay at that level and go deep in all of them just in that one session"]
+4.1.1 The main thread is the conversation across the whole piece of work, run over as many sessions as it takes. It is the working space: every area is in view, anything can be talked about, and it goes as far into each thing as that needs. It is not a shallower kind of conversation: the two kinds differ in how many areas are in view, never in how far the talk goes. [Lee's ruling, 26 Nov 2026: "The main thread is our working space. We can talk about everything and anything. We can deal with every area equally in that main thread"]
 
-4.1.2 A decision of yours made in a conversation across the work is recorded at once, under the area it belongs to. [Claude's proposal]
+4.1.2 A decision of yours made in the main thread is recorded at once, under the area it belongs to. [Claude's proposal]
 
 4.1.3 A decision about the whole is recorded against the piece of work itself (3.1.3). [Claude's proposal]
 
 4.1.4 An area can be filled in entirely by talk about the others, and never need a conversation of its own. [Lee, 25 Nov 2026: "that thing gets filled in just by default because it touches everything"]
 
-4.1.5 A small piece of work may never need a conversation on one area: with one or two areas, everything is covered across the work, at whatever depth it takes. [Lee's ruling, 25 Nov 2026: "we don't necessarily have to go deep. We might be able to just stay broad and cover everything… especially if there is effectively only one or two areas"]
-4.1.6 At its open, a conversation across the work reads the overview: each area with where it stands, every open question, your own decisions, and the decisions about the whole. [Lee's ruling, 25 Nov 2026]
+4.1.5 A small piece of work may never need a focused session: with one or two areas, everything is covered in the main thread, as far as it needs to go. [Lee's ruling, 25 Nov 2026: "we don't necessarily have to go deep. We might be able to just stay broad and cover everything… especially if there is effectively only one or two areas"]
+
+4.1.6 When a session of the main thread opens, it reads the overview: each area with what is waiting under it, every open question, your own decisions, and the decisions about the whole. [Lee's ruling, 25 Nov 2026]
 
 4.1.7 Claude's own calls are in the overview as a count for each area, with those made since you last looked listed. [Lee's ruling, 25 Nov 2026]
 
@@ -156,21 +165,23 @@ start with holding.
 
 4.1.9 No conversation loads the full record of every area at its open. On one real piece of work of four topics that record is about 34,000 words: 370 decisions, 74 questions and 30 findings. [Claude's derivation: 4.1.6, 2.3.3; the sizes are the Mint project's release tool]
 
-### 4.2 A conversation on one area
+### 4.2 A focused session
 
-4.2.1 A conversation on one area has only that area in view. It is for when one of you feels an area needs the whole attention: it keeps the context clear and keeps you both on the one problem. You ask for it — "let's focus on holding" — or Claude suggests it in a line and you say yes. [Lee's ruling, 25 Nov 2026: "If… even me or Claude feels like that actually we really need to focus on this one area, then we can go specific and then we only talk about that area, which helps keep the context clear"]
+4.2.1 A focused session has one area in view. It is for when one of you feels something needs the whole attention: it keeps the context clear and keeps you both on the one problem. You ask for it — "let's focus on holding" — or Claude suggests it in a line and you say yes. [Lee's ruling, 25 Nov 2026: "If… even me or Claude feels like that actually we really need to focus on this one area, then we can go specific and then we only talk about that area, which helps keep the context clear"]
 
 4.2.2 Claude suggests one when the talk keeps returning to one area, when an area has gathered open questions, or when the other areas in view are getting in the way of one. [Claude's proposal]
 
 4.2.3 The conversation never moves into or out of an area by itself. [Claude's proposal]
 
-4.2.4 A conversation on one area opens as a clean session, by a handoff, scoped by the engine. [Lee, 25 Nov 2026: "as long as it's set up technically, maybe even with a proper handoff into a clean session that's scoped"]
+4.2.4 A focused session opens as a clean session, by a handoff, scoped by the engine. [Lee, 25 Nov 2026: "as long as it's set up technically, maybe even with a proper handoff into a clean session that's scoped"]
 
 4.2.5 The engine names what it reads: its area's part of the starting page, its area's entries, and the decisions about the whole. It reads nothing of another area unless it goes looking. [Claude's proposal]
 
 4.2.6 One conversation holds an area at a time, and several areas can be open at once in several windows, as several topics can today. [Lee's ruling, 25 Nov 2026]
 
-### 4.3 What a conversation on one area may write
+4.2.7 A focused session need not cover its area. It can be for one question or one part of it, and it ends when you have what you came for, whatever is still waiting under the area. Nothing happens to the area when it ends. [Lee's ruling, 26 Nov 2026: "When you focus, you don't necessarily have to focus on an entire area. It could be a portion of an area… That area might not be finished, but I feel like I've got what I needed out of that deeper session… and then I can go back to the main thread"]
+
+### 4.3 What a focused session may write
 
 4.3.1 Claude's own calls land in the conversation's area alone. The engine refuses one made in another area. [Claude's proposal; the refusal is today's, between topics]
 
@@ -180,34 +191,36 @@ start with holding.
 
 ### 4.4 A question under another area
 
-4.4.1 In a conversation across the work it is answered then and there. [Claude's proposal]
+4.4.1 In the main thread it is answered then and there, or marked to come back to (4.4.5). [Claude's proposal]
 
-4.4.2 In a conversation on one area it is your choice: answered there where it is yours to decide and quick, otherwise left. [Claude's proposal]
+4.4.2 In a focused session it is your choice: answered there where it is yours to decide and quick, otherwise left. [Claude's proposal]
 
-4.4.3 Left, it shows in four places: on the map under its area; in that area's count on the work's menu; first, at the next conversation on that area; and it holds the spec until it is answered. [Claude's proposal]
+4.4.3 Left, it shows on the map under its area and in that area's row on the work's menu, it is the first thing a focused session on that area is told, and it holds the spec until it is answered. [Claude's proposal]
 
-4.4.4 It changes nothing about the area it lands on: an area that is closed stays closed (5.2). [Claude's proposal]
+4.4.4 It is not mail. Nothing has to be opened to receive it, nothing is reopened by it, and any conversation can pick it up. [Lee's ruling, 26 Nov 2026: "There's no mailbox because everything is fair game"]
+
+4.4.5 Anything that comes up, in either kind of conversation, can be marked to come back to: it is recorded as a question under its area, or under the whole. It is picked up in the main thread when the talk reaches that area, in a focused session, or at the end, where it holds the spec. [Lee's ruling, 26 Nov 2026: "we could say, 'Let's mark this and come back to it.' Then it gets logged so that either we come back to it in the main thread… or we can go into a focused session and deal with it there"]
 
 ### 4.5 The log
 
-4.5.1 Each sitting keeps one log, numbered as discovery's are, and marked as across the work or on one area. [Lee, 25 Nov 2026: "we do something similar to Discovery does, and we just increment the number, and maybe we tag them as if it's epic level or if it's focused"]
+4.5.1 Each sitting keeps one log, numbered as discovery's are, and marked as the main thread or as focused, with its area. [Lee, 25 Nov 2026: "we do something similar to Discovery does, and we just increment the number, and maybe we tag them as if it's epic level or if it's focused"]
 
 4.5.2 A log is written in sections named for what they cover, and every entry links the section it came from. [Claude's proposal; discovery's logs are written so today]
 
-4.5.3 An area's history is the logs of the conversations on it, plus the linked sections of those across the work. Nothing is copied from one into another. [Claude's proposal]
+4.5.3 An area's history is the logs of the focused sessions on it, plus the linked sections of the main thread's logs. Nothing is copied from one into another. [Claude's proposal]
 
-4.5.4 A new conversation is what starts a new log. A conversation on one area is always a new conversation (4.2.4), so it always has a log of its own. [Lee's ruling, 25 Nov 2026: "I love all that. Let's lock it in"]
+4.5.4 A new conversation is what starts a new log. A focused session is always a new conversation (4.2.4), so it always has a log of its own. [Lee's ruling, 25 Nov 2026: "I love all that. Let's lock it in"]
 
 Example, written by Claude: the logs of a piece of work after four conversations. [Lee's ruling, 25 Nov 2026]
 
 ```text
-session-001   across the work           the first conversation after the commit
-session-002   on one area: holding      you focused on holding
-session-003   across the work           you came back out
-session-004   on one area: paying out
+session-001   main thread             the first conversation after the commit
+session-002   focused: holding        you focused on holding
+session-003   main thread             you came back out
+session-004   focused: paying out
 ```
 
-4.5.5 Which log is which — its number, whether it is across the work or on one area, and which area — is held in the work's manifest by the engine. It is never front matter in the file, and never worked out by reading the file. [Lee's ruling, 25 Nov 2026: "That should be manifest knowledge, not text in the file… it should be engine derivable or state-driven as to which file relates to what"]
+4.5.5 Which log is which — its number, whether it is the main thread or a focused session, and on which area — is held in the work's manifest by the engine. It is never front matter in the file, and never worked out by reading the file. [Lee's ruling, 25 Nov 2026: "That should be manifest knowledge, not text in the file… it should be engine derivable or state-driven as to which file relates to what"]
 
 4.5.6 The log's own text says the same, so that someone reading it knows what it is. [Lee's ruling, 25 Nov 2026]
 
@@ -217,23 +230,23 @@ session-004   on one area: paying out
 
 4.6.1 After the commit, a piece of work goes straight into discussion. There is no separate step before it: no cut of topics, no map to approve. [Lee's ruling, 25 Nov 2026]
 
-4.6.2 Its first conversation is across the work, opened from the starting page (6.3). [Lee's ruling, 25 Nov 2026: "we have to land somewhere in order to have the initial conversation"]
+4.6.2 Its first conversation is the main thread's first session, opened from the starting page (6.3). [Lee's ruling, 25 Nov 2026: "we have to land somewhere in order to have the initial conversation"]
 
-4.6.3 Discussion runs over as many conversations as it takes, across the work and on one area in any order, as much at your direction as at Claude's. [Lee's ruling, 25 Nov 2026: "it's all through discussion. It's as much driven by me as it is Claude, and it's collaborative"]
+4.6.3 Discussion runs over as many sessions as it takes, the main thread and focused sessions in any order, as much at your direction as at Claude's. [Lee's ruling, 25 Nov 2026: "it's all through discussion. It's as much driven by me as it is Claude, and it's collaborative"]
 
 4.6.4 Before any handoff, into an area or back out, the log is brought fully up to date. [Lee's ruling, 25 Nov 2026: "making sure… everything's up to date before we hand off, fully logged and clean"]
 
-4.6.5 When a conversation on one area is done, the work passes back to one across the work. [Lee's ruling, 25 Nov 2026]
+4.6.5 When a focused session is done, the work passes back to the main thread. [Lee's ruling, 25 Nov 2026]
 
-4.6.6 The conversation across the work that follows one on an area looks at what was done there and works it into the whole: what it changes for the other areas, and what now lies between them. [Lee's ruling, 26 Nov 2026: "The next session… can look at what was done and then work on stitching that into the product"]
+4.6.6 The main thread's next session after a focused one looks at what was done there and works it into the whole: what it changes for the other areas, and what now lies between them. [Lee's ruling, 26 Nov 2026: "The next session… can look at what was done and then work on stitching that into the product"]
 
 ### 4.7 Claude's calls
 
 4.7.1 Claude makes its own calls in either kind of conversation, by the one judgement of 2.2.1, each through the ask rule. [Lee's ruling, 25 Nov 2026: "it should be one rule. Otherwise, we're recreating the tension… we'd then have to go deep in order to get the benefit of Ledger in terms of the trust matrix"]
 
-4.7.2 So a question the ask rule brings to you can be drawn in a conversation across the work, at a natural pause, as it can in one on an area. [Claude's derivation: 4.7.1, 2.1.1]
+4.7.2 So a question the ask rule brings to you can be drawn in the main thread, at a natural pause, as it can in a focused session. [Claude's derivation: 4.7.1, 2.1.1]
 
-4.7.3 Example: talking across the work, "what happens to a payout that fails?" comes up. Where the talk has given paying out a direction, Claude may answer it — "retry once, then return the money to the balance" — and it lands as Claude's call, shown on the map since you last looked, or drawn for you where the ask rule says so. Where it has not, it is talked through with you, or recorded as an open question under paying out. [Lee's ruling, 25 Nov 2026]
+4.7.3 Example: in the main thread, "what happens to a payout that fails?" comes up. Where the talk has given paying out a direction, Claude may answer it — "retry once, then return the money to the balance" — and it lands as Claude's call, shown on the map since you last looked, or drawn for you where the ask rule says so. Where it has not, it is talked through with you, or recorded as an open question under paying out. [Lee's ruling, 25 Nov 2026]
 
 4.7.4 Nothing in the engine checks that judgement, and nothing asks you more because of it. A call made too early shows on the map, is replaced on the spot, and the trust numbers learn from the replacement. [Lee's ruling, 25 Nov 2026: "I don't think we need it, and more so, I think it could be detrimental… Claude makes a call, it goes in, it's wrong, it either gets corrected or we figure it out later. That's the idea of the ledger… We don't micromanage, and that's the point"]
 
@@ -241,7 +254,7 @@ session-004   on one area: paying out
 
 4.8.1 Any number of conversations can be open on one piece of work. The engine knows which conversation holds which area and never blocks one, as today. [Lee's ruling, 25 Nov 2026]
 
-4.8.2 The overview a conversation across the work reads (4.1.6) says which areas are open in another conversation. [Lee's ruling, 25 Nov 2026]
+4.8.2 The overview the main thread reads (4.1.6) says which areas are open in another conversation. [Lee's ruling, 25 Nov 2026]
 
 4.8.3 Before a conversation goes into an area another one holds, the engine asks, as it does today for a topic: leave it to that conversation, or proceed anyway. [Lee's ruling, 25 Nov 2026]
 
@@ -262,17 +275,17 @@ proceed if you know that session is no longer working.
 
 ### 4.9 The reader agents
 
-4.9.1 The background reviewer and the close's fresh reader are given, for an area, what they are given for a topic today: the area's record and log, the other areas' records, the product record, and what you struck or removed. [Lee's ruling, 25 Nov 2026]
+4.9.1 The background reviewer and the fresh reader (5.1.3) are given, for an area, what they are given for a topic today: the area's record and log, the other areas' records, the product record, and what you struck or removed. [Lee's ruling, 25 Nov 2026]
 
-4.9.2 An area's log, as they are given it, is the logs of the conversations on that area plus the sections of the logs across the work that link to it, put together by the engine from the manifest (4.5.5). [Lee's ruling, 25 Nov 2026]
+4.9.2 An area's log, as they are given it, is the logs of the focused sessions on that area plus the sections of the main thread's logs that link to it, put together by the engine from the manifest (4.5.5). [Lee's ruling, 25 Nov 2026]
 
-4.9.3 In a conversation across the work the background reviewer follows the talk: it reviews each area the conversation has written in since it last ran, one area at a time. A piece of work that never needs a conversation on one area is still reviewed. [Lee's ruling, 25 Nov 2026]
+4.9.3 In the main thread the background reviewer follows the talk: it reviews each area the session has written in since it last ran, one area at a time. A piece of work that never needs a focused session is still reviewed. [Lee's ruling, 25 Nov 2026]
 
-4.9.4 The reviewer and the close's reader are also given their area's part of the starting page (6.3), so a point from discovery the talk never took up is seen. The pass that reads across areas (7.1.3) is given all of it. [Lee's ruling, 25 Nov 2026]
+4.9.4 The reviewer and the fresh reader are also given their area's part of the starting page (6.3), so a point from discovery the talk never took up is seen. The pass that reads across areas (7.1.3) is given all of it. [Lee's ruling, 25 Nov 2026]
 
 4.9.5 All three are given the decisions about the whole, which bind every area. [Lee's ruling, 25 Nov 2026]
 
-4.9.6 What the reviewer hunts for, the bar the close's reader reads at, and passing on what you struck so it is never raised again, are as today. [Lee's ruling, 25 Nov 2026]
+4.9.6 What the reviewer hunts for, the bar the fresh reader reads at, and passing on what you struck so it is never raised again, are as today. [Lee's ruling, 25 Nov 2026]
 
 ### 4.10 Experiments, spikes and shared files
 
@@ -284,33 +297,65 @@ proceed if you know that session is no longer working.
 
 4.10.4 Spikes and shared files are kept for the whole piece of work and read from any area, as today. [Lee's ruling, 25 Nov 2026]
 
-## 5. Closing an area
+### 4.11 The menu
 
-### 5.1 The close
+4.11.1 A piece of work with more than one area is picked up through its menu. Its first row is always the main thread, and it is the recommended one. [Lee's ruling, 26 Nov 2026: "The focus should just be getting into the conversation, which is the first option. If I want to explore the others, I can. I can also do that via conversation"]
 
-5.1.1 Where an area has no open question and the talk has rested, Claude offers to close it, and you can keep talking instead. [Claude's proposal; a topic's close is offered so today]
+4.11.2 A row for each area with something waiting offers a focused session on it, and says only what is waiting there: open questions, points from discovery not taken up, and whether another conversation has it open. No area is shown as started, not started or closed. [Lee's ruling, 26 Nov 2026]
 
-5.1.2 The close is a topic's close as it is today: a fresh reader's pass over the area, the summary, a verdict on each call you changed, your yes. [Claude's proposal]
+4.11.3 There is no row for changing the areas. That is done by saying so in the talk (3.2.3). [Lee's ruling, 26 Nov 2026]
 
-5.1.3 A small area that never had a conversation of its own is closed from a conversation across the work. [Claude's proposal]
+4.11.4 A small piece of work (3.5.4) has no menu: picking it up goes straight into its conversation, as a feature does today. [Lee's ruling, 26 Nov 2026]
 
-5.1.4 An area's verdicts are asked at its close, whichever kind of conversation it closes in. [Claude's derivation: 5.1.2]
+4.11.5 When nothing is waiting anywhere, the first row becomes the close of the whole (7.2). [Lee's ruling, 26 Nov 2026]
 
-### 5.2 After the close
+4.11.6 Ledger's board shows the same rows and counts. [Claude's derivation: 4.11.2]
 
-5.2.1 A closed area stays closed. A question that arrives later is added under it and answered, and the area is neither reopened nor closed a second time. [Claude's proposal: today a message to a finished topic reopens it, and it closes again through a whole fresh pass]
+Screen, drawn by Claude: a sketch of the menu partway through the finance example, not a real screen. [Lee's ruling, 26 Nov 2026: "that looks great"]
+
+```text
+■ Discussion — Finance
+5 areas · 1 with nothing waiting
+
+NOTHING WAITING
+  └─ Holding the balance
+
+◆ What would you like to do?
+
+1 → Carry on in the main thread (recommended)
+2 → Focus on "Paying out" — 4 open · 6 from discovery
+3 → Focus on "Refunds" — 3 open · open in another conversation
+4 → Focus on "Identity checks" — 8 from discovery
+5 → Focus on "Paying in" — 9 from discovery
+```
+
+## 5. An area's standing
+
+### 5.1 No close for an area
+
+5.1.1 An area has no close of its own and takes no yes from you. The one close is the close of the whole (7.2). [Lee's ruling, 26 Nov 2026: "we don't necessarily need to have the concept of closing areas"]
+
+5.1.2 An area's standing is worked out by the engine from what is waiting under it. It is settled while no question is open under it and no point from discovery is outstanding, and it stops being settled by itself when something arrives. [Lee's ruling, 26 Nov 2026]
+
+5.1.3 A fresh reader reads an area when it comes to rest, run by Claude in either kind of conversation, and what it finds lands as open questions under the area. Before the close of the whole, any area changed since its last read is read again. [Lee's ruling, 26 Nov 2026]
+
+5.1.4 Any area's summary — what you decided, and Claude's calls by kind — is drawn when you ask for it. [Lee's ruling, 26 Nov 2026]
+
+### 5.2 A late question
+
+5.2.1 A question that arrives under an area that had settled is added and answered like any other. Nothing is reopened, because nothing was closed. [Lee's ruling, 26 Nov 2026; today a message to a finished topic reopens it, and it closes again through a whole fresh pass]
 
 5.2.2 The pass that reads across areas before the spec (7.1.3) is what checks that a late answer disturbed nothing. [Claude's proposal]
 
-### 5.3 What a close proposes
+### 5.3 Product-record lines and new ground
 
-5.3.1 Where a decision in an area is really a rule for the whole product, it is proposed at that area's close as a line of the product record, for you to strike or reword, as at a topic's close today. [Lee's ruling, 25 Nov 2026]
+5.3.1 Where a decision in an area is really a rule for the whole product, it is proposed as a line of the product record at the close of the whole (7.2.2), for you to strike or reword. [Claude's derivation: 5.1.1; before that line it was proposed at the area's own close]
 
-5.3.2 Product-record lines that come from decisions about the whole are proposed at the pass that reads across areas before the spec, since they belong to no area's close. [Lee's ruling, 25 Nov 2026]
+5.3.2 Product-record lines that come from decisions about the whole are proposed there too. [Lee's ruling, 25 Nov 2026]
 
 5.3.3 A candidate is a suggested new area: ground a decision creates that no area covers. It is proposed as a new area where it belongs to this piece of work, or for the roadmap where it does not, and you can turn it down. No brief is written for it. [Lee's ruling, 25 Nov 2026: "I suppose a candidate does exist. It's a potentially new area"]
 
-5.3.4 Most new ground never waits for a close: it is added as the talk goes (3.2.5), and the piece of work takes whatever shape it needs. [Lee's ruling, 25 Nov 2026: "these probably would be added as we go because they can just, without the ceremony now, be molded through conversation"]
+5.3.4 Most new ground waits for nothing: it is added as the talk goes (3.2.5), and the piece of work takes whatever shape it needs. [Lee's ruling, 25 Nov 2026: "these probably would be added as we go because they can just, without the ceremony now, be molded through conversation"]
 
 5.3.5 Nothing limits how far a piece of work grows past where it started. You can widen it and are never blocked, and keeping it on track is yours as much as Claude's. [Lee's ruling, 25 Nov 2026: "I don't think we need any hard limitations or prescribed guardrails there… If I want to expand it, then I can and shouldn't be blocked. Conversely, it's up to me to keep it on track as much as Claude"]
 
@@ -318,13 +363,27 @@ proceed if you know that session is no longer working.
 
 5.4.1 An area that is wanted, but for a later release, is put off: it goes to the roadmap whole, on a horizon you name, its entries keeping their label, and it stops holding the spec. A question that arrives for it waits under it. This is how a piece of work is split. [Lee's ruling, 25 Nov 2026; a topic is postponed so today]
 
-5.4.2 An area not worth pursuing is cancelled: it stays listed as raised and declined, stops holding the spec, and can be brought back. [Lee's ruling, 25 Nov 2026; a topic is cancelled so today]
+5.4.2 An area not worth pursuing is not cancelled as a state. "We are not doing refunds" is a decision, recorded like any other, and it answers the questions under that area. [Lee's ruling, 26 Nov 2026]
 
 5.4.3 One piece of work can be folded into another under way: its entries are relabelled there as an area. [Lee's ruling, 25 Nov 2026; a feature is absorbed into an epic so today]
 
-5.4.4 Each is asked for in your own words, done and reported in a line. Only a cancel asks you first. [Lee's ruling, 25 Nov 2026]
+5.4.4 Putting off and folding in are asked for in your own words, done and reported in a line. [Lee's ruling, 25 Nov 2026]
 
-5.4.5 Cancelling closes once the spec is first written. Putting off stays open until your yes at ready to build, where a split is made. [Lee's ruling, 25 Nov 2026; as today]
+5.4.5 Putting off stays open until your yes at ready to build, where a split is made. [Lee's ruling, 25 Nov 2026; as today]
+
+### 5.5 Verdicts
+
+5.5.1 A verdict is asked once, at the moment you change a call of Claude's, in conversation or outright: what Claude's answer would have cost — nothing, a fix later, or a real loss. [Lee's ruling, 26 Nov 2026: "Why can't we just give that response at the moment when I change something?… Why do we have to wait till the closeout, which could be hours or days later?"]
+
+5.5.2 It is never asked again. There is no queue of skipped verdicts, and nothing is brought back at a close. [Lee's ruling, 26 Nov 2026: "If I skip it 'cause I don't know, I don't want to be asked again. This should be best effort"]
+
+5.5.3 A change left without a verdict keeps counting as it does today, as a real loss. So a kind of question you keep overruling keeps coming to you, and "nothing" is how you say a change was taste and Claude should carry on deciding that kind. [Lee's ruling, 26 Nov 2026]
+
+5.5.4 Where your words when you changed the call already say it — "that would have broken refunds", "I just prefer it this way" — Claude records the verdict from them and says so in a line, which you can correct. The question is drawn only where your words do not make it plain. [Lee's ruling, 26 Nov 2026]
+
+5.5.5 Claude never takes a "nothing" from silence. [Lee's ruling, 26 Nov 2026]
+
+5.5.6 What a verdict feeds is as today. For each kind of question the engine keeps how often Claude's answer would have cost the product something, and a kind goes quiet once that rate is safely under your threshold: thirteen clean answers bring it under 20%, and one loss in twenty puts it at 21%. A verdict is what tells a change of taste from a save. [the engine as it is today]
 
 ## 6. From product discovery into a piece of work
 
@@ -362,7 +421,7 @@ proceed if you know that session is no longer working.
 
 ### 7.1 What the engine holds
 
-7.1.1 The engine refuses the spec until every area is closed, or put off. [Claude's proposal; today it refuses until every topic is decided, cancelled or postponed]
+7.1.1 The engine refuses the spec until every area not put off has been read by a fresh reader since it last changed (5.1.3). [Lee's ruling, 26 Nov 2026; today it refuses until every topic is decided, cancelled or postponed]
 
 7.1.2 It refuses until no question is open anywhere on the map. [Claude's proposal]
 
@@ -370,26 +429,13 @@ proceed if you know that session is no longer working.
 
 7.1.4 It refuses until no point from discovery is left: each is on the ledger, or dropped at your word. [Claude's proposal]
 
-Screen, drawn by Claude: a sketch of the work's menu partway through, not a real screen. [Claude's proposal]
-
-```text
-Finance
-
-  ✓ Holding the balance    closed · 12 decided
-  ◐ Paying out             4 open · 6 from discovery not taken up
-  ○ Paying in              9 from discovery
-  ○ Identity checks        8 from discovery · 1 question from Holding
-  ○ Refunds                3 open
-  · The whole              3 decided
-```
-
 ### 7.2 The close of the whole
 
-7.2.1 Once every area is closed or put off, the piece of work has one close of its own, and that close is what takes it into the spec. [Lee's ruling, 26 Nov 2026]
+7.2.1 Once nothing is waiting anywhere (7.1), the piece of work has one close of its own, and that close is what takes it into the spec. [Lee's ruling, 26 Nov 2026]
 
-7.2.2 It runs the pass that reads across areas (7.1.3), then shows the summary for the whole: the decisions about the whole, each area in a line with its counts, and the product-record lines proposed from decisions about the whole (5.3.2). [Lee's ruling, 26 Nov 2026]
+7.2.2 It runs the pass that reads across areas (7.1.3), then shows the summary for the whole: the decisions about the whole, each area's summary, and the product-record lines proposed (5.3). [Lee's ruling, 26 Nov 2026]
 
-7.2.3 You give a verdict on each call about the whole that you changed, and then your yes. [Lee's ruling, 26 Nov 2026]
+7.2.3 Your yes takes the work into the spec. No verdict is asked here: each was asked when you made the change (5.5). [Lee's ruling, 26 Nov 2026]
 
 7.2.4 For a small piece of work (3.5.4) this is its only close, and it is a feature's close as it is today. [Lee's ruling, 26 Nov 2026]
 
@@ -407,6 +453,12 @@ Finance
 
 8.1.5 Removing a topic from the map. An area with nothing under it is only a name, and a mistaken one with entries is folded into another (3.2.7). [Lee's ruling, 25 Nov 2026]
 
+8.1.6 The close of each topic, with its yes. [Lee's ruling, 26 Nov 2026]
+
+8.1.7 Cancelling a topic as a state of its own (5.4.2). [Lee's ruling, 26 Nov 2026]
+
+8.1.8 The verdict queue, and verdicts asked at a close (5.5). [Lee's ruling, 26 Nov 2026]
+
 ## 9. One kind of work
 
 ### 9.1 Feature and epic
@@ -421,9 +473,7 @@ Finance
 
 ### 10.1 To be talked through, one at a time
 
-10.1.1 The names: for an area, and for the two kinds of conversation. "Across the work" and "on one area" are working words; "broad" and "deep" are out, because they read as shallow against detailed, which is not the difference. [open; Lee, 25 Nov 2026: "Maybe we need better words for these things because they seem at odds with each other"]
-
-10.1.10 The work's menu and the board. [open]
+10.1.1 The names of the two kinds of conversation. "Area" stays. "The main thread" and "a focused session" are your working words, used throughout. [open as to the two; Lee's ruling, 26 Nov 2026 for "area": "'areas' is still a good word… softer than 'topic'"; Lee, 26 Nov 2026: "Main thread and focused session… I think main thread"]
 
 10.1.12 What this means for migrating existing projects: a project already on Ledger that holds topics, with their briefs, mailboxes and logs; and a project coming into Ledger from before it, whose migration today builds topics from its old records. [open; Lee, 25 Nov 2026: "We will have to discuss what the impact is here for this feature on migrating existing projects"]
 
