@@ -227,12 +227,14 @@ names (`fumi › discussion › management-window`), and `ledger-gates-rows`
 draws the note's row from it as one dim line.
 
 It does so in a session that announced, in a conversation the engine has
-marked, in its main loop, at a position that names a skill. A subagent's
-transcript, a plain conversation, a work unit's menu or the start menu, a
-place no longer open, and an engine that cannot answer all compact as Claude
-Code does, with nothing appended; so does a compaction Claude Code skips. The
-compaction Claude Code computes ahead of time passes through untouched, and
-the compaction that comes reuses it beneath the note.
+marked, in its main loop, where the engine names a skill to carry on in: a
+position's, or the start skill's for a conversation carrying the migration on.
+A subagent's transcript, a plain conversation, a work unit with no menu of its
+own, the start menu outside the migration, a place no longer open, and an
+engine that cannot answer all compact as Claude Code does, with nothing
+appended; so does a compaction Claude Code skips. The compaction Claude Code
+computes ahead of time passes through untouched, and the compaction that comes
+reuses it beneath the note.
 
 ## How it keeps each task's builder and reviewers
 

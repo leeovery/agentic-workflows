@@ -7,10 +7,10 @@
  * note.
  *
  * Only the main conversation of a conversation the engine has marked, in a
- * session that announced, at a position that names a skill; everything else
- * compacts as Claude Code does. Each note handed up is recorded in the
- * conversation's folder as `compacted.json`, which the rows mod draws the
- * note's row from.
+ * session that announced, where the engine names a skill to carry on in;
+ * everything else compacts as Claude Code does. Each note handed up is
+ * recorded in the conversation's folder as `compacted.json`, which the rows
+ * mod draws the note's row from.
  */
 import type { EngineInterface, On, SessionMessage } from 'claude-code'
 
