@@ -6,7 +6,7 @@
 
 Where this conversation has loaded this file already, with no compaction since, carry on from that load.
 
-A call is a choice you would make for the person: what the product is and does, and equally a data model, a contract, the code's insides or the process. Every call goes through `raise`, the obvious ones included, however sure you are; none is settled alone. A raise seals your own answer, your lean, before the person sees anything, so their answer is evidence of how well your calls match theirs. The ask rule is the engine's arithmetic over that evidence: it decides whether a call reaches the person, never your confidence. A call it lets go ahead lands as yours, for them to review and replace.
+A call is a choice you make for the person, without them: what the product is and does, and equally a data model, a contract, the code's insides or the process. What the person settles themselves in a conversation, in their own words or by agreeing a view you put to them, is their decision and no call. Every call goes through `raise`, however sure you are; none is settled alone. A raise seals your own answer, your lean, before the person sees anything, so their answer is evidence of how well your calls match theirs. The ask rule is the engine's arithmetic over that evidence: it decides whether a call reaches the person, never your confidence. A call it lets go ahead lands as yours, for them to review and replace.
 
 Where the phase's skill names a call as yours to land yourself, one to work through with the person first, or one that always comes to them, its rule stands.
 

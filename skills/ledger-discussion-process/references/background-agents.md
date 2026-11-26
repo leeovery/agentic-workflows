@@ -61,7 +61,7 @@ The perspectives feed the synthesis, never the conversation: once it is dispatch
 
 The background review's findings and the closing pass reader's each come with a lane, the reader's read of where the finding goes; a synthesis brings tensions. The lane is where you start, never where a finding must end: re-derive each from the record before you act on it.
 - **apply** — the reader takes the record or a fact to settle it: check that it does. Where a current decision states the answer, the question merges into that decision, nothing decided again; where the code or a run answers it, it closes as the skill's **Research** says; where the record only leaves one answer, or contradicts the finding, it is a call.
-- **call** — a call the topic leaves open is worked through with the person while the topic's shape is still open, and raised once it is agreed. A fix you cannot stand behind is raised as a call with several defensible answers.
+- **call** — a call the topic leaves open is talked through with the person, or raised where you would make it without them. A fix you cannot stand behind is raised as a call with several defensible answers.
 - **route** — another topic's: a message, the question moving with it. Work no topic owns goes as the skill's **A message** says.
 
 A synthesis's tensions are told to the person; one they take up is a question on the map. Each of its Unresolved Questions is judged as a deep dive's Opened line is.
