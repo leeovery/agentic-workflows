@@ -529,7 +529,7 @@ NOTHING WAITING
 
 ### 11.1 Where they stand
 
-11.1.1 Across your projects, three pieces of work are mid-discussion: one epic in Fumi, of 19 topics with 4 messages waiting, and two in Portal, of 2 and 4 topics with 2 messages waiting each. Every other piece of work in Fumi, Portal, agntc and Mint is finished or cancelled. [a read of the projects, 26 Nov 2026]
+11.1.1 Across your projects, three pieces of work are mid-discussion: one epic in Fumi, whose map holds 20 topics (13 decided, 3 cancelled, 2 in progress, 1 not started and 1 put off to the roadmap) with 4 messages waiting, and two in Portal, whose maps hold 7 and 5 topics with 2 messages waiting each. Every other piece of work in Fumi, Portal, agntc and Mint is finished or cancelled. [a read of the projects, 26 Nov 2026]
 
 11.1.2 f8x starts its first piece of work under areas and never holds a topic. [Lee's ruling, 26 Nov 2026: "It won't reach the discussion phase before this work's done. This work will be done, topics will be gone, and areas will be true before that work is ready"]
 
@@ -548,3 +548,17 @@ NOTHING WAITING
 11.2.6 One directive for each piece of work mid-discussion does what needs reading: each waiting message, and each point of a not-started topic's brief, becomes a question marked under its area. Claude reads them; no code judges their content. [Lee's ruling, 26 Nov 2026]
 
 11.2.7 The move into Ledger from before it is left as it is. A project coming in later runs it, and then the new migration straight after. [Lee's ruling, 26 Nov 2026; a released migration is never edited]
+
+11.2.8 A not-started topic's brief is not turned into questions, as 11.2.6 has it, now that a lean stands without asking (6.4.2). Its points become the work's starting page, under that topic's name as their area: the open ones wait as questions from discovery, and the settled ones stand as leans. 11.2.6 still holds for the waiting messages. [Claude's derivation: 6.4.2, 6.4.6]
+
+11.2.9 A postponed topic becomes an area put off (5.4.1), on the roadmap as it is, and the messages waiting in its mail become questions waiting under it. [Claude's derivation: 5.4.1, 11.2.6; Fumi has one, holding 3 of its 4 messages]
+
+11.2.10 The names you struck from a map are kept and still passed to the reader agents (4.9.1), so none is proposed again. [Claude's derivation: 4.9.6; Fumi has 7]
+
+11.2.11 A cancelled topic's cancel is recorded as the decision it was (5.4.2), which answers whatever was still open under it, so nothing there holds the spec. [Claude's derivation: 5.4.2, 7.1.2, 11.2.4]
+
+11.2.12 No file is moved. A topic's log, its experiment records and its brief stay at the paths the ledger's entries already cite, and the manifest registers them where they are; only new records are written to the work's own folder (4.10.2). This replaces the move of experiments in 11.2.2. [Claude's derivation: 11.2.1, 11.2.5; entries cite files by path and are never edited]
+
+11.2.13 A piece of work with a single topic that is mid-discussion has its one log registered as the main thread's, not as a focused session's. Work already past discussion needs only the migration of 11.2.2. [Claude's derivation: 4.1.1, 11.2.2, 11.2.7]
+
+11.2.14 Left to the builder: the ledger's line shape. Lines written before this keep the field they have, read as the area (11.2.1) under the ledger's own versioning of line shapes; whether new lines name the field anew is engineering. [engineering, with nothing you would see]
