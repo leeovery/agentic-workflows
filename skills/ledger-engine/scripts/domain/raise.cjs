@@ -264,9 +264,9 @@
 //   under (projections/raise.cjs), or by its own key, which a call may make
 //   a number only where it is the row's place (`checkEachRow`); the row's
 //   own key is what every record of the answer holds. A row picked, or the
-//   person's own words, lands as the person's decision at the id the draw minted, where
-//   the raise was drawn, answering its question and relying on what it relies
-//   on — on a replacement, as their replacement of the decision for the
+//   person's own words, lands as the person's decision at the id the draw
+//   minted, where the raise was drawn, answering its question and relying
+//   on what it relies on — on a replacement, as their replacement of the decision for the
 //   reason and cause sealed, dropping its answer as it stood: a pick's text
 //   is the row's, and what it rules out the other rows' of Claude's; their
 //   own words bring their text, and what they rule out where Claude gives it,
