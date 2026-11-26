@@ -11,7 +11,7 @@ Every call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb} …`;
 
 ## Where Each Kind Goes
 
-- **An idea, a bug or a fix the person puts off for later** — the inbox, on their word, as an H1 title over as much as was said, up to 500 words, 300 for a fix, never padded; `quick-fix` is settled work needing no decision. Where it concerns another Ledger project, add `--project {folder}`, that project's folder:
+- **An idea, a bug or a fix the person puts off for later** — the inbox, on their word, as an H1 title over as much as was said, up to 500 words, 300 for a fix, never padded; `quick-fix` is work that takes no deciding. Where it concerns another Ledger project, add `--project {folder}`, that project's folder:
 
   ```bash
   node .claude/skills/ledger-engine/scripts/engine.cjs inbox capture {kind:[idea|bug|quick-fix]} [--project {folder}] <<'ITEM'

@@ -40,13 +40,13 @@ _Avoid_: unit, project, ticket
 A piece of work that is several distinct things wearing one name. Its parts become topics, each talked through on its own, held together by the epic's map and lived through its menu.
 
 **feature**:
-One coherent thing to build. It runs the full journey from discussion to review as a single topic.
+One coherent thing to build, whose shape takes decisions. It runs the full journey from discussion to review as a single topic.
 
 **bugfix**:
 Something that used to work and now doesn't. An investigation finds the cause in place of a discussion, then comes the specification; the build's first task proves the bug with a failing test before it is fixed, and review follows.
 
 **quick-fix**:
-Settled work of any size, a tweak or an update needing no decision beyond a quick call. It goes from discovery straight to its fixes, each built and reviewed like a task, from the first fix to its close in one session; they are built in a worktree of the quick-fix's own, so the person's checkout never moves while they are built; the close brings it up where it has out the branch the quick-fix lands on. It has a review phase only if the person asks for one at the close. One that turns out to need a real decision moves to a feature or a bugfix.
+Work of any size that takes no deciding beyond a quick call, a tweak or an update. It goes from discovery straight to its fixes, each built and reviewed like a task, from the first fix to its close in one session; they are built in a worktree of the quick-fix's own, so the person's checkout never moves while they are built; the close brings it up where it has out the branch the quick-fix lands on. It has a review phase only if the person asks for one at the close. One that turns out to need a real decision moves to a feature or a bugfix.
 _Avoid_: a small mechanical change
 
 **topic**:
