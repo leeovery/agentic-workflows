@@ -33,8 +33,8 @@
 // section against the rounds before so a later round walks what changed, the points the session settled, and the directive; every
 // refusal storing nothing; and the two agents' definitions (21.S35): each
 // fixes its model and effort, and its shell is for reading, the per-topic
-// agent's for its record's check besides, so no other engine call and no
-// ledger write is theirs.
+// agent's for its record's check and for writing what it composes
+// besides, so no other engine call and no ledger write is theirs.
 //
 // Layer: verb. World: the records directive's (migration-world.cjs), made
 // once and copied for each test.
@@ -932,14 +932,14 @@ describe('the refusals, nothing stored', () => {
 });
 
 describe('the migration\'s agents and the plain search (21.S35, 26.5.1)', () => {
-  /** The rule confining an agent's shell, word for word in each agent's file: reading alone, or reading and the check its brief names. */
+  /** The rule confining an agent's shell, word for word in each agent's file: reading alone, or reading, the check its brief names and writing what it composes. */
   const CONFINED = '**The shell is for reading and searching alone:** `rg`, `find`, `ls`, `cat`, `head`, `tail`, `wc` and their like. Never run the engine, never run git, and never write, move or delete a file through it.';
-  const CHECKING = '**The shell is for reading and searching, and for the check your brief names:** `rg`, `find`, `ls`, `cat`, `head`, `tail`, `wc` and their like. Never run the engine for anything else, never run git, and never write, move or delete a file through it.';
+  const COMPOSING = '**The shell is for reading and searching, for the check your brief names, and for writing what you compose:** `rg`, `find`, `ls`, `cat`, `head`, `tail`, `wc` and their like, an inline script writing what you compose, and `mkdir` for the folder it goes in. Never run the engine for anything else, never run git, and never write, move or delete any other file through it.';
 
-  it('each searches through a shell confined to reading, the per-topic agent\'s running its record\'s check besides — Claude Code giving no Glob or Grep tool — and no agent file names an engine call, nor any brief but the check it names: only the session writes the ledger and the state', () => {
+  it('each searches through a shell confined to reading, the per-topic agent\'s running its record\'s check and writing what it composes besides — Claude Code giving no Glob or Grep tool — and no agent file names an engine call, nor any brief but the check it names: only the session writes the ledger and the state', () => {
     assert.ok(fs.readFileSync(path.join(AGENTS, 'ledger-migration-topic.md'), 'utf8').includes('- Touch only the files the directive names for a topic or a phase, and only this one\'s: what you compose, and the hand-back file where your brief names one.'), 'the per-topic agent writes its hand-back');
     assert.ok(fs.readFileSync(path.join(AGENTS, 'ledger-migration-verifier.md'), 'utf8').includes('- Write only the findings file, and the rulings file and the checked file where your brief names them, the `.txt` files your brief names, with the Write tool.'), 'the verifier writes its rulings and verdicts');
-    for (const [agent, rule] of [['ledger-migration-topic', CHECKING], ['ledger-migration-verifier', CONFINED], ['ledger-plain-search', CONFINED]]) {
+    for (const [agent, rule] of [['ledger-migration-topic', COMPOSING], ['ledger-migration-verifier', CONFINED], ['ledger-plain-search', CONFINED]]) {
       const text = fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8');
       const tools = String(/^tools: (.*)$/m.exec(text)?.[1]).split(', ');
 
