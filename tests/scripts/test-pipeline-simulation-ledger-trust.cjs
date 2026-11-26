@@ -115,11 +115,12 @@ describe('pipeline simulation: the trust log', () => {
     const proposed = await sim.runAsync(['raise', note, '--replaces', snaps, '--reason', 'changed-mind'], null, JSON.stringify(leaningCall('Notes float free.', 'Notes snap to a coarse grid.')));
     sim.run(['raise', 'answer', proposed.raise, '--pick', 'keep'], null, JSON.stringify({ why: 'The person likes the grid.' }));
 
-    // A fact only the person holds, raised with no rows: the person's own
-    // words land as their decision, and nothing reaches the trust log, their
-    // "I don't follow" included.
+    // A fact only the person holds, raised with Claude's lean on its rows:
+    // the person's own words land as their decision, and nothing reaches the
+    // trust log, their "I don't follow" included.
     const signing = ledger(['ask', note], { ...made, text: 'Which team signs the beta?' });
-    const fact = { question: 'Which team signs the beta?', rows: [], mechanism: 'Outside the code.', product_wide: false };
+    const teams = [{ key: 'own', name: 'Own team', text: 'The person\'s own team signs it.', notice: 'the beta ships under their name' }, { key: 'company', name: 'Company', text: 'The company team signs it.', notice: 'the beta ships under the company' }];
+    const fact = { question: 'Which team signs the beta?', rows: teams, lean: 'company', why: 'A beta goes out under the company.', mechanism: 'Outside the code.', product_wide: false };
     const signs = (await sim.runAsync(['raise', note, '--answers', signing, '--fact'], null, JSON.stringify(fact))).raise;
     sim.run(['raise', 'answer', signs, '--didnt-follow']);
     sim.run(['raise', 'answer', signs, '--own'], null, JSON.stringify({ text: 'Team ABCDE12345.', why: 'It is their account.' }));

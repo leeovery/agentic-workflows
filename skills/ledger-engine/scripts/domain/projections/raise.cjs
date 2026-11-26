@@ -18,9 +18,10 @@
 // leaned to keep it, under the built-otherwise mark — and where a
 // row of Claude's holds the entry's answer, which only a blind question
 // drawn on Claude's own call mid-build does (raise.cjs), that row stands for
-// keeping it. A fact draws no lean and recommends no row, asks for the
-// answer, and draws what the person would notice only where it has rows;
-// its comment takes the answer in the person's own words.
+// keeping it. A fact draws Claude's lean and recommends its row only where
+// it gives one, asks for the answer, and draws what the person would notice
+// only where it has rows; its comment takes the answer in the person's own
+// words.
 // A blind question (16.17.2) draws the question cold: no lean, no row
 // recommended and no WHY I'M ASKING, the mechanism behind its toggle drawn
 // as Claude wrote it, its rows in the order its seal holds — the
@@ -103,12 +104,12 @@ function rowDrawn(seal, number) {
 }
 
 /**
- * The lean's key as a surface may show it: null on a fact, and on a blind
- * question until the person has answered it.
+ * The lean's key as a surface may show it: null on a fact that gives none,
+ * and on a blind question until the person has answered it.
  * @param {Seal} seal @returns {string|null}
  */
 function leanShown(seal) {
-  return seal.fact || (seal.blind && seal.answered === null) ? null : seal.call.lean;
+  return seal.blind && seal.answered === null ? null : seal.call.lean ?? null;
 }
 
 /**

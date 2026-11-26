@@ -4,13 +4,15 @@
 // A fact raised (ledger-engine/scripts/domain/raise.cjs, its screen
 // domain/projections/raise.cjs): `engine raise <place> --answers <question>
 // --fact`, a fact Claude cannot check and only the person holds, on stdin
-// with no lean — asked whatever the decision point would answer, its rows
-// none or any number, never judged by the one-decision check, sealed as a
-// fact and drawn with no lean and no row recommended (16.S75, 16.3.8); its
-// answer, a row or the person's own words, landing as the person's
-// decision, sealing no lean and moving no one, and nothing it does reaching
-// the trust log or the verdict queue (16.3.2); the redraw rule holding
-// across a fact and a call; and its refusals.
+// with no sort — asked whatever the decision point would answer, never
+// blind, its rows none or any number, never judged by the one-decision
+// check, sealed as a fact and drawn with no row recommended, or, where
+// Claude gives its lean and why, the lean drawn and its row recommended as
+// a call's are (16.S75, 16.3.8); its answer, a row or the person's own
+// words, landing as the person's decision, sealing no lean and moving no
+// one, and nothing it does reaching the trust log or the verdict queue
+// (16.3.2); the redraw rule holding across a fact and a call; and its
+// refusals.
 //
 // Layer: verb. World: the ledger suites' unit with two questions asked on
 // the note window, built once and copied for each test; each test keeps its
@@ -26,7 +28,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, okSectionsAsync, output, refusesAsync, refusedPristine, stateGit, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, okSections, okSectionsAsync, output, refusesAsync, refusedPristine, stateGit, cleanupFixture } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, NOTE, PHASES, askedWorld, ledgerHelpers, leaningCall } = require('./ledger-world.cjs');
 const { SESSION, WHY, raiseHelpers } = require('./raise-world.cjs');
@@ -49,6 +51,9 @@ const FACT = Object.freeze({
   product_wide: true,
 });
 
+/** A fact with rows and Claude's lean: later, as the release train says. */
+const LEANING = Object.freeze({ ...FACT, lean: LATER.key, why: 'The release train cut no branch this week.' });
+
 /** A fact with no rows: an account Claude cannot reach. */
 const BARE = Object.freeze({
   question: 'Which Apple team ID signs the beta?',
@@ -60,6 +65,7 @@ const BARE = Object.freeze({
 const { world, asked } = askedWorld('raise-fact-', PHASES, {
   ships: 'When does the beta ship?',
   team: 'Which team signs the beta?',
+  trains: 'Which release train carries the beta?',
 });
 
 const config = useTempFolder('raise-fact-config-');
@@ -105,12 +111,13 @@ const refusedFact = (fact) => refusedDraw([NOTE, '--answers', asked.ships, '--fa
 
 /**
  * The screen a fact draws, its id `id`, its rows and its question as given,
- * the mechanism shown with `technical`.
+ * its lean where it gives one, the mechanism shown with `technical`.
  * @param {string} id @param {Record<string, any>} fact @param {{technical?: boolean}} [opts]
  */
 function screen(id, fact, { technical = false } = {}) {
   /** @type {{key: string, name: string, text: string, notice: string}[]} */
   const rows = fact.rows;
+  const lean = rows.find((row) => row.key === fact.lean);
   return [
     `=== MENU: raise — ${id} (emit verbatim as markdown (not a code block), then STOP for the user's response) ===`,
     '· · · · · · · · · · · ·',
@@ -118,6 +125,7 @@ function screen(id, fact, { technical = false } = {}) {
     '',
     fact.question,
     '',
+    ...(lean === undefined ? [] : [`I lean: ${lean.text}`, '']),
     ...(rows.length === 0 ? [] : ['WHAT YOU\'D NOTICE', '', ...rows.map((row) => `- ${row.name}: ${row.notice}`), '']),
     'WHY I\'M ASKING',
     '',
@@ -126,7 +134,7 @@ function screen(id, fact, { technical = false } = {}) {
     '',
     '**`◆ What\'s the answer?`**',
     '',
-    ...rows.map((row, i) => `**\`${i + 1}\`**           → ${row.text}`),
+    ...rows.map((row, i) => `**\`${i + 1}\`**           → ${row.text}${row === lean ? ' (recommended)' : ''}`),
     `**\`t/technical\`** → ${technical ? 'Hide' : 'Show'} the mechanism`,
     '**`e/explain`**   → I don\'t follow — explain it again',
     '**Comment**     → Tell me in your own words, or ask about it',
@@ -168,6 +176,18 @@ describe('the draw (16.S75, 16.3.8)', () => {
     const { res, sections } = await raiseFact(one);
 
     assert.strictEqual(sections, screen(res.raise, one));
+  });
+
+  it('a fact giving Claude\'s lean and why is asked all the same, never blind, the decision point never consulted; its lean drawn and its row recommended as a call\'s are, and sealed with the fact as given', async (t) => {
+    const point = t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked blind.', by: 'counts' }));
+
+    const { res, sections } = await raiseFact(LEANING);
+
+    assert.deepStrictEqual([res.decision, res.reason, sections], ['ask', ONLY_YOU_KNOW, screen(res.raise, LEANING)]);
+    assert.deepStrictEqual([seals()[res.raise].call, seals()[res.raise].fact, seals()[res.raise].blind], [LEANING, true, false]);
+    assert.strictEqual(output(dir, ['raise', 'show', res.raise], { env: conversation() }), `{"ok":true,"raise":"${res.raise}"}\n${screen(res.raise, LEANING)}`);
+    assert.strictEqual(auditGate(okSections(dir, ['raise', 'show', res.raise], { env: conversation({ LEDGER_GATE_SURFACE: '1' }) }).sections, 'a fact with a lean')?.gate, `raise — ${res.raise}`);
+    assert.strictEqual(point.mock.callCount(), 0, 'the decision point was consulted on a fact');
   });
 
   it('is sealed as a fact beside the call as given, no row judged, its reason its own; raise show draws it again, the mechanism behind its toggle', async () => {
@@ -239,6 +259,21 @@ describe('the answer (16.S75, 16.3.2)', () => {
     assert.ok(!fs.existsSync(log), 'the person\'s words on a fact were read');
   });
 
+  it('a fact giving Claude\'s lean is answered as any fact is: a pick of the lean and a pick against it each land as the person\'s decision, sealing no lean and moving no one, and nothing reaches the trust log', async () => {
+    const agreeing = (await raiseFact(LEANING)).res.raise;
+    const against = (await raiseFact(LEANING, { answers: asked.team })).res.raise;
+
+    answer(agreeing, ['--pick', '2']);
+    const took = lastEntry();
+    answer(against, ['--pick', '1']);
+
+    assert.deepStrictEqual([took, lastEntry()], [
+      entryOf(agreeing, asked.ships, { text: LATER.text, rules_out: [MONDAY.text] }),
+      entryOf(against, asked.team),
+    ]);
+    assert.strictEqual(logText(), '');
+  });
+
   it('no answer to a fact reads as Claude\'s call or waits on a verdict: ledger since shows none, and the verdict queue holds only the departure a call\'s answer in the person\'s own words made', async () => {
     const fact = (await raiseFact()).res.raise;
     const call = (await okSectionsAsync(dir, ['raise', NOTE, '--answers', asked.team], { env: conversation(), stdin: JSON.stringify(leaningCall('Monday', 'Later')) })).res.raise;
@@ -261,8 +296,9 @@ describe('the answer (16.S75, 16.3.2)', () => {
     assert.deepStrictEqual([lastEntry().text, logText()], [LATER.text, '']);
   });
 
-  it('refuses, writing nothing, who moved whom on a pick — it moves no one — a key that is no row, a fact with none saying so, and "don\'t care", which leaves the call to Claude, who holds no lean on a fact', async () => {
+  it('refuses, writing nothing, who moved whom on a pick — it moves no one — a key that is no row, a fact with none saying so, and "don\'t care", which leaves the call to Claude, whose a fact\'s answer never is, its lean given or not', async () => {
     const rowed = (await raiseFact()).res.raise;
+    const leaning = (await raiseFact(LEANING, { answers: asked.trains })).res.raise;
     const bare = (await raiseFact(BARE, { answers: asked.team })).res.raise;
     /** @param {string[]} args @param {unknown} given */
     const refused = (args, given) => refusedPristine(dir, ['raise', 'answer', ...args], { env: conversation(), stdin: JSON.stringify(given) }).error;
@@ -271,18 +307,23 @@ describe('the answer (16.S75, 16.3.2)', () => {
     assert.strictEqual(refused([rowed, '--pick', 'keep'], { why: WHY }), 'raise answer: the raise has no row keep — its rows are numbered 1 to 2');
     assert.strictEqual(refused([bare, '--pick', '1'], { why: WHY }), 'raise answer: the raise draws no row 1 — it draws none');
     assert.strictEqual(refused([bare, '--pick', 'monday'], { why: WHY }), 'raise answer: the raise has no row monday — it draws none');
-    assert.strictEqual(refused([rowed, '--dont-care'], ''), 'raise answer: a fact is the person\'s to give — "don\'t care" leaves the call to me, and a fact holds no lean of mine to land');
-    assert.deepStrictEqual([seals()[rowed].answered, seals()[bare].answered, logText()], [null, null, '']);
+    const dontCare = 'raise answer: a fact is the person\'s to give — "don\'t care" leaves the call to me, and a fact\'s answer is never mine to land, my lean or none';
+    assert.strictEqual(refused([rowed, '--dont-care'], ''), dontCare);
+    assert.strictEqual(refused([leaning, '--dont-care'], ''), dontCare);
+    assert.deepStrictEqual([seals()[rowed].answered, seals()[bare].answered, seals()[leaning].answered, logText()], [null, null, null, '']);
   });
 });
 
 describe('the draw\'s refusals, drawing and sealing nothing', () => {
-  it('a lean, a why or a sort — a fact carries none — and a field it lacks', async () => {
+  it('a sort, which a fact never carries; a lean without its why, or a why without its lean; a lean naming no row; and a field it lacks', async () => {
     const { mechanism: _mechanism, ...lacking } = FACT;
+    const together = 'raise: a fact\'s lean comes with its why — give both, or neither';
     for (const [fact, error] of /** @type {[unknown, string][]} */ ([
-      [{ ...FACT, lean: 'a' }, 'raise: the call has no field lean — it holds question, rows, mechanism, product_wide'],
-      [{ ...FACT, why: 'It is soon.' }, 'raise: the call has no field why — it holds question, rows, mechanism, product_wide'],
-      [{ ...FACT, sort: 'one' }, 'raise: the call has no field sort — it holds question, rows, mechanism, product_wide'],
+      [{ ...FACT, sort: 'one' }, 'raise: the call has no field sort — it holds question, rows, mechanism, product_wide, lean, why'],
+      [{ ...FACT, lean: 'a' }, together],
+      [{ ...FACT, why: 'It is soon.' }, together],
+      [{ ...LEANING, lean: 'c' }, 'raise: the call leans to c, and no row has that key — its rows: a, b'],
+      [{ ...BARE, lean: 'a', why: 'It is soon.' }, 'raise: the call leans to a, and no row has that key — its rows: none'],
       [lacking, 'raise: the call needs mechanism'],
     ])) {
       assert.strictEqual(await refusedFact(fact), error, JSON.stringify(fact));

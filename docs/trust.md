@@ -24,7 +24,7 @@ A question that reading the code, reading the record or running something can an
 
 The record is read the same way. An answer it already states — a decision in force, the spec, the brief — is a fact: Claude works from it and decides nothing again. An answer Claude has to draw from the record, because what is decided leaves only one, is a new call, and goes through the ask rule as a call with one sensible answer.
 
-Only questions of intent and taste are yours, and only those go through the ask rule: what the product is and does, and equally a data model, a contract, the code's insides or how the work is run. Claude puts each through the ask rule, the obvious ones included, rather than settle it alone; the few a phase names as Claude's own to land, such as a review finding it files or drops, are the exception. A fact only you hold — a deadline, an outside constraint, an account Claude cannot reach — is asked plainly, with no lean, and counts for nothing in what Ledger learns about you.
+Only questions of intent and taste are yours, and only those go through the ask rule: what the product is and does, and equally a data model, a contract, the code's insides or how the work is run. Claude puts each through the ask rule, the obvious ones included, rather than settle it alone; the few a phase names as Claude's own to land, such as a review finding it files or drops, are the exception. A fact only you hold — a deadline, an outside constraint, an account Claude cannot reach — is always asked, with Claude's lean only where it has one, and counts for nothing in what Ledger learns about you.
 
 ## The ask rule
 
