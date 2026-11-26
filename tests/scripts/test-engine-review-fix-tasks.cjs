@@ -153,7 +153,7 @@ describe('land finish: refused as finish\'s yes refuses before it lands anything
     enter();
     reported(1, EVERY, { '1-cards-a': ['nit: The receipt says "reciept".'] });
     fixPhaseWritten(3, [['Spell the receipt', '§1.2']]);
-    recorded({ can_now: ['Pay by card.'], findings: [{ area: '1-cards', scope: 'in', call: 'nit', text: 'The receipt says "reciept".', from: ['1-cards-a#1'], fix: '3.1' }] });
+    recorded({ can_now: ['Pay by card.'], findings: [{ section: '1-cards', scope: 'in', call: 'nit', text: 'The receipt says "reciept".', from: ['1-cards-a#1'], fix: '3.1' }] });
 
     assert.deepStrictEqual([reviewing, refusedFinish()], [
       `land: ${UNIT} finishes once its review phase is over — ${UNIT}'s review phase is in round 1 — enter review ${UNIT}`,

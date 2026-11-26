@@ -7,10 +7,10 @@
 // review phase's skill invoked in place its `next`, asked again `already` —
 // refused for a unit that is no quick-fix and while the close does not
 // stand; `engine enter review <qf>` (domain/review-entry.cjs), refused
-// until it is asked for, then one area, the change, its record and its
+// until it is asked for, then one section, the change, its record and its
 // change-set from the base (domain/review-phase.cjs, domain/review-change.cjs),
 // drawn on the board as any unit's review (domain/projections/board-review.cjs);
-// and the area pair's and the test surface's briefs held against the
+// and the section pair's and the test surface's briefs held against the
 // quick-fix's record and its fixes' acceptance in their own words, never a
 // spec (domain/brief-records.cjs, domain/fix-acceptance.cjs, 19.5.24). Its
 // rounds and its close: test-engine-quick-fix-review-rounds.cjs and
@@ -31,7 +31,7 @@ const {
 } = require('./engine-harness.cjs');
 const { UNIT, BRANCH, DESCRIPTION, createFix } = require('./quick-fix-world.cjs');
 const { filledTemplate, scratchCalls, ENGINE_DRAWN } = require('./brief-build-world.cjs');
-const { AREA, closeReached: world, quickFixReview } = require('./quick-fix-review-world.cjs');
+const { SECTION, closeReached: world, quickFixReview } = require('./quick-fix-review-world.cjs');
 
 let dir = ''; // the project
 const { as, run, refused, entered, issued, closeMenu } = quickFixReview(() => dir);
@@ -67,15 +67,15 @@ describe('review ask <quick-fix>: a review asked for at its close (19.5.13)', ()
   });
 });
 
-describe('enter review <quick-fix>: one area, the change (19.5.14, F3)', () => {
-  it('reads the quick-fix\'s record and its change-set from the base as its one area, with the test surface, its record in the spec\'s place', () => {
+describe('enter review <quick-fix>: one section, the change (19.5.14, F3)', () => {
+  it('reads the quick-fix\'s record and its change-set from the base as its one section, with the test surface, its record in the spec\'s place', () => {
     dir = world();
     run(['review', 'ask', UNIT]);
 
     assert.deepStrictEqual(entered().slice(0, 7), [
       'round: round 1',
-      `area: ${AREA} — the change: ${UNIT}'s record and its change-set from the base`,
-      `reads: ${AREA}, the test surface (tests)`,
+      `section: ${SECTION} — the change: ${UNIT}'s record and its change-set from the base`,
+      `reads: ${SECTION}, the test surface (tests)`,
       'fix phase: phase 2, where round 1\'s fix tasks are written',
       'base: main — the default branch, which the change is read against, the --base of each reader\'s brief',
       `summary: ${statePath(dir, layout.unit(UNIT, 'summary.md'))}`,
@@ -83,7 +83,7 @@ describe('enter review <quick-fix>: one area, the change (19.5.14, F3)', () => {
     ]);
   });
 
-  it('draws on the board as any unit\'s review: its one area and the tests held against its fixes\' acceptance, each check not proven at the change\'s tip worded as its fix words it, and so its page (20.10) — drawn while a peer holds the writer lock, never trying it', (t) => {
+  it('draws on the board as any unit\'s review: its one section and the tests held against its fixes\' acceptance, each check not proven at the change\'s tip worded as its fix words it, and so its page (20.10) — drawn while a peer holds the writer lock, never trying it', (t) => {
     dir = world();
     run(['review', 'ask', UNIT]);
     entered();
@@ -96,9 +96,9 @@ describe('enter review <quick-fix>: one area, the change (19.5.14, F3)', () => {
     const page = run(['board', 'sess-1', '--page', 'check:1:2.S1', '--page-unit', UNIT]).view.text;
     const words = 'Given the help, when it is read, then it names --colour.';
 
-    assert.deepStrictEqual({ kind: view.kind, areas: view.areas.map(({ area, title, state }) => ({ area, title, state })), notProven: view.not_proven, page, attempts }, {
+    assert.deepStrictEqual({ kind: view.kind, sections: view.sections.map(({ section, title, state }) => ({ section, title, state })), notProven: view.not_proven, page, attempts }, {
       kind: 'review',
-      areas: [{ area: '1', title: 'The change', state: 'waiting' }, { area: 'tests', title: 'Tests held against the fixes\' acceptance', state: 'waiting' }],
+      sections: [{ section: '1', title: 'The change', state: 'waiting' }, { section: 'tests', title: 'Tests held against the fixes\' acceptance', state: 'waiting' }],
       notProven: [{ round: 1, scenario: '2.S1', standing: 'not proven', text: words }],
       page: words,
       attempts: [],
@@ -123,24 +123,24 @@ describe('the review\'s briefs for a quick-fix: its record and its fixes\' accep
   /** The scratch worktree's layout, at the quick-fix's branch. @param {string} name */
   const layoutOf = (name) => `- the project's repository: \`${BRANCH}\` — the change's tip there\n\n${scratchCalls(name, git(dir, ['rev-parse', BRANCH]).trim())}`;
 
-  it('the area review\'s: what was asked, the record whole and the fixes\' acceptance; it meets no other area; the branch\'s change, and each fix\'s scenario\'s runs', () => {
+  it('the section review\'s: what was asked, the record whole and the fixes\' acceptance; it meets no other section; the branch\'s change, and each fix\'s scenario\'s runs', () => {
     dir = world();
     run(['review', 'ask', UNIT]);
     const summary = fs.readFileSync(statePath(dir, layout.unit(UNIT, 'summary.md')), 'utf8').trimEnd();
-    const { res, brief } = issued(['review-area', UNIT, '--area', '1', '--base', 'main', '--letter', 'a']);
+    const { res, brief } = issued(['review-section', UNIT, '--section', '1', '--base', 'main', '--letter', 'a']);
 
     assert.strictEqual(fs.existsSync(statePath(dir, layout.unit(UNIT, 'spec.md'))), false);
-    assert.strictEqual(brief, `Brief ${res.id} — the area review's, for ${UNIT}\n\n${filledTemplate('review-area', {
+    assert.strictEqual(brief, `Brief ${res.id} — the section review's, for ${UNIT}\n\n${filledTemplate('review-section', {
       engine: ENGINE_DRAWN,
-      'area-sections': [noSpec, `The change asked for: ${DESCRIPTION}`, `Its record, \`${statePath(dir, layout.unit(UNIT, 'summary.md'))}\`:`, summary, 'Its fixes\' acceptance:', criteria].join('\n\n'),
-      'area-meets': `The change is ${UNIT}'s one area: there is no other for it to meet.`,
+      'section-text': [noSpec, `The change asked for: ${DESCRIPTION}`, `Its record, \`${statePath(dir, layout.unit(UNIT, 'summary.md'))}\`:`, summary, 'Its fixes\' acceptance:', criteria].join('\n\n'),
+      'section-meets': `The change is ${UNIT}'s one section: there is no other for it to meet.`,
       'unit-calls': 'None recorded.',
       'change-commits': commits(),
-      'change-scratch-layout': layoutOf(`${UNIT}-area-1-a`),
-      'area-runs': ['- 1.S1: not proven', '  Given the help, when it is read, then it names --colour.', '- 2.S1: not proven', '  Given the help, when it is read, then it names --colour.'].join('\n'),
+      'change-scratch-layout': layoutOf(`${UNIT}-section-1-a`),
+      'section-runs': ['- 1.S1: not proven', '  Given the help, when it is read, then it names --colour.', '- 2.S1: not proven', '  Given the help, when it is read, then it names --colour.'].join('\n'),
       linters: NO_SETUP,
-      'area-report-to': `\`${statePath(dir, layout.unit(UNIT, 'review', 'round-1', `${AREA}-a.md`))}\``,
-      'area-authority': 'Every fix of the change has passed its own review. Hold the whole change against what was asked of it, as one piece. Its fixes\' acceptance, in their own words and read as one, and the product they describe, are your authority:',
+      'section-report-to': `\`${statePath(dir, layout.unit(UNIT, 'review', 'round-1', `${SECTION}-a.md`))}\``,
+      'section-authority': 'Every fix of the change has passed its own review. Hold the whole change against what was asked of it, as one piece. Its fixes\' acceptance, in their own words and read as one, and the product they describe, are your authority:',
     })}`);
   });
 

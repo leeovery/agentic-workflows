@@ -18,7 +18,7 @@ The phases in order, from a rough idea to landed, reviewed code. Each page cover
 - [Investigation](investigation.md) — a bugfix's route from symptoms to a root cause.
 - [Specification](specification.md) — the decided topics become one spec, cut into phases and approved at ready to build.
 - [The build](the-build.md) — the spec becomes code, phase by phase and task by task: the reviews, the pull requests and the drivers.
-- [Review](review.md) — the built change held against the spec, area by area, and finish.
+- [Review](review.md) — the built change held against the spec, section by section, and finish.
 - [Lifecycle](lifecycle-operations.md) — pivot, absorb, cancel, postpone and bring back: reshaping work as your understanding of it changes.
 
 ## How Ledger holds together

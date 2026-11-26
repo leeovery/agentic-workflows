@@ -43,7 +43,7 @@ function moved(text, first, second, end) {
 }
 
 describe('review-settled (6.4.7, 11.7.6, 11.S11, E3)', () => {
-  it('(a): holds once the latest reported pass reviewed the spec as it stands — open before any pass, while the first runs, once a section changes, landed or not, and while the pass on it was abandoned unreported; blank lines, and areas and parts moved, change nothing, a pass refused as having nothing to read; an entry made at another unit\'s spec, though it stands on this one, leaves it so', () => {
+  it('(a): holds once the latest reported pass reviewed the spec as it stands — open before any pass, while the first runs, once a section changes, landed or not, and while the pass on it was abandoned unreported; blank lines, and sections and parts moved, change nothing, a pass refused as having nothing to read; an entry made at another unit\'s spec, though it stands on this one, leaves it so', () => {
     const states = [reviewSettled()];
     writeSpec(spec());
     land();

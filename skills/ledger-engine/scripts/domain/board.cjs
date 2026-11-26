@@ -120,9 +120,9 @@ const BOARD_USAGE = 'board <session-id> [--tab this|unit|all] [--unit <work-unit
 
 /**
  * A brief this conversation issued for a unit: its role, its task, and the
- * review phase's area and round, where it names them; and when it was
+ * review phase's section and round, where it names them; and when it was
  * issued.
- * @typedef {{role: string, task: string|null, area: string|null, round: number|null, at: string}} Issued
+ * @typedef {{role: string, task: string|null, section: string|null, round: number|null, at: string}} Issued
  */
 /**
  * What the board reads at a call for one unit: the project; the unit with
@@ -156,7 +156,7 @@ function issuedFor(session, unit) {
       const file = path.join(dir, name);
       const held = JSON.parse(fs.readFileSync(file, 'utf8'));
       if (held?.unit !== unit) return [];
-      return [{ role: String(held.role), task: held.task ?? null, area: held.area ?? null, round: held.round ?? null, at: fs.statSync(file).mtime.toISOString() }];
+      return [{ role: String(held.role), task: held.task ?? null, section: held.section ?? null, round: held.round ?? null, at: fs.statSync(file).mtime.toISOString() }];
     } catch {
       return [];
     }

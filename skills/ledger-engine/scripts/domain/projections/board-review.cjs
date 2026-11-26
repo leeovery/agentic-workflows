@@ -10,18 +10,18 @@
 //   review phase opens it — round 1 at its entry, a later round once its
 //   reads are named — else the last recorded: a failing round, with its
 //   fix tasks, until the next opens, and the round that ended the phase.
-// - Recorded, each area and the reader over the tests is read where the
-//   round read it, with the checks the round ran of the area's scenarios —
-//   `{area}.S{k}` — and the findings the round gave it, every other
+// - Recorded, each section and the reader over the tests is read where the
+//   round read it, with the checks the round ran of the section's scenarios —
+//   `{section}.S{k}` — and the findings the round gave it, every other
 //   unchanged, not read again (20.10.2); its findings in scope, each with
-//   its call, its checks not proven, and its verdict. An area built before
-//   the migration cut the unit, whole or in part, says so (`areaBuilt`,
+//   its call, its checks not proven, and its verdict. A section built before
+//   the migration cut the unit, whole or in part, says so (`sectionBuilt`,
 //   derivations.cjs, 21.8.8).
 // - Under way, each read the round takes is read once every report of it is
 //   written, with every finding its reports hold; being read since this
 //   conversation issued its brief for that read in that round (P15); else
 //   waiting. A read the round does not take is unchanged. What it found is
-//   each finding of each report landed, with its call, its read's area and
+//   each finding of each report landed, with its call, its read's section and
 //   the report item it is, unnumbered and its scope unsaid until the round
 //   is recorded. Round 1's checks not proven are the cut's scenarios not
 //   proven at the change's tips, as `review round` judges them, read from
@@ -65,29 +65,29 @@ const fs = require('fs');
 const { statePath } = require('../../kernel/state-root.cjs');
 const { readReport } = require('../round-report.cjs');
 const { projectName } = require('../state-checks.cjs');
-const { fixesOf, fixPhase, reportNames, areaReportPath, recordedRounds, TESTS } = require('../review-phase.cjs');
+const { fixesOf, fixPhase, reportNames, sectionReportPath, recordedRounds, TESTS } = require('../review-phase.cjs');
 const { trackedChange, cutStandings } = require('../review-change.cjs');
 const { reposOf, landedOf } = require('../phase-checks.cjs');
 const { copiedTasks } = require('../task-verbs.cjs');
-const { quickFixBuild, areaBuilt, FIXES_PHASE } = require('../derivations.cjs');
+const { quickFixBuild, sectionBuilt, FIXES_PHASE } = require('../derivations.cjs');
 const { acceptanceOf, fixScenarios } = require('../fix-acceptance.cjs');
 const { buildRead, taskLine, standingAt, reviewStandingAt, readingAt, scenarioWording } = require('./board-build.cjs');
 const { tasksStopped } = require('./board-standing.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').ReviewView} ReviewView */
-/** @typedef {import('../board-model.cjs').AreaLine} AreaLine */
+/** @typedef {import('../board-model.cjs').SectionLine} SectionLine */
 /** @typedef {import('../review-phase.cjs').RoundRecord} RoundRecord */
 /** @typedef {import('../review-phase.cjs').ReviewStanding} ReviewStanding */
 
 /** The reader over the tests, as its line titles it: held against the spec, a quick-fix's against its fixes' acceptance. @param {BoardAt} at */
 const testsTitle = (at) => `Tests held against ${quickFixBuild(at.manifest) ? 'the fixes\' acceptance' : 'the specification'}`;
 
-/** A read of a round: the area's name or the tests', its number and title, and how much of the area was built before the migration. @typedef {{read: string, area: string, title: string, before: 'built'|'partly'|null}} Read */
+/** A read of a round: the section's name or the tests', its number and title, and how much of the section was built before the migration. @typedef {{read: string, section: string, title: string, before: 'built'|'partly'|null}} Read */
 
-/** The reads of a round, each the area's name or the tests', with its number and title, and how much of it was built before the migration (`areaBuilt`). @param {BoardAt} at @param {ReviewStanding} standing @returns {Read[]} */
-function readsOf(at, { areas }) {
-  return [...areas.map(({ name, number, title }) => ({ read: name, area: number, title, before: areaBuilt(at.manifest, number) })), { read: TESTS, area: TESTS, title: testsTitle(at), before: null }];
+/** The reads of a round, each the section's name or the tests', with its number and title, and how much of it was built before the migration (`sectionBuilt`). @param {BoardAt} at @param {ReviewStanding} standing @returns {Read[]} */
+function readsOf(at, { sections }) {
+  return [...sections.map(({ name, number, title }) => ({ read: name, section: number, title, before: sectionBuilt(at.manifest, number) })), { read: TESTS, section: TESTS, title: testsTitle(at), before: null }];
 }
 
 /** Where a finding's words name its user scenario, which a report writes after them. */
@@ -111,7 +111,7 @@ function reportFindings(file) {
 /** The reports of a read in a round, each by its name and reviewer's letter and its file. @param {BoardAt} at @param {number} round @param {string} read */
 const reportsOf = (at, round, read) => reportNames([read]).map((name) => {
   const letter = name.slice(read.length + 1, -3);
-  return { report: name.slice(0, -3), letter, file: statePath(at.cwd, areaReportPath(at.unit, round, read, letter)) };
+  return { report: name.slice(0, -3), letter, file: statePath(at.cwd, sectionReportPath(at.unit, round, read, letter)) };
 });
 
 /** Each report of a read the round has landed, with the findings it holds. @param {BoardAt} at @param {number} round @param {string} read */
@@ -120,36 +120,36 @@ const landedReports = (at, round, read) => reportsOf(at, round, read).filter(({ 
 /**
  * A read of a round under way: read once all its reports are written, with
  * every finding they hold; being read since its brief; else waiting.
- * @param {BoardAt} at @param {number} round @param {Read} read @returns {AreaLine}
+ * @param {BoardAt} at @param {number} round @param {Read} read @returns {SectionLine}
  */
-function underWay(at, round, { read, area, title, before }) {
+function underWay(at, round, { read, section, title, before }) {
   const landed = landedReports(at, round, read);
-  if (landed.length === reportsOf(at, round, read).length) return { area, title, before, state: 'read', ran: 0, found: landed.flatMap(({ findings }) => findings).length, since: null };
-  const brief = at.issued.filter((issued) => issued.round === round && (read === TESTS ? issued.role === 'test-surface' : issued.role === 'review-area' && issued.area === area)).at(-1);
-  return brief === undefined ? { area, title, before, state: 'waiting', ran: 0, found: 0, since: null } : { area, title, before, state: 'reading', ran: 0, found: 0, since: brief.at };
+  if (landed.length === reportsOf(at, round, read).length) return { section, title, before, state: 'read', ran: 0, found: landed.flatMap(({ findings }) => findings).length, since: null };
+  const brief = at.issued.filter((issued) => issued.round === round && (read === TESTS ? issued.role === 'test-surface' : issued.role === 'review-section' && issued.section === section)).at(-1);
+  return brief === undefined ? { section, title, before, state: 'waiting', ran: 0, found: 0, since: null } : { section, title, before, state: 'reading', ran: 0, found: 0, since: brief.at };
 }
 
-/** A read the round does not take: not read again. @param {Read} read @returns {AreaLine} */
-const unchanged = ({ area, title, before }) => ({ area, title, before, state: 'unchanged', ran: 0, found: 0, since: null });
+/** A read the round does not take: not read again. @param {Read} read @returns {SectionLine} */
+const unchanged = ({ section, title, before }) => ({ section, title, before, state: 'unchanged', ran: 0, found: 0, since: null });
 
-/** The checks a recorded round ran of an area's scenarios, `{area}.S{k}`. @param {RoundRecord} record @param {string} area */
-const ranIn = ({ scenarios }, area) => scenarios.filter(({ scenario }) => scenario.startsWith(`${area}.S`)).length;
+/** The checks a recorded round ran of a section's scenarios, `{section}.S{k}`. @param {RoundRecord} record @param {string} section */
+const ranIn = ({ scenarios }, section) => scenarios.filter(({ scenario }) => scenario.startsWith(`${section}.S`)).length;
 
 /** The reads a recorded round took, by their names. @param {RoundRecord} record */
 const readNames = ({ reports }) => new Set(reports.map((report) => report.replace(/-[a-z]\.md$/, '')));
 
 /** A recorded round's findings in scope, each by its number and call. @param {RoundRecord} record @param {number} round @returns {ReviewView['found']} */
-const foundOf = ({ findings }, round) => findings.flatMap((finding, k) => (finding.scope === 'in' ? [{ round, finding: k + 1, from: null, area: finding.area, call: finding.call, text: finding.text }] : []));
+const foundOf = ({ findings }, round) => findings.flatMap((finding, k) => (finding.scope === 'in' ? [{ round, finding: k + 1, from: null, section: finding.section, call: finding.call, text: finding.text }] : []));
 
 /**
  * What a round under way has found so far: each finding of each report it
- * has landed, with its read's area, its call and the report item it is —
+ * has landed, with its read's section, its call and the report item it is —
  * numbered by none, and its scope unsaid, until `review round` records it.
  * @param {BoardAt} at @param {ReviewStanding} standing @param {number} round @param {Set<string>} taken @returns {ReviewView['found']}
  */
 const foundSoFar = (at, standing, round, taken) => readsOf(at, standing).filter(({ read }) => taken.has(read))
   .flatMap(({ read }) => landedReports(at, round, read).flatMap(({ report, findings }) => findings.map(({ call, text }, k) => ({
-    round, finding: null, from: `${report}#${k + 1}`, area: read, call, text: wordsOf(text),
+    round, finding: null, from: `${report}#${k + 1}`, section: read, call, text: wordsOf(text),
   }))));
 
 /** A round's checks not proven, each with its scenario's words. @param {BoardAt} at @param {Pick<RoundRecord, 'scenarios'>} record @param {number} round @returns {ReviewView['not_proven']} */
@@ -235,7 +235,7 @@ function roundUnderWay(at, standing, round) {
   const before = standing.rounds[round - 2];
   return {
     recorded: false,
-    areas: readsOf(at, standing).map((read) => (taken.has(read.read) ? underWay(at, round, read) : unchanged(read))),
+    sections: readsOf(at, standing).map((read) => (taken.has(read.read) ? underWay(at, round, read) : unchanged(read))),
     found: foundSoFar(at, standing, round, taken),
     not_proven: before === undefined ? unprovenSoFar(at) : unprovenOf(at, before, round - 1),
     inbox: inboxUpTo(standing.rounds, round - 1),
@@ -249,9 +249,9 @@ function roundRecorded(at, standing, record, round) {
   const read = readNames(record);
   return {
     recorded: true,
-    areas: readsOf(at, standing).map((each) => (read.has(each.read)
+    sections: readsOf(at, standing).map((each) => (read.has(each.read)
       ? {
-        area: each.area, title: each.title, before: each.before, state: /** @type {const} */ ('read'), ran: ranIn(record, each.area), found: record.findings.filter((finding) => finding.area === each.read).length, since: null,
+        section: each.section, title: each.title, before: each.before, state: /** @type {const} */ ('read'), ran: ranIn(record, each.section), found: record.findings.filter((finding) => finding.section === each.read).length, since: null,
       }
       : unchanged(each))),
     found: foundOf(record, round),
@@ -339,7 +339,7 @@ function findingPage(at, said, k) {
   const finding = record?.findings[number - 1];
   if (finding !== undefined) {
     return {
-      kind: 'finding', unit: at.unit, round, finding: number, area: finding.area, scope: finding.scope, call: finding.call, text: finding.text, fix: finding.fix ?? null, inbox: finding.inbox ?? null, reviewer: null,
+      kind: 'finding', unit: at.unit, round, finding: number, section: finding.section, scope: finding.scope, call: finding.call, text: finding.text, fix: finding.fix ?? null, inbox: finding.inbox ?? null, reviewer: null,
     };
   }
   if (record === undefined && k.includes('#')) return foundPage(at, round, k);
@@ -359,7 +359,7 @@ function foundPage(at, round, item) {
   const finding = held?.findings[Number(n) - 1];
   if (read === undefined || held === undefined || finding === undefined) throw new Error(`round ${round} of ${at.unit}'s review holds no finding ${item}`);
   return {
-    kind: 'finding', unit: at.unit, round, finding: null, area: read.read, scope: null, call: finding.call, text: finding.text, fix: null, inbox: null, reviewer: held.letter,
+    kind: 'finding', unit: at.unit, round, finding: null, section: read.read, scope: null, call: finding.call, text: finding.text, fix: null, inbox: null, reviewer: held.letter,
   };
 }
 

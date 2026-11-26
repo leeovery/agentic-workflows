@@ -17,7 +17,7 @@
 // feature's builder's line citing a call, a feature taking no sweep — is
 // listed with why and refuses nothing (11.S4's mechanical half, 11.4.2); a
 // later land answers the sections changed since the last, each by its own
-// text — an area's with its scenarios and without its parts, a part's
+// text — a section's with its scenarios and without its parts, a part's
 // alone, and those removed — and one with nothing changed commits
 // nothing; and each refusal — no unit, a concluded spec (11.9.1), a unit
 // `enter specification` refuses, a quick-fix, an epic whose sweep is not
@@ -122,7 +122,7 @@ function lineOf(short) {
   return line;
 }
 
-/** A spec of two areas, its first part's statements as given. @param {string[]} statements @param {string[]} [more] the second area's part, as given */
+/** A spec of two sections, its first part's statements as given. @param {string[]} statements @param {string[]} [more] the second section's part, as given */
 function spec(statements, more = ['2.1.1 A refund goes back to the card. [builder: call-1]']) {
   return [
     '# Payments', '',
@@ -210,7 +210,7 @@ describe('a spec landed (11.4.1, 11.4.3, 11.S3)', () => {
     ]);
   });
 
-  it('answers at a later land the sections changed since the last — an area\'s with its scenarios, a part\'s alone, then those removed — and commits nothing where nothing changed', () => {
+  it('answers at a later land the sections changed since the last — a section\'s with its scenarios, a part\'s alone, then those removed — and commits nothing where nothing changed', () => {
     const once = (/** @type {string} */ written) => written.replace('then the card is charged.', 'then the card is charged once.');
     writeSpec(spec([`1.1.1 Visa and Mastercard. [${made.cards}]`]));
     land();

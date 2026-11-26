@@ -19,7 +19,7 @@
 // again over it with the investigation frozen — its verdict asked, into the
 // build. And a bugfix moved to a feature from its investigation, its
 // cause in the design: the root cause's validation taken in, the fix
-// direction reworking the area as a feature with no validation of its own,
+// direction reworking the code as a feature with no validation of its own,
 // start this work's screen and its yes, the feature's discussion reading
 // the investigation as its earlier log at its first opening. And a bugfix
 // whose investigation's plan the person has always said yes at, the
@@ -211,7 +211,7 @@ describe('pipeline simulation: bugfix', () => {
     assert.strictEqual(sim.manifest(wu).phases.investigation.items[wu].status, 'completed');
   });
 
-  it('bugfix moved to a feature from its investigation (19.S14, 19.S30, 19.4.22): the fix direction reworking the area as a feature, logged as it is picked → start this work\'s screen and its yes re-typing the unit → its discussion, at its first opening, reading the investigation\'s log and record as its earlier ones', async () => {
+  it('bugfix moved to a feature from its investigation (19.S14, 19.S30, 19.4.22): the fix direction reworking the code as a feature, logged as it is picked → start this work\'s screen and its yes re-typing the unit → its discussion, at its first opening, reading the investigation\'s log and record as its earlier ones', async () => {
     const wu = 'save-crash';
     startNew(sim);
     startUnit(sim, 'bugfix', wu, 'Fix the crash');

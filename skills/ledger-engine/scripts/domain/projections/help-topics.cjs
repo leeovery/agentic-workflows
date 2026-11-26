@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the reference cards, reached from the start menu's help
 // (23.2.3) — `render help-topics`, "■ Help · Topics", drawn in the menus'
-// frame (menus.cjs): "Which area?", a numbered row for each card in the
+// frame (menus.cjs): "Which subject?", a numbered row for each card in the
 // order the content folder holds them, labelled with its title, its next
 // the card (`render walkthrough-topic --name <slug>`, walkthrough.cjs);
 // then h/help, b/back to the start menu's help, and Ask, leading into the
@@ -21,7 +21,7 @@ function helpTopicsScreen() {
   return {
     title: 'Help · Topics',
     shows: [],
-    question: 'Which area?',
+    question: 'Which subject?',
     rows: cards().map(({ slug, title }, at) => ({ key: at + 1, label: title, next: { kind: 'engine', argv: ['render', 'walkthrough-topic', '--name', slug] } })),
     back: { label: 'Back to help', next: { kind: 'engine', argv: ['render', 'help', 'start-menu'] } },
     prompt: { label: 'Ask', description: 'Ask anything about how Ledger works', next: { kind: 'continue' } },

@@ -18,7 +18,7 @@ A system you hand months of work to has to be trustworthy in a particular way: i
 
 **Proof comes from running the product.** A builder proves each task by driving the running product the way a user would, and a script, never Claude, writes the verdict; a scenario nothing could drive is reported not proven. [Verification](verification.md) has how.
 
-**Delivery is checked against what you agreed.** The review phase's whole job is to hold the built change up against the spec, area by area, and every finding lands somewhere: fixed, or filed. Finish is yours, and it shows anything skipped on the way there with its reason. "Done" is not a feeling anyone reports; it is a check against decisions you made and approved.
+**Delivery is checked against what you agreed.** The review phase's whole job is to hold the built change up against the spec, section by section, and every finding lands somewhere: fixed, or filed. Finish is yours, and it shows anything skipped on the way there with its reason. "Done" is not a feeling anyone reports; it is a check against decisions you made and approved.
 
 **The files stay current with the design.** As Ledger improves, older projects' records could fall out of step with how it works now. That is reconciled at start-up by migrations: each a numbered step, applied at most once, that stops rather than half-applies if anything is wrong. When something needs changing you are shown what moved before anything continues, and where a migration has to carry content that was written with judgment, it stops for the session to do that work, and checks it before you are asked to confirm the result. The move from before Ledger onto the state branch is one of them; [state and git](state-and-git.md#moving-a-project-across) describes it.
 

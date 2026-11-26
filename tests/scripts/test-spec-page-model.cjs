@@ -5,7 +5,7 @@
 // a spec as the person's review page draws it — every statement, scenario
 // and screen a line, its id its number dashed, its fingerprint the first 12
 // hex digits of the SHA-256 of its wording, the source bracket left out, its
-// blocks, its bracket and its flags; the lines grouped by area with the
+// blocks, its bracket and its flags; the lines grouped by section with the
 // headings of its parts and its scenarios; the title and the introduction
 // but its contents. The values are those the page's own scripts compute
 // (`spec_model.py`), so a mark the page left hangs on the same line here
@@ -48,7 +48,7 @@ const oneLine = (rows) => ['# P', '', '## 1. A', '', '### 1.1 B', '', ...rows, '
 const hOf = (rows) => page(oneLine(rows)).lines[0].h;
 
 describe('the review page\'s model of a spec (11.11.2, 11.11.3)', () => {
-  it('draws every statement, scenario and screen as a line — its id, number, kind, blocks, bracket and fingerprint as the page\'s own scripts compute them — grouped by area with its parts\' and its scenarios\' headings, and the title and introduction but the contents', () => {
+  it('draws every statement, scenario and screen as a line — its id, number, kind, blocks, bracket and fingerprint as the page\'s own scripts compute them — grouped by section with its parts\' and its scenarios\' headings, and the title and introduction but the contents', () => {
     const { h1, intro, sections } = page(SPEC);
 
     assert.deepStrictEqual({ h1, intro, sections }, {
@@ -91,7 +91,7 @@ describe('the review page\'s model of a spec (11.11.2, 11.11.3)', () => {
     });
   });
 
-  it('keeps each line beside its id, its area and its fingerprint, in the spec\'s order', () => {
+  it('keeps each line beside its id, its section and its fingerprint, in the spec\'s order', () => {
     assert.deepStrictEqual(page(SPEC).lines.map(({ id, section, h, line }) => [id, section, h, line.number]), [
       ['1-1-1', 1, '3410449dea7e', '1.1.1'], ['1-1-2', 1, '2e0d9b63f690', '1.1.2'], ['1-1-2-scr1', 1, 'd5f3ad4a699b', '1.1.2-scr1'],
       ['1-2-1', 1, 'fcdaee6839bc', '1.2.1'], ['1-S1', 1, 'ba9d701705dd', '1.S1'], ['2-1-1', 2, '5e1e94d45e79', '2.1.1'],
@@ -101,7 +101,7 @@ describe('the review page\'s model of a spec (11.11.2, 11.11.3)', () => {
 
   it('flags a line as the ledger draws it — resting on a call of Claude\'s first, then left to the builder — before a screen; a builder\'s bracket whose trace did not hold flags nothing', () => {
     const drawn = { calls: new Set(['1.1.1', '1.1.2']), builders: new Set(['1.1.2', '2.1.1']) };
-    const items = new Map(page(SPEC, drawn).sections.flatMap(({ items: area }) => area).flatMap((item) => (item.k === 'line' ? [[item.id, item.flags]] : [])));
+    const items = new Map(page(SPEC, drawn).sections.flatMap(({ items: section }) => section).flatMap((item) => (item.k === 'line' ? [[item.id, item.flags]] : [])));
 
     assert.deepStrictEqual(['1-1-1', '1-1-2', '1-2-1', '2-1-1'].map((id) => [id, items.get(id)]), [
       ['1-1-1', ['claude']], ['1-1-2', ['claude', 'builder', 'screen']], ['1-2-1', []], ['2-1-1', ['builder']],

@@ -8,7 +8,7 @@ The build runs straight into it in the same conversation, with no stop between t
 
 The review works in rounds. Each round reads, lands what it finds, and reports to you.
 
-**The readers.** For each of the specification's areas, a reviewer pair, two independent agents fresh to the code, reads its area: the code against what the area specifies, where it meets the other areas, and the calls made for the work as a whole. They run the project's tests, and each of the area's scenarios through the project's [verify setup](verification.md), since proven means performed on the running product. A scenario left not proven is a finding, and what could not be run is reported not proven, never assumed to work. Beside them, one more reader goes over every test file of the change: whether the tests test what they claim. Each report is kept whole in its own file.
+**The readers.** For each of the specification's sections, a reviewer pair, two independent agents fresh to the code, reads its section: the code against what the section specifies, where it meets the other sections, and the calls made for the work as a whole. They run the project's tests, and each of the section's scenarios through the project's [verify setup](verification.md), since proven means performed on the running product. A scenario left not proven is a finding, and what could not be run is reported not proven, never assumed to work. Beside them, one more reader goes over every test file of the change: whether the tests test what they claim. Each report is kept whole in its own file.
 
 **The findings.** Every item of every report is answered by exactly one finding, and every finding lands somewhere:
 
@@ -18,13 +18,13 @@ The review works in rounds. Each round reads, lands what it finds, and reports t
 
 Each call to file or drop a finding, and each serious finding or bug dropped in scope, is a call on the ledger with its reason, so you can see later what was set aside and why.
 
-**The fix tasks.** A round's fix tasks are one more phase of the build, its own, each task's acceptance scenario the user scenario of the finding it fixes. They are built in the build's own task loop, each passed by its reviewers, in the build's position. A fix phase has no phase review: the areas its tasks changed are read again instead.
+**The fix tasks.** A round's fix tasks are one more phase of the build, its own, each task's acceptance scenario the user scenario of the finding it fixes. They are built in the build's own task loop, each passed by its reviewers, in the build's position. A fix phase has no phase review: the sections its tasks changed are read again instead.
 
 **The report.** Each round's report is drawn for you: what was read, what was found, where each finding went, and what goes to the inbox. It is not a gate. The review carries on.
 
 ## Reading again
 
-Once a round's fix tasks are done, the next round reads again, whole, every area whose code they changed. An area nothing changed is not read again, and the whole change is never read against the specification a second time. The rounds go on until one passes, with nothing serious and no bug left in the change. No count of rounds stops them.
+Once a round's fix tasks are done, the next round reads again, whole, every section whose code they changed. A section nothing changed is not read again, and the whole change is never read against the specification a second time. The rounds go on until one passes, with nothing serious and no bug left in the change. No count of rounds stops them.
 
 A round that fails again on findings its fixes already addressed is Claude's to settle, as a stuck task is: where a fix missed, a new fix task carries what it missed, and the finding says so; where the findings were fixed in an earlier round, or are rightly dropped, the round makes no fix task and its report says how it was settled. Settling one stops for you only where the answer needs you.
 
@@ -44,4 +44,4 @@ Your yes lands what is left to land, the review's fix phases last, and a work un
 
 ## A quick-fix's review
 
-A quick-fix has no specification, so its review holds the whole change against its fixes' acceptance, in their own words, and their short records. Its one area is the change, read by one pair beside the test reader. Its fix tasks are more fixes of the quick-fix, landing in its one pull request. When the review is over, it hands back to the quick-fix's close, where your yes finishes the work.
+A quick-fix has no specification, so its review holds the whole change against its fixes' acceptance, in their own words, and their short records. Its one section is the change, read by one pair beside the test reader. Its fix tasks are more fixes of the quick-fix, landing in its one pull request. When the review is over, it hands back to the quick-fix's close, where your yes finishes the work.

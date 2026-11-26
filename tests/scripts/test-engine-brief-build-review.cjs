@@ -26,7 +26,7 @@ const path = require('path');
 const {
   UNIT,
   NESTED,
-  AREA_2,
+  SECTION_2,
   TASKS,
   branchOf,
   commitFile,
@@ -89,7 +89,7 @@ describe('the phase review\'s brief, the reviewer\'s second template (12.11.2, 6
     assert.deepStrictEqual(whose, { role: 'phase-review', agent: 'ledger-reviewer', unit: UNIT, task: null, topic: null });
     assert.strictEqual(brief, `Brief ${res.id} — the phase review's, for pay phase 2\n\n${filledTemplate('phase-review', {
       'cut-phase': 'Phase 2 of pay: Refunds\n\nA customer is refunded.\n\nIt relies on phase 1, the work unit ledger.',
-      'phase-sections': [`\`${statePath(dir, layout.unit(UNIT, SPEC_FILE))}\``, '- §2, first built in this phase\n- §2.1, first built in this phase', AREA_2].join('\n\n'),
+      'phase-sections': [`\`${statePath(dir, layout.unit(UNIT, SPEC_FILE))}\``, '- §2, first built in this phase\n- §2.1, first built in this phase', SECTION_2].join('\n\n'),
       'phase-criteria': '## 2.1 Refund a charge\n\n- Given a card, when refund a charge runs, then it answers.',
       'relied-on': [
         '## Phase 1: Cards', '', 'A customer pays by card.', '', 'Its sections: §1', '', 'Its tasks:', '',

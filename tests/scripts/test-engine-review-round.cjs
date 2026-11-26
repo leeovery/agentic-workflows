@@ -6,7 +6,7 @@
 // review round <unit> --file <round.json>`, and `engine inbox file <unit>
 // --file <item.json>` (inbox.cjs). The round's record — the reports it
 // read, its verdict theirs, what the person can now do, each finding with
-// its area, scope, call, the report items it answers — two reviewers' one
+// its section, scope, call, the report items it answers — two reviewers' one
 // bug one finding, a note for later one out of scope — and where it landed, a fix task of the round's fix
 // phase, an item filed, or dropped with why, each out of scope and each
 // bug in scope dropped by a call of Claude's at `{unit}.review`
@@ -28,7 +28,7 @@ const { describe, it } = require('node:test');
 const path = require('path');
 const { withFrozenClock } = require('./engine-harness.cjs');
 const {
-  UNIT, SESSION_ID, inStep, AREAS, EVERY, calls, useWorld, env, enter, payload, reportText, reported, recorded, refusedRound, fixPhaseWritten, fixBranch, stateText, lastStateCommit,
+  UNIT, SESSION_ID, inStep, SECTIONS, EVERY, calls, useWorld, env, enter, payload, reportText, reported, recorded, refusedRound, fixPhaseWritten, fixBranch, stateText, lastStateCommit,
   reviewCall, filed, RECEIPT, FOUND, FAILING, firstRoundReady, secondRoundReady,
   refusedPristine, statePath, writeState, git, assert,
 } = require('./review-world.cjs');
@@ -45,7 +45,7 @@ useWorld((at) => { dir = at; });
 /** `inbox file` refused, nothing written: its error. @param {object} item */
 const refusedFiling = (item) => refusedPristine(dir, ['inbox', 'file', UNIT, '--file', payload('item.json', item)], { env: env() }).error;
 
-/** Round 1's reports: area 1's pair each finding the receipt, the second a nit beside it; area 2's second a nit; the test reader a gap out of scope. */
+/** Round 1's reports: section 1's pair each finding the receipt, the second a nit beside it; section 2's second a nit; the test reader a gap out of scope. */
 const FIRST = Object.freeze({
   '1-cards-a': ['bug: The receipt is never sent.'],
   '1-cards-b': ['bug: No receipt follows a charge.', 'nit: The gateway retries on its own.'],
@@ -55,7 +55,7 @@ const FIRST = Object.freeze({
 const NAMES = Object.freeze(['1-cards-a', '1-cards-b', '2-refunds-a', '2-refunds-b', 'tests-a']);
 
 describe('review round: the round recorded, its report and checks written, and all committed with its reports', () => {
-  it('14.S3, 14.S4, 14.S5: every item of every report answered by one finding, two reviewers\' one bug one finding — a fix task of the fix phase past the cut, a nit below the floor dropped with why, out of scope one filed and one dropped, each by Claude\'s call — every report read, each scenario\'s standing at the change\'s tips, and the areas the next round reads at least', () => {
+  it('14.S3, 14.S4, 14.S5: every item of every report answered by one finding, two reviewers\' one bug one finding — a fix task of the fix phase past the cut, a nit below the floor dropped with why, out of scope one filed and one dropped, each by Claude\'s call — every report read, each scenario\'s standing at the change\'s tips, and the sections the next round reads at least', () => {
     firstRoundReady();
     reported(1, EVERY, FIRST);
     const fileCall = reviewCall('Filed: a card\'s expiry is checked nowhere.', 'It is a gap beside the change.');
@@ -64,13 +64,13 @@ describe('review round: the round recorded, its report and checks written, and a
     const inbox = path.relative(statePath(dir), item.filed);
     const findings = [
       { ...RECEIPT, from: ['1-cards-a#1', '1-cards-b#1'] },
-      { area: '2-refunds', scope: 'in', call: 'nit', text: 'A refund\'s label is terse.', from: ['2-refunds-b#1'], drop: 'Below the floor: no failure follows.' },
-      { area: 'tests', scope: 'out', call: 'bug', text: 'A card\'s expiry is checked nowhere.', from: ['tests-a#1'], inbox: item.filed, ledger: fileCall },
-      { area: '1-cards', scope: 'out', call: 'nit', text: 'The gateway retries on its own.', from: ['1-cards-b#2'], drop: 'The gateway owns it.', ledger: dropCall },
+      { section: '2-refunds', scope: 'in', call: 'nit', text: 'A refund\'s label is terse.', from: ['2-refunds-b#1'], drop: 'Below the floor: no failure follows.' },
+      { section: 'tests', scope: 'out', call: 'bug', text: 'A card\'s expiry is checked nowhere.', from: ['tests-a#1'], inbox: item.filed, ledger: fileCall },
+      { section: '1-cards', scope: 'out', call: 'nit', text: 'The gateway retries on its own.', from: ['1-cards-b#2'], drop: 'The gateway owns it.', ledger: dropCall },
     ];
     const res = recorded({ can_now: ['Pay by card.', 'Refund a charge.'], findings });
 
-    assert.deepStrictEqual(res, { ok: true, round: 1, passed: false, fixes: ['3.1'], ends: false, fix_phase: 3, reads_at_least: ['1-cards'], areas: AREAS, committed: res.committed });
+    assert.deepStrictEqual(res, { ok: true, round: 1, passed: false, fixes: ['3.1'], ends: false, fix_phase: 3, reads_at_least: ['1-cards'], sections: SECTIONS, committed: res.committed });
     assert.deepStrictEqual(JSON.parse(stateText(`${UNIT}/review/round-1.json`)), {
       reports: NAMES.map((name) => `${name}.md`),
       passed: false,
@@ -96,8 +96,8 @@ describe('review round: the round recorded, its report and checks written, and a
     const item = filed({ kind: 'bug', text: '# Export skips refunds\n\nThe ledger export leaves refunds out.', call: fileCall });
     const findings = [
       RECEIPT,
-      { area: '1-cards', scope: 'out', call: 'bug', text: 'The ledger export skips refunds.', from: ['1-cards-a#n1'], inbox: item.filed, ledger: fileCall },
-      { area: '1-cards', scope: 'out', call: 'nit', text: 'The README names an old endpoint.', from: ['1-cards-a#n2'], drop: 'The docs are rewritten next month.', ledger: dropCall },
+      { section: '1-cards', scope: 'out', call: 'bug', text: 'The ledger export skips refunds.', from: ['1-cards-a#n1'], inbox: item.filed, ledger: fileCall },
+      { section: '1-cards', scope: 'out', call: 'nit', text: 'The README names an old endpoint.', from: ['1-cards-a#n2'], drop: 'The docs are rewritten next month.', ledger: dropCall },
     ];
 
     assert.deepStrictEqual(recorded({ can_now: [], findings }).fixes, ['3.1']);
@@ -109,12 +109,12 @@ describe('review round: the round recorded, its report and checks written, and a
   it('14.S12: each failing round\'s fix tasks are a phase of their own past the cut — round 1\'s phase 3, round 2\'s phase 4 — a fix naming the round before\'s phase refused', () => {
     secondRoundReady({ '1-cards-b': ['bug: The receipt names no amount.'] });
     fixPhaseWritten(4, [['Name the amount', '§1.2']]);
-    const amount = { area: '1-cards', scope: 'in', call: 'bug', text: 'The receipt names no amount.', from: ['1-cards-b#1'] };
+    const amount = { section: '1-cards', scope: 'in', call: 'bug', text: 'The receipt names no amount.', from: ['1-cards-b#1'] };
     const wrong = refusedRound({ can_now: [], findings: [{ ...amount, fix: '3.1' }] });
     const res = recorded({ can_now: ['Pay by card.'], findings: [{ ...amount, fix: '4.1' }] });
 
     assert.strictEqual(wrong, 'review round: finding 1 names task 3.1, which is no task of phase 4 of pay, this round\'s fix phase');
-    assert.deepStrictEqual(res, { ok: true, round: 2, passed: false, fixes: ['4.1'], ends: false, fix_phase: 4, reads_at_least: ['1-cards'], areas: AREAS, committed: res.committed });
+    assert.deepStrictEqual(res, { ok: true, round: 2, passed: false, fixes: ['4.1'], ends: false, fix_phase: 4, reads_at_least: ['1-cards'], sections: SECTIONS, committed: res.committed });
   });
 
   it('15.3.3: a round\'s scenarios stand at the change\'s tips — a pass at the fix phase\'s tip proves the scenario that failed where the cut landed', () => {
@@ -137,7 +137,7 @@ describe('review round: the round recorded, its report and checks written, and a
       can_now: ['Pay by card.'], findings: [{ ...FOUND, from: ['1-cards-a#1'], drop: 'Fixed by 3.1; the reviewer read a stale build.', ledger: call }], settled: 'Task 3.1 sends the receipt; its test proves it.',
     });
 
-    assert.deepStrictEqual(res, { ok: true, round: 2, passed: false, fixes: [], ends: true, areas: AREAS, committed: res.committed });
+    assert.deepStrictEqual(res, { ok: true, round: 2, passed: false, fixes: [], ends: true, sections: SECTIONS, committed: res.committed });
     assert.strictEqual(JSON.parse(stateText(`${UNIT}/review/round-2.json`)).settled, 'Task 3.1 sends the receipt; its test proves it.');
     assert.strictEqual(stateText(`${UNIT}/review/round-2.md`).split('\n')[0], 'Pay — review settled in round 2, the certificate of the work');
     assert.ok(enter().sections.includes('\nround: the review phase was settled in round 2 — finish is next\n'));
@@ -149,7 +149,7 @@ describe('review round: the round recorded, its report and checks written, and a
     firstRoundReady();
     const res = recorded({ can_now: [], findings: [RECEIPT] });
 
-    assert.deepStrictEqual(res, { ok: true, round: 1, passed: false, fixes: ['3.1'], ends: false, fix_phase: 3, reads_at_least: ['1-cards'], areas: AREAS, committed: res.committed });
+    assert.deepStrictEqual(res, { ok: true, round: 1, passed: false, fixes: ['3.1'], ends: false, fix_phase: 3, reads_at_least: ['1-cards'], sections: SECTIONS, committed: res.committed });
   });
 });
 

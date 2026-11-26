@@ -25,7 +25,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { git } = require('./engine-harness.cjs');
 const {
-  Sim, worlds, CUT_CLOSED_UNIT, writePhaseTasks, writeTasks, builtAside, areaRead, testsRead, reviewNext, finished,
+  Sim, worlds, CUT_CLOSED_UNIT, writePhaseTasks, writeTasks, builtAside, sectionRead, testsRead, reviewNext, finished,
 } = require('./pipeline-world.cjs');
 
 const WU = CUT_CLOSED_UNIT;
@@ -45,12 +45,12 @@ describe('pipeline simulation: finish held over a task beyond the review\'s find
 
   it('14.5, 24.2.2: round 1 passing on a nit, the task beyond its fix waits across a /clear and holds finish open; built, finish lands it', () => {
     const { fixPhase: phase } = reviewNext(sim, WU);
-    areaRead(sim, WU, UNSALTED);
+    sectionRead(sim, WU, UNSALTED);
     testsRead(sim, WU);
     writePhaseTasks(sim, WU, phase, 'The review\'s fixes', [{ title: 'Salt the hash', type: 'fix', scenarios: ['an entry hashed'], reference: '§1' }]);
     sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, {
       can_now: ['Keep a ledger.'],
-      findings: [{ area: '1-the-work', scope: 'in', call: 'nit', text: 'The hash is never salted.', from: ['1-the-work-a#1'], fix: `${phase}.1` }],
+      findings: [{ section: '1-the-work', scope: 'in', call: 'nit', text: 'The hash is never salted.', from: ['1-the-work-a#1'], fix: `${phase}.1` }],
     })]);
     const other = beyond(`${phase}.1`);
     builtAside(sim, WU, `${phase}.1`, 'src/salt.js');

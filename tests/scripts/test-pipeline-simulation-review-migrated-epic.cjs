@@ -4,9 +4,9 @@
 // The pipeline simulation's review of an epic the migration cut whole
 // built, as the review phase's skill runs it (21.8.8, 14.1.1): every phase
 // built before the migration, so its change empty, standing at the default
-// branch, never refused; each area briefed and drawn on the board as built
+// branch, never refused; each section briefed and drawn on the board as built
 // before, read at the change's tips; a finding on one fixed on top, that
-// area read again in round 2 with the fix its change, still built before;
+// section read again in round 2 with the fix its change, still built before;
 // and finish. A feature cut mid-build is
 // test-pipeline-simulation-review-migrated-feature.cjs's.
 //
@@ -27,7 +27,7 @@ const os = require('os');
 const path = require('path');
 const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 const {
-  Sim, readyForSim, briefOf, answerGate, builders, taskBuilt, writePhaseTasks, testsRead, areaRead, reviewNext, finished, PASSED_REPORT,
+  Sim, readyForSim, briefOf, answerGate, builders, taskBuilt, writePhaseTasks, testsRead, sectionRead, reviewNext, finished, PASSED_REPORT,
 } = require('./pipeline-world.cjs');
 const { buildingUnit, oldFiles, movedProject, migratedCut, migrationCommitted } = require('./migrated-world.cjs');
 
@@ -35,8 +35,8 @@ const WU = 'atlas';
 
 const UNPINNED = '## Findings\n\n- bug: a pin dropped is gone on reload\n  Scenario: a pin kept\n\nVerdict: fail\n';
 
-/** What an area's brief says of an area built before the migration. @param {number} area */
-const built = (area) => `§${area} was built before the migration cut the unit: its work landed before Ledger, so no commit of the change carries it. Hold the product at the change's tips against the area`;
+/** What a section's brief says of a section built before the migration. @param {number} section */
+const built = (section) => `§${section} was built before the migration cut the unit: its work landed before Ledger, so no commit of the change carries it. Hold the product at the change's tips against the section`;
 
 /** The project from before Ledger, the epic moved and cut, the migration's commit made: built once. */
 function buildMigrated(/** @type {string} */ dir) {
@@ -68,8 +68,8 @@ function world() {
   return copyWorld(template, path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-review-migrated-epic-')), 'project'));
 }
 
-/** The area reader's brief of `area` in the round under review, by its first reviewer: its text. @param {Sim} sim @param {number} area */
-const areaBrief = (sim, area) => briefOf(sim, sim.run(['brief', 'review-area', WU, '--area', String(area), '--base', 'main', '--letter', 'a']));
+/** The section reader's brief of `section` in the round under review, by its first reviewer: its text. @param {Sim} sim @param {number} section */
+const sectionBrief = (sim, section) => briefOf(sim, sim.run(['brief', 'review-section', WU, '--section', String(section), '--base', 'main', '--letter', 'a']));
 
 describe('pipeline simulation: the review of an epic the migration cut whole built', () => {
   let sim;
@@ -80,24 +80,24 @@ describe('pipeline simulation: the review of an epic the migration cut whole bui
     sim.destroy();
   });
 
-  it('21.8.8: its change empty, at the default branch, never refused; each area briefed and drawn as built before, read at the change\'s tips; a finding on one fixed on top, that area read again with the fix its change, still built before; and finish', () => {
+  it('21.8.8: its change empty, at the default branch, never refused; each section briefed and drawn as built before, read at the change\'s tips; a finding on one fixed on top, that section read again with the fix its change, still built before; and finish', () => {
     const { move, fixPhase: phase } = reviewNext(sim, WU);
     assert.deepStrictEqual([move, phase], ['round', 3]);
-    for (const area of [1, 2]) {
-      const brief = areaBrief(sim, area);
-      assert.ok(brief.includes(built(area)), `§${area} briefed as built before`);
-      assert.ok(brief.includes('Hold the product at the change\'s tips against this area of the spec, as one piece. Work of the unit that landed before the migration cut it stands in the product there with no commit of the change carrying it, and is met as the change\'s is.'), 'its authority the product at the tips');
+    for (const section of [1, 2]) {
+      const brief = sectionBrief(sim, section);
+      assert.ok(brief.includes(built(section)), `§${section} briefed as built before`);
+      assert.ok(brief.includes('Hold the product at the change\'s tips against this section of the spec, as one piece. Work of the unit that landed before the migration cut it stands in the product there with no commit of the change carrying it, and is met as the change\'s is.'), 'its authority the product at the tips');
       assert.ok(brief.includes('Nothing has landed here since the migration cut the unit, and nothing waits to land: the change is empty, its tip `main` itself.'), 'the change empty, at the default branch');
     }
-    assert.deepStrictEqual(sim.board().view.areas.map(({ area, before }) => [area, before]), [['1', 'built'], ['2', 'built'], ['tests', null]], 'the board draws each area built before');
+    assert.deepStrictEqual(sim.board().view.sections.map(({ section, before }) => [section, before]), [['1', 'built'], ['2', 'built'], ['tests', null]], 'the board draws each section built before');
 
-    areaRead(sim, WU, PASSED_REPORT, 1);
-    areaRead(sim, WU, UNPINNED, 2);
+    sectionRead(sim, WU, PASSED_REPORT, 1);
+    sectionRead(sim, WU, UNPINNED, 2);
     testsRead(sim, WU);
     writePhaseTasks(sim, WU, phase, 'The review\'s fixes', [{ title: 'Keep a pin', type: 'fix', scenarios: ['a pin kept'], reference: '§2' }]);
     assert.strictEqual(sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, {
       can_now: ['Draw a map.'],
-      findings: [{ area: '2-pins', scope: 'in', call: 'bug', text: 'A pin dropped is gone on reload.', from: ['2-pins-a#1'], fix: `${phase}.1` }],
+      findings: [{ section: '2-pins', scope: 'in', call: 'bug', text: 'A pin dropped is gone on reload.', from: ['2-pins-a#1'], fix: `${phase}.1` }],
     })]).ends, false);
 
     assert.strictEqual(reviewNext(sim, WU).move, 'fixes');
@@ -108,10 +108,10 @@ describe('pipeline simulation: the review of an epic the migration cut whole bui
     sim.run(answerGate(sim, 'phase merge', '--pick', 'y').next.argv);
     assert.strictEqual(reviewNext(sim, WU).move, 'reads');
     sim.run(['review', 'reads', WU, '2-pins']);
-    const again = areaBrief(sim, 2);
-    assert.ok(again.includes(built(2)) && /### Landed: `[0-9a-f]{12}` /.test(again), 'the area its fix landed on read with the fix its change, still built before');
-    assert.deepStrictEqual(sim.board().view.areas.map(({ area, before }) => [area, before]), [['1', 'built'], ['2', 'built'], ['tests', null]], 'the board draws it built before still');
-    areaRead(sim, WU, PASSED_REPORT, 2);
+    const again = sectionBrief(sim, 2);
+    assert.ok(again.includes(built(2)) && /### Landed: `[0-9a-f]{12}` /.test(again), 'the section its fix landed on read with the fix its change, still built before');
+    assert.deepStrictEqual(sim.board().view.sections.map(({ section, before }) => [section, before]), [['1', 'built'], ['2', 'built'], ['tests', null]], 'the board draws it built before still');
+    sectionRead(sim, WU, PASSED_REPORT, 2);
     assert.strictEqual(sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Draw a map and keep a place marked.'], findings: [] })]).ends, true);
     assert.strictEqual(reviewNext(sim, WU).move, 'closing');
     assert.strictEqual(JSON.parse(sim.read(['checklist', 'show', 'finish', WU])).items.find((/** @type {{key: string}} */ { key }) => key === 'review-passed').state, 'done');

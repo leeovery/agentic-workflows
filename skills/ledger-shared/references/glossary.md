@@ -104,7 +104,7 @@ The authority gate that closes the specification: one screen showing the spec's 
 The building phase, which the screens call the build. One conversation runs it across every phase of the cut, and straight into the review phase.
 
 **review phase**:
-The last phase: the whole change held up against the specification, area by area, with the product run. Every finding lands somewhere: one below the floor is dropped; one in the change becomes a fix task, built as one more phase; one outside it, and a note for later, is filed to the inbox or dropped, and the report lists what went to the inbox.
+The last phase: the whole change held up against the specification, section by section, with the product run. Every finding lands somewhere: one below the floor is dropped; one in the change becomes a fix task, built as one more phase; one outside it, and a note for later, is filed to the inbox or dropped, and the report lists what went to the inbox.
 _Avoid_: review (alone: the review phase, the phase review and the closing pass are three things)
 
 **finish**:
@@ -153,7 +153,7 @@ How the project runs for the work: how to run it and its tests, the steps that p
 How the project's product is run to prove the work: launch, a health check, drive, evidence and cleanup, with the feature map. It is built by a task the first time a build needs it, counts only once it has run end to end, and shows beside the environment setup in manage, changed only by the task that builds it.
 
 **feature map**:
-The part of the verify setup that says how a user reaches each feature, how an agent drives it and what proves it works. The build writes it and proving the work reads it; bugs found after review are grouped by its areas, which steers the checks there. It is not the product record.
+The piece of the verify setup that says how a user reaches each feature, how an agent drives it and what proves it works. The build writes it and proving the work reads it; bugs found after review are grouped by the map's parts, which steers the checks there. It is not the product record.
 
 **proven and not proven**:
 Proven means a phase's acceptance scenarios were performed on the running product, through the path a user takes, or a caller for a product with no interface, and a script checked the result. Claude's account of what happened never counts: a scenario that cannot be driven, or has no tests, is not proven, and that is what the person is told.

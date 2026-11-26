@@ -15,7 +15,7 @@
 // fenced on one line, each fence as written, joined by newlines, the source
 // bracket left out — so a change to a line's sources alone, or to how it
 // wraps, keeps the tick that holds its wording (11.11.6). The lines are
-// grouped by area, each area's items in the spec's order: its parts'
+// grouped by section, each section's items in the spec's order: its parts'
 // headings, its lines, and the heading of its block of scenarios. A line's
 // flags mark a statement or a screen resting on a call of Claude's
 // (`claude`) or left to the builder (`builder`), and a screen or a line
@@ -54,8 +54,8 @@ const HARD_TO_UNDO = 'hard_to_undo';
 /** A line's mark, as the page reads its kind: Claude's call, the builder's, a screen. @typedef {'claude'|'builder'|'screen'} Flag */
 
 /**
- * An item of an area as the page draws it: a part's heading, `h3`; the
- * heading of the area's scenarios, `h2s`; or a line — its id, its number (a
+ * An item of a section as the page draws it: a part's heading, `h3`; the
+ * heading of the section's scenarios, `h2s`; or a line — its id, its number (a
  * screen's `screen`, after the line it follows), its kind, its blocks as
  * `[kind, text]` pairs, its bracket's contents, its flags and its
  * fingerprint.
@@ -63,10 +63,10 @@ const HARD_TO_UNDO = 'hard_to_undo';
  *   k: 'line', id: string, num: string, kind: Line['kind'], after?: string, parts: [string, string][], src: string, flags: Flag[], h: string,
  * }} Item
  */
-/** An area and its items. @typedef {{num: number, title: string, items: Item[]}} Area */
-/** A line of the model: its id, the area it stands in, its fingerprint, and the line as read. @typedef {{id: string, section: number, h: string, line: Line}} ModelLine */
+/** A section and its items. @typedef {{num: number, title: string, items: Item[]}} Section */
+/** A line of the model: its id, the section it stands in, its fingerprint, and the line as read. @typedef {{id: string, section: number, h: string, line: Line}} ModelLine */
 /** Claude's assessment of a line: its tick, `soft`, or open for the person, and why. @typedef {{v: 'soft'|'open', why: string}} Tick */
-/** A spec as its page draws it. @typedef {{h1: string, intro: string, sections: Area[], lines: ModelLine[]}} Page */
+/** A spec as its page draws it. @typedef {{h1: string, intro: string, sections: Section[], lines: ModelLine[]}} Page */
 /** The page with Claude's tick on each line, by id. @typedef {Page & {ticks: Map<string, Tick>}} SpecPage */
 /** The numbers of the lines resting on a call of Claude's, and of those left to the builder, as their ticks find them. @typedef {{calls: Set<string>, builders: Set<string>}} Drawn */
 /** A line's tick, and whether it rests on a call of Claude's or is left to the builder. @typedef {{tick: Tick, call: boolean, builder: boolean}} Assessed */
@@ -74,7 +74,7 @@ const HARD_TO_UNDO = 'hard_to_undo';
 /** A line's id: its number, its dots as dashes. @param {string} number */
 const lineId = (number) => number.replaceAll('.', '-');
 
-/** The title and introduction: the first line's title, and what stands before the first area but its contents. @param {string} text */
+/** The title and introduction: the first line's title, and what stands before the first section but its contents. @param {string} text */
 function frontOf(text) {
   const plain = text.replace(/\r\n?/g, '\n');
   const first = plain.split('\n', 1)[0];
@@ -118,26 +118,26 @@ function itemOf(line, drawn, h) {
  * @returns {Page}
  */
 function pageOf(text, { lines, headings }, drawn = UNDRAWN) {
-  /** @type {Area[]} */
+  /** @type {Section[]} */
   const sections = [];
   /** @type {ModelLine[]} */
   const model = [];
   const marks = [...headings.map((heading) => ({ at: heading.line, heading })), ...lines.map((line) => ({ at: line.line, line }))].sort((a, b) => a.at - b.at);
   for (const mark of marks) {
-    if ('heading' in mark && mark.heading.kind === 'area') {
+    if ('heading' in mark && mark.heading.kind === 'section') {
       sections.push({ num: Number(mark.heading.number), title: mark.heading.title, items: [] });
       continue;
     }
-    const area = sections.at(-1);
-    if (area === undefined) continue;
+    const section = sections.at(-1);
+    if (section === undefined) continue;
     if ('line' in mark) {
       const h = fingerprint(mark.line.wording);
-      area.items.push(itemOf(mark.line, drawn, h));
-      model.push({ id: lineId(mark.line.number), section: area.num, h, line: mark.line });
+      section.items.push(itemOf(mark.line, drawn, h));
+      model.push({ id: lineId(mark.line.number), section: section.num, h, line: mark.line });
     } else if (mark.heading.kind === 'scenarios') {
-      area.items.push({ k: 'h2s', t: `Scenarios for §${mark.heading.number}` });
+      section.items.push({ k: 'h2s', t: `Scenarios for §${mark.heading.number}` });
     } else {
-      area.items.push({ k: 'h3', t: mark.heading.title });
+      section.items.push({ k: 'h3', t: mark.heading.title });
     }
   }
   return { ...frontOf(text), sections, lines: model };

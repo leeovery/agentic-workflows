@@ -355,7 +355,7 @@ function taskPage(at, given) {
     calls: callsOf(at.cwd, ref),
     ran: ranOf(at.cwd, at.manifest, ref, task, criteria).ran,
     questions: buildRead(at).questions.filter(({ parks }) => parks.some(({ task: parked }) => parked === given)),
-    fixes: recordedRounds(at.cwd, at.unit).flatMap(({ findings }, r) => findings.flatMap(({ fix, area, call, text }, k) => (fix === given ? [{ round: r + 1, finding: k + 1, from: null, area, call, text }] : []))),
+    fixes: recordedRounds(at.cwd, at.unit).flatMap(({ findings }, r) => findings.flatMap(({ fix, section, call, text }, k) => (fix === given ? [{ round: r + 1, finding: k + 1, from: null, section, call, text }] : []))),
   };
 }
 

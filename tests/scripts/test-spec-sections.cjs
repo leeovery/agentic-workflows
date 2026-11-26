@@ -5,15 +5,15 @@
 // how a reference cites sections — runs opened by `§` or `§§`, their numbers
 // joined by `,`, `and` or `&`, a range by `–`, `-` or `to`, each cite once in
 // the order cited, every number a run holds counted — and where a section
-// runs in a spec's text — an area, `## N. Title`, to the next heading at
+// runs in a spec's text — a section, `## N. Title`, to the next heading at
 // level two or above, holding its parts; a part, `### N.M Title`, to the
 // next at level three or above; a heading in a fenced block, opened by a
 // line holding, at any indent, three backticks or tildes at least, and
 // closed by one holding that mark alone, as many or more, being text — the spec refused where a
-// section is numbered twice or a part sits under another area or none; an
-// area's block of scenarios; the sections a reference cites drawn from a
-// text, a range's at its level in the spec's order, a part whose area is
-// drawn left to the area, each refusal naming the reference; and a spec's
+// section is numbered twice or a part sits under another section or none; an
+// section's block of scenarios; the sections a reference cites drawn from a
+// text, a range's at its level in the spec's order, a part whose section is
+// drawn left to the section, each refusal naming the reference; and a spec's
 // lines (11.4.5, 11.11.3, P2) as its review page reads them — blocks split
 // on blank lines, a fenced block whole; a block opening `N.M.K ` or `N.Sk `
 // starting a statement or a scenario, a `Screen…:` caption after one a
@@ -24,9 +24,9 @@
 // the introduction unread; `\r\n` and `\r` read as newlines — the spec
 // refused, naming every fault at once, one per line; and its scenarios read
 // through its lines. A spec the migration joined (21.8.5) read as joined:
-// an area's blocks its text, opening no line, a scenario of the blocks the
-// migration's cut adds closing on no statement, none asked of it, each area
-// read whole as the old spec wrote it, a fence it leaves open in an area
+// a section's blocks its text, opening no line, a scenario of the blocks the
+// migration's cut adds closing on no statement, none asked of it, each section
+// read whole as the old spec wrote it, a fence it leaves open in a section
 // refused, its other rules standing. That the
 // reading is the page's own,
 // line for line, was proven over a whole release spec against the page's
@@ -42,7 +42,7 @@ const assert = require('node:assert');
 const path = require('path');
 
 const {
-  citedSections, specSections, scenarioBlocks, specReading, specStatements, specScenarios, sectionsCited, areaText,
+  citedSections, specSections, scenarioBlocks, specReading, specStatements, specScenarios, sectionsCited, joinedSectionText,
 } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/spec-sections.cjs'));
 
 /** @typedef {import('../../skills/ledger-engine/scripts/domain/spec-sections.cjs').Line} Line */
@@ -54,7 +54,7 @@ const SPEC = text([
   '# Payments', '',
   '## 1. Cards', 'A card is taken once.', '',
   '### 1.1 The form', 'The number.', '#### Its fields', 'Number and expiry.', '',
-  '```', '### 1.9 Not a part', '## 3. Still not an area', '```', '',
+  '```', '### 1.9 Not a part', '## 3. Still not a section', '```', '',
   '### 1.2 The receipt', 'A receipt.', '',
   '## Open questions', 'None yet.', '',
   '## 2. Refunds', 'A refund names its charge.', '',
@@ -98,11 +98,11 @@ describe('a cite', () => {
 });
 
 describe('a spec\'s sections', () => {
-  it('an area runs to the next heading at its level or above, holding its parts; a part to the next at its own; a deeper heading and a fenced block stay inside', () => {
+  it('a section runs to the next heading at its level or above, holding its parts; a part to the next at its own; a deeper heading and a fenced block stay inside', () => {
     assert.deepStrictEqual(sectionTexts(SPEC), {
       1: text(['## 1. Cards', 'A card is taken once.', '', '### 1.1 The form', 'The number.', '#### Its fields', 'Number and expiry.', '',
-        '```', '### 1.9 Not a part', '## 3. Still not an area', '```', '', '### 1.2 The receipt', 'A receipt.']),
-      1.1: text(['### 1.1 The form', 'The number.', '#### Its fields', 'Number and expiry.', '', '```', '### 1.9 Not a part', '## 3. Still not an area', '```']),
+        '```', '### 1.9 Not a part', '## 3. Still not a section', '```', '', '### 1.2 The receipt', 'A receipt.']),
+      1.1: text(['### 1.1 The form', 'The number.', '#### Its fields', 'Number and expiry.', '', '```', '### 1.9 Not a part', '## 3. Still not a section', '```']),
       1.2: text(['### 1.2 The receipt', 'A receipt.']),
       2: text(['## 2. Refunds', 'A refund names its charge.', '', '### 2.1 Partial', 'Part of a charge.', '', '### 2.2 Whole', 'All of a charge.']),
       2.1: text(['### 2.1 Partial', 'Part of a charge.']),
@@ -111,34 +111,34 @@ describe('a spec\'s sections', () => {
     });
   });
 
-  it('a section numbered twice, and a part under another area or none, are refused — a run of tildes, or a fence at any indent, a list item\'s, fencing its headings as backticks do, closed only by a bare run of its own mark as long or longer', () => {
+  it('a section numbered twice, and a part under another section or none, are refused — a run of tildes, or a fence at any indent, a list item\'s, fencing its headings as backticks do, closed only by a bare run of its own mark as long or longer', () => {
     assert.throws(() => specSections(text(['## 1. Cards', '## 1. Again'])), /^Error: the spec numbers §1 twice$/);
     assert.deepStrictEqual([...specSections(text(['## 1. Cards', '~~~', '## 1. Again', '```', '## 2. Still fenced', '~~~~'])).keys()], ['1']);
     assert.deepStrictEqual([...specSections(text(['## 1. Cards', '```', '## 1. Again', '`````', '## 2. Refunds'])).keys()], ['1', '2']);
     assert.deepStrictEqual([...specSections(text(['## 1. Cards', '```', '## 1. Again', '```sh', '## 1. Still fenced', '```', '## 2. Refunds'])).keys()], ['1', '2']);
     assert.deepStrictEqual([...specSections(text(['## 1. Cards', '- a step:', '', '    ```sh', '## 1. Again', '    ```', '## 2. Refunds'])).keys()], ['1', '2']);
     assert.throws(() => specSections(text(['## 1. Cards', '### 2.1 Refunds'])), /^Error: §2\.1 sits under §1$/);
-    assert.throws(() => specSections(text(['## Open questions', '### 1.1 The form'])), /^Error: §1\.1 sits under no area$/);
-    assert.throws(() => specSections(text(['## 1. A', '## Notes', '### 1.3 X'])), /^Error: §1\.3 sits under no area$/);
-    assert.throws(() => specSections(text(['## 1. A', '# Appendix', '### 1.3 X'])), /^Error: §1\.3 sits under no area$/);
+    assert.throws(() => specSections(text(['## Open questions', '### 1.1 The form'])), /^Error: §1\.1 sits under no section$/);
+    assert.throws(() => specSections(text(['## 1. A', '## Notes', '### 1.3 X'])), /^Error: §1\.3 sits under no section$/);
+    assert.throws(() => specSections(text(['## 1. A', '# Appendix', '### 1.3 X'])), /^Error: §1\.3 sits under no section$/);
   });
 
-  it('an area\'s block of scenarios runs from its heading, ## N-S., to the next heading at level two or above', () => {
-    const spec = text(['## 1. Cards', '', '## 1-S. Scenarios for §1', '', '1.S1 Given one.', '```', '## 2. Not an area', '```', '', '## 2. Refunds', '', '## 2-S. Scenarios for §2', '2.S1 Given two.', '', '# Appendix']);
+  it('a section\'s block of scenarios runs from its heading, ## N-S., to the next heading at level two or above', () => {
+    const spec = text(['## 1. Cards', '', '## 1-S. Scenarios for §1', '', '1.S1 Given one.', '```', '## 2. Not a section', '```', '', '## 2. Refunds', '', '## 2-S. Scenarios for §2', '2.S1 Given two.', '', '# Appendix']);
 
     assert.deepStrictEqual(Object.fromEntries(scenarioBlocks(spec)), {
-      1: text(['## 1-S. Scenarios for §1', '', '1.S1 Given one.', '```', '## 2. Not an area', '```']),
+      1: text(['## 1-S. Scenarios for §1', '', '1.S1 Given one.', '```', '## 2. Not a section', '```']),
       2: text(['## 2-S. Scenarios for §2', '2.S1 Given two.']),
     });
   });
 });
 
 describe('the sections a reference cites', () => {
-  it('drawn in the order cited, a part cited beside its own area left to the area', () => {
+  it('drawn in the order cited, a part cited beside its own section left to the section', () => {
     assert.deepStrictEqual(drawn('§2, §1.2, §1'), ['2', '1']);
   });
 
-  it('a range draws every section at its level from the first to the last, in the spec\'s order, across areas', () => {
+  it('a range draws every section at its level from the first to the last, in the spec\'s order, across sections', () => {
     assert.deepStrictEqual(drawn('§1.2–2.2'), ['1.2', '2.1', '2.2']);
     assert.deepStrictEqual(drawn('§2.1, §1 to 2'), ['1', '2']);
   });
@@ -257,7 +257,7 @@ describe('a spec\'s lines, read as its page reads them (11.4.5, 11.11.3)', () =>
     ]);
     assert.deepStrictEqual(specReading(text(['# P', '', '## 1. A', '', '### 1.1 B', '', '1.1.1 Shown.', '', '[builder]'])).lines[0].parts, [{ kind: 'text', text: 'Shown.' }]);
     assert.deepStrictEqual(headings, [
-      { kind: 'area', number: '1', title: 'Cards', line: 9 },
+      { kind: 'section', number: '1', title: 'Cards', line: 9 },
       { kind: 'part', number: '1.1', title: '1.1 The form', line: 11 },
       { kind: 'part', number: '1.2', title: '1.2 The receipt', line: 39 },
       { kind: 'scenarios', number: '1', title: 'Scenarios for §1', line: 47 },
@@ -265,7 +265,7 @@ describe('a spec\'s lines, read as its page reads them (11.4.5, 11.11.3)', () =>
     assert.deepStrictEqual(specReading(text(['# P', '', '## 1. A', '', '### Unnumbered', ''])).headings[1], { kind: 'part', number: null, title: 'Unnumbered', line: 5 });
   });
 
-  it('refuses, naming every fault at once, one per line: no title; a section the sections refuse; a note; a heading not standing alone, a second title, and one neither an area nor its scenarios; scenarios after another area; a line outside its part or its block; one numbered twice; one opening straight after another\'s source or a scenario\'s statements; a number the grammar does not read; a screen straight after a heading; a bracket of no form, or one on a scenario; a scenario drawing on a statement the spec lacks; and a fence left open', () => {
+  it('refuses, naming every fault at once, one per line: no title; a section the sections refuse; a note; a heading not standing alone, a second title, and one neither a section nor its scenarios; scenarios after another section; a line outside its part or its block; one numbered twice; one opening straight after another\'s source or a scenario\'s statements; a number the grammar does not read; a screen straight after a heading; a bracket of no form, or one on a scenario; a scenario drawing on a statement the spec lacks; and a fence left open', () => {
     const spec = text([
       'Payments', '',
       '## 1. Cards', '',
@@ -299,14 +299,14 @@ describe('a spec\'s lines, read as its page reads them (11.4.5, 11.11.3)', () =>
       'line 21 opens "- 1.2.4", a number the spec does not read — a numbered line opens N.M.K or N.Sk and a space',
       'line 23 is a second title — the spec has one, # Title, its first line',
       'the spec gives statement 1.2.1 twice, on lines 14 and 25',
-      'scenario 1.S1 on line 27 sits in no block of scenarios — a scenario N.Sk sits under ## N-S., after its area',
-      'the scenarios on line 29 are §2\'s, but follow §1 — an area\'s scenarios follow it, under ## N-S.',
+      'scenario 1.S1 on line 27 sits in no block of scenarios — a scenario N.Sk sits under ## N-S., after its section',
+      'the scenarios on line 29 are §2\'s, but follow §1 — a section\'s scenarios follow it, under ## N-S.',
       'the screen on line 31 follows a heading — a screen follows the line it shows',
-      'scenario 1.S1 on line 33 sits among §2\'s scenarios — a scenario N.Sk sits under ## N-S., after its area',
+      'scenario 1.S1 on line 33 sits among §2\'s scenarios — a scenario N.Sk sits under ## N-S., after its section',
       'the spec gives scenario 1.S1 twice, on lines 27 and 33',
       'line 36 opens a numbered line straight after the source of line 35 — each line is a block of its own, after a blank line',
-      'scenario 1.S2 on line 35 sits among §2\'s scenarios — a scenario N.Sk sits under ## N-S., after its area',
-      'the heading on line 38 is neither an area, ## N. Title, nor its scenarios, ## N-S. Scenarios for §N',
+      'scenario 1.S2 on line 35 sits among §2\'s scenarios — a scenario N.Sk sits under ## N-S., after its section',
+      'the heading on line 38 is neither a section, ## N. Title, nor its scenarios, ## N-S. Scenarios for §N',
       'the fenced block opened on line 40 is never closed',
       'line 40 opens a note, a block with no number after a heading — every requirement is a numbered line, N.M.K or N.Sk',
       'statement 2.1.1 on line 17: its bracket closes an earlier block — the bracket closes the line\'s last text block',
@@ -332,8 +332,8 @@ describe('a spec\'s lines, read as its page reads them (11.4.5, 11.11.3)', () =>
     assert.deepStrictEqual(sectionTexts(SPEC.replaceAll('\n', '\r\n')), sectionTexts(SPEC));
   });
 
-  it('refuses a spec with no area, and one with no statement, so an empty spec never reads traced', () => {
-    assert.throws(() => specStatements(text(['# Payments', '', 'Nothing numbered.'])), /^Error: the spec has no area — an area is a heading ## N\. Title\nthe spec has no statement — a statement is a block opening N\.M\.K, in its part$/);
+  it('refuses a spec with no section, and one with no statement, so an empty spec never reads traced', () => {
+    assert.throws(() => specStatements(text(['# Payments', '', 'Nothing numbered.'])), /^Error: the spec has no section — a section is a heading ## N\. Title\nthe spec has no statement — a statement is a block opening N\.M\.K, in its part$/);
     assert.throws(() => specStatements(text(['# Payments', '', '## 1. Cards', '', '### 1.1 The form', ''])), /^Error: the spec has no statement — a statement is a block opening N\.M\.K, in its part$/);
   });
 });
@@ -351,37 +351,37 @@ describe('a spec\'s scenarios', () => {
 });
 
 describe('a spec the migration joined (21.8.5)', () => {
-  const AREA = [
+  const SECTION = [
     'Cards are taken once.', '', '1.1.1 A line of the old spec. [Ab12Cd]', '', 'Screen: the form.', '',
-    '#### The form', '', '- the number;', '- the expiry.', '', '```text', '## 9. Not an area', '```', '',
+    '#### The form', '', '- the number;', '- the expiry.', '', '```text', '## 9. Not a section', '```', '',
     '~~~', '## 8. Nor this', '~~~', '', '- a step:', '', '    ```', '## 7. Nor this, in a list item', '    ```',
   ];
   const JOINED = text([
-    '# Shop', '', '## 1. Cards', '', ...AREA, '', '## 2. Refunds', '', '#### Whole', '', 'All of a charge.', '',
+    '# Shop', '', '## 1. Cards', '', ...SECTION, '', '## 2. Refunds', '', '#### Whole', '', 'All of a charge.', '',
     '## 2-S. Scenarios for §2', '', '2.S1 Given a charge, when it is refunded, then the card is credited.', '',
   ]);
 
-  it('reads an area\'s blocks as its text, opening no line — a numbered block, a screen, a heading below the parts\' level, a list, a fenced block — and a scenario of its blocks closing on no statement, none asked of the spec; each area whole as the old spec wrote it', () => {
+  it('reads a section\'s blocks as its text, opening no line — a numbered block, a screen, a heading below the parts\' level, a list, a fenced block — and a scenario of its blocks closing on no statement, none asked of the spec; each section whole as the old spec wrote it', () => {
     const { lines, headings, faults } = specReading(JOINED, true);
 
     assert.deepStrictEqual([faults, lines.map(({ kind, number, wording }) => `${kind} ${number}: ${wording}`)], [[], ['scenario 2.S1: Given a charge, when it is refunded, then the card is credited.']]);
-    assert.deepStrictEqual(headings.map(({ kind, number, title }) => `${kind} ${number} ${title}`), ['area 1 Cards', 'area 2 Refunds', 'scenarios 2 Scenarios for §2']);
-    assert.deepStrictEqual([specScenarios(JOINED, true), specStatements(JOINED, true).length, areaText(JOINED, '1')], [['2.S1'], 1, text(AREA)]);
-    assert.ok(specReading(JOINED).faults.length > 0, 'read as a spec written by area, its old words are faults');
+    assert.deepStrictEqual(headings.map(({ kind, number, title }) => `${kind} ${number} ${title}`), ['section 1 Cards', 'section 2 Refunds', 'scenarios 2 Scenarios for §2']);
+    assert.deepStrictEqual([specScenarios(JOINED, true), specStatements(JOINED, true).length, joinedSectionText(JOINED, '1')], [['2.S1'], 1, text(SECTION)]);
+    assert.ok(specReading(JOINED).faults.length > 0, 'read as a spec written by section, its old words are faults');
   });
 
-  it('refuses a fence an area leaves open, which would read the areas after it as its text', () => {
+  it('refuses a fence a section leaves open, which would read the sections after it as its text', () => {
     assert.deepStrictEqual(specReading(text(['# Shop', '', '## 1. Cards', '', 'Kept.', '', '~~~text', 'open', '', '## 2. Refunds', '', 'Whole.']), true).faults, [
       'the fenced block opened on line 7 is never closed',
     ]);
   });
 
-  it('keeps its other rules: a second title, a heading at level two that is no area, a fence left open and a scenario drawing on a statement the spec lacks refused', () => {
+  it('keeps its other rules: a second title, a heading at level two that is no section, a fence left open and a scenario drawing on a statement the spec lacks refused', () => {
     const spec = text(['# Shop', '', '## 1. Cards', '', '# Again', '', '## Notes', '', 'Kept.', '', '## 1-S. Scenarios for §1', '', '1.S1 Given a card, then it is taken. (1.1.1)', '', '```text', 'open']);
 
     assert.deepStrictEqual(specReading(spec, true).faults, [
       'line 5 is a second title — the spec has one, # Title, its first line',
-      'the heading on line 7 is neither an area, ## N. Title, nor its scenarios, ## N-S. Scenarios for §N',
+      'the heading on line 7 is neither a section, ## N. Title, nor its scenarios, ## N-S. Scenarios for §N',
       'the fenced block opened on line 15 is never closed',
       'scenario 1.S1 draws on statement 1.1.1, which the spec lacks',
     ]);

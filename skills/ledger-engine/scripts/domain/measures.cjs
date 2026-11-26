@@ -31,7 +31,7 @@
 //   count here;
 // - the build's pairs: every reviewer's report of a task's round and of a
 //   phase review (round-report.cjs), its findings by call, its rounds — a
-//   task's round, or a phase's review whole, however many areas it was
+//   task's round, or a phase's review whole, however many sections it was
 //   split into — and those that failed, any report of it failing;
 // - the review phase: every round recorded (review-phase.cjs), its findings
 //   by call, its rounds and those that failed.
@@ -43,7 +43,7 @@
 // ended then, a round of its passed or settled (14.6.3) — judged at the
 // conclude, the one moment that knows it, never when the count is read
 // (bug-records.cjs, investigation-conclude.cjs). The bugs are counted by
-// area, each project's own, an area known folded for case and spacing by
+// part, each project's own, a part known folded for case and spacing by
 // its first spelling, then by the unit fixed. Left out: a bug in code no
 // unit built, since no review ran on it; and one concluded before its
 // unit's review ended, since no review had ended on it, whatever that
@@ -76,7 +76,7 @@ const { foldLedger, ID_FACTS, factsOf, isLive, questionStands, decidedNow } = re
 const { decidedBy } = require('./ledger-events.cjs');
 const { readReport } = require('./round-report.cjs');
 const { recordedRounds } = require('./review-phase.cjs');
-const { byName, areaKey, bugRecords, areaSpellings } = require('./bug-records.cjs');
+const { byName, partKey, bugRecords, partSpellings } = require('./bug-records.cjs');
 const { refusing } = require('./staged-payload.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
@@ -85,7 +85,7 @@ const { refusing } = require('./staged-payload.cjs');
 /** @typedef {'serious'|'bug'|'nit'} Call */
 /** What a phase's reviews found: how many findings, and, where its reviews run in rounds, the findings by call, the rounds and those failed. @typedef {{phase: string, findings: number, calls?: Record<Call, number>, rounds?: number, failed?: number}} PhaseFindings */
 /** A round as the count reads it: its findings' calls, and whether it failed. @typedef {{calls: string[], failed: boolean}} CountedRound */
-/** The bugs found after review in one area of a project: how many, and by the unit fixed. @typedef {{project: string, area: string|null, count: number, fixed: Array<{unit: string, bugfixes: string[]}>}} AreaBugs */
+/** The bugs found after review in one part of a project: how many, and by the unit fixed. @typedef {{project: string, part: string|null, count: number, fixed: Array<{unit: string, bugfixes: string[]}>}} PartBugs */
 
 const MEASURES = Object.freeze(['findings', 'bugs']);
 const MEASURES_USAGE = `measures ${MEASURES.join('|')} [--project <path>]…`;
@@ -163,23 +163,23 @@ function countRounds(phase, rounds) {
 }
 
 /**
- * A project's bugs found after review, by area — no area named last — then
+ * A project's bugs found after review, by part — no part named last — then
  * by the unit fixed.
  * @param {string} project @param {Array<Record<string, any>>} manifests
- * @returns {AreaBugs[]}
+ * @returns {PartBugs[]}
  */
-function bugsByArea(project, manifests) {
+function bugsByPart(project, manifests) {
   const records = bugRecords(manifests);
-  const spelt = areaSpellings(records);
-  const found = records.flatMap(({ bugfix, fixes, after_review: after, area }) => (
-    fixes !== null && after ? [{ bugfix, fixes, area: area === null ? null : String(spelt.get(areaKey(area))) }] : []));
-  const named = [...new Set(found.flatMap(({ area }) => (area === null ? [] : [area])))].sort(byName);
-  const areas = found.some(({ area }) => area === null) ? [...named, null] : named;
-  return areas.map((area) => {
-    const inArea = found.filter((bug) => bug.area === area);
-    const units = [...new Set(inArea.map(({ fixes }) => fixes))].sort(byName);
+  const spelt = partSpellings(records);
+  const found = records.flatMap(({ bugfix, fixes, after_review: after, part }) => (
+    fixes !== null && after ? [{ bugfix, fixes, part: part === null ? null : String(spelt.get(partKey(part))) }] : []));
+  const named = [...new Set(found.flatMap(({ part }) => (part === null ? [] : [part])))].sort(byName);
+  const parts = found.some(({ part }) => part === null) ? [...named, null] : named;
+  return parts.map((part) => {
+    const inPart = found.filter((bug) => bug.part === part);
+    const units = [...new Set(inPart.map(({ fixes }) => fixes))].sort(byName);
     return {
-      project, area, count: inArea.length, fixed: units.map((unit) => ({ unit, bugfixes: inArea.filter(({ fixes }) => fixes === unit).map(({ bugfix }) => bugfix).sort(byName) })),
+      project, part, count: inPart.length, fixed: units.map((unit) => ({ unit, bugfixes: inPart.filter(({ fixes }) => fixes === unit).map(({ bugfix }) => bugfix).sort(byName) })),
     };
   });
 }
@@ -188,7 +188,7 @@ function bugsByArea(project, manifests) {
  * What one project's reviews found, phase by phase, and the bugs found
  * after them.
  * @param {string} cwd the project @param {string[]} unread @param {string[]} warnings
- * @returns {{questions: IdFacts[], build: CountedRound[], review: CountedRound[], bugs: AreaBugs[]}}
+ * @returns {{questions: IdFacts[], build: CountedRound[], review: CountedRound[], bugs: PartBugs[]}}
  */
 function projectFindings(cwd, unread, warnings) {
   const root = stateRoot(cwd);
@@ -198,7 +198,7 @@ function projectFindings(cwd, unread, warnings) {
     questions: [.../** @type {Map<string, IdFacts>} */ (foldLedger(root, ID_FACTS, warnings)).values()].filter((facts) => facts.event === 'asked'),
     build: units.flatMap((unit) => readRounds(buildGroups(root, unit), unread)),
     review: units.flatMap((unit) => reviewRounds(cwd, unit, unread)),
-    bugs: bugsByArea(cwd, manifests),
+    bugs: bugsByPart(cwd, manifests),
   };
 }
 

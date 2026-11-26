@@ -9,7 +9,7 @@
 // findings and the pairs' recorded verdicts and rounds (17.S3), a report
 // that does not read passed over and named; `engine measures bugs …`, bugs
 // found after review, each bugfix by the unit whose code it fixes once that
-// unit's review ended, grouped by area, answered beside the findings per
+// unit's review ended, grouped by part, answered beside the findings per
 // phase in one call (17.S4, 17.S6's code half); and their refusals.
 //
 // The task writer's count is Claude's questions in the build on no task:
@@ -49,7 +49,7 @@ const asked = (at, by, text, flags = [], cwd = dir) => ok(cwd, ['ledger', 'ask',
 /**
  * A bugfix whose investigation concluded on `day` of November, keeping what
  * the bug is in as its conclude does.
- * @param {string} at @param {string} name @param {number} day @param {{fixes?: string, after_review?: boolean, area?: string}} bug
+ * @param {string} at @param {string} name @param {number} day @param {{fixes?: string, after_review?: boolean, part?: string}} bug
  */
 const bugfix = (at, name, day, bug) => createManifest(at, name, {
   work_type: 'bugfix', phases: { investigation: { items: { [name]: { status: 'completed', concluded_at: `2026-11-${String(day).padStart(2, '0')}T09:00:00.000Z`, ...bug } } } },
@@ -57,7 +57,7 @@ const bugfix = (at, name, day, bug) => createManifest(at, name, {
 
 const other = fixtureFrom('measures-other-', (at) => {
   createManifest(at, 'shop', {});
-  bugfix(at, 'lost-basket', 1, { fixes: 'shop', after_review: true, area: 'checkout' });
+  bugfix(at, 'lost-basket', 1, { fixes: 'shop', after_review: true, part: 'checkout' });
   commitAll(at, 'init');
   asked('shop.specification', 'review', 'Does a basket outlive the session?', [], at);
 });
@@ -105,7 +105,7 @@ describe('measures findings (17.1.5, 17.2.4)', () => {
     }
   });
 
-  it('counts a phase review split into areas as one round, failed where any area\'s report failed', () => {
+  it('counts a phase review split into sections as one round, failed where any section\'s report failed', () => {
     reportAt('build/phases/phase-2/1-a.md', ['bug: A refund is lost.']);
     reportAt('build/phases/phase-2/1-b.md', []);
     reportAt('build/phases/phase-2/2-a.md', ['nit: The refund note is terse.']);
@@ -121,7 +121,7 @@ describe('measures findings (17.1.5, 17.2.4)', () => {
     try {
       assert.deepStrictEqual(ok(dir, ['measures', 'findings']).phases[1], { phase: 'specification', findings: 1 });
       assert.match(refusedPristine(dir, ['measures', 'findings', '--project', bare]).error, new RegExp(`^measures findings: no Ledger state for ${bare}`));
-      for (const args of [['measures'], ['measures', 'calls'], ['measures', 'findings', 'more'], ['measures', 'findings', 'bugs'], ['measures', 'findings', '--unit', UNIT], ['measures', 'bugs', '--area', 'checkout']]) {
+      for (const args of [['measures'], ['measures', 'calls'], ['measures', 'findings', 'more'], ['measures', 'findings', 'bugs'], ['measures', 'findings', '--unit', UNIT], ['measures', 'bugs', '--part', 'checkout']]) {
         assert.strictEqual(refusedPristine(dir, args).error, 'Usage: engine measures findings|bugs [--project <path>]…', args.join(' '));
       }
     } finally {
@@ -131,17 +131,17 @@ describe('measures findings (17.1.5, 17.2.4)', () => {
 });
 
 describe('measures bugs (17.1.6, 17.3.1)', () => {
-  it('17.S4, 17.S6: counts each bugfix by the unit whose code it fixes where its conclude found that unit\'s review ended, grouped by area — folded for case and spacing, by its first spelling, a record left out among them — each project\'s own, then by the unit, each in name order; beside the findings per phase over the same projects, in one call', () => {
-    bugfix(dir, 'double-charge', 2, { fixes: 'cards', after_review: true, area: 'Checkout' });
-    bugfix(dir, 'card-declined', 3, { fixes: 'cards', after_review: true, area: ' checkout ' });
-    bugfix(dir, 'refund-twice', 4, { fixes: 'refunds', after_review: true, area: 'CHECKOUT' });
-    bugfix(dir, 'refund-rounding', 5, { fixes: 'refunds', after_review: true, area: 'card  refunds' });
-    bugfix(dir, 'card-refund', 7, { fixes: 'cards', after_review: true, area: 'Card refunds' });
+  it('17.S4, 17.S6: counts each bugfix by the unit whose code it fixes where its conclude found that unit\'s review ended, grouped by part — folded for case and spacing, by its first spelling, a record left out among them — each project\'s own, then by the unit, each in name order; beside the findings per phase over the same projects, in one call', () => {
+    bugfix(dir, 'double-charge', 2, { fixes: 'cards', after_review: true, part: 'Checkout' });
+    bugfix(dir, 'card-declined', 3, { fixes: 'cards', after_review: true, part: ' checkout ' });
+    bugfix(dir, 'refund-twice', 4, { fixes: 'refunds', after_review: true, part: 'CHECKOUT' });
+    bugfix(dir, 'refund-rounding', 5, { fixes: 'refunds', after_review: true, part: 'card  refunds' });
+    bugfix(dir, 'card-refund', 7, { fixes: 'cards', after_review: true, part: 'Card refunds' });
     bugfix(dir, 'odd-total', 6, { fixes: 'cards', after_review: true });
-    bugfix(dir, 'early', 8, { fixes: 'draft', after_review: false, area: 'checkout' });
-    bugfix(dir, 'old-code', 1, { area: 'CheckOut' });
+    bugfix(dir, 'early', 8, { fixes: 'draft', after_review: false, part: 'checkout' });
+    bugfix(dir, 'old-code', 1, { part: 'CheckOut' });
     ok(dir, ['manifest', 'set', 'card-refund', 'status', 'cancelled']);
-    createManifest(dir, 'moved', { phases: { investigation: { items: { moved: { status: 'completed', fixes: 'cards', after_review: true, area: 'checkout' } } } } });
+    createManifest(dir, 'moved', { phases: { investigation: { items: { moved: { status: 'completed', fixes: 'cards', after_review: true, part: 'checkout' } } } } });
     const project = JSON.parse(fs.readFileSync(path.join(dir, '.ledger', 'manifest.json'), 'utf8'));
     const units = fs.readdirSync(path.join(dir, '.ledger'), { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith('.')).map((e) => e.name).sort().reverse();
     writeState(dir, 'manifest.json', JSON.stringify({ ...project, work_units: Object.fromEntries(units.map((unit) => [unit, project.work_units?.[unit] ?? {}])) }, null, 2));
@@ -153,10 +153,10 @@ describe('measures bugs (17.1.6, 17.3.1)', () => {
         ok: true,
         projects: [dir, elsewhere],
         bugs: [
-          { project: dir, area: 'card  refunds', count: 2, fixed: [{ unit: 'cards', bugfixes: ['card-refund'] }, { unit: 'refunds', bugfixes: ['refund-rounding'] }] },
-          { project: dir, area: 'CheckOut', count: 3, fixed: [{ unit: 'cards', bugfixes: ['card-declined', 'double-charge'] }, { unit: 'refunds', bugfixes: ['refund-twice'] }] },
-          { project: dir, area: null, count: 1, fixed: [{ unit: 'cards', bugfixes: ['odd-total'] }] },
-          { project: elsewhere, area: 'checkout', count: 1, fixed: [{ unit: 'shop', bugfixes: ['lost-basket'] }] },
+          { project: dir, part: 'card  refunds', count: 2, fixed: [{ unit: 'cards', bugfixes: ['card-refund'] }, { unit: 'refunds', bugfixes: ['refund-rounding'] }] },
+          { project: dir, part: 'CheckOut', count: 3, fixed: [{ unit: 'cards', bugfixes: ['card-declined', 'double-charge'] }, { unit: 'refunds', bugfixes: ['refund-twice'] }] },
+          { project: dir, part: null, count: 1, fixed: [{ unit: 'cards', bugfixes: ['odd-total'] }] },
+          { project: elsewhere, part: 'checkout', count: 1, fixed: [{ unit: 'shop', bugfixes: ['lost-basket'] }] },
         ],
       }, 'a bug in code no unit built, one concluded before its unit\'s review ended, and a unit moved off bugfix are left out; a cancelled bugfix counts');
       const findings = ok(dir, ['measures', 'findings', '--project', dir, '--project', elsewhere]);

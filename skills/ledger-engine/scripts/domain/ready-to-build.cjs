@@ -26,7 +26,7 @@
 //   one not in progress, a quick-fix, topics not settled; and a unit whose
 //   build has begun, the gate raised once per spec
 //   (11.8.1).
-// - It shows the short outline, the landed spec's areas; the phase cut, read
+// - It shows the short outline, the landed spec's sections; the phase cut, read
 //   from the manifest (11.S31); Claude's calls at the spec — the current
 //   decisions of Claude's made there — counted by kind; and every checklist
 //   item skipped. Each departure the person made among the spec's gap
@@ -246,7 +246,7 @@ function readyToBuildSurface(cwd, { dotpath: unit = '', page, calls, alone }) {
       title: itemTitle(ready.manifest, 'specification', unit),
       calls: ready.calls,
       listed: calls !== undefined,
-      outline: headings.filter(({ kind }) => kind === 'area').map(({ number, title }) => ({ number: /** @type {string} */ (number), title })),
+      outline: headings.filter(({ kind }) => kind === 'section').map(({ number, title }) => ({ number: /** @type {string} */ (number), title })),
       phases: cutPhases(ready.manifest).map((/** @type {any} */ { name, scenarios, sections }) => ({ name, scenarios: scenarios.length, sections })),
       skips: ready.skips.map(({ text, reason }) => ({ text, reason })),
       verdict: ready.verdict,

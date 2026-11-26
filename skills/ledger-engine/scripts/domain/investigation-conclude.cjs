@@ -23,7 +23,7 @@
 //   a cause its validator would have broken (`assertMovable`): one still
 //   running is what the move waits for.
 // - Claude's recap of the hunt, `{"hunt": "<one paragraph>", "fixes"?,
-//   "area"?}`, is kept with the close, marked in the checklist store as a
+//   "part"?}`, is kept with the close, marked in the checklist store as a
 //   feature's decided close is, `checklists.conclusion.{unit}`: `closed`,
 //   `voided?` and `taken?`, and the recap — the paragraph, the root cause
 //   and the fix each by its full id, and what the bug is in — so a cancel,
@@ -48,9 +48,9 @@
 // - What the bug is in, for the bugs found after review (17.1.6, 17.1.9),
 //   is the recap's, drawn on no line of the screen (17.2.2): `fixes`, the
 //   unit whose code it fixes — a unit of the project but this one — left
-//   out where no unit built that code; and `area`, the area of the verify
+//   out where no unit built that code; and `part`, the part of the verify
 //   setup's feature map it sits in, only where a verify setup is recorded.
-//   The map is the product's, in its own words, so the area is Claude's
+//   The map is the product's, in its own words, so the part is Claude's
 //   reading of it, one line of words, never checked against the map, and
 //   staged in the spelling the project's bugfixes first recorded it by
 //   where one has (bug-records.cjs).
@@ -66,7 +66,7 @@
 //   (`concludingYes`): it completes the investigation's item and stamps its
 //   close, `concluded_at`, the instant (P2) — what the board dates the
 //   investigation by — with what the bug is in, as staged, none kept from an
-//   earlier conclude: `fixes` and `area` where named and, with `fixes`,
+//   earlier conclude: `fixes` and `part` where named and, with `fixes`,
 //   `after_review`, whether that unit's review phase had ended — a round of
 //   its passed or settled (14.6.3) — judged at the first conclude naming
 //   that unit, the moment the bug was found: a later conclude naming the
@@ -85,7 +85,7 @@ const { validationFor } = require('./agent-state.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { recordedRounds, endsReview } = require('./review-phase.cjs');
-const { areaKey, bugRecords, areaSpellings } = require('./bug-records.cjs');
+const { partKey, bugRecords, partSpellings } = require('./bug-records.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { huntOf, huntEntries, restedOn, standsNow } = require('./investigation-log.cjs');
 const { unitInProgress, assertPhaseHeld } = require('./topic-standing.cjs');
@@ -103,8 +103,8 @@ const STAGE_USAGE = 'investigation stage <bugfix> --file <recap.json>';
 
 /**
  * What the bug is in: the unit whose code it fixes, and the feature map's
- * area, each where named.
- * @typedef {{fixes?: string, area?: string}} BugIn
+ * part, each where named.
+ * @typedef {{fixes?: string, part?: string}} BugIn
  */
 
 /** What the recap was drawn on: the root cause and the fix, each by its full id. @typedef {{root_cause: string, fix: string}} DrawnOn */
@@ -270,40 +270,40 @@ const oneLine = (value) => filled(value) && !/[\r\n]/.test(value);
 
 /**
  * What the bug is in, refused where the bugfix cannot record it: a unit the
- * project lacks, or this one; an area where no verify setup is recorded, or
+ * project lacks, or this one; a part where no verify setup is recorded, or
  * past one line of words.
  * @param {string} cwd @param {string} unit @param {Record<string, unknown>} given @returns {BugIn}
  */
-function bugIn(cwd, unit, { fixes, area }) {
+function bugIn(cwd, unit, { fixes, part }) {
   if (fixes !== undefined) {
     if (typeof fixes !== 'string' || workUnitNameRefusal(fixes) !== null || manifestOf(stateRoot(cwd), fixes) === null) {
       throw new Error(`there is no work unit "${fixes}" to fix — the recap's fixes names the unit whose code the bug is in, left out where no unit built it`);
     }
     if (fixes === unit) throw new Error(`${unit} cannot fix its own code — the recap's fixes names the unit whose code the bug is in`);
   }
-  if (area !== undefined) {
-    if (!oneLine(area)) throw new Error('the area is one line of words, an area of the verify setup\'s feature map');
-    if (verifySetup(cwd) === null) throw new Error('no verify setup is recorded, so no feature map names an area — leave the area out');
+  if (part !== undefined) {
+    if (!oneLine(part)) throw new Error('the part is one line of words, a part of the verify setup\'s feature map');
+    if (verifySetup(cwd) === null) throw new Error('no verify setup is recorded, so no feature map names a part — leave the part out');
   }
   return {
     ...(fixes === undefined ? {} : { fixes: /** @type {string} */ (fixes) }),
-    ...(area === undefined ? {} : { area: /** @type {string} */ (area).trim() }),
+    ...(part === undefined ? {} : { part: /** @type {string} */ (part).trim() }),
   };
 }
 
-/** The area in the spelling the project's bugfixes first recorded it by, where one has. @param {string} cwd @param {string} area */
-const spelt = (cwd, area) => areaSpellings(bugRecords(listWorkUnitManifests(cwd))).get(areaKey(area)) ?? area;
+/** The part in the spelling the project's bugfixes first recorded it by, where one has. @param {string} cwd @param {string} part */
+const spelt = (cwd, part) => partSpellings(bugRecords(listWorkUnitManifests(cwd))).get(partKey(part)) ?? part;
 
 /**
- * Claude's recap read from `file`, refused out of its shape, its area in
+ * Claude's recap read from `file`, refused out of its shape, its part in
  * the spelling recorded.
  * @param {string} cwd @param {string} unit @param {string} file @returns {{hunt: string} & BugIn}
  */
 function recapOf(cwd, unit, file) {
-  const { hunt, ...rest } = shaped(readPayload(cwd, file), 'the recap', ['hunt'], ['fixes', 'area']);
+  const { hunt, ...rest } = shaped(readPayload(cwd, file), 'the recap', ['hunt'], ['fixes', 'part']);
   if (!oneLine(hunt)) throw new Error('the recap\'s hunt is one paragraph of words, not empty');
   const bug = bugIn(cwd, unit, rest);
-  return { hunt: hunt.trim(), ...bug, ...(bug.area === undefined ? {} : { area: spelt(cwd, bug.area) }) };
+  return { hunt: hunt.trim(), ...bug, ...(bug.part === undefined ? {} : { part: spelt(cwd, bug.part) }) };
 }
 
 /**
@@ -363,7 +363,7 @@ function concludingYes(cwd, unit, staged) {
     take: (manifest, at) => {
       const item = manifest.phases[PHASE].items[unit];
       const record = kept(cwd, bug, item);
-      for (const field of ['fixes', 'area', 'after_review']) delete item[field];
+      for (const field of ['fixes', 'part', 'after_review']) delete item[field];
       Object.assign(item, { status: 'completed', concluded_at: at, ...record });
       manifest.checklists.conclusion[unit].taken = at;
     },

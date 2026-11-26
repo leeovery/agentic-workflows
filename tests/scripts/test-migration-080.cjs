@@ -379,7 +379,7 @@ describe('the directive\'s ways on', () => {
     const template = (/** @type {string} */ role) => fs.readFileSync(path.join(__dirname, `../../skills/ledger-engine/content/briefs/${role}.md`), 'utf8');
     const CONFINED = 'These are its sources, and no other: never a piece composed for another phase.';
     const SOURCES = 'the unit\'s joined spec, the phase\'s tasks, its old plan\'s files, the unit\'s files kept as legacy, the tracker and the code';
-    const AREA = 'or, for an area no plan put in the tracker, each section of the area: each of its rules is carried by a scenario';
+    const AREA = 'or, for a section no plan put in the tracker, the section\'s whole text: each of its rules is carried by a scenario';
 
     assert.deepStrictEqual([
       unstated(['- **An area with no plan** is a phase still to build, its scenarios written from each section of the area: each of its rules is carried by a scenario.']),
@@ -390,7 +390,7 @@ describe('the directive\'s ways on', () => {
       [
         SOURCES, CONFINED,
         `In the first round, walk every task of the phase, as the brief below lists them, and each acceptance criterion of a task still to build: check that each criterion is carried by a scenario, and that each task the piece corrects or carries on stands as its sources and the code show it; ${AREA}. Walk them all: your findings are every gap the walk turns up, never a sample.`,
-        'each acceptance criterion of its tasks still to build is carried by a scenario, or, for an area no plan put in the tracker, each rule of each section of the area, and it relies',
+        'each acceptance criterion of its tasks still to build is carried by a scenario, or, for a section no plan put in the tracker, each rule of the section\'s whole text, and it relies',
       ].filter((rule) => !template('migration-phase-verifier').includes(rule)),
     ], [[], [], []]);
   });
@@ -506,7 +506,7 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     const brief = composer('4');
 
     for (const part of [
-      `## Its joined spec\n\n${statePath(dir, 'shop/spec.md')}, an area for each spec joined, in build order:\n\n- §1 cart, joined from ${path.join(dir, '.workflows/shop/specification/cart/specification.md')}\n- §2 pay, joined from ${path.join(dir, '.workflows/shop/specification/pay/specification.md')}`,
+      `## Its joined spec\n\n${statePath(dir, 'shop/spec.md')}, a section for each spec joined, in build order:\n\n- §1 cart, joined from ${path.join(dir, '.workflows/shop/specification/cart/specification.md')}\n- §2 pay, joined from ${path.join(dir, '.workflows/shop/specification/pay/specification.md')}`,
       [
         '- Phase 1: phase 1 of cart\'s plan, built — the join writes it',
         '- Phase 2: phase 2 of cart\'s plan, built — the join writes it',
@@ -517,8 +517,8 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
       '## What its plan depends on\n\n- cart-2-1, which phase 2, phase 2 of cart\'s plan, builds\n\n## Your phase',
       [
         `- Phase 4: phase 2 of pay's plan, its tracker parent ${PLANS.pay.phases[1]}`,
-        `- Its area: §2 pay of ${statePath(dir, 'shop/spec.md')}`,
-        `- The sections ${statePath(dir, 'shop/spec.md')} numbers in its area, the only ones a piece names: 2`,
+        `- Its section: §2 pay of ${statePath(dir, 'shop/spec.md')}`,
+        `- The sections and parts ${statePath(dir, 'shop/spec.md')} numbers in its section, the only ones a piece names: 2`,
         `- Its tasks' file: ${statePath(dir, '.cache/shop/earlier/planning/pay/phase-2-tasks.md')}`,
         `- Its section of the plan: ${statePath(dir, '.cache/shop/earlier/planning/pay/planning.md')}, under "### Phase 2: Charges"`,
       ].join('\n'),
@@ -783,7 +783,7 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
         'phase 4\'s piece: a correction names task 4.2 "Refund the card", and the tracker titles it "Refund a charge" — a correction names the task its phase\'s adoption gives that number',
         'phase 4\'s piece: a correction names task 4.9, which no phase the cut adopts holds',
       ],
-      ['phase 4\'s piece: phase 4 is marked built with §1, outside §2, the area of its old plan\'s topic, pay — a phase built before the migration names only what its old plan built'],
+      ['phase 4\'s piece: phase 4 is marked built with §1, outside §2, the section of its old plan\'s topic, pay — a phase built before the migration names only what its old plan built'],
       [],
     ]);
   });

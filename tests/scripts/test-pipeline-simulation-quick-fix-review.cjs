@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's quick-fix review: the close's review row asking
-// for the review, its skill invoked in the same conversation, its one area
+// for the review, its skill invoked in the same conversation, its one section
 // the change, a round's fix task built on the quick-fix's one branch and
 // passed by its pair, and the round passing handing back to the close,
 // whose yes lands it all in one commit (19.S23).
@@ -18,7 +18,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, answerGate, startUnit, writeTasks, writePhaseTasks, finishClosed, fixBuilt, reviewNext, areaRead, testsRead,
+  Sim, answerGate, startUnit, writeTasks, writePhaseTasks, finishClosed, fixBuilt, reviewNext, sectionRead, testsRead,
 } = require('./pipeline-world.cjs');
 const { git } = require('./engine-harness.cjs');
 
@@ -27,7 +27,7 @@ describe('pipeline simulation: quick-fix review', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('quick-fix: the close\'s review row asks for the review, its skill invoked in the same conversation — its one area the change; a round\'s fix task built on the quick-fix\'s branch; the round passing hands back to the close, whose yes lands the fixes and the fix task in one commit (19.S23), no handoff on the way (24.S8)', () => {
+  it('quick-fix: the close\'s review row asks for the review, its skill invoked in the same conversation — its one section the change; a round\'s fix task built on the quick-fix\'s branch; the round passing hands back to the close, whose yes lands the fixes and the fix task in one commit (19.S23), no handoff on the way (24.S8)', () => {
     const wu = 'typo';
     startUnit(sim, 'quick-fix', wu, 'The --color flag is spelt --colour');
     const handedOff = sim.handoffs.length;
@@ -44,11 +44,11 @@ describe('pipeline simulation: quick-fix review', () => {
     sim.run(['enter', 'review', wu]);
 
     const first = reviewNext(sim, wu);
-    areaRead(sim, wu, '## Findings\n\n- bug: the help still says --color\n  Scenario: the help read\n\nVerdict: fail\n');
+    sectionRead(sim, wu, '## Findings\n\n- bug: the help still says --color\n  Scenario: the help read\n\nVerdict: fail\n');
     testsRead(sim, wu);
     const [fix] = writePhaseTasks(sim, wu, 2, 'The review\'s fixes', [{ title: 'Spell the help --colour', type: 'fix', reference: 'none', scenarios: ['Given the help, when it is read, then it names --colour.'] }]);
     const failed = sim.run(['review', 'round', wu, '--file', sim.write(`.ledger/.cache/${wu}/review/round.json`, {
-      can_now: ['Pass --colour.'], findings: [{ area: '1-the-change', scope: 'in', call: 'bug', text: 'The help still says --color.', from: ['1-the-change-a#1'], fix }],
+      can_now: ['Pass --colour.'], findings: [{ section: '1-the-change', scope: 'in', call: 'bug', text: 'The help still says --color.', from: ['1-the-change-a#1'], fix }],
     })]);
     assert.strictEqual(reviewNext(sim, wu).move, 'fixes');
     sim.run(['task', 'start', wu, fix]);
@@ -57,14 +57,14 @@ describe('pipeline simulation: quick-fix review', () => {
     assert.strictEqual(reviewNext(sim, wu).move, 'reads');
     sim.run(['review', 'reads', wu, '1-the-change', 'tests']);
     reviewNext(sim, wu);
-    areaRead(sim, wu);
+    sectionRead(sim, wu);
     testsRead(sim, wu);
     const passed = sim.run(['review', 'round', wu, '--file', sim.write(`.ledger/.cache/${wu}/review/round.json`, { can_now: ['Pass --colour, and read it in the help.'], findings: [] })]);
     sim.render(passed.next.argv.slice(1), { expect: 'content' });
     const unclosed = sim.handoffs.slice(handedOff);
     const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
 
-    assert.deepStrictEqual([first.data.area, first.fixPhase, fix, failed.fix_phase, passed.next], [
+    assert.deepStrictEqual([first.data.section, first.fixPhase, fix, failed.fix_phase, passed.next], [
       [`1-the-change — the change: ${wu}'s record and its change-set from the base`], 2, '2.1', 2, { kind: 'engine', argv: ['render', 'finish', wu] },
     ]);
     assert.deepStrictEqual([yes.landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), git(sim.dir, ['log', '--format=%s', `${base}..main`]).trim().split('\n')], [

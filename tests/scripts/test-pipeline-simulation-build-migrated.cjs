@@ -9,18 +9,18 @@
 // migration on, to its review's entry. Each adopted phase's tasks are
 // written, so its start closes and the start menu says so; a task of the
 // old plan, its text opening on no title, is briefed under its title, on
-// the area the cut found its text citing by the old spec's path with its
+// the section the cut found its text citing by the old spec's path with its
 // phase's scenarios, or, citing none, on its phase's sections and
 // scenarios, its figures counting no criteria and its account saying they
 // are in its text, and its phase review reads its text where it holds no
 // criteria; the task done before the migration counts as passed and landed
 // at the phase's close, with no round, figure, account or landing of its
 // own — its phase review drawing it as landed before, outside the range,
-// with no criteria to hold, and the area its built phase placed as first
+// with no criteria to hold, and the section its built phase placed as first
 // built there — the unit, two phases left to build, given its own branch
 // as the first of them starts (unit-branch.cjs), the merge gate naming it
 // on that branch already and the stack the tasks built since; and the review reads the whole unit, the
-// joined spec's area its area. A phase whose every task since was closed,
+// joined spec's section its section. A phase whose every task since was closed,
 // its others done before, passes its review with nothing to read and runs
 // no mutants, its scenarios judged at its landing branch's tip, and closes.
 // The review itself is test-pipeline-simulation-review-migrated-
@@ -55,8 +55,8 @@ const WU = 'folio';
 /** The old spec, as written before Ledger. */
 const OLD_SPEC = '# Specification: Folio\n\n## Pages\n\nA page holds a title and its text.\n\n## Search\n\nA page is found by any word it holds.\n';
 
-/** The area the move joins the old spec into. */
-const AREA = '## 1. Folio\n\n#### Pages\n\nA page holds a title and its text.\n\n#### Search\n\nA page is found by any word it holds.';
+/** The section the move joins the old spec into. */
+const SECTION = '## 1. Folio\n\n#### Pages\n\nA page holds a title and its text.\n\n#### Search\n\nA page is found by any word it holds.';
 
 const SCENARIOS = [
   'Given a page, when its text is edited, then the page holds the new text.',
@@ -134,7 +134,7 @@ describe('pipeline simulation: the build of a unit the migration cut', () => {
   /** What a task's account screen says of an account not written. @param {string} task */
   const unaccounted = (task) => /No account (?:was|is) written[^\n]*/.exec(sim.render(['task-account', WU, task], { expect: 'content' }))?.[0];
 
-  it('21.8.6–21.8.8: a feature cut mid-build carried on by today\'s build to its review — each adopted phase\'s tasks written; an old task\'s builder briefed under its title on the area its text cites with its phase\'s scenarios, or its phase\'s sections and scenarios; its step gate showing its text for what it does and for the criteria it proves, its phase review given its text for its criteria and the built phase it relies on as in the product already; the task done before the migration passed and landed at its phase\'s close, drawn as landed before and with no account, the stack the tasks built since and the rest on the unit\'s own branch already', () => {
+  it('21.8.6–21.8.8: a feature cut mid-build carried on by today\'s build to its review — each adopted phase\'s tasks written; an old task\'s builder briefed under its title on the section its text cites with its phase\'s scenarios, or its phase\'s sections and scenarios; its step gate showing its text for what it does and for the criteria it proves, its phase review given its text for its criteria and the built phase it relies on as in the product already; the task done before the migration passed and landed at its phase\'s close, drawn as landed before and with no account, the stack the tasks built since and the rest on the unit\'s own branch already', () => {
     assert.strictEqual(sim.run(['enter', 'implementation', WU]).entered, true);
     assert.deepStrictEqual(sim.sections.split('\n').filter((line) => line.startsWith('phase: ')), [
       'phase: phase 1 of 3, "Pages": merged — tasks 1.1 done, 1.2 done',
@@ -147,10 +147,10 @@ describe('pipeline simulation: the build of a unit the migration cut', () => {
     assert.ok(sim.sections.includes('phase: phase 2 of 3, "Editing": running'), 'the build\'s standing agrees');
 
     // 2.2, in progress when the migration came: its builder carries on, on
-    // the area the cut found its old text citing, with its phase's scenarios.
+    // the section the cut found its old text citing, with its phase's scenarios.
     const builder = loop.brief(['builder', WU, '2.2']);
     const editBrief = briefOf(sim, builder);
-    assert.ok(editBrief.includes(`# The spec's sections it cites\n\n${AREA}\n\nIts phase's scenarios:\n\n- 1.S1: ${SCENARIOS[0]}\n`), 'the old citation read through its area, the phase\'s scenarios beside it');
+    assert.ok(editBrief.includes(`# The spec's sections it cites\n\n${SECTION}\n\nIts phase's scenarios:\n\n- 1.S1: ${SCENARIOS[0]}\n`), 'the old citation read through its section, the phase\'s scenarios beside it');
     assert.ok(editBrief.includes('# Your task\n\n## Edit the text\n\n**Problem**: A page\'s text is fixed once written.'), 'an old task\'s text drawn under its title');
     const editing = loop.isolated('2.2');
     loop.committed(editing, '2.2', { ...VERIFY_FILES, 'src/edit.js': 'export const edit = 1;\n' });
@@ -167,7 +167,7 @@ describe('pipeline simulation: the build of a unit the migration cut', () => {
     // 2.3 cites nothing: its phase's sections and scenarios stand for it.
     sim.run(['task', 'start', WU, '2.3']);
     const undo = briefOf(sim, loop.brief(['builder', WU, '2.3']));
-    assert.ok(undo.includes(`task 2.3 of ${WU} cites no section of the spec, so its phase's stand for it, with its phase's scenarios:\n\n${AREA}\n\n- 1.S1: ${SCENARIOS[0]}`), 'the phase\'s cut entry stands for its sections');
+    assert.ok(undo.includes(`task 2.3 of ${WU} cites no section of the spec, so its phase's stand for it, with its phase's scenarios:\n\n${SECTION}\n\n- 1.S1: ${SCENARIOS[0]}`), 'the phase\'s cut entry stands for its sections');
     const undoing = loop.isolated('2.3');
     loop.committed(undoing, '2.3', { 'src/undo.js': 'export const undo = 1;\n' });
     loop.pairRound('2.3');
@@ -183,7 +183,7 @@ describe('pipeline simulation: the build of a unit the migration cut', () => {
     const { review, merge } = closed(2);
     assert.ok(review.includes('## 2.2 Edit the text\n\n**Problem**: A page\'s text is fixed once written.'), 'the phase review reads an old task\'s text for the criteria it holds none of');
     assert.ok(review.includes('## Phase 1: Pages\n\nA page is kept.\n\nIts sections: §1 — built before the migration cut the unit, its work in the product already\n\nIts tasks:'), 'the built phase it relies on read as in the product already');
-    assert.ok(review.includes('- §1, first built in phase 1, before the migration cut the unit'), 'the area first built by the phase built before the migration');
+    assert.ok(review.includes('- §1, first built in phase 1, before the migration cut the unit'), 'the section first built by the phase built before the migration');
     const criteria = review.slice(review.indexOf('# Its tasks\' criteria'), review.indexOf('# What it relies on'));
     assert.ok(criteria.includes('## 2.3 ') && !criteria.includes('## 2.1 '), 'no criteria held of the task done before the migration');
     assert.match(merge, new RegExp(`its tasks built since the migration cut the unit land on feat/${WU} as one stack — 2\\.1 is on it already\\.`));
@@ -202,7 +202,7 @@ describe('pipeline simulation: the build of a unit the migration cut', () => {
     closed(3);
 
     assert.strictEqual(sim.run(['enter', 'review', WU]).entered, true, 'every phase merged, the review phase is entered');
-    assert.deepStrictEqual(sim.sections.split('\n').filter((line) => line.startsWith('area: ')), [`area: 1-${WU} — §1 Folio`]);
+    assert.deepStrictEqual(sim.sections.split('\n').filter((line) => line.startsWith('section: ')), [`section: 1-${WU} — §1 Folio`]);
   });
 
   it('21.8.8: a phase whose every task since the migration was closed, the rest done before it, passes its review with nothing to read, its last close naming no mutation run, its scenario judged at the tip of the branch it lands on — no stack holding it — and closes', () => {

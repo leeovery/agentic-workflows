@@ -17,7 +17,7 @@
 // recap. An epic's is the feature's screen without the parts that belong to
 // the feature's decided: the title,
 // Claude's calls at the spec counted by kind (closing.cjs), THE OUTLINE —
-// the spec's areas — and THE PHASE CUT, each phase with its scenarios
+// the spec's sections — and THE PHASE CUT, each phase with its scenarios
 // counted and the sections it draws on; every checklist item skipped, with
 // its reason (6.4.5); then the first departure still to be asked its
 // verdict (16.10.11), at the point the view names — the verdict gate, one
@@ -39,7 +39,7 @@ const { recapBlocks } = require('./investigation.cjs');
 
 /**
  * Ready to build as it is drawn: the unit and its title; Claude's calls,
- * listed or counted; the spec's areas; the cut's phases; the checklists'
+ * listed or counted; the spec's sections; the cut's phases; the checklists'
  * skips; the verdict asked and the point it is given at; a feature's
  * topic's close, null for any other unit; a bugfix's recap, null for any
  * other unit; whether the session can publish
@@ -63,7 +63,7 @@ const { recapBlocks } = require('./investigation.cjs');
  * }} ReadyView
  */
 
-/** The spec's areas, numbered, their numbers right-aligned. @param {ReadyView['outline']} outline */
+/** The spec's sections, numbered, their numbers right-aligned. @param {ReadyView['outline']} outline */
 function outlineBlock(outline) {
   const width = Math.max(...outline.map(({ number }) => number.length));
   return block(`THE OUTLINE (${counted(outline.length, 'section')})`, renderTree(outline.map(({ number, title }) => ({ title: `${number.padStart(width)} ${title}` })), { width: TREE_WIDTH }));

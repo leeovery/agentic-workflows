@@ -6,7 +6,7 @@
 // test-engine-brief-build-changes.cjs, test-engine-brief-build-ways.cjs,
 // test-engine-brief-build-chain.cjs): a project, built once per run and
 // copied for each test, with a unit past ready to build — its spec of two
-// areas, its cut of three phases, the first two written in the tracker
+// sections, its cut of three phases, the first two written in the tracker
 // through the default driver, phase 1's tasks done, in progress, closed and
 // not started, one added to; notes for later, one held for phase 3;
 // decisions at the spec and in the build, one replacing a spec decision a
@@ -49,7 +49,7 @@ const MADE = Object.freeze({ who_moved_whom: 'none' });
 const LINTERS = Object.freeze([{ name: 'eslint', command: 'npx eslint .' }]);
 const NESTED = 'lib';
 
-/** The unit's spec: two areas, each part a statement, each area its scenarios. */
+/** The unit's spec: two sections, each part a statement, each section its scenarios. */
 const SPEC = [
   '# Payments', '',
   '## 1. Cards', '', '### 1.1 The form', '', '1.1.1 A card is taken once. [builder: call-1]', '',
@@ -60,8 +60,8 @@ const SPEC = [
   '## 2-S. Scenarios for §2', '', '2.S1 Given a charge, when it is refunded whole, then the card is credited. (2.1.1)', '',
   '2.S2 Given a refund, when it lands, then a receipt follows. (2.1.1)', '',
 ].join('\n');
-const AREA_1 = SPEC.slice(SPEC.indexOf('## 1. Cards'), SPEC.indexOf('\n\n## 1-S.'));
-const AREA_2 = SPEC.slice(SPEC.indexOf('## 2. Refunds'), SPEC.indexOf('\n\n## 2-S.'));
+const SECTION_1 = SPEC.slice(SPEC.indexOf('## 1. Cards'), SPEC.indexOf('\n\n## 1-S.'));
+const SECTION_2 = SPEC.slice(SPEC.indexOf('## 2. Refunds'), SPEC.indexOf('\n\n## 2-S.'));
 const PART_1_2 = ['### 1.2 The receipt', '', '1.2.1 A receipt follows every charge. [builder: call-1]'].join('\n');
 const PART_2_1 = ['### 2.1 The charge', '', '2.1.1 A refund names its charge. [builder: call-1]'].join('\n');
 
@@ -395,8 +395,8 @@ module.exports = {
   NESTED,
   VERIFY,
   SPEC,
-  AREA_1,
-  AREA_2,
+  SECTION_1,
+  SECTION_2,
   PART_1_2,
   PART_2_1,
   CUT,

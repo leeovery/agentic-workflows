@@ -12,7 +12,7 @@
 // name (11.5.4, 12.6.2). A list may be empty: ready to build's checklist
 // holds each phase to having its own (6.4.7). A phase the migration's cut
 // found built (21.8.6, cut-migrating.cjs) is `{name, goal, sections, built:
-// true}`, its sections the areas its old plan built, read as placing no
+// true}`, its sections those its old plan built, read as placing no
 // scenario and relying on nothing, and started and closed wherever a phase
 // is read (derivations.cjs); and a phase whose
 // tracker parent the migration adopted names it last, `tracker`, the

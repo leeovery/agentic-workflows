@@ -6,7 +6,7 @@ Every question, finding and decision lands on the ledger, every answer you give 
 
 ## The opening
 
-The topic starts from its brief, and for a feature the discovery logs and the seeds; the record of every topic decided so far, never their logs; the product record, with what discovery found of the product; each spike; and earlier work in the topic's area, searched in the [knowledge base](knowledge-base.md) each time the topic opens: an earlier decision that still holds is built on, and one that must change is replaced, never decided a second time beside it. A topic that waited on the roadmap, or a piece of work that moved here from another kind, also has the record it left in its first place, as input it never changes. Claude reads what the work needs of it.
+The topic starts from its brief, and for a feature the discovery logs and the seeds; the record of every topic decided so far, never their logs; the product record, with what discovery found of the product; each spike; and earlier work on the topic's subject, searched in the [knowledge base](knowledge-base.md) each time the topic opens: an earlier decision that still holds is built on, and one that must change is replaced, never decided a second time beside it. A topic that waited on the roadmap, or a piece of work that moved here from another kind, also has the record it left in its first place, as input it never changes. Claude reads what the work needs of it.
 
 Only a question on the map holds the topic's close, so a question the talk leaves open goes there.
 

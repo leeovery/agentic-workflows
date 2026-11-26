@@ -2,7 +2,7 @@
  * The review phase's This session (20.10) and the pages it opens.
  *
  * This session: its header, the project, type and how many tasks were
- * built; the round, its areas read of all and where it stands, the line
+ * built; the round, its sections read of all and where it stands, the line
  * wrapping so a failing round's fix tasks show whole (D12), and stopped
  * until the person answers where nothing can go on, as the build's This
  * session says it (D6); WAITING ON YOU as the build draws it, the phase's
@@ -10,9 +10,9 @@
  * every other wait asked in the conversation — finish (D18), named as the
  * engine names it, a quick-fix's its close; the latest fix tasks as the build's
  * phase past the cut, each opening its task's page (20.10.2, D17); FOUND,
- * each finding with its mark by its call and its area — in scope once the
+ * each finding with its mark by its call and its section — in scope once the
  * round is recorded, else every one its landed reports hold; the round's
- * areas, each read with what it ran and found, being read with its clock,
+ * sections, each read with what it ran and found, being read with its clock,
  * waiting, or unchanged, not read again (20.S11), one built before the
  * migration cut the unit, whole or in part, saying so on the line beneath
  * (21.8.8); NOT PROVEN; TO THE
@@ -21,8 +21,8 @@
  *
  * A finding's page names where it went under its mark — or, while its
  * round is read, that it is being read, with its call and its reviewer —
- * the line wrapping so its area shows whole (D13, D19), then its words in
- * full; a check's, where it stands under its mark with its scenario, area
+ * the line wrapping so its section shows whole (D13, D19), then its words in
+ * full; a check's, where it stands under its mark with its scenario, section
  * and round, then its scenario's words.
  */
 import { COLOUR, MARK, blank, counted, cutTo, heading, prose, rowsOf, spread, titledLine, widthOf, type Kit, type Line, type Part } from '../draw.ts'
@@ -31,8 +31,8 @@ import { pageKey } from '../pane.ts'
 import { taskLineOf, waitingLines, type TaskLine, type Waiting } from './build.ts'
 import { section, type Found } from './task.ts'
 
-/** An area of a round, as the engine's model holds it. */
-type AreaLine = { area: string; title: string; before: 'built' | 'partly' | null; state: 'read' | 'reading' | 'waiting' | 'unchanged'; ran: number; found: number; since: string | null }
+/** A section of a round, as the engine's model holds it. */
+type SectionLine = { section: string; title: string; before: 'built' | 'partly' | null; state: 'read' | 'reading' | 'waiting' | 'unchanged'; ran: number; found: number; since: string | null }
 
 /** The review phase's This session, as the engine's model holds it. */
 type ReviewView = View & {
@@ -43,7 +43,7 @@ type ReviewView = View & {
   round: number
   waiting: Waiting[]
   recorded: boolean
-  areas: AreaLine[]
+  sections: SectionLine[]
   found: Found[]
   not_proven: { round: number; scenario: string; standing: string; text: string | null }[]
   inbox: { round: number; finding: number; text: string }[]
@@ -56,7 +56,7 @@ type ReviewView = View & {
 type FindingPage = View & {
   round: number
   finding: number | null
-  area: string
+  section: string
   scope: string | null
   call: string
   text: string
@@ -68,11 +68,11 @@ type FindingPage = View & {
 /** A check a round ran, as the engine's model holds it. */
 type CheckPage = View & { round: number; scenario: string; standing: string; text: string | null }
 
-/** The reader over the tests, as the engine names its area. */
+/** The reader over the tests, as the engine names its section. */
 const TESTS = 'tests'
 
-/** An area as a line names it: its section, or the tests. */
-const areaOf = (area: string) => (area === TESTS ? TESTS : `§${area.split('-')[0] ?? area}`)
+/** A section as a line names it: its number, or the tests. */
+const sectionLabel = (name: string) => (name === TESTS ? TESTS : `§${name.split('-')[0] ?? name}`)
 
 const SEPARATOR: Part = { text: ' · ', color: COLOUR.secondary }
 
@@ -96,9 +96,9 @@ function standingOf(view: ReviewView, kit: Kit): Part[] {
   return view.stopped ? [...roundOf(view, kit), ...STOP] : roundOf(view, kit)
 }
 
-/** Where the round itself stands: its verdict, a failing one's fix tasks still to build while they can build, or the areas being read. */
+/** Where the round itself stands: its verdict, a failing one's fix tasks still to build while they can build, or the sections being read. */
 function roundOf(view: ReviewView, kit: Kit): Part[] {
-  const { round, verdict, areas } = view
+  const { round, verdict, sections } = view
 
   if (verdict === 'passed' || verdict === 'settled') {
     return [SEPARATOR, { text: `${MARK.done} round ${round} ${verdict === 'passed' ? 'passes' : 'settled'}`, color: COLOUR.done }]
@@ -110,7 +110,7 @@ function roundOf(view: ReviewView, kit: Kit): Part[] {
     return [SEPARATOR, { text: `${MARK.failed} round ${round} fails${left === 0 ? '' : ` · ${counted(left, 'fix task')} to build`}`, color: COLOUR.failed }]
   }
 
-  const reading = areas.filter(({ state }) => state === 'reading').length
+  const reading = sections.filter(({ state }) => state === 'reading').length
 
   return reading === 0 ? [] : [SEPARATOR, kit.spinner(), { text: ` ${reading} being read`, color: COLOUR.running }]
 }
@@ -124,7 +124,7 @@ function whereOf({ project, type, built }: ReviewView, kit: Kit): Line {
 
 /** The header: the unit and phase, where it is built, and the round with where it stands. */
 function headOf(view: ReviewView, kit: Kit): Line[] {
-  const read = view.areas.filter(({ state }) => state === 'read' || state === 'unchanged').length
+  const read = view.sections.filter(({ state }) => state === 'read' || state === 'unchanged').length
 
   return [
     titledLine('review:head', { text: view.title, bold: true }, [{ text: ' · review', color: COLOUR.secondary }], kit.width),
@@ -132,7 +132,7 @@ function headOf(view: ReviewView, kit: Kit): Line[] {
     {
       key: 'review:facts',
       wraps: true,
-      parts: [{ text: `round ${view.round} · ${read} of ${view.areas.length} areas read`, color: COLOUR.secondary }, ...standingOf(view, kit)],
+      parts: [{ text: `round ${view.round} · ${read} of ${view.sections.length} sections read`, color: COLOUR.secondary }, ...standingOf(view, kit)],
     },
     blank('review:head'),
   ]
@@ -160,7 +160,7 @@ const callMark = (call: string) => (call === 'nit' ? MARK.difference : MARK.fail
 const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim()
 
 /**
- * FOUND: each finding with its mark by its call and its area, a press away
+ * FOUND: each finding with its mark by its call and its section, a press away
  * from its page — once the round is recorded, those in scope, by number;
  * while it is read, each its landed reports hold, by its report item, scope
  * being Claude's call then.
@@ -170,16 +170,16 @@ const foundOf = ({ found, recorded }: ReviewView, kit: Kit): Line[] =>
     ? []
     : [
         section('review:found', 'FOUND', COLOUR.failed, kit.width, recorded ? `${found.length} in scope` : `${found.length} found`),
-        ...found.map(({ round, finding, from, area, call, text }): Line => ({
+        ...found.map(({ round, finding, from, section: where, call, text }): Line => ({
           key: `review:found:${round}:${finding ?? from}`,
-          parts: cutTo([{ text: `${callMark(call)} `, color: COLOUR.failed }, { text: `${areaOf(area)} `, color: COLOUR.secondary }, { text: oneLine(text), color: COLOUR.body }], kit.width),
+          parts: cutTo([{ text: `${callMark(call)} `, color: COLOUR.failed }, { text: `${sectionLabel(where)} `, color: COLOUR.secondary }, { text: oneLine(text), color: COLOUR.body }], kit.width),
           press: pageKey(`finding:${round}:${finding ?? from}`),
         })),
         blank('review:found'),
       ]
 
-/** An area's mark and what it ran and found, or where its reading stands. */
-function areaState({ state, ran, found, since }: AreaLine, kit: Kit): [Part, Part] {
+/** A section's mark and what it ran and found, or where its reading stands. */
+function sectionState({ state, ran, found, since }: SectionLine, kit: Kit): [Part, Part] {
   const runs = ran > 0 ? `ran ${ran} · ` : ''
 
   switch (state) {
@@ -196,21 +196,21 @@ function areaState({ state, ran, found, since }: AreaLine, kit: Kit): [Part, Par
   }
 }
 
-/** How an area built before the migration cut the unit says so, whole or in part. */
+/** How a section built before the migration cut the unit says so, whole or in part. */
 const BUILT_BEFORE = { built: 'built before Ledger', partly: 'partly built before Ledger' } as const
 
-/** ROUND N: one row per area and one for the reader over the tests, an area built before the migration saying so beneath. */
-function areasOf({ round, areas }: ReviewView, kit: Kit): Line[] {
+/** ROUND N: one row per section and one for the reader over the tests, a section built before the migration saying so beneath. */
+function roundSections({ round, sections }: ReviewView, kit: Kit): Line[] {
   return [
-    section('review:areas', `ROUND ${round}`, COLOUR.violet, kit.width, round === 1 ? 'every area, read and run' : 'the areas the fixes changed'),
-    ...areas.flatMap((line): Line[] => {
-      const [mark, state] = areaState(line, kit)
-      const label = line.area === TESTS ? line.title : `§${line.area} ${line.title}`
-      const row: Line = { key: `review:area:${line.area}`, parts: spread([mark, { text: ` ${label}`, color: COLOUR.body }], [state], kit.width) }
+    section('review:sections', `ROUND ${round}`, COLOUR.violet, kit.width, round === 1 ? 'every section, read and run' : 'the sections the fixes changed'),
+    ...sections.flatMap((line): Line[] => {
+      const [mark, state] = sectionState(line, kit)
+      const label = line.section === TESTS ? line.title : `§${line.section} ${line.title}`
+      const row: Line = { key: `review:section:${line.section}`, parts: spread([mark, { text: ` ${label}`, color: COLOUR.body }], [state], kit.width) }
 
-      return line.before === null ? [row] : [row, { key: `review:area:${line.area}:before`, parts: [{ text: `  ${BUILT_BEFORE[line.before]}`, color: COLOUR.secondary }] }]
+      return line.before === null ? [row] : [row, { key: `review:section:${line.section}:before`, parts: [{ text: `  ${BUILT_BEFORE[line.before]}`, color: COLOUR.secondary }] }]
     }),
-    blank('review:areas'),
+    blank('review:sections'),
   ]
 }
 
@@ -242,7 +242,7 @@ const inboxOf = ({ inbox }: ReviewView, kit: Kit): Line[] =>
         blank('review:inbox'),
       ]
 
-/** The verdict's line: the round's, hung under its mark, or that it comes once every area is read. */
+/** The verdict's line: the round's, hung under its mark, or that it comes once every section is read. */
 function verdictOf({ round, verdict, found }: ReviewView): Line {
   const key = 'review:verdict:row'
 
@@ -256,10 +256,10 @@ function verdictOf({ round, verdict, found }: ReviewView): Line {
         key,
         mark: { text: `${MARK.failed} `, color: COLOUR.failed },
         wraps: true,
-        parts: [{ text: `round ${round} fails: the fix tasks build, then every area they change is read again`, color: COLOUR.body }],
+        parts: [{ text: `round ${round} fails: the fix tasks build, then every section they change is read again`, color: COLOUR.body }],
       }
     default:
-      return { key, mark: { text: `${MARK.waiting} `, color: COLOUR.notStarted }, parts: [{ text: 'once every area is read', color: COLOUR.notStarted }] }
+      return { key, mark: { text: `${MARK.waiting} `, color: COLOUR.notStarted }, parts: [{ text: 'once every section is read', color: COLOUR.notStarted }] }
   }
 }
 
@@ -272,7 +272,7 @@ export function reviewLines(view: View, kit: Kit): Line[] {
     ...waitingLines('review:waiting', review.waiting, kit),
     ...fixesOf(review, kit),
     ...foundOf(review, kit),
-    ...areasOf(review, kit),
+    ...roundSections(review, kit),
     ...unprovenOf(review, kit),
     ...inboxOf(review, kit),
     section('review:verdict', 'VERDICT', COLOUR.sky, kit.width),
@@ -325,14 +325,14 @@ function titleOf(text: string, width: number): Line {
 
 /**
  * A finding read in full: its opening words, where it went, wrapping under
- * its mark so its area shows whole (D13, D19) — with its round, or while
+ * its mark so its section shows whole (D13, D19) — with its round, or while
  * the round is read its call and its reviewer — then all its words.
  */
 export function findingLines(view: View, kit: Kit): Line[] {
   const page = view as FindingPage
   const [mark, went] = wentOf(page)
-  const area = page.area === TESTS ? 'the tests' : areaOf(page.area)
-  const after = page.reviewer === null ? ` · ${area} · round ${page.round}` : ` · ${page.call} · ${area} · reviewer ${page.reviewer}`
+  const read = page.section === TESTS ? 'the tests' : sectionLabel(page.section)
+  const after = page.reviewer === null ? ` · ${read} · round ${page.round}` : ` · ${page.call} · ${read} · reviewer ${page.reviewer}`
 
   return [
     titleOf(page.text, kit.width),
@@ -342,7 +342,7 @@ export function findingLines(view: View, kit: Kit): Line[] {
   ]
 }
 
-/** A check a round ran, read in full: where it stands, under its mark, with its scenario, area and round; then its scenario's words. */
+/** A check a round ran, read in full: where it stands, under its mark, with its scenario, section and round; then its scenario's words. */
 export function checkLines(view: View, kit: Kit): Line[] {
   const { round, scenario, standing, text } = view as CheckPage
   const proven = standing === 'proven'
@@ -355,7 +355,7 @@ export function checkLines(view: View, kit: Kit): Line[] {
       wraps: true,
       parts: [
         { text: `${standing[0]?.toUpperCase() ?? ''}${standing.slice(1)}`, bold: true, color },
-        { text: ` · ${scenario} · ${areaOf(scenario.split('.')[0] ?? scenario)} · round ${round}`, color: COLOUR.secondary },
+        { text: ` · ${scenario} · ${sectionLabel(scenario.split('.')[0] ?? scenario)} · round ${round}`, color: COLOUR.secondary },
       ],
     },
     heading('check:rule', { text: '' }, [], kit.width),

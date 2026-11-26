@@ -25,7 +25,7 @@ import { pageKey } from '../pane.ts'
 import { taskMark, taskState, type TaskLine } from './build.ts'
 
 /** A finding of the review, as the engine's model holds it. */
-export type Found = { round: number; finding: number | null; from: string | null; area: string; call: string; text: string }
+export type Found = { round: number; finding: number | null; from: string | null; section: string; call: string; text: string }
 
 /** A task's page, as the engine's model holds it. */
 type TaskPage = View & {
