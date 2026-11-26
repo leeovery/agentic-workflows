@@ -44,7 +44,8 @@
 // move among them — runs while the migration runs: commits held, the trust
 // log silent. Run again over a placement cut short, it finishes it.
 //
-// The liveness reading is its own, frozen with it, as the old skills' was.
+// The liveness reading is its own, as the old skills' was: released with
+// it, and changed only with it.
 //
 
 const fs = require('fs');

@@ -2,8 +2,8 @@
 
 //
 // The files the old system wrote for itself, which the move (078) gives no
-// place as legacy, and the migration audit reads back. Released with the
-// move, it is frozen with it.
+// place as legacy, and the migration audit reads back: released with the
+// move, and changed only with it.
 //
 // Its agents' and trackers' files (`oldSystemFile`): those it wrote in a
 // unit's topic folders of the old plan's phases, each known by its whole

@@ -79,8 +79,8 @@
 // Ledger keeps Tick's store, the project root's `.tick/`: the paths the
 // reshape's migrations were released against, which they read with fs
 // alone to carry the store into the state and drop it from the code branch.
-// It never changes; the paths are written out apart from the store's own,
-// which may.
+// Released with them, and changed only with them; the paths are written out
+// apart from the store's own, which may change.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');

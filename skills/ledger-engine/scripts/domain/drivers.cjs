@@ -224,8 +224,9 @@ const METHODS = Object.freeze({
  * naming the side and the line. Each task driver's folder declares where a
  * project from before Ledger kept its tracker's store, `pre-ledger-store.json`
  * beside its module (`{files, localFiles}`, project-relative, both empty
- * for a tracker that kept none): frozen, since the reshape's migrations
- * read it with fs alone, outside this loader.
+ * for a tracker that kept none), which the reshape's migrations read with
+ * fs alone, outside this loader: released with them, and changed only with
+ * them.
  * @typedef {DriverDeclaration & MethodsOf<typeof METHODS.task> & {
  *   ensureStore: (root: string) => boolean,
  *   storeFiles: () => string[],

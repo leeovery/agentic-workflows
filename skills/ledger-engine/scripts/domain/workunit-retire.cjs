@@ -69,7 +69,7 @@ const { purgeWorkUnitCache } = require('./cache.cjs');
 
 const SAID = 'workunit retire';
 
-/** The work types the reshape retires, whose units alone leave the registry: the shapes before it, frozen here as the migration's own. */
+/** The work types the reshape retires, whose units alone leave the registry: the shapes before it as the migration knows them, released with it, and changed only with it. */
 const RETIRED_TYPES = Object.freeze(['cross-cutting']);
 
 /**

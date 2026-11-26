@@ -5,8 +5,8 @@
 // store (`pre-ledger-store.json`, beside drivers/task/tick/driver.cjs): the
 // literal paths the reshape's migrations were released against, which they
 // read with fs alone to carry the store into the state and drop it from the
-// code branch (21.5.18). A released migration is never changed, so a change
-// here must face them first.
+// code branch (21.5.18). A change here changes what they do in a project
+// yet to run them, so it must face them first.
 //
 // Layer: unit. World: the driver's folder as it ships.
 // ---------------------------------------------------------------------------

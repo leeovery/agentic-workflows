@@ -2,8 +2,8 @@
 
 //
 // The user-level folder's settings and credentials copied into the
-// engine's, which the move (078) runs (21.5.19, P7). Released with it, it
-// is frozen with it.
+// engine's, which the move (078) runs (21.5.19, P7): released with it,
+// and changed only with it.
 //
 // The old folder, `WORKFLOWS_CONFIG_DIR` or `~/.config/workflows/`, gives
 // its `config.json` and `credentials.json` to `LEDGER_CONFIG_DIR` or

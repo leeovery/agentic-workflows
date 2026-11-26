@@ -151,8 +151,8 @@ A change lands in one place and is owed in several. Enumerate them.
 - No prose says whether a gate stops: the engine decides, a process gate
   learned from the trust log.
 - Migrations read and write `manifest.json` directly and never call
-  `engine manifest`. Shipped migrations are never edited; a correction is a
-  new numbered migration.
+  `engine manifest`. A shipped migration is repaired by a new numbered
+  migration, and improved in place only as CLAUDE.md (Migrations) allows.
 
 ## G. Test and gate coverage
 
@@ -214,8 +214,8 @@ that hides a nullable, weakens the one mechanical check this code has.
 
 **Migrations.** Read and write `manifest.json` directly, never through
 `engine manifest`. Outcome is signalled only through `reportUpdate` and
-`reportSkip` — never stdout. Idempotent, and shipped migrations are never
-edited.
+`reportSkip` — never stdout. Idempotent; a shipped migration is edited in
+place only as CLAUDE.md (Migrations) allows.
 
 **Knowledge.** The knowledge base is engine modules — mechanism in
 `kernel/knowledge/`, the workflow side in `domain/knowledge/` — reached by

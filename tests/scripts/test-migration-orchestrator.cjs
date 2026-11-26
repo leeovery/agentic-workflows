@@ -27,7 +27,7 @@
 //     marked made once recorded so, its notices handed on to the run's end,
 //     and none where it handed back nothing or a notice alone, where the
 //     code tree holds no state, or for a handback after the guard; its
-//     frozen steps and the runtime's old-layout.cjs never loading each
+//     released steps and the runtime's old-layout.cjs never loading each
 //     other; and no migration's requires reaching the engine.
 //
 // Layer: process.
@@ -826,21 +826,21 @@ describe('migrate.cjs — the reshape (21.1.3, 21.2.1)', () => {
     assert.ok(seen.has(path.join(migrations, 'reshape/shared.cjs')) && seen.has(path.join(migrations, 'reshape/linters.cjs')), 'the scan follows what the migrations load');
   });
 
-  it('the reshape\'s frozen steps and the runtime never load each other: nothing in migrations/ loads old-layout.cjs, and nothing outside it loads migrations/reshape/', () => {
+  it('the reshape\'s released steps and the runtime never load each other: nothing in migrations/ loads old-layout.cjs, and nothing outside it loads migrations/reshape/', () => {
     const scripts = path.dirname(REAL_MIGRATE);
     const skills = path.resolve(scripts, '..', '..');
     const migrations = path.join(scripts, 'migrations');
     const runtime = path.join(scripts, 'old-layout.cjs');
-    const frozen = path.join(migrations, 'reshape');
+    const reshape = path.join(migrations, 'reshape');
     const loads = (/** @type {string} */ file) => [...fs.readFileSync(file, 'utf8').matchAll(/require\((['"])(\.{1,2}\/[^'"]+)\1\)/g)].map((m) => path.resolve(path.dirname(file), m[2]));
     const files = fs.readdirSync(skills, { recursive: true, encoding: 'utf8' }).filter((rel) => rel.endsWith('.cjs')).map((rel) => path.join(skills, rel));
 
     const crossing = files.flatMap((file) => loads(file)
-      .filter((target) => (file.startsWith(migrations + path.sep) ? target === runtime : target.startsWith(frozen + path.sep)))
+      .filter((target) => (file.startsWith(migrations + path.sep) ? target === runtime : target.startsWith(reshape + path.sep)))
       .map((target) => `${path.relative(skills, file)} loads ${path.relative(skills, target)}`));
 
     assert.deepStrictEqual(crossing, []);
-    assert.ok(loads(path.join(migrations, '074-reshape-guard.cjs')).includes(path.join(frozen, 'shared.cjs')), 'the scan reads a frozen step\'s loads');
+    assert.ok(loads(path.join(migrations, '074-reshape-guard.cjs')).includes(path.join(reshape, 'shared.cjs')), 'the scan reads a released step\'s loads');
     assert.ok(loads(path.join(skills, 'ledger-engine/scripts/domain/state-checks.cjs')).includes(runtime), 'the scan reads the runtime\'s loads');
   });
 

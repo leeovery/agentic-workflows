@@ -1539,7 +1539,7 @@ describe('against what the real move writes (078)', () => {
   });
 });
 
-describe('the directive\'s example record, frozen with 079', () => {
+describe('the directive\'s example record, released with 079, and changed only with it', () => {
   it('carries as the directive writes it, its placeholders filled, and its topic is done', () => {
     dir = world();
     const fills = {

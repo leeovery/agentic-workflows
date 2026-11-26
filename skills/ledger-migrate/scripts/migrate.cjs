@@ -45,8 +45,9 @@
 //     flow. Never re-emitted for recorded migrations.
 //   - `*.md`: a directive (21.10) — a migration whose transform is
 //     judgment, a file of instructions the start session carries out, written
-//     against the shape at its number and frozen once released like any
-//     migration. It opens on its title, an H1, then its head: `## Touches`,
+//     against the shape at its number, and once released kept as any
+//     migration is (CLAUDE.md, Migrations). It opens on its title, an H1,
+//     then its head: `## Touches`,
 //     a list of the files it may touch, and `## Asks`, a list of what it asks
 //     the person — "Nothing." an item of its own where it asks nothing — each
 //     holding its list alone, an item wrapped onto lines indented beneath

@@ -2,7 +2,8 @@
 
 //
 // The linters' carry onto the project's environment, which the move (078)
-// runs over the state it wrote (E4). Released with it, it is frozen with it.
+// runs over the state it wrote (E4): released with it, and changed only
+// with it.
 //
 // The linters are part of the project's environment setup, on the project
 // manifest as `environment.linters`, each `{name, command}`, and `fix`

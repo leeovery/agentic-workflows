@@ -10,8 +10,9 @@
 // hold of the epic as a whole, or of no one topic — a unit of one topic's
 // discovery is its topic's, as its imports from discovery are. Each is done
 // once its record is carried and keeps the rules. It rests on two things
-// alone, both frozen with 079: the record `ledger carry` kept in the
-// state's cache (`.cache/migrate/carried/{unit}/{topic}.json`, a unit's own
+// alone, both released with 079, and changed only with it: the record
+// `ledger carry` kept in the state's cache
+// (`.cache/migrate/carried/{unit}/{topic}.json`, a unit's own
 // `.cache/migrate/carried/{unit}.json`), and each id it gave the record's
 // entries standing in the ledger.
 //

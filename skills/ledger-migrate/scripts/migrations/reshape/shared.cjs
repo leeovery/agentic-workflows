@@ -6,7 +6,7 @@
 // the layout's names before and after it, git as they run it, a file
 // written whole, the files the person's tools leave beside theirs, the
 // state worktree put in place, and where a project from before Ledger kept
-// a tracker's store. Released with them, it is frozen with them: the
+// a tracker's store: released with them, and changed only with them. The
 // runtime's own knowledge of the layout before Ledger is the migrate
 // skill's `old-layout.cjs`, and neither loads the other.
 //
