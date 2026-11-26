@@ -7,28 +7,28 @@
 // closed wrongly comes back on the person's word (18.6.7); what its reads
 // warned of, each a callout, so nothing they took off the checklist goes
 // unsaid — never a checklist item skipped, Ledger's own bookkeeping (6.4.5);
-// what the review's put backs set aside, where they set aside anything,
-// which stays until the person removes it (review-tree.cjs); then finish's
-// gate, an authority gate that always stops: an invitation to ask about what was built, answered
-// before finishing, then yes and a comment. No measure adds a line to it
-// (17.2.2).
+// what the review's put backs set aside, where they set aside anything, which
+// stays until the person removes it (review-tree.cjs); then finish's gate, an
+// authority gate that always stops: an invitation to ask about what was
+// built, answered before finishing, then yes and a comment. No measure adds a
+// line to it (17.2.2).
 //
 // A quick-fix's close, its finish gate (19.5.13), is drawn the same but for
 // its title, `{Title} — ready to close`; each fix done with its review's
 // verdict, under REVIEWED, the round its reviewers passed it in or the
-// orchestrator settled it, or, ○, that no reviewer read it, a one-line
-// fix, with why; what running the product proved,
-// under its title — PROVEN BY RUNNING {PRODUCT}, each fix's scenario a line,
-// ✓ where proven, else its standing — or one line saying the project has
-// no way to run it (P9); what its notes for later sent to the inbox, under
-// WENT TO THE INBOX, as a round's report lists it (19.5.26, review-phase.cjs);
-// each fix's work a question's park set aside and
-// none put back, a ⚑ line naming where it is kept and the calls that show
-// it and bring it into the checkout (R26); and its gate, `Close it?`: the yes, merging its
-// pull request where a fix done is still to land — landing its commits
-// where the driver opens none — or saying its fixes have landed; a review asked for, `review ask`, until one has been; and
-// questions about the change. Its rows and words are Claude's in the spec
-// (18.10.8).
+// orchestrator settled it, or, ○, that no reviewer read it, a one-line fix,
+// with why; what running the product proved, under its title — PROVEN BY
+// RUNNING {PRODUCT}, each fix's scenario a line, ✓ where proven, else its
+// standing — or one line saying the project has no way to run it (P9); what
+// its notes for later sent to the inbox, under WENT TO THE INBOX, as a
+// round's report lists it (19.5.26, review-phase.cjs); each fix's work a
+// question's park set aside and none put back, a ⚑ line naming where it is
+// kept and the calls that show it and bring it into the checkout (R26); and
+// its gate, `Close it?`: the yes, merging its pull request where a fix done
+// is still to land — landing its commits where the driver opens none — or
+// saying its fixes have landed; a review asked for, `review ask`, until one
+// has been; and questions about the change. Its rows and words are Claude's
+// in the spec (18.10.8).
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption, promptOption, callout, treeList, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');

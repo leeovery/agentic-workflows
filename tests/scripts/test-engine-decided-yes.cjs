@@ -2,27 +2,25 @@
 
 // ---------------------------------------------------------------------------
 // A topic's decided gate answered (ledger-engine/scripts/domain/
-// decided.cjs): `engine decided yes`, the person's yes landing each line as
-// a product-wide decision of its own at the unit's level (8.S25) — a
-// principle decided in a topic is a product-wide entry (19.S26) — the
-// candidates not struck on the epic's map with their briefs (8.S59), by
-// every check `topic add-batch` makes, a roadmap twin among them (8.1.6),
-// the struck
-// names recorded as the person's answer and refused when a later close
-// stages them (8.S60), the topic decided and
-// what comes next — an epic's menu while a live topic is left to work, a
-// topic its own yes lands among them, its spec once none is (24.S3) — the
-// counts it covers in words; a feature's topic closed into its spec with no
-// gate, its payload staged by `decided stage` and its screen and yes
-// refused, the one screen's yes parking its candidates
+// decided.cjs): `engine decided yes`, the person's yes landing each line as a
+// product-wide decision of its own at the unit's level (8.S25) — a principle
+// decided in a topic is a product-wide entry (19.S26) — the candidates not
+// struck on the epic's map with their briefs (8.S59), by every check `topic
+// add-batch` makes, a roadmap twin among them (8.1.6), the struck names
+// recorded as the person's answer and refused when a later close stages them
+// (8.S60), the topic decided and what comes next — an epic's menu while a
+// live topic is left to work, a topic its own yes lands among them, its spec
+// once none is (24.S3) — the counts it covers in words; a feature's topic
+// closed into its spec with no gate, its payload staged by `decided stage`
+// and its screen and yes refused, the one screen's yes parking its candidates
 // (test-engine-ready-to-build-feature.cjs, 8.S31); a refused yes writing
-// nothing, and a yes run again after a kill
-// landing nothing twice — a restage after it taking no second line; the
-// yes refused with nothing staged or no conversation, and never held back
-// by a call the person changed; a product-record line changed through a comment, never
-// struck (9.S55); and each line landing with the kind and hard-to-undo mark
-// its question's label gives, the labels put at once, so a spec line
-// restating one reads by its mark.
+// nothing, and a yes run again after a kill landing nothing twice — a restage
+// after it taking no second line; the yes refused with nothing staged or no
+// conversation, and never held back by a call the person changed; a
+// product-record line changed through a comment, never struck (9.S55); and
+// each line landing with the kind and hard-to-undo mark its question's label
+// gives, the labels put at once, so a spec line restating one reads by its
+// mark.
 //
 // Layer: verb. World: the decided suites' (decided-world.cjs).
 // ---------------------------------------------------------------------------

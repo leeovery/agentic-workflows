@@ -3,25 +3,25 @@
 // ---------------------------------------------------------------------------
 // The build's questions (ledger-engine/scripts/domain/raise.cjs, the
 // projection domain/questions.cjs, the park's line domain/ledger-events.cjs,
-// landed through domain/ledger-write.cjs): a raise at a build place,
-// `--parks <phase>.<n>`, parking its task where it asks — one `parked` line,
-// its number minted in its unit, the call sealed — drawing nothing and
-// sealing nothing (12.S30); a task meeting a question waiting joining it;
-// a call made outside any task — the task writer's, the consolidation
-// agent's or the phase review's — waiting parking none (12.5.5, 12.S8); a
-// call that proceeds landed for its task, or none (12.S11); a fact only the
-// person holds parking as any question asking does, never proceeding, and
-// answered as a fact (16.3.8); `raise waiting`, the
-// projection every surface reads; what ends a wait, and its answer through
-// its raise alone; `raise draw`, the question raised in full from its park
-// in any conversation, as it is worded now (12.S33's code half, 12.S34); the
-// person's answer carrying the task and the receipt of what it freed
-// (12.S35, 20.S6), each as the question parks tasks when it is answered, not
-// when it was drawn, and its trust log event blocking the build as the call
-// was decided at its first park (16.4.7), its next the queue's, else the
-// oldest question still waiting the conversation has not set aside; `raise
-// aside`, several set aside with one receipt (12.13.17); a question waiting
-// no longer refused (20.S7); `--task` on the ledger's writes in the build (12.12.5);
+// landed through domain/ledger-write.cjs): a raise at a build place, `--parks
+// <phase>.<n>`, parking its task where it asks — one `parked` line, its
+// number minted in its unit, the call sealed — drawing nothing and sealing
+// nothing (12.S30); a task meeting a question waiting joining it; a call made
+// outside any task — the task writer's, the consolidation agent's or the
+// phase review's — waiting parking none (12.5.5, 12.S8); a call that proceeds
+// landed for its task, or none (12.S11); a fact only the person holds parking
+// as any question asking does, never proceeding, and answered as a fact
+// (16.3.8); `raise waiting`, the projection every surface reads; what ends a
+// wait, and its answer through its raise alone; `raise draw`, the question
+// raised in full from its park in any conversation, as it is worded now
+// (12.S33's code half, 12.S34); the person's answer carrying the task and the
+// receipt of what it freed (12.S35, 20.S6), a departure's the verdict it owes
+// beside it, each as the question parks tasks when it is answered, not when
+// it was drawn, and its trust log event blocking the build as the call was
+// decided at its first park (16.4.7), its next the queue's, else the oldest
+// question still waiting the conversation has not set aside; `raise aside`,
+// several set aside with one receipt (12.13.17); a question waiting no longer
+// refused (20.S7); `--task` on the ledger's writes in the build (12.12.5);
 // and no questions page (27.S6). A parked task against the tracker is
 // test-engine-task-parks.cjs's.
 //
@@ -758,6 +758,15 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
     assert.strictEqual(drawnAndPicked('Q1').receipt, 'Q1 answered · task 2.3 builds again · 2 waiting on you · next: Q2');
     assert.strictEqual(drawnAndPicked('Q2').receipt, 'Q2 answered · no task waited on it · 1 waiting on you · next: Q3');
     assert.strictEqual(drawnAndPicked('Q3').receipt, 'Q3 answered · task 2.5 builds again · nothing waiting on you');
+  });
+
+  it('a pick standing over Claude\'s lean answers the verdict it owes beside the receipt naming the next question, the two together', () => {
+    parked(1, '2.3');
+    parked(2, null, { question: made.size });
+
+    const res = drawnAndPicked('Q1', MAIN.key);
+
+    assert.deepStrictEqual([res.receipt, res.verdict_owed], ['Q1 answered · task 2.3 builds again · 1 waiting on you · next: Q2', res.id]);
   });
 
   it('16.3.8: a fact parked is answered as a fact — the person\'s decision for its task, sealing no lean, nothing in the trust log, "I don\'t follow" counted on the seal alone — and answers the receipt', () => {

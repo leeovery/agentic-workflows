@@ -15,11 +15,12 @@
 //   `handoff unit` (19.1.3).
 // - Then s/start, into discovery, which takes a piece of work to the type
 //   call and talk about the product into its conversation (18.2.7);
-//   p/product, always, with its sessions' count and last date once it
-//   has sessions holding talk, and the brownfield research while it is owed (18.2.13,
-//   8.12.13); t/triage (18.2.9, projections/triage.cjs); r/roadmap, always;
-//   v/view, once a unit has closed (18.2.18), into the closed units; and m/manage (18.3.4),
-//   each a menu of its own (projections/manage.cjs). The frame adds h/help.
+//   p/product, always, with its sessions' count and last date once it has
+//   sessions holding talk, and the brownfield research while it is owed
+//   (18.2.13, 8.12.13); t/triage (18.2.9, projections/triage.cjs); r/roadmap,
+//   always; v/view, once a unit has closed (18.2.18), into the closed units;
+//   and m/manage (18.3.4), each a menu of its own (projections/manage.cjs).
+//   The frame adds h/help.
 //
 // After a feature's, a bugfix's or an epic's finish, or its cancel from
 // inside it, no menu is drawn: one line says, from the menu's own read,

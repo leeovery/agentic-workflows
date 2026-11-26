@@ -129,28 +129,28 @@
 //   replacement the departure rule holds standing over a lean the entry it
 //   replaces held logs a reversal, naming the entry it reverses (16.12.1,
 //   ledger-verdicts.cjs), and answers that its verdict is owed,
-//   `verdict_owed`, the entry's short id, where this machine owes it one,
-//   so it is asked at that moment (verdict.cjs). A decision carried over is
-//   no call of Claude's, and logs nothing (21.1.5, 21.6.5). Any other write logs nothing. What a
-//   raise lands logs the event the raise gives it: a raise answered, or a
-//   call carrying the decision point's sort; a fact's answer logs none, as
-//   it counts for nothing in the trust layer (16.3.8). The event is built
-//   in the command that writes its line, under the writer lock, and kept
-//   waiting in the conversation ahead of its line before the ledger's
-//   append, so what refuses it writes nothing, a project manifest holding
-//   no project_id among it; it lands after the ledger's append and before
-//   its commit, the trust log's own lock taken inside the writer's, where
-//   nothing but that append can fail: a failure is a warning, the event
+//   `verdict_owed`, the entry's short id, where this machine owes it one, so
+//   it is asked at that moment (verdict.cjs). A decision carried over is no
+//   call of Claude's, and logs nothing (21.1.5, 21.6.5). Any other write logs
+//   nothing. What a raise lands logs the event the raise gives it: a raise
+//   answered, or a call carrying the decision point's sort; a fact's answer
+//   logs none, as it counts for nothing in the trust layer (16.3.8). The
+//   event is built in the command that writes its line, under the writer
+//   lock, and kept waiting in the conversation ahead of its line before the
+//   ledger's append, so what refuses it writes nothing, a project manifest
+//   holding no project_id among it; it lands after the ledger's append and
+//   before its commit, the trust log's own lock taken inside the writer's,
+//   where nothing but that append can fail: a failure is a warning, the event
 //   waiting on. A command killed between the two leaves it waiting for the
-//   conversation's next record or a boot, which lands it once the entry is
-//   in the ledger, and lets it go where the entry never came, so it is
-//   neither lost nor doubled (trust-log.cjs). What a raise lands lands as
-//   the id its raise minted, so its rerun after a kill past the append finds
-//   the ledger holding it, appends and logs nothing again, finishes what
-//   the kill left — the event kept ahead of the line landed, the ledger
-//   committed — and answers the line the ledger holds; its rerun after a
-//   kill before the append keeps its own event in place of the one the
-//   killed run kept, so the line has one event, the rerun's.
+//   conversation's next record or a boot, which lands it once the entry is in
+//   the ledger, and lets it go where the entry never came, so it is neither
+//   lost nor doubled (trust-log.cjs). What a raise lands lands as the id its
+//   raise minted, so its rerun after a kill past the append finds the ledger
+//   holding it, appends and logs nothing again, finishes what the kill left —
+//   the event kept ahead of the line landed, the ledger committed — and
+//   answers the line the ledger holds; its rerun after a kill before the
+//   append keeps its own event in place of the one the killed run kept, so
+//   the line has one event, the rerun's.
 // - When: all that the request alone settles is refused before the writer
 //   lock — its argv, its place, its content in the shape of the kind it
 //   writes, a replacement reading that kind from the ledger — so a malformed
@@ -1552,8 +1552,8 @@ function landed(cwd, request, warnings) {
 /**
  * `ledger <verb>`: one event appended and committed, then the knowledge
  * base's copies rendered and indexed. Answers the entry's short id, the
- * commit, any warnings, and a reversal's verdict owed; a commit git refused is pending, and the next
- * write's commit, or boot's, takes the ledger whole.
+ * commit, any warnings, and a reversal's verdict owed; a commit git refused
+ * is pending, and the next write's commit, or boot's, takes the ledger whole.
  * @param {string} cwd @param {string} verb @param {string[]} args @param {() => string} stdin
  * @returns {Landed}
  */
@@ -1564,7 +1564,8 @@ function writeLedger(cwd, verb, args, stdin) {
     const request = checkedAndLabelled(cwd, requestOf(cwd, verb, args, stdin, warnings), warnings);
     const { landed: result, line, held } = landed(cwd, request, warnings);
     if (request.logs !== REVERSAL_LOGGED) return result;
-    return { ...result, ...verdictOwed(request.at.root, /** @type {string} */ ((line ?? held)?.id), result.id) };
+    const owed = verdictOwed(request.at.root, /** @type {string} */ ((line ?? held)?.id), result.id, warnings);
+    return { ...result, ...owed, ...(warnings.length > 0 ? { warnings } : {}) };
   } catch (err) {
     throw carrying(err, warnings);
   }

@@ -8,18 +8,18 @@
 // topic's close — what the person decided, the product-record lines, the
 // candidates parking on the roadmap and their strike — beside the outline and
 // the cut, Claude's calls on the topic counted with those at the spec,
-// decided's skips first, and no verdict asked of a call the person changed
-// on the topic or at the spec (3.S5, 9.S23, 11.S14, 9.7.3, 9.7.6, 11.8.2); a staged line whose decision changed at the spec refused until
-// staged afresh; a strike draws it again, `--page` carried; and its yes takes
-// the close as the decided gate's yes does — the line landed through the
-// ledger, then in the yes's own commit the candidates parked, the struck
-// recorded, the topic decided and its close taken, with the build begun — the
-// drivers' tools, every line and candidate checked before anything is
-// written, the review page's marks among it, and landed only once the review
-// has settled (8.S31, 8.10.2, 8.10.11). Between the yes and the build's first
-// task, nothing set up in the tracker yet, the board reads the unit as the
-// start menu's row does, This session's build among it, writing nothing
-// (20.16, 28.2.1).
+// decided's skips first, and no verdict asked of a call the person changed on
+// the topic or at the spec (3.S5, 9.S23, 11.S14, 9.7.3, 9.7.6, 11.8.2); a
+// staged line whose decision changed at the spec refused until staged afresh;
+// a strike draws it again, `--page` carried; and its yes takes the close as
+// the decided gate's yes does — the line landed through the ledger, then in
+// the yes's own commit the candidates parked, the struck recorded, the topic
+// decided and its close taken, with the build begun — the drivers' tools,
+// every line and candidate checked before anything is written, the review
+// page's marks among it, and landed only once the review has settled (8.S31,
+// 8.10.2, 8.10.11). Between the yes and the build's first task, nothing set
+// up in the tracker yet, the board reads the unit as the start menu's row
+// does, This session's build among it, writing nothing (20.16, 28.2.1).
 //
 // Layer: verb. World: the ready to build world's feature, and the same with
 // the person's changes of Claude's calls (ready-to-build-world.cjs), copied

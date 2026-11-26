@@ -35,8 +35,9 @@
 //   the start menu.
 // - The recommended row leads, never one another conversation holds
 //   (18.4.21): the first of what waits; else the first topic in the map's
-//   foundations-first order that can be worked (18.4.7); else the spec,
-//   the build or its review; else, in discovery, d. Rows follow it in their order, numbered as drawn.
+//   foundations-first order that can be worked (18.4.7); else the spec, the
+//   build or its review; else, in discovery, d. Rows follow it in their
+//   order, numbered as drawn.
 //
 // An epic this project lacks, a unit of another type, and an epic not in
 // progress — cancelled or finished — are refused.

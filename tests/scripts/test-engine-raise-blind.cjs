@@ -484,7 +484,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
     assert.strictEqual(drawn.sections, blindScreen(drawn.res.raise, { header: 'Q1 · Mint' }));
   });
 
-  it('16.S53: the person\'s answer that is Claude\'s keeps its call for the task, asked-blind, moving no one — an agreement, its raise event naming the call it agrees with, revealed so, no departure, the task standing as built and never marked changed though its pair reads it — and the call stands, the person\'s now, `by` person wherever it is shown and off every list of Claude\'s calls, the question no longer waiting; answered again, said answered already with the call\'s own row', async (t) => {
+  it('16.S53: the person\'s answer that is Claude\'s keeps its call for the task, asked-blind, moving no one — an agreement, its raise event naming the call it agrees with, revealed so, no departure and owed no verdict, the task standing as built and never marked changed though its pair reads it — and the call stands, the person\'s now, `by` person wherever it is shown and off every list of Claude\'s calls, the question no longer waiting; answered again, said answered already with the call\'s own row', async (t) => {
     drawingBlind(t);
     quietOn('behaviour');
     const { landed } = (await raisedInBuild()).res;
@@ -502,7 +502,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
     assert.strictEqual(res.receipt, 'Q1 answered · task 2.3 stands as built · nothing waiting on you');
     assert.deepStrictEqual(loggedOf('raise').map(({ entry, sealed, answer, blind }) => [entry, sealed, answer, blind]), [[full(landed.id), '2', '2', true]]);
     assert.match(sections, /^I'd have picked the same\. /m);
-    assert.deepStrictEqual([owed(res), ok(dir, ['raise', 'waiting', BUILT]).waiting, marked()], [null, [], null]);
+    assert.deepStrictEqual([owed(res), evidenceOf(statePath(dir)).departures.has(full(landed.id)), ok(dir, ['raise', 'waiting', BUILT]).waiting, marked()], [null, false, [], null]);
     const { by, given } = recordOf(landed.id);
     assert.deepStrictEqual([by, given, callsOn(), sinceCalls('since').includes(full(landed.id)), reviewListed(CURSOR.text)], ['person', 'own', [], false, false]);
     assert.deepStrictEqual([again.already, again.answer], [true, '2']);

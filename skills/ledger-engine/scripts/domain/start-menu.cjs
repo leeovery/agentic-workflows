@@ -3,19 +3,19 @@
 // ---------------------------------------------------------------------------
 // Domain ring: what the start menu reads (18.2) — each unit in progress with
 // how far it has come (progress.cjs) and what waits on the person in it
-// (waits.cjs), counted by what it is: the authority gates, the
-// questions and the decided topics an answer they relied on, replaced
-// since, holds (18.2.3); and whether mail waits for its topic, shown beside the count and never in it
-// (10.4.3), an epic's left to its own menu, which shows it by topic; the
-// inbox's live items by kind; the product's conversation, its sessions holding
-// talk (discovery-entry.cjs), and whether the
-// brownfield research is owed (8.12.13); and whether any unit has closed.
+// (waits.cjs), counted by what it is: the authority gates, the questions and
+// the decided topics an answer they relied on, replaced since, holds
+// (18.2.3); and whether mail waits for its topic, shown beside the count and
+// never in it (10.4.3), an epic's left to its own menu, which shows it by
+// topic; the inbox's live items by kind; the product's conversation, its
+// sessions holding talk (discovery-entry.cjs), and whether the brownfield
+// research is owed (8.12.13); and whether any unit has closed.
 //
-// The ledger is read once for the waits (ledger-read.cjs, `readShownOnce`),
-// a raise this conversation sealed counting in it as it does wherever the
-// waits are read in a conversation. A read with the waits left out reads
-// no ledger, and counts nothing waiting: a sample drawn from a fixture, which has no state branch and no
-// project of its own on this machine.
+// The ledger is read once for the waits (ledger-read.cjs, `readShownOnce`), a
+// raise this conversation sealed counting in it as it does wherever the waits
+// are read in a conversation. A read with the waits left out reads no ledger,
+// and counts nothing waiting: a sample drawn from a fixture, which has no
+// state branch and no project of its own on this machine.
 // ---------------------------------------------------------------------------
 
 const { loadAllManifests, loadProjectManifest } = require('./reads.cjs');

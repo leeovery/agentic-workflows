@@ -62,23 +62,22 @@
 //   counted as unlabelled (16.11).
 // - The decided gate never learns: it stops in every position (3.2.3), and
 //   its name is `decided` for good (16.11.9). Its yes, `decided yes`, stands
-//   on the screen as drawn: the close the payload was staged against. Every line and every candidate not struck is
-//   checked against the ledger and the map as they stand, by the checks
-//   their landing makes, before anything is written, so a refused yes
-//   writes nothing. Then it lands each line — its question, then the
-//   person's product-wide decision answering it (by the person, their own,
-//   moving no one: their yes over Claude's line) — each through the
-//   ledger's lock with its commit, a line or withdrawal its first run
-//   landed passing its check and landing nothing again; then, under the
+//   on the screen as drawn: the close the payload was staged against. Every
+//   line and every candidate not struck is checked against the ledger and the
+//   map as they stand, by the checks their landing makes, before anything is
+//   written, so a refused yes writes nothing. Then it lands each line — its
+//   question, then the person's product-wide decision answering it (by the
+//   person, their own, moving no one: their yes over Claude's line) — each
+//   through the ledger's lock with its commit, a line or withdrawal its first
+//   run landed passing its check and landing nothing again; then, under the
 //   writer lock, in one manifest save and its commit, lands the candidates
 //   not struck — on the epic's map, each its source the topic and its brief
 //   installed, or parked on the roadmap, each its origin the topic and its
 //   source the topic's log — records the struck ones' names as the person's
-//   answer, marks the topic decided, and records that the yes took the
-//   close. Each withdrawal lands as the lines do, after them. The staged
-//   payload goes. It
-//   answers what comes next, over the manifest as the yes saved it, so a
-//   topic it added counts and one set aside meanwhile does not: an epic
+//   answer, marks the topic decided, and records that the yes took the close.
+//   Each withdrawal lands as the lines do, after them. The staged payload
+//   goes. It answers what comes next, over the manifest as the yes saved it,
+//   so a topic it added counts and one set aside meanwhile does not: an epic
 //   whose every live topic is now decided goes into its spec, at the unit,
 //   any other epic to its menu, where the person picks the next topic
 //   (24.1.2, 8.8.13). Only an epic's topic reaches it: a feature's closes

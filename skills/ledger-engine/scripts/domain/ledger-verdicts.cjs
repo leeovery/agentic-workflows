@@ -57,7 +57,9 @@
 //   there; an event naming an entry the ledger lacks owes none, and a
 //   ledger departure no event names — the person's replacement of their
 //   own departure, still against the lean, which is no new evidence — is
-//   no departure here.
+//   no departure here. The answer is read after the entry has landed, so
+//   a log that does not read is a warning on it, the entry standing and
+//   its verdict given later by its entry.
 // - The verdict question shows a departure by the question it answers,
 //   Claude's lean and the person's answer: the lean the sealed answer of
 //   the nearest entry down its chain that holds one, or the answer of the
@@ -66,6 +68,7 @@
 //   it kept.
 // ---------------------------------------------------------------------------
 
+const { messageOf } = require('../kernel/call.cjs');
 const { ASKED_BLIND } = require('./ledger-events.cjs');
 const { factsOf } = require('./ledger-fold.cjs');
 const { evidenceOf } = require('./trust-evidence.cjs');
@@ -200,12 +203,17 @@ function owesVerdict({ departures, verdicts }, id) {
 /**
  * What the verb recording entry `id` adds to its answer (the header's):
  * `verdict_owed`, its short id `short`, where this machine owes it its
- * verdict; else nothing.
- * @param {string} root @param {string} id @param {string} short
+ * verdict; else nothing, a log that does not read warned of.
+ * @param {string} root @param {string} id @param {string} short @param {string[]} warnings
  * @returns {{verdict_owed?: string}}
  */
-function verdictOwed(root, id, short) {
-  return owesVerdict(evidenceOf(root), id) ? { verdict_owed: short } : {};
+function verdictOwed(root, id, short, warnings) {
+  try {
+    return owesVerdict(evidenceOf(root), id) ? { verdict_owed: short } : {};
+  } catch (err) {
+    warnings.push(`whether ${short} owes its verdict was not read: ${messageOf(err)} — the entry stands; where it stood over Claude's lean, give its verdict with verdict give ${short}`);
+    return {};
+  }
 }
 
 /**

@@ -2,26 +2,28 @@
 
 // ---------------------------------------------------------------------------
 // Departures and their verdicts (ledger-engine/scripts/domain/verdict.cjs,
-// over the departure rule and the verdict owed in
-// domain/ledger-verdicts.cjs, and the evidence this machine logged in
-// domain/trust-evidence.cjs): the verb that records a departure answering
-// `verdict_owed` — a raise the person answered against Claude's lean, or
-// their reversal of an answer that held it, the ledger agreeing it stood
-// over the lean — and who moved whom as the write verbs hold it: never over
-// the lean on an entry Claude made, and on the person's replacement of a
-// decision, what its reason and the entry it replaces allow, the engine
-// setting it where that is one value and the writer leaves it out, the
-// writer saying it where only the writer can tell; `engine verdict give`,
-// a verdict logged in the trust log by its entry and how it was given —
-// asked, or read from the person's words — each final, a skip among them,
-// refusing an entry that is no departure, a departure this machine logged
-// none for, and one given its verdict — a peer's among them, given while it
-// waited on the writer lock, and one waiting in any conversation — and argv
-// of another shape; an append that fails a warning, the verdict waiting in
-// the conversation for its next record; and `engine render verdict`, the
-// question on a departure owed one (domain/projections/verdict.cjs), its
-// four rows each giving a verdict as asked. A second machine is a config
-// folder of its own over the same state.
+// over the departure rule and the verdict owed in domain/ledger-verdicts.cjs,
+// and the evidence this machine logged in domain/trust-evidence.cjs): the
+// verb that records a departure answering `verdict_owed` — a raise the person
+// answered against Claude's lean, or their reversal of an answer that held
+// it, the ledger agreeing it stood over the lean — and who moved whom as the
+// write verbs hold it: never over the lean on an entry Claude made, and on
+// the person's replacement of a decision, what its reason and the entry it
+// replaces allow, the engine setting it where that is one value and the
+// writer leaves it out, the writer saying it where only the writer can tell;
+// the departures the trust log owes a verdict exactly those the writes cued,
+// a log that will not read a warning on the entry that landed, and nothing
+// read for an answer that took the lean; `engine verdict give`, a verdict
+// logged in the trust log by its entry and how it was given — asked, or read
+// from the person's words — each final, a skip among them, refusing an entry
+// that is no departure, a departure this machine logged none for, and one
+// given its verdict — a peer's among them, given while it waited on the
+// writer lock, and one waiting in any conversation — and argv of another
+// shape; an append that fails a warning, the verdict waiting in the
+// conversation for its next record; and `engine render verdict`, the question
+// on a departure owed one (domain/projections/verdict.cjs), its four rows
+// each giving a verdict as asked. A second machine is a config folder of its
+// own over the same state.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
 // library, the work unit's manifest written there; each test keeps the
@@ -39,7 +41,7 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  NO_SPACE, ok, refuses, refusedPristine, output, sectionOf, statePath, holdLock, lockAttempts, failingTrustAppends, cleanupFixture,
+  NO_SPACE, ok, okSectionsAsync, refuses, refusedPristine, output, sectionOf, statePath, holdLock, lockAttempts, failingTrustAppends, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, row, askedWorld, ledgerHelpers, leaningCall, answeredRaise } = require('./ledger-world.cjs');
@@ -48,7 +50,7 @@ const { labelling } = require('./labels.cjs');
 const { auditGate } = require('./gate-audit.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
-const { TRUST_LOG, record } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
+const { TRUST_LOG, record, trustLogPath } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { evidenceOf } = require(path.join(SCRIPTS, 'domain/trust-evidence.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
@@ -387,6 +389,63 @@ describe('giving a verdict (16.10.1, 16.10.9)', () => {
     assert.deepStrictEqual(verdicts(), [[full(first), 'loss', 'asked'], [full(second), 'fix', 'asked']]);
     assert.ok(!fs.existsSync(waitingFile), 'the verdict landed, yet waits on to land again');
     assert.deepStrictEqual(owing(), []);
+  });
+});
+
+describe('the cue and the log (16.10.1, 16.13.3)', () => {
+  /**
+   * Every read of the trust log's events refused from here, as an
+   * unreadable file refuses it; its appends, which open it to check its
+   * tail, go on. The reads are told by the reader on the stack, trust-log.cjs's
+   * `linesOfEach`.
+   * @param {import('node:test').TestContext} t
+   */
+  const unreadableLog = (t) => {
+    const open = fs.openSync;
+    t.mock.method(fs, 'openSync', (/** @type {any} */ file, /** @type {any} */ flags, /** @type {any[]} */ ...rest) => {
+      if (file === trustLogPath() && /\blinesOfEach\b/.test(new Error().stack ?? '')) throw Object.assign(new Error('EACCES: permission denied, open'), { code: 'EACCES' });
+      return open(file, flags, ...rest);
+    });
+  };
+  /** The warning a landed entry carries where whether it owes its verdict was not read. @param {string} entry */
+  const unread = (entry) => `whether ${entry} owes its verdict was not read: EACCES: permission denied, open — the entry stands; where it stood over Claude's lean, give its verdict with verdict give ${entry}`;
+  /** The warning a landed answer in a topic's discussion carries where the convergence offer's run was not read. */
+  const UNREAD_RUN = 'whether to offer to settle the rest of the topic was not read: EACCES: permission denied, open — the answer stands';
+
+  it('owes exactly the departures the writes cue: the departures the trust log owes a verdict are the verdict_owed the answers and replacements named, no more and no fewer', async () => {
+    const departed = await answering('A sheet.');
+    const agreed = await answering(LEAN);
+    const cameRound = await answering('A frameless window.', { lean: 'A frameless window.', moved: 'claude-moved-person' });
+    const answers = [departed, agreed, cameRound];
+    answers.push(landed(...replacing(decide('Notes snap to the grid.', MADE), 'was-wrong', { by: 'person' })));
+    answers.push(landed(...replacing(agreed.id, 'changed-mind', persons('person-moved-claude'))));
+    answers.push(landed(...replacing(departed.id, 'changed-mind', persons('claude-moved-person'))));
+
+    const cued = answers.map(owed).filter((cue) => cue !== null).map((cue) => full(/** @type {string} */ (cue)));
+    assert.deepStrictEqual([cued.length, new Set(owing())], [3, new Set(cued)]);
+  });
+
+  it('keeps a departure that landed though the trust log will not read: the answer and the reversal stand, committed, each warning that whether its verdict is owed was not read — the answer that the convergence offer's run was not either — and owing none it names', async (t) => {
+    const question = /** @type {string} */ (open.shift());
+    const { res } = await okSectionsAsync(dir, ['raise', NOTE, '--answers', question], { env: SESSION, stdin: JSON.stringify(leaningCall(LEAN, 'A sheet.')) });
+    const call = decide('Notes snap to the grid.', MADE);
+    unreadableLog(t);
+
+    const answer = ok(dir, ['raise', 'answer', res.raise, '--pick', '2'], { env: SESSION, stdin: JSON.stringify({ why: 'The person said why.' }) });
+    const reversal = landed(...replacing(call, 'was-wrong', { by: 'person' }));
+
+    assert.deepStrictEqual([answer, reversal].map(({ warnings, verdict_owed: cue }) => [warnings, cue]), [[[unread(answer.id), UNREAD_RUN], undefined], [[unread(reversal.id)], undefined]]);
+    assert.deepStrictEqual([answer, reversal].map(({ id }) => entries().some((entry) => entry.id === full(id))), [true, true]);
+  });
+
+  it('reads nothing for an answer that took Claude\'s lean, which can be no departure: though the trust log will not read, it lands warning of no verdict, the convergence offer\'s run alone unread', async (t) => {
+    const question = /** @type {string} */ (open.shift());
+    const { res } = await okSectionsAsync(dir, ['raise', NOTE, '--answers', question], { env: SESSION, stdin: JSON.stringify(leaningCall(LEAN, 'A sheet.')) });
+    unreadableLog(t);
+
+    const answer = ok(dir, ['raise', 'answer', res.raise, '--pick', '1'], { env: SESSION, stdin: JSON.stringify({ why: 'The person said why.' }) });
+
+    assert.deepStrictEqual([answer.warnings, answer.verdict_owed], [[UNREAD_RUN], undefined]);
   });
 });
 

@@ -47,26 +47,27 @@
 //   those carrying Claude's tick they let stand, and those passing without
 //   review (11.11.7); its review row reads the comments, and its picks take
 //   the marks read back into `.cache/{unit}/specification/read-back.json`.
-// - The yes stands on the screen as drawn: the close it shows. While the page is open it takes the page's marks,
-//   read back fresh — nothing on the page reaches Claude by itself (11.11.5)
-//   — and settles the review on them in one call (`settleReview`), storing
-//   them first: a comment waiting for Claude refuses the yes, listing each,
-//   the marks staying stored (11.11.8); else the review's record is written.
-//   With no page open it takes no marks and writes no record (11.S22). A
-//   feature's yes takes its topic's close as the decided gate's yes does,
-//   every line and candidate checked before the review is settled, and
-//   lands them after: the product-record lines through the ledger, then, in
-//   the manifest's one save, the candidates parked on the roadmap, the topic
-//   decided and its close recorded as taken, which dates the discussion. A
-//   bugfix's concludes its investigation in that save, what the bug is in
-//   checked before anything is written. Then it writes each driver's setting the project lacks, as the first
-//   verb needing it would, so the build records its drivers (22.4.3); then
-//   `build: {position}` on the unit's manifest — the first
-//   pick of the position, its record the gate's answer (E14) — concluding
-//   the spec (P7), and commits the manifest with the project's, the record,
-//   if any, and the roadmap the candidates parked on, a failed commit retried by the unit's
-//   `commit --state`, which takes each: files only the engine writes. Its
-//   `next` hands off into the build, whatever the unit's type (24.1.2).
+// - The yes stands on the screen as drawn: the close it shows. While the page
+//   is open it takes the page's marks, read back fresh — nothing on the page
+//   reaches Claude by itself (11.11.5) — and settles the review on them in
+//   one call (`settleReview`), storing them first: a comment waiting for
+//   Claude refuses the yes, listing each, the marks staying stored (11.11.8);
+//   else the review's record is written. With no page open it takes no marks
+//   and writes no record (11.S22). A feature's yes takes its topic's close as
+//   the decided gate's yes does, every line and candidate checked before the
+//   review is settled, and lands them after: the product-record lines through
+//   the ledger, then, in the manifest's one save, the candidates parked on
+//   the roadmap, the topic decided and its close recorded as taken, which
+//   dates the discussion. A bugfix's concludes its investigation in that
+//   save, what the bug is in checked before anything is written. Then it
+//   writes each driver's setting the project lacks, as the first verb needing
+//   it would, so the build records its drivers (22.4.3); then `build:
+//   {position}` on the unit's manifest — the first pick of the position, its
+//   record the gate's answer (E14) — concluding the spec (P7), and commits
+//   the manifest with the project's, the record, if any, and the roadmap the
+//   candidates parked on, a failed commit retried by the unit's `commit
+//   --state`, which takes each: files only the engine writes. Its `next`
+//   hands off into the build, whatever the unit's type (24.1.2).
 // - A switch of position is stated intent (3.3.7): `workunit position`
 //   writes the build's new position and logs a `position-switch` event in
 //   the trust log, and commits the manifest. It refuses a quick-fix, which

@@ -32,26 +32,25 @@
 //   `landsThroughHost`); and each fix done with its pair's verdict, the
 //   round its pair passed it in or the orchestrator settled it
 //   (`pairVerdict`).
-// - It lists every inbox item the unit closed, read from the record
-//   `inbox close` keeps (18.6.7, inbox.cjs, `closedBy`), and no checklist
-//   item skipped, those kept on the unit's manifest alone (6.4.5, 6.4.12).
-//   Finish then invites questions about what was built,
-//   answered before finishing (14.5.1); and what the review's put backs set
-//   aside, where they set aside anything, said to stay until the person
-//   removes it; its yes saying it lands the unit's own branch on the
-//   default branch, for a unit with one (14.5.2). A quick-fix's close says, under its title, what running the
-//   product proved of each fix done, each scenario it names from its runs
-//   at the quick-fix's branch's tip (build-screens.cjs, `ranOf`), or in one
-//   line that the project has no way to run it, no verify setup recorded
-//   (P9); what its notes for later sent to the inbox, as the close answered
-//   them (notes.cjs, `answeredAtClose`); each fix's work a question's park set aside and none put back,
-//   kept, with the calls that show it and bring it into a checkout
-//   (fix-aside.cjs, `keptAside`, R26); then its gate, the yes — saying it merges its pull request, where
-//   a fix done is still to land — a review asked for, and questions about
-//   the change.
-//   What its reads warned of — a knowledge base set up that does not read
-//   among it (finish-checks.cjs) — is said on the screen, and on the yes's
-//   answer.
+// - It lists every inbox item the unit closed, read from the record `inbox
+//   close` keeps (18.6.7, inbox.cjs, `closedBy`), and no checklist item
+//   skipped, those kept on the unit's manifest alone (6.4.5, 6.4.12). Finish
+//   then invites questions about what was built, answered before finishing
+//   (14.5.1); and what the review's put backs set aside, where they set aside
+//   anything, said to stay until the person removes it; its yes saying it
+//   lands the unit's own branch on the default branch, for a unit with one
+//   (14.5.2). A quick-fix's close says, under its title, what running the
+//   product proved of each fix done, each scenario it names from its runs at
+//   the quick-fix's branch's tip (build-screens.cjs, `ranOf`), or in one line
+//   that the project has no way to run it, no verify setup recorded (P9);
+//   what its notes for later sent to the inbox, as the close answered them
+//   (notes.cjs, `answeredAtClose`); each fix's work a question's park set
+//   aside and none put back, kept, with the calls that show it and bring it
+//   into a checkout (fix-aside.cjs, `keptAside`, R26); then its gate, the yes
+//   — saying it merges its pull request, where a fix done is still to land —
+//   a review asked for, and questions about the change. What its reads warned
+//   of — a knowledge base set up that does not read among it
+//   (finish-checks.cjs) — is said on the screen, and on the yes's answer.
 // - The yes stands on the screen as drawn: the close it shows; a
 //   quick-fix's refuses besides its worktree
 //   holding changes not committed outside the state, naming each
@@ -240,7 +239,6 @@ function finishSurface(cwd, { dotpath: unit = '' }) {
     });
   });
 }
-
 
 /** Where a finish but a quick-fix's close goes: on in the conversation (the header's). @type {import('./projections/surfaces.cjs').Next} */
 const CONTINUE = Object.freeze({ kind: 'continue' });

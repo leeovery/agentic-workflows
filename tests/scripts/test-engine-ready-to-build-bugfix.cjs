@@ -6,13 +6,14 @@
 // investigation-conclude.cjs, drawn by projections/ready-to-build.cjs): its
 // investigation closed into its spec with no gate, `render ready-to-build`
 // draws the recap — the hunt, the symptoms, the root cause and the fix
-// direction — before the outline and the cut, asking no verdict of a
-// call the person changed in the hunt (19.4.23, 11.8.5, 16.10.5); it stands on the close and the recap its mark keeps, so a cancel and a
-// reactivate keep it; a root cause or a fix the person changes there is the
-// spec's replacement, the recap staged again over it with the investigation
-// frozen, and the spec's writer briefed with it (11.8.5); its yes concludes the investigation with the build
-// begun: the item completed and its close stamped, what the bug is in kept
-// as staged, with whether that unit's review had ended — kept from an
+// direction — before the outline and the cut, asking no verdict of a call the
+// person changed in the hunt (19.4.23, 11.8.5, 16.10.5); it stands on the
+// close and the recap its mark keeps, so a cancel and a reactivate keep it; a
+// root cause or a fix the person changes there is the spec's replacement, the
+// recap staged again over it with the investigation frozen, and the spec's
+// writer briefed with it (11.8.5); its yes concludes the investigation with
+// the build begun: the item completed and its close stamped, what the bug is
+// in kept as staged, with whether that unit's review had ended — kept from an
 // earlier conclude naming the same unit — and the close recorded as taken
 // (17.1.9, 17.S4); what the bug is in no longer holding refuses it, naming
 // the restage, writing nothing.

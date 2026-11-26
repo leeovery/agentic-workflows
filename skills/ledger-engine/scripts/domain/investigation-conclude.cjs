@@ -54,21 +54,21 @@
 //   reading of it, one line of words, never checked against the map, and
 //   staged in the spelling the project's bugfixes first recorded it by
 //   where one has (bug-records.cjs).
-// - Ready to build stands on the close (`concludedClose`): the recap as
-//   kept, refused where its root cause or its fix has been replaced since —
-//   staged again, it is drawn again; it draws THE HUNT, Claude's recap, the
-//   symptoms from the log, and the root cause told against them and the fix
-//   direction in their entries' words. Its yes, checking what the bug is in again, a refusal naming the restage,
-//   concludes the investigation in the manifest's one save
-//   (`concludingYes`): it completes the investigation's item and stamps its
-//   close, `concluded_at`, the instant (P2) — what the board dates the
-//   investigation by — with what the bug is in, as staged, none kept from an
-//   earlier conclude: `fixes` and `area` where named and, with `fixes`,
+// - Ready to build stands on the close (`concludedClose`): the recap as kept,
+//   refused where its root cause or its fix has been replaced since — staged
+//   again, it is drawn again; it draws THE HUNT, Claude's recap, the symptoms
+//   from the log, and the root cause told against them and the fix direction
+//   in their entries' words. Its yes, checking what the bug is in again, a
+//   refusal naming the restage, concludes the investigation in the manifest's
+//   one save (`concludingYes`): it completes the investigation's item and
+//   stamps its close, `concluded_at`, the instant (P2) — what the board dates
+//   the investigation by — with what the bug is in, as staged, none kept from
+//   an earlier conclude: `fixes` and `area` where named and, with `fixes`,
 //   `after_review`, whether that unit's review phase had ended — a round of
-//   its passed or settled (14.6.3) — judged at the first conclude naming
-//   that unit, the moment the bug was found: a later conclude naming the
-//   same unit keeps it, one naming another unit judges it afresh, and one
-//   naming none drops it with `fixes`; and records the close as taken.
+//   its passed or settled (14.6.3) — judged at the first conclude naming that
+//   unit, the moment the bug was found: a later conclude naming the same unit
+//   keeps it, one naming another unit judges it afresh, and one naming none
+//   drops it with `fixes`; and records the close as taken.
 // ---------------------------------------------------------------------------
 
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, listWorkUnitManifests } = require('../kernel/manifest.cjs');

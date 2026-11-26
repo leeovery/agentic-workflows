@@ -3,19 +3,19 @@
 // ---------------------------------------------------------------------------
 // The start menu (ledger-engine/scripts/domain/start-menu.cjs, its screen
 // projections/start-menu.cjs; 18.2.12): a row per unit in progress, type
-// first, with how far it has come and what waits on the person in it
-// counted, each kind of wait in one count, the units with something waiting
-// first, then by type, no topic on any row (18.2.1–18.2.6), read from the
-// ledger in any conversation (12.13.7) and a raise sealed in the
-// conversation that drew it; mail waiting for a unit's topic beside the
-// count, never in it (10.4.3); a call the person changed counted nowhere
-// and drawing no row, its verdict given when it was changed; the inbox as
-// one line (18.2.8); one Start row, the product's row with its sessions and the
-// research owed (18.2.13, 8.12.13), triage, the roadmap, the view once a
-// unit has closed (18.2.18), manage and help, its walk carried on in the
-// start skill; and where each row leads, a unit's by Continue (19.1.3).
-// Continue's own routes and refusals are test-engine-handoff.cjs's; the
-// frame and the help screen test-engine-menus.cjs's.
+// first, with how far it has come and what waits on the person in it counted,
+// each kind of wait in one count, the units with something waiting first,
+// then by type, no topic on any row (18.2.1–18.2.6), read from the ledger in
+// any conversation (12.13.7) and a raise sealed in the conversation that drew
+// it; mail waiting for a unit's topic beside the count, never in it (10.4.3);
+// a call the person changed counted nowhere and drawing no row, its verdict
+// given when it was changed; the inbox as one line (18.2.8); one Start row,
+// the product's row with its sessions and the research owed (18.2.13,
+// 8.12.13), triage, the roadmap, the view once a unit has closed (18.2.18),
+// manage and help, its walk carried on in the start skill; and where each row
+// leads, a unit's by Continue (19.1.3). Continue's own routes and refusals
+// are test-engine-handoff.cjs's; the frame and the help screen
+// test-engine-menus.cjs's.
 //
 // Layer: verb, `render start-menu` and `render help start-menu` run as the
 // skill runs them, in a conversation of the test's own, and the count's

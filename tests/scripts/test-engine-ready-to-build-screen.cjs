@@ -3,16 +3,16 @@
 // ---------------------------------------------------------------------------
 // Ready to build's screen (ledger-engine/scripts/domain/ready-to-build.cjs,
 // its screen domain/projections/ready-to-build.cjs): `engine render
-// ready-to-build <unit> [--page] [--calls]`, an epic's screen as 11.8.8
-// draws it — Claude's calls at the spec as they stand decided, counted by
-// kind, the outline, the phase cut read from the manifest (11.S31), auto
-// first and recommended (3.S18), the review row only where the session can
-// publish a page (11.S22, 11.S27), and, while the page is open, its foot
-// counting the review by the marks last stored (11.11.7); no verdict
-// asked of a call the person changed among the spec's gap answers, its
-// verdict given as it was changed; no construction, finding, re-loop or
-// sign-off gate left to raise before it (11.S12); and the units that never come to it, those
-// the spec's entry refuses. Every refusal writes and commits nothing.
+// ready-to-build <unit> [--page] [--calls]`, an epic's screen as 11.8.8 draws
+// it — Claude's calls at the spec as they stand decided, counted by kind, the
+// outline, the phase cut read from the manifest (11.S31), auto first and
+// recommended (3.S18), the review row only where the session can publish a
+// page (11.S22, 11.S27), and, while the page is open, its foot counting the
+// review by the marks last stored (11.11.7); no verdict asked of a call the
+// person changed among the spec's gap answers, its verdict given as it was
+// changed; no construction, finding, re-loop or sign-off gate left to raise
+// before it (11.S12); and the units that never come to it, those the spec's
+// entry refuses. Every refusal writes and commits nothing.
 //
 // Layer: verb. World: the ready to build world closed
 // (ready-to-build-world.cjs), copied for each test.

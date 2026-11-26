@@ -102,7 +102,7 @@ describe('pipeline simulation: the trust log', () => {
     const stacking = ledger(['ask', note], { ...made, text: 'Does a note stay above other windows?' });
     const stacked = (await sim.runAsync(['raise', note, '--answers', stacking], null, JSON.stringify({ ...leaningCall('It stays put.', 'It floats.'), lean: 'other' }))).raise;
     const read = sim.run(['raise', 'answer', stacked, '--own'], null, JSON.stringify({ text: 'Keep it floating over the rest.', why: 'The person said why.' }));
-    assert.strictEqual(read.verdict_owed, undefined, 'own words read as the lean owe a verdict');
+    assert.strictEqual(read.verdict_owed, undefined, 'own words read as the lean owe no verdict');
 
     // Claude proposing to change an earlier call of its own, and the person
     // keeping it as it stands: a keep at the raise's id, its raise event
@@ -126,7 +126,7 @@ describe('pipeline simulation: the trust log', () => {
     const titled = ledger(['ask', note], { ...made, text: 'Does a note have a title?' });
     const untitled = ledger(['decide', note, '--answers', titled], { by: 'person', text: 'A note has no title.', why: 'Its first line is enough.' });
     const retitled = sim.run(['ledger', 'replace', note, '--replaces', untitled, '--reason', 'changed-mind'], null, JSON.stringify({ by: 'person', drops: ['no title'], text: 'A note has a title.', why: 'Titles help search.' }));
-    assert.strictEqual(retitled.verdict_owed, undefined, 'the person\'s own decision, changed, owes a verdict');
+    assert.strictEqual(retitled.verdict_owed, undefined, 'the person\'s own decision, changed, owes no verdict');
     const kinds = trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'call' || type === 'raise').map(({ type, kind }) => `${type} ${kind}`);
     assert.deepStrictEqual(kinds, ['call look', 'call look', 'raise behaviour', 'raise behaviour', 'raise behaviour', 'call null', 'raise behaviour'], 'the calls and raises carry no labels for the oracle to hold');
 

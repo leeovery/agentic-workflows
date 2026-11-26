@@ -3,33 +3,32 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's bugfix scenarios, each replaying the calls the
 // investigation's skill makes, in its order, from start this work: the
-// investigation entered at its one topic, the hunt logged on its entries,
-// the plan gate and the check-in, the live server's permission asked at the
-// investigation's own level, both validations briefed and taken in — the
-// root cause's finding asked of the person as what the product should do,
-// the fix's raised replacing the fix, each surfaced as what it was raised
-// as and its report closed, the board saying which validation raised it,
-// the fix validated again — the fix direction raised and logged once
-// decided, and the investigation closed into its spec with no gate, its
-// recap staged — its close voided by a gap routed back before the spec,
-// entered again with its resume's reads and closed again, its recap naming
-// this time the unit whose code the bug is in; then the specification,
-// where a Comment at ready to build changes the fix direction — replaced at
-// the spec, the writer, its review and the cut again, the recap staged
-// again over it with the investigation frozen, its verdict asked as it is
-// replaced — into the build. And a bugfix moved to a feature from its investigation, its
-// cause in the design: the root cause's validation taken in, the fix
-// direction reworking the area as a feature with no validation of its own,
-// start this work's screen and its yes, the feature's discussion reading
-// the investigation as its earlier log at its first opening. And a bugfix
-// whose investigation's plan the person has always said yes at, the
-// decision point stepping it: the plan run as a learned step, logged as
-// one; on a remote on GitHub, the squash default offered in ready to
-// build's place at its first showing, then ready to build, one screen with
-// the investigation's conclude, the verdict on the fix the person changed
-// asked as they changed it, its gate, which, its count as long, stops
-// before any code; then the replay of a lower threshold,
-// which would have stopped at that step.
+// investigation entered at its one topic, the hunt logged on its entries, the
+// plan gate and the check-in, the live server's permission asked at the
+// investigation's own level, both validations briefed and taken in — the root
+// cause's finding asked of the person as what the product should do, the
+// fix's raised replacing the fix, each surfaced as what it was raised as and
+// its report closed, the board saying which validation raised it, the fix
+// validated again — the fix direction raised and logged once decided, and the
+// investigation closed into its spec with no gate, its recap staged — its
+// close voided by a gap routed back before the spec, entered again with its
+// resume's reads and closed again, its recap naming this time the unit whose
+// code the bug is in; then the specification, where a Comment at ready to
+// build changes the fix direction — replaced at the spec, the writer, its
+// review and the cut again, the recap staged again over it with the
+// investigation frozen, its verdict asked as it is replaced — into the build.
+// And a bugfix moved to a feature from its investigation, its cause in the
+// design: the root cause's validation taken in, the fix direction reworking
+// the area as a feature with no validation of its own, start this work's
+// screen and its yes, the feature's discussion reading the investigation as
+// its earlier log at its first opening. And a bugfix whose investigation's
+// plan the person has always said yes at, the decision point stepping it: the
+// plan run as a learned step, logged as one; on a remote on GitHub, the
+// squash default offered in ready to build's place at its first showing, then
+// ready to build, one screen with the investigation's conclude, the verdict
+// on the fix the person changed asked as they changed it, its gate, which,
+// its count as long, stops before any code; then the replay of a lower
+// threshold, which would have stopped at that step.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls

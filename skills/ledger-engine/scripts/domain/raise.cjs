@@ -351,6 +351,9 @@
 //   sealed one — says its verdict is owed, `verdict_owed`, the entry's
 //   short id, where this machine owes it one (ledger-verdicts.cjs), a
 //   rerun's while it still does: it is asked at that moment (verdict.cjs).
+//   An answer that took the lean reads nothing for it. Each cue an answer
+//   carries is read once it has landed, so a read that fails is a warning
+//   on the answer, which stands.
 // - Once the person's answer to Claude's call lands in a topic's
 //   discussion — never a fact's, nor one answered already — the decision
 //   point is asked whether Claude offers to settle the rest of the topic
@@ -2238,14 +2241,33 @@ function dropCued(cwd, seal, recorded, care) {
 }
 
 /**
+ * A cue read once the person's answer has landed (the header's): what
+ * `read` answers, or nothing where it throws, `what` was not read warned of,
+ * the answer standing.
+ * @param {string[]} warnings @param {string} what @param {() => Record<string, unknown>} read
+ */
+function landedCue(warnings, what, read) {
+  try {
+    return read();
+  } catch (err) {
+    warnings.push(`${what} was not read: ${messageOf(err)} — the answer stands`);
+    return {};
+  }
+}
+
+/**
  * The verdict owed on the entry the person's answer landed, where it is a
  * departure this machine owes one (the header's); none for an answer that
- * logged no raise.
- * @param {string} cwd @param {Seal} seal @param {Answering} given @param {{id: string}} recorded
+ * logged no raise or took Claude's lean — the answer the ledger holds, for
+ * one answered already — a log that does not read warned of.
+ * @param {string} cwd @param {Seal} seal @param {Answering} given @param {{id: string, already?: true, answer?: string|null}} recorded @param {string[]} warnings
  */
-function verdictCued(cwd, seal, given, recorded) {
+function verdictCued(cwd, seal, { logged }, recorded, warnings) {
   const root = findStateRoot(cwd);
-  return given.logged === null || root === null ? {} : verdictOwed(root, seal.id, recorded.id);
+  if (logged === null || root === null || seal.fact) return {};
+  const took = recorded.already ? recorded.answer : (logged.answer ?? logged.reading);
+  if (took === seal.call.lean) return {};
+  return verdictOwed(root, seal.id, recorded.id, warnings);
 }
 
 /**
@@ -2294,12 +2316,13 @@ function shownOnAnswer(cwd, seal, form, given, recorded) {
  * `raise answer <id> (--pick <n> | --own | --dont-care |
  * --didnt-follow)`: the person's answer to a raise this conversation drew
  * — a row, by its number or its own key (`keyPicked`), the keep row on a
- * replacement among them, their own words, their "don't care",
- * or that they didn't follow — the verdict it owes (`verdictCued`), and
- * what a blind raise's answer shows (`shownOnAnswer`). A "don't care" reads the care entries before anything
- * lands, so care entries that do not read refuse it with nothing
- * written. An answer to Claude's call in a topic's discussion cues the
- * convergence offer where it is due (`convergenceCued`).
+ * replacement among them, their own words, their "don't care", or that
+ * they didn't follow — the verdict it owes (`verdictCued`), and what a
+ * blind raise's answer shows (`shownOnAnswer`). A "don't care" reads the
+ * care entries before anything lands, so care entries that do not read
+ * refuse it with nothing written. An answer to Claude's call in a topic's
+ * discussion cues the convergence offer where it is due
+ * (`convergenceCued`).
  * @param {string} cwd @param {string[]} args @param {() => string} stdin
  * @returns {{answered: Record<string, unknown>, reveal: string|null}}
  */
@@ -2311,8 +2334,14 @@ function answerRaise(cwd, args, stdin) {
   const care = form === 'dont-care' ? careEntries() : null;
   const given = answering(cwd, session, seal, form, pick === null ? null : keyPicked(seal, pick), stdin);
   const recorded = recordAnswer(cwd, session, seal, given);
-  const answered = { ...recorded, ...verdictCued(cwd, seal, given, recorded), ...(care === null ? {} : dropCued(cwd, seal, recorded, care)), ...convergenceCued(cwd, seal, recorded) };
-  return { answered, reveal: shownOnAnswer(cwd, seal, form, given, recorded) };
+  const warnings = [...(recorded.warnings ?? [])];
+  const answered = {
+    ...recorded,
+    ...verdictCued(cwd, seal, given, recorded, warnings),
+    ...(care === null ? {} : landedCue(warnings, 'whether to propose dropping the care entry', () => dropCued(cwd, seal, recorded, care))),
+    ...landedCue(warnings, 'whether to offer to settle the rest of the topic', () => convergenceCued(cwd, seal, recorded)),
+  };
+  return { answered: warnings.length > 0 ? { ...answered, warnings } : answered, reveal: shownOnAnswer(cwd, seal, form, given, recorded) };
 }
 
 /** Whether `raise` with `args` answers later: the draw, which waits on the one-decision check. @param {string[]} args */

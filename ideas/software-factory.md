@@ -31,9 +31,10 @@ Most of the parts are being built for Ledger itself:
   call needs the person and when Claude proceeds. Unattended, "ask" becomes
   "hold": the question waits in a queue and doesn't block the run.
 - **The ledger and the trust log.** Every decision records who made it, and
-  "what have you decided without me?" is a query. The verdict queue collects
-  the person's judgments of Claude's calls. A factory run's output is a PR
-  plus the decisions it took on its own, ready for a verdict.
+  "what have you decided without me?" is a query. A verdict, asked the
+  moment the person changes one of Claude's calls, records what Claude's
+  answer would have cost. A factory run's output is a PR plus the decisions
+  it took on its own, ready for the person's word on each.
 - **The state branch and the append-only ledger** already let several
   sessions write at once, so several factory runs can share a project.
 - **The review phase's change-set verifiers** already judge a change-set
@@ -58,7 +59,7 @@ would set Ledger apart.
   decides? Is it a predicted number of asks, or the person marking items?
 - **Holding for review.** A draft PR with the ledger's account of what was
   decided alone? How do held questions come back to the person: the board,
-  the start menu, the verdict page?
+  the start menu?
 - **Verification without a person.** CI, the change-set verifiers, the
   one-decision check. What has to pass before a run's output is shown?
 - **A survey of the field** (SuperPlane and others) before designing: what
