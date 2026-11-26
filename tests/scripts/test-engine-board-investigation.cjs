@@ -372,15 +372,10 @@ describe('This session in an investigation (20.12.1)', () => {
     ]);
   });
 
-  it('an option\'s page is named by the number the raise\'s screen draws it under, in the order a blind seal holds its rows', async () => {
-    const fix = await raised(FIX_CALL, made.fix);
-    const shown = path.join(config, 'conversations', 'sess-1', 'raise-shown.json');
-    const seals = JSON.parse(fs.readFileSync(shown, 'utf8'));
-    const call = seals[fix].call;
-    fs.writeFileSync(shown, JSON.stringify({ ...seals, [fix]: { ...seals[fix], blind: true, call: { ...call, rows: [...call.rows].reverse() } } }));
-    atTheHunt();
+  it('an option\'s page is named by the number the raise\'s screen draws it under: on a replacement, Claude\'s proposals in order, then the keep row added last', async () => {
+    await fixReplaced();
 
-    assert.deepStrictEqual(['a', 'b'].map((key) => board(['--page', `option:${key}`]).view.name), ['2', '1']);
+    assert.deepStrictEqual(['both', 'reads', 'keep'].map((key) => board(['--page', `option:${key}`]).view.name), ['1', '2', '3']);
   });
 
   it('once picked, the fix is the fix direction\'s and never DECIDED, its question logged or not; the fix validation not yet sent, nothing validates; sent, it is what the investigation does', async () => {

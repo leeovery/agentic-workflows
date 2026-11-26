@@ -122,8 +122,8 @@ describe('gate payload — the announce switch', () => {
     const plain = output(dir, CANCEL);
     const announced = output(dir, CANCEL, { env: ANNOUNCED });
 
-    assert.ok(!plain.includes('=== GATE') && !plain.includes('=== DISPLAY: cancel gate'), plain);
-    assert.deepStrictEqual(markers(announced).map((marker) => marker.split(' (')[0]), ['=== DISPLAY: cancel gate', '=== GATE', '=== MENU: cancel gate']);
+    assert.ok(!plain.includes('=== GATE') && !plain.includes('=== DISPLAY: cancel gate — above the menu'), plain);
+    assert.deepStrictEqual(markers(announced).map((marker) => marker.split(' (')[0]), ['=== DISPLAY: cancel gate — above the menu', '=== GATE', '=== MENU: cancel gate']);
     assert.strictEqual(unannounced(announced), plain);
   });
 
@@ -324,11 +324,11 @@ describe('gate payload — the statement, drawn apart', () => {
     const out = output(dir, ['render', 'cancel-gate', 'pay.discovery.data-export'], { env: ANNOUNCED });
 
     assert.deepStrictEqual(markers(out), [
-      '=== DISPLAY: cancel gate (emit verbatim as markdown (not a code block), directly above the menu) ===',
+      '=== DISPLAY: cancel gate — above the menu (emit verbatim as markdown (not a code block), directly above the menu) ===',
       GATE_MARKER,
       '=== MENU: cancel gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
     ]);
-    assert.deepStrictEqual(sectionLines(out, 'DISPLAY: cancel gate'), ['Cancelling **Data Export** takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later.']);
+    assert.deepStrictEqual(sectionLines(out, 'DISPLAY: cancel gate — above the menu'), ['Cancelling **Data Export** takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later.']);
     assert.deepStrictEqual(sectionLines(out, 'MENU: cancel gate'), ['· · · · · · · · · · · ·', '**`◆ Cancel it?`**', '', '**`y/yes`** → Confirm cancellation', '**`n/no`**  → Keep it']);
     assert.strictEqual(gateOf(out).question, 'Cancel it?');
   });
@@ -344,14 +344,14 @@ describe('gate payload — the statement, drawn apart', () => {
     const label = ['2 topic(s) have no source file to draft from:', '', '- Billing Core', '- `auth_v2`'].join('\n');
     const out = drawn(() => menu(label, [cmdOption('l', 'leave', 'Leave them unset')], { question: 'How do you want to handle them?' }));
 
-    assert.deepStrictEqual(sectionLines(out, 'DISPLAY: builder'), ['2 topic(s) have no source file to draft from:', '', '- Billing Core', '- `auth_v2`']);
+    assert.deepStrictEqual(sectionLines(out, 'DISPLAY: builder — above the menu'), ['2 topic(s) have no source file to draft from:', '', '- Billing Core', '- `auth_v2`']);
     assert.strictEqual(gateOf(out).question, 'How do you want to handle them?');
   });
 
   it('statement lines apart in the frame stand a blank line apart, and the menu keeps no blank line of theirs', () => {
     const out = drawn(() => menuFrame(['First.', '', 'Second.', '', '**`◆ Pick one?`**', '', cmdOption('1', null, 'One'), '', 'Last.']));
 
-    assert.deepStrictEqual(sectionLines(out, 'DISPLAY: builder'), ['First.', '', 'Second.', '', 'Last.']);
+    assert.deepStrictEqual(sectionLines(out, 'DISPLAY: builder — above the menu'), ['First.', '', 'Second.', '', 'Last.']);
     assert.deepStrictEqual(sectionLines(out, 'MENU: builder'), ['· · · · · · · · · · · ·', '**`◆ Pick one?`**', '', '**`1`** → One']);
   });
 

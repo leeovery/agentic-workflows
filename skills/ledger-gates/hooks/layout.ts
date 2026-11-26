@@ -486,9 +486,8 @@ const pageHolding = (pages: readonly RowLine[][], cursor: number) =>
  * every page padded to one height; the page shown is `page`, or the one
  * holding the option at `cursor`; and a question too long to leave a line of
  * rows keeps the lines that do, ending "…", the chat above holding it whole.
- * How many lines there are is the
- * region's height whatever the footer says, whichever row is held and
- * whichever page shows.
+ * How many lines there are is the region's height whatever the footer says,
+ * whichever row is held and whichever page shows.
  */
 export function linesOf(
   gate: Gate,

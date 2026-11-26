@@ -1,22 +1,23 @@
 'use strict';
 
 // The gate payload held against the MENU it states. A surface that draws the
-// gate from the payload shows the person the payload in place of the menu,
-// so every row the MENU draws has to have its home there, the payload has
-// to state nothing the MENU does not draw, and what it states is the text
-// the person reads — never the markup that draws it. What the person reads
-// before the question, the menu's statement, is the chat's: a DISPLAY
-// directly above the payload, the MENU holding the question and the rows
-// alone, and with the statement folded back under its rule the response is
-// the one an unannounced surface reads. The payload states the statement
-// too, as plain text, the gate's identity no surface draws. Beside it, every section a
-// person is shown names how it renders in one of the four forms, so no older
-// or reworded form comes back. The gate it states is named as the trust log
-// keys it, so every gate a render draws, a templated name's every variant
-// among them, is held to the gate event's rule wherever it renders.
+// gate from the payload shows the person the payload's question and rows in
+// place of the menu, so every row the MENU draws has to have its home there,
+// the payload's question and rows are the menu's and nothing else, and what
+// it states is the text the person reads — never the markup that draws it.
+// What the person reads before the question, the menu's statement, is the
+// chat's: a DISPLAY directly above the payload, the MENU holding the question
+// and the rows alone; the payload states that statement too, read plain, the
+// gate's identity no surface draws. `auditingRender` also holds a render with
+// the statement folded back under its rule to the one an unannounced surface
+// reads. Beside it, every section a person is shown names how it renders in
+// one of the four forms, so no older or reworded form comes back. The gate it
+// states is named as the trust log keys it, so every gate a render draws, a
+// templated name's every variant among them, is held to the gate event's rule
+// wherever it renders.
 
 const assert = require('node:assert');
-const { RENDER_FORMS: FORMS, emitAs, openGate } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+const { RENDER_FORMS: FORMS, STATEMENT_INSTRUCTION, emitAs, openGate, statementSection } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
 const { SCHEMA } = require('../../skills/ledger-engine/scripts/domain/trust-events.cjs');
 
 const SURFACE_ENV = 'LEDGER_GATE_SURFACE';
@@ -33,7 +34,6 @@ const LITERAL_GATES = new Set(['raise']);
 // menu's short one, a line of the statement: the raise, the call's question
 // (projections/raise.cjs).
 const OWN_QUESTION_GATES = new Set(['raise']);
-const STATEMENT_INSTRUCTION = emitAs('markdown', ', directly above the menu');
 const PAYLOAD_FIELDS = ['gate', 'question', 'statement', 'options', 'typed'];
 
 // The same markup one token at a time: a code span and an escape carry their
@@ -53,7 +53,7 @@ const ENTRY_SEPARATOR = ' — ';
 
 /** @typedef {{key: string, word: string|null, head: string, tail: string|null, cue: string|null, holder: string|null, detail: string|null, struck: boolean, recommended: boolean}} GateOption */
 /** @typedef {{label: string, description: string, detail: string|null}} GateTyped */
-/** @typedef {{gate: string, question: string, options: GateOption[], typed: GateTyped[]}} GatePayload */
+/** @typedef {{gate: string, question: string, statement: string, options: GateOption[], typed: GateTyped[]}} GatePayload */
 /** @typedef {{typed: boolean, name: string, label: string|null, detail: string|null}} DrawnRow */
 /** @typedef {{ch: string, struck: boolean, italic: boolean}} Glyph */
 /** @typedef {{text: string, struck: string, italic: string}} LabelReading */
@@ -247,7 +247,7 @@ function auditMarkers(out, label) {
 
 /** The marker of the statement the gate `gate` draws apart. @param {string} gate */
 function statementMarker(gate) {
-  return `=== DISPLAY: ${gate} (${STATEMENT_INSTRUCTION}) ===`;
+  return `=== ${statementSection(gate)} (${STATEMENT_INSTRUCTION}) ===`;
 }
 
 /**

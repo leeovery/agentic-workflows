@@ -261,10 +261,10 @@
 //   the raise, found by its seal — the id or a prefix of it; a raise it
 //   never drew, after a `/clear` or a resume under a new session, is
 //   raised again. A pick names the row by the number the screen draws it
-//   under (projections/raise.cjs), or by its own key, which no call may
-//   make a number (`checkEachRow`); the row's own key is what every record
-//   of the answer holds. A row picked, or the person's own
-//   words, lands as the person's decision at the id the draw minted, where
+//   under (projections/raise.cjs), or by its own key, which a call may make
+//   a number only where it is the row's place (`checkEachRow`); the row's
+//   own key is what every record of the answer holds. A row picked, or the
+//   person's own words, lands as the person's decision at the id the draw minted, where
 //   the raise was drawn, answering its question and relying on what it relies
 //   on — on a replacement, as their replacement of the decision for the
 //   reason and cause sealed, dropping its answer as it stood: a pick's text
@@ -614,7 +614,8 @@ function checkFields(value, fields, where, optional = {}) {
  * keeps, or that is a number other than the row's place from 1: a pick
  * reads a number as the row drawn under it, and Claude's rows are drawn
  * first in the call's order, so a key that is its place names one row
- * either way.
+ * either way. A blind question draws its rows in another order, and holds
+ * all the same, its seal keying each row by its place (`inBlindOrder`).
  * @param {Row[]} rows
  */
 function checkEachRow(rows) {

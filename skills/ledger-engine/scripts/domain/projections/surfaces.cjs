@@ -406,7 +406,7 @@ function gateBlock(name, { showing, hold }) {
   };
   if (!gateSurfaceAnnounced()) return '';
   const apart = taken.prose?.apart ?? null;
-  const statement = apart === null ? '' : sectionOf(`DISPLAY: ${name}`, STATEMENT_INSTRUCTION, apart);
+  const statement = apart === null ? '' : sectionOf(statementSection(name), STATEMENT_INSTRUCTION, apart);
   const payload = JSON.stringify({ gate: name, question, statement: taken.prose?.statement ?? '', options: taken.options, typed: taken.typed });
   return `${statement}=== GATE (${GATE_INSTRUCTION}) ===\n${payload}\n`;
 }
@@ -556,10 +556,10 @@ function plainStatement(lines, roles) {
 /**
  * Record what the gate's frame says around its rows — each row's detail, its
  * question, its statement as plain text, and as markdown where it is drawn
- * apart, which the surface announced — the first frame composed being the one the MENU draws. The
- * question is the glyphed line's, or `asks` where the menu gives the gate a
- * question of its own. Answers each line's role where the statement is
- * drawn apart; null otherwise.
+ * apart, which the surface announced — the first frame composed being the
+ * one the MENU draws. The question is the glyphed line's, or `asks` where
+ * the menu gives the gate a question of its own. Answers each line's role
+ * where the statement is drawn apart; null otherwise.
  * @param {string[]} lines  the frame's lines, its label already glyphed
  * @param {string|undefined} asks
  * @returns {LineRole[]|null}
@@ -580,8 +580,8 @@ function recordFrame(lines, asks) {
 
 /**
  * A frame's lines with its statement drawn apart: the statement's lines
- * gone, and no blank line left leading, trailing or doubled; `skip` the
- * head lines left of the `skip` before.
+ * gone, and no blank line left leading, trailing or doubled; `skip`, how
+ * many of the lines left stood among the frame's first `skip`.
  * @param {string[]} lines @param {LineRole[]} roles @param {number} skip
  * @returns {{lines: string[], skip: number}}
  */
@@ -726,6 +726,13 @@ const STOP_CLAUSE = ", then STOP for the user's response";
 const MENU_INSTRUCTION = emitAs('markdown', STOP_CLAUSE);
 // A gate's statement, drawn apart from its menu (`menuFrame`).
 const STATEMENT_INSTRUCTION = emitAs('markdown', ', directly above the menu');
+
+/**
+ * The section a gate's statement is drawn apart in, named apart from any
+ * DISPLAY the surface draws of its own.
+ * @param {string} gate @returns {string}
+ */
+const statementSection = (gate) => `DISPLAY: ${gate} — above the menu`;
 
 // The instructions for a DISPLAY that is the whole response: emitting it
 // leaves the turn open, and the marker says so — a section whose response
@@ -980,5 +987,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, NBSP, NOTE_SEPARATOR, gateSurfaceAnnounced, openGate, gateShown, gateStepped, illustrate, section, menuSection, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, dataSection, CONTINUE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, menu, drawLabel, cmdOption, bareOption, promptOption, escapeMarkdown, escapeProse, wordsAsWritten, callout, indentedBody, bulletRow, clipped, treeList };
+module.exports = { DOTS, NBSP, NOTE_SEPARATOR, gateSurfaceAnnounced, openGate, gateShown, gateStepped, illustrate, section, menuSection, GATE_MOD_INSTRUCTION, STATEMENT_INSTRUCTION, statementSection, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, dataSection, CONTINUE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, menu, drawLabel, cmdOption, bareOption, promptOption, escapeMarkdown, escapeProse, wordsAsWritten, callout, indentedBody, bulletRow, clipped, treeList };
 
