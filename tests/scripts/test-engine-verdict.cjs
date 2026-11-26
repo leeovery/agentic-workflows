@@ -425,7 +425,7 @@ describe('the cue and the log (16.10.1, 16.13.3)', () => {
     assert.deepStrictEqual([cued.length, new Set(owing())], [3, new Set(cued)]);
   });
 
-  it('keeps a departure that landed though the trust log will not read: the answer and the reversal stand, committed, each warning that whether its verdict is owed was not read — the answer that the convergence offer's run was not either — and owing none it names', async (t) => {
+  it('keeps a departure that landed though the trust log will not read: the answer and the reversal stand, committed, each warning that whether its verdict is owed was not read — the answer that the convergence offer\'s run was not either — and owing none it names', async (t) => {
     const question = /** @type {string} */ (open.shift());
     const { res } = await okSectionsAsync(dir, ['raise', NOTE, '--answers', question], { env: SESSION, stdin: JSON.stringify(leaningCall(LEAN, 'A sheet.')) });
     const call = decide('Notes snap to the grid.', MADE);
