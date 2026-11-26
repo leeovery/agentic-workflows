@@ -437,13 +437,15 @@ NOTHING WAITING
 
 6.4.1 Each point on the starting page has an id the engine tracks, as it tracks the points of a record you bring from before Ledger. [Claude's proposal]
 
-6.4.2 A point reaches the ledger only when the talk takes it up: a lean you confirm or change becomes your decision, and an open one becomes a question on the map. [Claude's proposal: 2.3.1]
+6.4.2 A point reaches the ledger only when the talk takes it up. A lean the talk builds on without changing is recorded as your decision, given in discovery and linked to the log section it came from, and you are not asked. A lean you change is a decision like any other, and an open point becomes a question on the map. [Lee's ruling, 26 Nov 2026; today "what you settled on in discovery is working ground, never asked again"]
 
-6.4.3 The map shows, by area, how many points from discovery are not yet taken up. [Claude's proposal]
+6.4.3 The map shows, by area, how many open questions from discovery are not yet taken up, and how many leans stand untouched. [Claude's proposal]
 
 6.4.4 A point you no longer want is dropped at your word, and counts as dealt with. [Claude's proposal]
 
 6.4.5 The points from before Ledger and the shared files that bear on the work are kept with the work as today, and each point from before is still asked rather than built on. Only the brief that used to list them goes (8.1.1). [Claude's derivation: section 2, 8.1.1]
+
+6.4.6 A lean not yet taken up is not waiting: it stands. What counts as waiting from discovery, in an area's row, in its standing and for the close, is its open questions. [Claude's derivation: 6.4.2]
 
 ## 7. Ready for the spec
 
@@ -455,7 +457,7 @@ NOTHING WAITING
 
 7.1.3 It refuses until the pass that reads across areas has run since the last decision and everything it raised is closed. The pass proposes what is missing — an area nobody has talked through, a point that falls between two — and each is worked like any other; it may run more than once. [Claude's proposal; today the pass runs once]
 
-7.1.4 It refuses until no point from discovery is left: each is on the ledger, or dropped at your word. [Claude's proposal]
+7.1.4 It refuses until no open question from discovery is left, and every lean is on the ledger: built on in the talk (6.4.2), carried by your yes at the close of the whole (7.2.7), or dropped at your word. [Lee's ruling, 26 Nov 2026]
 
 7.1.5 What waits under an area put off (5.4.1) is not counted by 7.1.2 or 7.1.4. [Claude's derivation: 5.4.1, 7.1.1]
 
@@ -467,11 +469,13 @@ NOTHING WAITING
 
 7.2.3 Your yes takes the work into the spec. No verdict is asked here: each was asked when you made the change (5.5). [Lee's ruling, 26 Nov 2026]
 
-7.2.4 For a small piece of work (3.5.4) this is its only close, and it is a feature's close as it is today. [Lee's ruling, 26 Nov 2026]
+7.2.4 For a small piece of work (3.5.4) this is its only close. It takes the place of what a feature has today, where the discussion closes on your yes and what it decided is shown later, at ready to build: the summary now comes with that yes, and ready to build shows the spec alone. [Lee's ruling, 26 Nov 2026, that this is its only close; where the summary shows is Claude's derivation: 7.2.7 puts leans on the ledger at the close, and the spec is written from the ledger]
 
-7.2.5 The order at the close: once no question is open, no point from discovery is left and every area has had its fresh read, the close runs the pass that reads across areas. What the pass raises is worked like anything else, and the close is come back to. The summary and your yes are offered once a pass has raised nothing still open. [Claude's derivation: 7.1.3, 7.2.1, 7.2.2]
+7.2.5 The order at the close: once no question is open, no open question from discovery is left and every area has had its fresh read, the close runs the pass that reads across areas. What the pass raises is worked like anything else, and the close is come back to. The summary and your yes are offered once a pass has raised nothing still open. [Claude's derivation: 7.1.3, 7.2.1, 7.2.2]
 
 7.2.6 The close of the whole makes the checks a topic's close makes today, across the whole piece of work: every decision made in the talk has its entry, no two answers contradict, and each measurement a decision rests on is run again. [Claude's derivation: 5.1.1 moved the close and removed none of its checks]
+
+7.2.7 The summary also lists, once, the leans from discovery the talk never touched. Your yes carries them onto the ledger as your decisions, given in discovery; one you no longer hold is dropped or changed there. [Lee's ruling, 26 Nov 2026]
 
 ## 8. What goes
 
