@@ -21,14 +21,14 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
-const { git, commitAll, fixtureFrom, folderFrom, layout, statePath, writeState, engineHook, LEDGER_HOOKS, GUARD_GROUPS, hooked } = harness;
+const { git, commitAll, fixtureFrom, folderFrom, layout, statePath, writeState, engineHook, endHook, LEDGER_HOOKS, GUARD_GROUPS, hooked } = harness;
 const { createFile } = require('./discovery-test-utils.cjs');
 const store = require(path.join(path.dirname(harness.ENGINE), 'kernel/knowledge/store.cjs'));
 
 // The function-hooks flag migration 065 takes out of a project's settings,
 // and the session-label hooks boot adds where labels are on.
 const FLAG = 'CLAUDE_CODE_ENABLE_FUNCTION_HOOKS';
-const SESSION_HOOK = engineHook('session cleanup');
+const SESSION_HOOK = endHook('session cleanup');
 const RESUME_HOOK = engineHook('session resume');
 /** The settings such a project reaches with labels on: every SessionEnd hook, the SessionStart resume hook, and the guard groups. */
 const LABELS_ON = JSON.stringify({

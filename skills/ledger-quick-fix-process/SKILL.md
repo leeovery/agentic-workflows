@@ -142,7 +142,7 @@ Bring the build's log up to date, then draft the new type's brief at `.ledger/.c
 node .claude/skills/ledger-engine/scripts/engine.cjs workunit move {work_unit} --to {type:[feature|bugfix]} --file .ledger/.cache/{work_unit}/build/move.json
 ```
 
-A refusal names what to fix. Before following a yes's `next`, stop every agent you dispatched with the TaskStop tool; then follow the `next` of what it ran, the handoff into the new type's first phase. The person keeping shaping keeps the quick-fix: carry on with its fixes.
+A refusal names what to fix. Before following a yes's `next`, stop every agent you dispatched with the TaskStop tool; then follow the `next` of what it ran, the new type's first phase, opened in this conversation. The person keeping shaping keeps the quick-fix: carry on with its fixes.
 
 ## Cancelling the Quick-Fix
 

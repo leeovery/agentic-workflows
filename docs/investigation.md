@@ -53,7 +53,7 @@ The **fix direction** is then a question, each answer a way to fix it said as wh
 
 ## Reworking it as a feature
 
-When you decide the right fix is to rework the area, the bugfix moves to a feature, once its root cause has been validated. Its brief carries the symptoms, the root cause and why it is the design's, the ways ruled out and why, and the open questions. The [start this work](discovery.md#starting-a-piece-of-work) screen asks your yes, and the work hands off into the feature's discussion, which reads the investigation as its earlier log. Keep shaping instead keeps it a bugfix, and the fix is settled afresh.
+When you decide the right fix is to rework the area, the bugfix moves to a feature, once its root cause has been validated. Its brief carries the symptoms, the root cause and why it is the design's, the ways ruled out and why, and the open questions. The [start this work](discovery.md#starting-a-piece-of-work) screen asks your yes, and the work carries on in the same conversation into the feature's discussion, which reads the investigation as its earlier log. Keep shaping instead keeps it a bugfix, and the fix is settled afresh.
 
 ## The conclusion
 

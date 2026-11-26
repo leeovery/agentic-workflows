@@ -132,9 +132,8 @@ describe('pipeline simulation: bugfix', () => {
     startUnit(sim, 'feature', 'saving', 'Saving the file');
     startNew(sim);
     const started = startUnit(sim, 'bugfix', wu, 'Fix the crash');
-    assert.deepStrictEqual(started.next, { kind: 'handoff', skill: 'ledger-investigation-process', args: ['bugfix', wu] });
+    assert.deepStrictEqual(started.next, { kind: 'invoke', skill: 'ledger-investigation-process', args: ['bugfix', wu] });
 
-    handoff(sim, `/ledger-investigation-process bugfix ${wu}`);
     assert.deepStrictEqual(await huntedAsking(sim, wu), [['root-cause'], ['fix']], 'the board says which validation raised each');
     const { decisions, findings } = JSON.parse(sim.read(['ledger', 'record', wu, wu]));
     assert.deepStrictEqual([findings.map((f) => f.text), decisions.map((d) => d.text)], [
@@ -233,8 +232,7 @@ describe('pipeline simulation: bugfix', () => {
     })]);
     const { next } = sim.run(answerGate(sim, 'start this work', '--pick', 'y').next.argv);
     const route = `/ledger-discussion-process feature ${wu}`;
-    assert.strictEqual([`/${next.skill}`, ...next.args].join(' '), route, 'the move hands off into the feature\'s discussion');
-    handoff(sim, route);
+    assert.deepStrictEqual([next.kind, [`/${next.skill}`, ...next.args].join(' ')], ['invoke', route], 'the move opens the feature\'s discussion in this conversation');
 
     // Its first opening reads the investigation as its earlier log, and the
     // root cause on its earlier record, never changed.
