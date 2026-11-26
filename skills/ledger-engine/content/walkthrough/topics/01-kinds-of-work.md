@@ -8,7 +8,7 @@ Not every piece of work deserves the same process. A tweak to a settled feature 
    feature     one coherent thing to build, start to finish
    bugfix      something that used to work and now doesn't;
                an investigation finds the cause first
-   quick-fix   settled work of any size, needing no decision
+   quick-fix   work of any size that takes no deciding
                beyond a quick call; built and closed in one
                session
 ```

@@ -40,13 +40,13 @@ _Avoid_: unit, project, ticket
 A piece of work that is several distinct things wearing one name. Its parts become topics, each talked through on its own, held together by the epic's map and lived through its menu.
 
 **feature**:
-One coherent thing to build. It runs the full journey from discussion to review as a single topic.
+One coherent thing to build, whose shape takes decisions. It runs the full journey from discussion to review as a single topic.
 
 **bugfix**:
 Something that used to work and now doesn't. An investigation finds the cause in place of a discussion, then comes the specification; the build's first task proves the bug with a failing test before it is fixed, and review follows.
 
 **quick-fix**:
-Settled work of any size, a tweak or an update needing no decision beyond a quick call. It goes from discovery straight to its fixes, each built and reviewed like a task, from the first fix to its close in one session; they are built in a worktree of the quick-fix's own, so the person's checkout never moves while they are built; the close brings it up where it has out the branch the quick-fix lands on. It has a review phase only if the person asks for one at the close. One that turns out to need a real decision moves to a feature or a bugfix.
+Work of any size that takes no deciding beyond a quick call, a tweak or an update. It goes from discovery straight to its fixes, each built and reviewed like a task, from the first fix to its close in one session; they are built in a worktree of the quick-fix's own, so the person's checkout never moves while they are built; the close brings it up where it has out the branch the quick-fix lands on. It has a review phase only if the person asks for one at the close. One that turns out to need a real decision moves to a feature or a bugfix.
 _Avoid_: a small mechanical change
 
 **topic**:
@@ -65,7 +65,7 @@ One step of a piece of work's journey: discovery, discussion, experiment, invest
 Both the first phase of every piece of work and the name of the first stage. As a phase it settles what the work is, from a conversation where nothing is decided, and never starts solving the problem; it runs at two levels, the product's own conversation, where new work starts and the roadmap is shaped, and an epic's, where its map is drawn. When the two meanings could collide, say "the discovery phase" or "the Discovery stage".
 
 **discussion**:
-The deciding phase, one conversation per topic. Research, deep dives, spikes and experiments are its tools, never phases of their own: every question, finding and decision lands on the ledger, and the topic's map shows what is still open. Once no question is open and the talk has come to rest, Claude offers the close, which runs on the person's yes. It also runs when the person asks for it, or on the convergence yes, each question still open closed first. The closing pass runs and the topic reaches decided.
+The deciding phase, one conversation per topic. Research, deep dives, spikes and experiments are its tools, never phases of their own: every question, finding and decision lands on the ledger, and the topic's map shows what is still open. The close runs on the person's yes, their asking, or the convergence yes, each question still open closed first. The closing pass runs and the topic reaches decided.
 _Avoid_: research (as a phase), the discussion document
 
 **closing pass**:
@@ -227,7 +227,7 @@ What Claude's answer would have cost the product, given for each call where the 
 Now and then, a call Claude would have made without asking is put to the person cold, Claude's answer held back; once they have answered, it shows what Claude would have picked. It keeps the ask rule honest about calls that have gone quiet, and in the build a task built on Claude's call waits for the answer before it lands.
 
 **convergence**:
-After eight agreements in a row in a topic, or on the person's word, Claude offers to settle the rest: how many points are open, how many it would settle, and which still come to the person by the rule, by kind. On yes its points go on the ledger, the person's come one at a time, and the topic moves to its decided screen.
+After eight agreements in a row in a topic, Claude offers to settle the rest: how many points are open, how many it would settle, and which still come to the person by the rule, by kind. On yes its points go on the ledger, the person's come one at a time, and the topic moves to its decided screen.
 
 **care entry**:
 A line in the record of the person naming one project and one kind, such as "Aircon: look". While it stands, that kind always asks in that project, however well Claude's calls have matched; answers to it still count. It never covers every project. Claude proposes one where the person wants a kind always asked, and proposes dropping it where their answers to it keep being "don't care"; the matrix's care entries add or drop one too.
@@ -236,7 +236,7 @@ A line in the record of the person naming one project and one kind, such as "Air
 The project's screen of how the ask rule stands: for each kind, how often the person changed Claude's lean, how often Claude's answer would have cost the product, its rate, and whether it asks or has gone quiet, with Claude's one-answer calls on a row of their own. A new project starts from the person's answers across their other projects, at most ten answers' worth a kind. The threshold, the threshold mid-build and the care entries are set from it, and a kind or verdict found wrong is corrected in words.
 
 **the record of the person**:
-The person's preferences in words, each with its reason and examples, kept across all their projects; the care entries are part of it. Claude proposes an entry at a natural pause, when the person states a preference outright or their answers keep showing one, and it steers nothing until the person says yes. The screens call it the record of you.
+The person's preferences in words, each with its reason and examples, kept across all their projects; the care entries are part of it. Claude proposes an entry when the person states a preference outright or their answers keep showing one, and it steers nothing until the person says yes. The screens call it the record of you.
 _Avoid_: profile, rules
 
 ## The product layer

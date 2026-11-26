@@ -60,7 +60,7 @@ Name the item first, as **C. Park** says.
 
 ## C. Park
 
-**The item** — a kebab-case `{name}`, a one-line `{summary}`, and its `{kind}`: `bug` for something broken, `quick-fix` for settled work needing no decision, `idea` for anything else. An idea is at capability grain — one capability the user would move around a roadmap as one thing; a bug or a quick-fix is the one fix it is. Either way it is said in the product's terms rather than this phase's mechanism.
+**The item** — a kebab-case `{name}`, a one-line `{summary}`, and its `{kind}`: `bug` for something broken, `quick-fix` for work that takes no deciding, `idea` for anything else. An idea is at capability grain — one capability the user would move around a roadmap as one thing; a bug or a quick-fix is the one fix it is. Either way it is said in the product's terms rather than this phase's mechanism.
 
 **The source** — the record this session is writing, relative to `.ledger/`:
 
@@ -83,7 +83,7 @@ A refusal means the name is already on the roadmap: derive another and park it a
 
 ## D. Capture
 
-It goes to the inbox as a note, unconfirmed as every capture is. Write it from the conversation as an H1 title over a short prose body; its kind is `bug` for something broken, `quick-fix` for settled work needing no decision, and `idea` for anything else and whenever it is unclear. Capture it with the text on stdin:
+It goes to the inbox as a note, unconfirmed as every capture is. Write it from the conversation as an H1 title over a short prose body; its kind is `bug` for something broken, `quick-fix` for work that takes no deciding, and `idea` for anything else and whenever it is unclear. Capture it with the text on stdin:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs inbox capture {kind:[idea|bug|quick-fix]} <<'ITEM'

@@ -6,7 +6,7 @@ The order is fixed where it matters: the symptoms, then the code, and the root c
 
 ## Symptoms
 
-The investigation opens on your own account of the bug: the brief written when the work started, the discovery log and the inbox items it came from. Claude also searches the [knowledge base](knowledge-base.md) for earlier work in the bug's area. It confirms what your account already answers rather than asking again, and asks what it leaves open: what should happen and what happens instead, the exact steps, how often, where, since when, and what you have tried. It starts with what matters most and follows your answers down, never a barrage of questions. Each symptom is logged in your words. What you don't know stays unknown, never guessed.
+The investigation opens on your own account of the bug: the brief written when the work started, the discovery log and the inbox items it came from. Claude also searches the [knowledge base](knowledge-base.md) for earlier work in the bug's area. It confirms what your account already answers rather than asking again, and asks what it leaves open: what should happen and what happens instead, the exact steps, how often, where, since when, and what you have tried. Each symptom is logged in your words. What you don't know stays unknown, never guessed.
 
 ## The plan
 

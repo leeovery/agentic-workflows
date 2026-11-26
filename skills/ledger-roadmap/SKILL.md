@@ -27,7 +27,7 @@ The DATA names each number's item; one picked by its number, or asked about, is 
 
 ## Adding an Item
 
-`n/new` asks what the item is and which horizon it goes on. Name it: a kebab-case `{name}`, a one-line `{summary}` in the product's terms, and `--kind` for a bug or a quick-fix, settled work needing no decision. The horizon is the one they named. Where they named none:
+`n/new` asks what the item is and which horizon it goes on. Name it: a kebab-case `{name}`, a one-line `{summary}` in the product's terms, and `--kind` for a bug or a quick-fix, work that takes no deciding. The horizon is the one they named. Where they named none:
 
 Load **[choosing-a-horizon.md](../ledger-shared/references/choosing-a-horizon.md)** with names = `{name}` and follow its instructions as written.
 

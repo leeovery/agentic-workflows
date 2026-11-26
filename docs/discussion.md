@@ -35,7 +35,7 @@ A call Claude makes on its own, on a point you have not weighed in on, goes thro
 
 ### The map
 
-Claude draws the map at natural pauses and whenever you ask: your questions beside Claude's calls, the calls made since you last looked first, so you can overrule one when it is made rather than at the end. Ask "what have you decided without me?" and you get each call with the files behind it.
+Claude draws the map whenever you ask: your questions beside Claude's calls, the calls made since you last looked first, so you can overrule one when it is made rather than at the end. Ask "what have you decided without me?" and you get each call with the files behind it.
 
 ## Research
 
@@ -49,7 +49,7 @@ Files, from spikes or shared by you, live with the work and are linked from the 
 
 Once the conversation has got going, a background review reads the topic from its record and its log, never from the conversation, with a clean slate, and runs while you talk. It comes round again as the topic moves on: each further review waits until enough has changed since the last. Where a decision has two defensible ways and you stay unsettled, Claude offers **perspectives**: two agents each argue one side of the tension, and a third reconciles them, so you hear the tensions rather than two advocates.
 
-What a review finds is taken at a natural pause, never jumped to, and each finding the topic takes up becomes a question. Claude re-derives each from the record before acting on it: one a decision already answers merges into that decision; one the code or a run answers is answered from what was found; one that hides a real choice, a single defensible answer included, goes through the ask rule; one that belongs to another topic goes there as a message. No finding is cut for count.
+Each finding of a review that the topic takes up becomes a question. Claude re-derives each from the record before acting on it: one a decision already answers merges into that decision; one the code or a run answers is answered from what was found; one that hides a real choice, a single defensible answer included, goes through the ask rule; one that belongs to another topic goes there as a message. No finding is cut for count.
 
 The review is there to find the gaps while they are cheap to answer, so it hunts widely, for:
 
@@ -62,7 +62,7 @@ What counts as a finding follows how far the topic has come: early on the review
 
 ## Other topics
 
-A detail that informs a decision within this topic stays here: token refresh in an auth topic. A point whose home is another topic, such as the caching strategy that surfaces because tokens need caching, is that topic's to settle. It goes there as a **message**: what this topic found, the reasoning, and what the other is asked to decide. Claude never visits the other topic. The message waits in that topic's **mail**, and its next session raises it before anything else, a session already in the topic at its next natural pause; a topic cannot close while mail waits. The menus show it as *mail waiting*.
+A detail that informs a decision within this topic stays here: token refresh in an auth topic. A point whose home is another topic, such as the caching strategy that surfaces because tokens need caching, is that topic's to settle. It goes there as a **message**: what this topic found, the reasoning, and what the other is asked to decide. Claude never visits the other topic. The message waits in that topic's **mail**, and its next session raises it before anything else, a session already in the topic as it goes; a topic cannot close while mail waits. The menus show it as *mail waiting*.
 
 A feature has no other topic. A point of its own that needs decisions of its own is offered as a pivot to an epic, and only your yes moves it; anything else goes on the roadmap or into the inbox. Talk that rises past the topic, to the epic as a whole or to the product, can move there on your word, into the epic's discovery or the product's conversation.
 
@@ -76,7 +76,7 @@ A feature has no other topic. A point of its own that needs decisions of its own
 
 Tell Claude to decide what is left and it does: each lands as Claude's, handed over by you, and none comes back to you. After eight agreements in a row, Claude offers to settle the rest: how many points are open, how many it would settle, and which still come to you by the rule, by kind. On yes its points go on the ledger, yours come one at a time, and once each is answered the topic closes. Declined, the offer waits for the next run of agreements. Where it would settle none of the open points, no offer is made.
 
-Once no question is open on the map and the talk has come to rest, Claude may say the topic looks ready to close and offer to; you can keep talking instead. On your yes, your yes to settling the rest, or when you ask for it, the topic closes through a **closing pass** with two readers; where you ask with questions still open, each is answered first, one at a time or by settling the rest. A fresh agent, unanchored by the conversation, reads the topic's entries and log against the other topics' records and the product record, looking for a question with no answer, a contradiction with another record, a replacement that does not hold up against what it replaced, and work the decision creates that no topic owns. Claude, who was in the conversation, checks that every decision made in it has its entry and that no two current answers contradict each other, and runs again each measurement a decision rests on. Anything the pass finds lands somewhere, and where it changed what the topic decides, another pass reads what changed, until one changes nothing.
+On your yes, your yes to settling the rest, or when you ask for it, the topic closes through a **closing pass** with two readers; each question still open is answered first. A fresh agent, unanchored by the conversation, reads the topic's entries and log against the other topics' records and the product record, looking for a question with no answer, a contradiction with another record, a replacement that does not hold up against what it replaced, and work the decision creates that no topic owns. Claude, who was in the conversation, checks that every decision made in it has its entry and that no two current answers contradict each other, and runs again each measurement a decision rests on. Anything the pass finds lands somewhere, and where it changed what the topic decides, another pass reads what changed, until one changes nothing.
 
 Where no review has read the topic since its last decision, as on a quick topic whose background review never started, the fresh reader carries the gap review too: the same hunt as under [Reviews](#reviews), held to what a spec built from the record would get wrong or stall on.
 

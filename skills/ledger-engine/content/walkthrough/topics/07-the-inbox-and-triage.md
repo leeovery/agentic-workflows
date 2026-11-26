@@ -7,7 +7,7 @@ Claude keeps what comes up in any conversation, whether you asked or it came up 
 ```
    ideas        something you might build or explore
    bugs         something broken: symptoms, conditions, impact
-   quick-fixes  settled work needing no decision: what, where
+   quick-fixes  work that takes no deciding: what, where
 ```
 
 The start menu shows the inbox as one line, counted by kind, and `t/triage` opens it, each item with its age. Pick items by number, and Claude names others that fit with them; `c/change` adds to what's picked or takes some out. Then, for what's picked: `w/work` starts on it now as one piece of work, whose kind discovery settles from the items, whatever they mix; `r/roadmap` puts it on a horizon you name; `a/archive` takes it out of the inbox. Archived items are not gone: `v/view` lists them, to restore one to the inbox or delete it for good.

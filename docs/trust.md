@@ -58,7 +58,7 @@ Some calls reach you whatever the counts say:
 
 A question arrives cold and product first: what is being decided, Claude's lean, what you would notice either way, and, where a rule always brings it to you, that reason. The mechanism sits behind `t/technical`, beside how Claude's calls of its kind have gone where those sent it to you. `e/explain` says you don't follow: it counts as no answer, Claude explains again, and the question stays open. Answer in your own words whenever no row fits. Say you don't care, and Claude's lean lands as its own call, settling that one question.
 
-Questions come one at a time. In a discussion each is slotted into the conversation at a natural pause; where several wait at once they come back to back, each answered before the next shows. In the build a question parks only the tasks that depend on it, and the rest carry on.
+Questions come one at a time: where several wait at once they come back to back, each answered before the next shows. In the build a question parks only the tasks that depend on it, and the rest carry on.
 
 **Blind questions** keep the quiet kinds honest. Now and then the engine holds back a call Claude would have made alone and puts it to you cold, Claude's answer sealed; once you have answered, it shows what Claude would have picked. The engine draws them, one call in ten and one in five while a kind has little history, and Claude never chooses which. In the build, a call cheap to undo goes ahead while its blind question waits, and your different answer replaces it.
 
@@ -90,7 +90,7 @@ A question's kind or a verdict you find wrong is corrected in your own words; th
 
 ## The record of you
 
-Alongside the counts, Ledger keeps your preferences in words, each with its reason and examples, across all your projects — never a decision tree, which breaks on the first case it did not foresee. Claude proposes an entry when you state a preference outright or your answers keep showing one, and a care entry when you want a kind always to come to you in a project. A proposal waits for a natural pause, never dropped across what you are in the middle of, and an entry Claude proposes steers nothing until you say yes on the screen that proposes it. The record shapes Claude's lean on the calls it makes or raises for you, and never whether Claude asks, save through the care entries it holds. If you keep saying "don't care" to a kind under a care entry, Claude proposes dropping the entry.
+Alongside the counts, Ledger keeps your preferences in words, each with its reason and examples, across all your projects — never a decision tree, which breaks on the first case it did not foresee. Claude proposes an entry when you state a preference outright or your answers keep showing one, and a care entry when you want a kind always to come to you in a project. An entry Claude proposes steers nothing until you say yes on the screen that proposes it. The record shapes Claude's lean on the calls it makes or raises for you, and never whether Claude asks, save through the care entries it holds. If you keep saying "don't care" to a kind under a care entry, Claude proposes dropping the entry.
 
 ## Where it lives
 

@@ -1,6 +1,6 @@
 ---
 name: ledger-keep
-description: Use whenever something of substance comes up in this project, in any conversation, to keep it where Ledger keeps it — an idea, a bug or a fix for later, a view of the product said in passing or a direction dropped, a fact about the code or the platform, a reference or a file shared, the project's setup or an instruction for working in it, a point for work under way.
+description: Use whenever something of substance comes up in this project, in any conversation, to keep it where Ledger keeps it — an idea, a bug or a fix the person puts off for later, a view of the product said in passing or a direction dropped, a fact about the code or the platform, a reference or a file shared, the project's setup or an instruction for working in it, a point for work under way.
 user-invocable: false
 allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 ---
@@ -11,7 +11,7 @@ Every call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb} …`;
 
 ## Where Each Kind Goes
 
-- **An idea, a bug or a fix for later** — the inbox, as an H1 title over as much as was said, up to 500 words, 300 for a fix, never padded; `quick-fix` is settled work needing no decision. Where it concerns another Ledger project, add `--project {folder}`, that project's folder:
+- **An idea, a bug or a fix the person puts off for later** — the inbox, on their word, as an H1 title over as much as was said, up to 500 words, 300 for a fix, never padded; `quick-fix` is work that takes no deciding. Where it concerns another Ledger project, add `--project {folder}`, that project's folder:
 
   ```bash
   node .claude/skills/ledger-engine/scripts/engine.cjs inbox capture {kind:[idea|bug|quick-fix]} [--project {folder}] <<'ITEM'

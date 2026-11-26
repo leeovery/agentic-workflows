@@ -9,9 +9,9 @@ You never have to choose. You describe the work in your own words and [discovery
 | Kind | What it is | Its route |
 |---|---|---|
 | **Epic** | Several distinct things wearing one name, each needing decisions of its own. | Discovery → Discussion per topic (Experiment) → Specification → Build → Review |
-| **Feature** | One coherent thing to build, needing real discussion. | Discovery → Discussion (Experiment) → Specification → Build → Review |
+| **Feature** | One coherent thing to build, whose shape takes decisions. | Discovery → Discussion (Experiment) → Specification → Build → Review |
 | **Bugfix** | Something that used to work and now fails, its cause still to find. | Discovery → Investigation → Specification → Build → Review |
-| **Quick-fix** | Settled work of any size, needing no decision beyond a quick call. | Discovery → its fixes → its close (Review, if you ask) |
+| **Quick-fix** | Work of any size that takes no deciding beyond a quick call. | Discovery → its fixes → its close (Review, if you ask) |
 
 An experiment is in brackets because it is never a phase you enter on purpose: a discussion spawns one when a decision is about to rest on a number nobody has measured, and its result goes back to the conversation that asked ([experiments](experiments.md)).
 
@@ -20,7 +20,7 @@ The differences are not cosmetic.
 - **A feature** runs the full journey: a [discussion](discussion.md) that decides it, a [specification](specification.md) that turns the decisions into a contract, [the build](the-build.md), and a [review phase](review.md) that holds the change to the contract. Discovery leans to a feature over an epic when in doubt, since a feature that grows can become an epic later.
 - **An epic** is a feature's journey run once per topic up to the decision, then one specification, one build and one review for the whole. Its topics are talked through in conversations of their own, held together by the epic's map and lived through its menu.
 - **A bugfix** swaps discussion for an [investigation](investigation.md), because you cannot decide how to fix something until you know why it broke. Its build opens with a task that proves the bug with a failing test before anything is fixed.
-- **A quick-fix** has no discussion, no specification and no plan before the work. A known cause with a settled fix is a quick-fix, not a bugfix, and so is a small update to an existing feature or a very small new one, logic changes included. Its fixes are built and reviewed one at a time, from the first to its close, in one conversation; it has a review phase only if you ask for one at the close.
+- **A quick-fix** has no discussion, no specification and no plan before the work. A known cause with a known fix is a quick-fix, not a bugfix, and so is an update to an existing feature or a very small new one, logic changes included, where nothing takes deciding. Work whose shape you and Claude had to decide is a feature, however much of it you settled before it started. Its fixes are built and reviewed one at a time, from the first to its close, in one conversation; it has a review phase only if you ask for one at the close.
 
 Something that is a pattern or principle for the whole project, rather than a piece of work, is none of these. It belongs to the product's conversation, and it is decided in the first topic it bears on, where it becomes part of the product record.
 

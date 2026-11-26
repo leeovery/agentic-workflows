@@ -91,7 +91,7 @@ A feature or a bugfix is being started, a topic is landing on the map, or an uns
 
 ## Moving Levels
 
-The talk turns to an epic whose map is still open, or from an epic out to the product. The conversation never moves into a topic: going into one is the person's pick from the epic's menu. The move ends this home's log on a pointer, and no later entry catches that log up. Say in a line that the talk is moving there, then `enter discovery {to} --move`, `{to}` the epic or `product`. Once it has entered, its DATA reads as on entering, and `{home}` is now `{to}`.
+The talk turns to an epic whose map is still open, or from an epic out to the product. The conversation never moves into a topic: going into one is the person's pick from the epic's menu. The move ends this home's log on a pointer, and no later entry catches that log up. The move is `enter discovery {to} --move`, `{to}` the epic or `product`. Once it has entered, its DATA reads as on entering, and `{home}` is now `{to}`.
 
 ## The Product's Conversation
 
@@ -115,7 +115,7 @@ The roadmap's waiting items (`roadmap state`) and the live inbox may hold the wo
 
 ### Starting This Work
 
-Discovery is for talking, never a race to build. In the product's conversation or a type call alike, where the talk seems to have come to rest on a piece of work — something to build, fix or change — with nothing left to talk through, you may say so and offer to move it on; the person may keep talking instead. On their yes, or when they ask for it themselves:
+In the product's conversation or a type call alike, a piece of work — something to build, fix or change — is started on the person's yes or their asking:
 
 Load **[starting-this-work.md](references/starting-this-work.md)** and follow its instructions as written.
 

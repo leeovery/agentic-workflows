@@ -62,7 +62,7 @@ describe('the release ships none of the retired skills, formats or types (1.S9)'
     assert.deepStrictEqual(start.filter((file) => /baseline/i.test(fs.readFileSync(file, 'utf8'))).map((file) => path.relative(SKILLS, file)), []);
   });
 
-  it('8.4.6: no skill calls a quick-fix small — it is settled work of any size, needing no decision', () => {
+  it('8.4.6: no skill calls a quick-fix small — it is work of any size that takes no deciding', () => {
     const prose = walk(SKILLS).filter((file) => /\/(?:SKILL|references\/[^/]+)\.md$/.test(file));
     assert.ok(prose.some((file) => file.endsWith(path.join('ledger-quick-fix-process', 'SKILL.md'))), 'the listing reads the skills\' prose');
     const saying = (file) => fs.readFileSync(file, 'utf8').split('\n').filter((line) => !line.startsWith('_Avoid_:')).join('\n');
