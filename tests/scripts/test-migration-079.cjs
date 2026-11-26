@@ -1682,13 +1682,14 @@ describe('the directive\'s example record, released with 079, and changed only w
     ].filter((rule) => !briefed.includes(rule)), []);
   });
 
-  it('21.6.5: a decision is given own only where a line shows who made the call, a recommendation, a proposal or a conclusion no line shows anyone taking up carried — each in what the agents\' briefs draw', () => {
+  it('21.6.5: a decision is given own only where a line shows who made the call, a recommendation, a proposal or a conclusion no line shows anyone taking up carried, and the line showing the person deciding or handing the call over quoted in its evidence — each in what the agents\' briefs draw', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
     const briefed = text.slice(text.indexOf('## A Topic\'s Sources'), text.indexOf('## Working Through the Topics'));
 
     assert.deepStrictEqual([
       '`by` `claude`, `given` `own`, where a line shows Claude making the call itself;',
       'and where it shows no one deciding, `by` `claude`, `given` `carried`. A recommendation, a proposal or a conclusion no line shows anyone taking up — research\'s among them — shows no one deciding, whoever wrote it.',
+      'The line showing the person deciding, or handing the call over, is quoted in the decision\'s `evidence`.',
     ].filter((rule) => !briefed.includes(rule)), []);
   });
 
