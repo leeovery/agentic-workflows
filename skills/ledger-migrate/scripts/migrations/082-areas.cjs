@@ -34,15 +34,27 @@ const { spawnSync } = require('child_process');
 const STATE_DIR = '.ledger';
 const SCRATCH = path.join('.cache', 'migrate');
 const ROUND_RECORD = /^round-\d+\.json$/;
+const REPOSITORY_ENV = [
+  'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_COMMON_DIR', 'GIT_CONFIG', 'GIT_CONFIG_COUNT', 'GIT_CONFIG_PARAMETERS', 'GIT_DIR',
+  'GIT_GRAFT_FILE', 'GIT_IMPLICIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_NAMESPACE', 'GIT_NO_REPLACE_OBJECTS', 'GIT_OBJECT_DIRECTORY',
+  'GIT_PREFIX', 'GIT_QUARANTINE_PATH', 'GIT_REPLACE_REF_BASE', 'GIT_SHALLOW_FILE', 'GIT_WORK_TREE',
+];
 
 /** @param {unknown} v @returns {v is Record<string, any>} */
 function isObject(v) {
   return v !== null && typeof v === 'object' && !Array.isArray(v);
 }
 
+/** The process's environment, less the variables that point git at a repository, so git finds it by the folder alone. */
+function withoutRepository() {
+  const env = { ...process.env };
+  for (const name of REPOSITORY_ENV) delete env[name];
+  return env;
+}
+
 /** The state of the repository `projectDir` is in, or null where it is in none or holds none. @param {string} projectDir */
 function stateOf(projectDir) {
-  const res = spawnSync('git', ['rev-parse', '--git-common-dir'], { cwd: projectDir, encoding: 'utf8' });
+  const res = spawnSync('git', ['rev-parse', '--git-common-dir'], { cwd: projectDir, encoding: 'utf8', env: withoutRepository() });
   if (res.error || res.status !== 0) return null;
   const common = fs.realpathSync(path.resolve(projectDir, res.stdout.trim()));
   if (path.basename(common) !== '.git') return null;

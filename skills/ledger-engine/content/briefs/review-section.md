@@ -2,7 +2,7 @@
 
 {{engine}}
 
-# The spec's section
+# The section
 
 {{section-text}}
 

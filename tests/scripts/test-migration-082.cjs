@@ -10,8 +10,11 @@
 // investigation's close, each in its place among the keys and everything
 // else kept; each finding's `area` renamed `section` in a review round's
 // record and a quick-fix's notes answered, the round's other files left;
-// a file written whole, from a scratch in the state's cache; a run again
-// changing nothing; and what it passes over: a project in no repository or
+// a file written whole, from a scratch in the state's cache, nothing staged
+// or committed; a run from a project nested in its repository or from a
+// linked worktree of its code, on the main checkout's state; a unit's
+// findings renamed where its manifest will not read; a run again changing
+// nothing; and what it passes over: a project in no repository or
 // with no state, a state holding nothing to rename, a record already
 // naming the new field, a file that will not read, a folder of the state
 // holding no manifest, and a retired unit kept in the product's assets.
@@ -27,7 +30,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { initRepo } = require('./engine-harness.cjs');
-const { useTempFolder, createFile, readFile, filesUnder } = require('./discovery-test-utils.cjs');
+const { git, useTempFolder, createFile, readFile, filesUnder } = require('./discovery-test-utils.cjs');
 const MIGRATION = require(path.join(__dirname, '../../skills/ledger-migrate/scripts/migrations/082-areas.cjs'));
 
 const folder = useTempFolder('migration-082-');
@@ -147,6 +150,47 @@ describe('migration 082: "area" freed for a discussion\'s unit', () => {
 
     assert.deepStrictEqual(run(nested), { updates: 1, skips: 0 });
     assert.strictEqual(stateJson(dir, 'lost-basket/manifest.json').phases.investigation.items['lost-basket'].part, 'Checkout');
+  });
+
+  it('stages nothing and commits nothing: the index and HEAD are as they were', () => {
+    const dir = project(folder());
+    createFile(dir, 'README.md', '# Shop\n');
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-q', '-m', 'the state as a release before left it']);
+    const head = git(dir, ['rev-parse', 'HEAD']);
+
+    assert.deepStrictEqual(run(dir), { updates: 1, skips: 0 });
+    assert.deepStrictEqual([git(dir, ['diff', '--cached', '--name-only']), git(dir, ['rev-parse', 'HEAD'])], ['', head]);
+  });
+
+  it('runs from a linked worktree of the code, on the state in the main checkout', () => {
+    const dir = project(folder());
+    createFile(dir, 'README.md', '# Shop\n');
+    git(dir, ['add', 'README.md']);
+    git(dir, ['commit', '-q', '-m', 'the code']);
+    const linked = path.join(path.dirname(dir), `${path.basename(dir)}-linked`);
+    git(dir, ['worktree', 'add', '-q', linked]);
+
+    try {
+      assert.deepStrictEqual(run(linked), { updates: 1, skips: 0 });
+      assert.strictEqual(stateJson(dir, 'lost-basket/manifest.json').phases.investigation.items['lost-basket'].part, 'Checkout');
+    } finally {
+      fs.rmSync(linked, { recursive: true, force: true });
+    }
+  });
+
+  it('renames a unit\'s findings where its manifest will not read', () => {
+    const dir = project(folder());
+    createFile(dir, '.ledger/cards/manifest.json', '{"name": ');
+    createFile(dir, '.ledger/cards/build/notes-answered.json', `${JSON.stringify({ findings: [finding('notes')] })}\n`);
+
+    run(dir);
+
+    assert.deepStrictEqual([
+      stateJson(dir, 'cards/review/round-1.json').findings.map(({ section }) => section),
+      stateJson(dir, 'cards/build/notes-answered.json').findings.map(({ section }) => section),
+      readFile(dir, '.ledger/cards/manifest.json'),
+    ], [['1-cards', 'tests'], ['notes'], '{"name": ']);
   });
 
   it('passes over a record already naming the new field, a file that will not read, a folder holding no manifest and a retired unit kept as reference', () => {

@@ -1,35 +1,36 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the spec's sections and lines — how a unit's `spec.md` is
-// addressed and read, the one reading every verb that names a section, a
-// scenario or a statement shares (a brief's spec sections, the phase cut's,
+// Domain ring: the spec's addresses and lines — how a unit's `spec.md` is
+// addressed and read, the one reading every verb that names an address, a
+// scenario or a statement shares (a brief's spec text, the phase cut's,
 // the land's trace). The spec is written by section (11.3.2): a section is a
 // numbered heading at level two, `## N. Title`, and a part of it one at
-// level three, `### N.M Title`. A section runs from its heading to the next
-// heading at its level or above, so a section holds its parts. Headings inside
+// level three, `### N.M Title`; each is an address. An address's text runs
+// from its heading to the next heading at its level or above, so a section
+// holds its parts. Headings inside
 // a fenced block are text: a block opened by a line holding, at any indent,
 // a list item's among them, three backticks or tildes at least, and closed
 // by one holding as many of that mark at least and nothing else — the one
 // fence rule every reader here keeps, and the migration's join of old specs
-// (078) with it (`fences`). A spec that numbers one section twice, or a part
-// under another section's number, is refused: its sections cannot be addressed.
+// (078) with it (`fences`). A spec that numbers one address twice, or a part
+// under another section's number, is refused: its addresses cannot be read.
 //
-// A reference cites sections in runs. A run opens at `§` or `§§` and goes
+// A reference cites addresses in runs. A run opens at `§` or `§§` and goes
 // on over numbers joined by `,`, `and` or `&` — `§1.1, 1.2`, `§1.1 and 2.1`,
 // `§§1.1 & 1.2` — each number a section, `N`, or a part, `N.M`. Two numbers
 // joined by `–`, `-` or `to` are a range — `§1.1–1.3`, `§1.1-1.3`, `§1 to 3`
-// — drawing every section at their level from the first to the last, in the
+// — drawing every address at their level from the first to the last, in the
 // spec's order, both included. Every number a run holds is cited: a reference
 // citing none, a number deeper than a part, a range whose ends differ in
-// level or that runs backwards, and a section the spec lacks are refused,
-// naming the reference. The sections are drawn in the order cited, each
+// level or that runs backwards, and an address the spec lacks are refused,
+// naming the reference. The addresses are drawn in the order cited, each
 // once, a part whose own section is drawn left to the section, which holds it.
 //
 // The spec's lines (11.4.5, 11.11.3) are read as its review page reads them
 // (`specStatements`), so the page, the trace and the cut agree on each, its
 // rows split at `\n`, `\r\n` or `\r`. The spec opens with its title,
-// `# Title`, and what comes before its first section — a contents section,
+// `# Title`, and what comes before its first section — a contents heading,
 // `## Contents`, among it — is its introduction. The rest is read in blocks
 // split on blank lines, a fenced block kept whole:
 // - A block opening with a number and a space starts a line: `N.M.K `, a
@@ -54,7 +55,7 @@
 // Its headings are kept in its order beside its lines: each section's, each
 // block of scenarios', and each part's, numbered or not.
 // A spec is refused, naming every fault: one with no title, no section or no
-// statement; one its sections refuse; a heading not standing alone, or a
+// statement; one its addresses refuse; a heading not standing alone, or a
 // second title; a heading at level two that is neither a section nor its
 // scenarios; a block of scenarios after another section; a statement outside
 // its part or a scenario outside its section's block; a line numbered twice; a
@@ -140,8 +141,8 @@ const STATEMENT_NUMBER = '[1-9][0-9]*\\.[1-9][0-9]*\\.[1-9][0-9]*';
 /** The statements a scenario draws on, its last thing. */
 const DRAWS_ON = new RegExp(`\\(\\s*(${STATEMENT_NUMBER}(?:\\s*,\\s*${STATEMENT_NUMBER})*)\\s*\\)\\s*$`);
 
-/** @typedef {{address: string, level: number, text: string}} Section */
-/** A section cited, or a range of them: one section where both ends are it. @typedef {{from: string, to: string}} Cite */
+/** An address of the spec: its number, its level and its text. @typedef {{address: string, level: number, text: string}} Section */
+/** An address cited, or a range of them: one address where both ends are it. @typedef {{from: string, to: string}} Cite */
 /** A block of a line: a fenced one as written, any other as text. @typedef {{kind: 'text'|'fence', text: string}} Part */
 /**
  * A line of the spec: a statement, a scenario, a screen, or a note, a block
@@ -194,7 +195,7 @@ function citesOf(run) {
 }
 
 /**
- * Each section or range a reference cites, in the order it cites them, each
+ * Each address or range a reference cites, in the order it cites them, each
  * once. Refuses, naming the reference, one that cites none, a number deeper
  * than a part, and a range whose ends differ in level.
  * @param {string} reference @returns {Cite[]}
@@ -257,7 +258,7 @@ function headingLevels(lines) {
   return lines.map((line, at) => (fenced[at] ? 0 : levelOf(line)));
 }
 
-/** Where the section a heading at `level` opens on line `at` ends: at the next heading at its level or above. @param {number[]} levels @param {number} at @param {number} level */
+/** Where the text a heading at `level` opens on line `at` ends: at the next heading at its level or above. @param {number[]} levels @param {number} at @param {number} level */
 function sectionEnd(levels, at, level) {
   let end = at + 1;
   while (end < levels.length && (levels[end] === 0 || levels[end] > level)) end += 1;
@@ -265,9 +266,9 @@ function sectionEnd(levels, at, level) {
 }
 
 /**
- * Every section a spec's text numbers, by address: its level and its text,
+ * Every address a spec's text numbers: its level and its text,
  * from its heading to the next heading at its level or above, the blank
- * lines before that heading left out. Refuses a section numbered twice, and
+ * lines before that heading left out. Refuses an address numbered twice, and
  * a part numbered under another section than the one it sits in.
  * @param {string} text @returns {Map<string, Section>}
  */
@@ -687,10 +688,10 @@ function joinedSectionText(text, number) {
 }
 
 /**
- * The sections a reference cites, each verbatim from a spec's text, in the
+ * The addresses a reference cites, each verbatim from a spec's text, in the
  * order cited, each once — a range's in the spec's order, a part whose own
  * section is drawn left out. Refuses, naming the reference, what
- * `citedSections` does, a section the spec lacks, and a range run backwards.
+ * `citedSections` does, an address the spec lacks, and a range run backwards.
  * @param {string} text @param {string} reference @returns {Section[]}
  */
 function sectionsCited(text, reference) {
@@ -718,7 +719,7 @@ function readSpec(cwd, unit) {
 }
 
 /**
- * The sections a reference cites from a unit's spec (`sectionsCited`),
+ * The addresses a reference cites from a unit's spec (`sectionsCited`),
  * refused where the unit has no spec.
  * @param {string} cwd @param {string} unit @param {string} reference
  * @returns {Section[]}

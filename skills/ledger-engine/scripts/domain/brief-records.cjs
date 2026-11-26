@@ -9,7 +9,7 @@
 //                  its headings a level down, under the template's own; then
 //                  each addition, in order, under a heading of its own saying
 //                  whether the orchestrator or the person added it (13.11.3)
-//   spec-sections  each section the task's spec reference cites, verbatim
+//   spec-sections  each address the task's spec reference cites, verbatim
 //                  from the unit's spec (spec-sections.cjs); for a
 //                  quick-fix's task, which has no spec, the line saying its
 //                  acceptance in its own words stands for them (19.5.24);
@@ -244,7 +244,7 @@
 //                  naming its line (11.11); none recorded where no file is
 //                  named
 //   spec-to        where the writer writes: the unit's `spec.md`
-//   changed-sections the spec's path, then the sections the review's pass
+//   changed-sections the spec's path, then the addresses the review's pass
 //                  reads, each verbatim, the title and introduction one of
 //                  them, a section's own text without its parts: every one at
 //                  the first pass, then those changed since the last pass
@@ -297,9 +297,9 @@
 //   cut-phase      the phase as the cut holds it: its number, the unit and
 //                  its name, its goal, and what it relies on, an earlier
 //                  phase by its number or another unit by its name
-//   phase-sections the spec's path; each section the phase names, and
+//   phase-sections the spec's path; each address the phase names, and
 //                  whether it is first built in this phase or an earlier
-//                  one — the phase that builds a section being the first
+//                  one — the phase that builds an address being the first
 //                  naming it, a part of it or the section holding it (11.5.2),
 //                  so an invariant in one first built here is this phase's
 //                  to check (15.8.2); then each verbatim, in the cut's
@@ -741,10 +741,10 @@ function drawTask(filling) {
 }
 
 /**
- * Each section the task's spec reference cites; for a task of the plan from
+ * Each address the task's spec reference cites; for a task of the plan from
  * before Ledger, the sections the migration's cut found it citing (21.8.8,
  * `oldTaskCites`), with its phase's scenarios; or, citing none, its phase's
- * sections and scenarios. For a quick-fix's task, the line saying its
+ * addresses and scenarios. For a quick-fix's task, the line saying its
  * acceptance, in its own words, stands for them (19.5.24).
  * @param {Filling} filling
  */
@@ -2283,7 +2283,7 @@ const taskLine = ({ ref, title, status }) => `- ${shownTask(ref)} ${title}, ${ST
 /** What a phase relies on, as a sentence names it. @param {number|string} on */
 const reliedName = (on) => (typeof on === 'number' ? `phase ${on}` : `the work unit ${on}`);
 
-/** Whether a phase naming `named` builds some of the section at `address`: it, a part of it, or the section holding it. @param {string} address */
+/** Whether a phase naming `named` builds some of `address`: it, a part of it, or the section holding it. @param {string} address */
 const builds = (address) => (/** @type {string} */ named) => named === address || named === sectionOfAddress(address) || named.startsWith(`${address}.`);
 
 /** @param {Filling} filling */
@@ -2295,7 +2295,7 @@ function drawCutPhase(filling) {
 }
 
 /**
- * Each section a phase of the cut names, verbatim, in the cut's order — a
+ * Each address a phase of the cut names, verbatim, in the cut's order — a
  * part whose own section it names left to the section.
  * @param {Filling} filling @param {number} phase
  */

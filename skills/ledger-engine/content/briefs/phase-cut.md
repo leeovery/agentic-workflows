@@ -15,7 +15,7 @@ Cut this unit's spec into build phases: every phase in build order, across the w
 - **`name`** — the phase's name, in a few words.
 - **`goal`** — what someone can do once it is built, in a sentence or two.
 - **`scenarios`** — its acceptance criteria, the spec's scenarios by id (`N.Sk`). They are its test list: each gets a test. Every scenario of the spec sits in exactly one phase, and each phase has at least one.
-- **`sections`** — every section of the spec its work draws on, by address: a section `N` or a part `N.M`. Whoever writes the phase's tasks reads these and nothing else of the spec, so a part the phase builds on is named even where an earlier phase built it. Each phase names at least one.
+- **`sections`** — every address of the spec its work draws on: a section `N` or a part `N.M`. Whoever writes the phase's tasks reads these and nothing else of the spec, so a part the phase builds on is named even where an earlier phase built it. Each phase names at least one.
 - **`relies_on`** — what must be done before it starts: an earlier phase by its number, or another work unit, whole, by its name. Never a later phase or this unit. It may be empty, and is for a phase that relies on nothing.
 
 The phase that builds a part is the first phase naming it in `sections`. Where part A relies on part B in the graph, a phase drawing on A is the phase that builds B, or comes after it and names it in `relies_on`: the build starts a phase once what it relies on is done, whatever the order, so a reliance left out runs the two side by side. Phases are numbered from 1 in the order you list them.

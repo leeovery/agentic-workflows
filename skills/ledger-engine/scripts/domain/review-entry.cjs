@@ -181,7 +181,7 @@ function fixPhaseWords(manifest, { rounds, round, ended, waiting }) {
   return `phase ${fixPhase(manifest, round)}, where round ${round}'s fix tasks are written`;
 }
 
-/** A section as its line says it: the spec's by its section, a quick-fix's change by what it reads. @param {string} unit @param {Record<string, any>} manifest @param {import('./review-phase.cjs').Section} section */
+/** A section's line: the spec's by its number and title, a quick-fix's change by what it reads. @param {string} unit @param {Record<string, any>} manifest @param {import('./review-phase.cjs').Section} section */
 function sectionWords(unit, manifest, { name, number, title }) {
   return quickFixBuild(manifest) ? `${name} — ${title.toLowerCase()}: ${unit}'s record and its change-set from the base` : `${name} — §${number} ${title}`;
 }
