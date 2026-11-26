@@ -146,7 +146,7 @@ const OLDEST = [2, 1, 287]
 const RELEASE = /^(\d+)\.(\d+)\.(\d+)$/
 
 const STOP_NOTE =
-  "The options are on screen as buttons. The user's answer arrives as their next message — typed by them, or sent for them by the ledger-gates plugin when they press a row."
+  "The options are on screen as buttons. The user's answer arrives as their next message — typed by them, or sent for them by the ledger-gates plugin when they press a row. At a menu a row's key or word goes to --pick unchanged; at a raise only a number does, and t and e are its Technical and Explain rows."
 
 /**
  * What the band holds of the conversation's gates. A turn the person starts
