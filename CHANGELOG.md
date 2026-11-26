@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.6] - 2026-11-26
+
+🔧 Changed
+- Discovery now sorts work by whether it takes deciding: a feature is work whose shape takes decisions, and a quick-fix is work that takes no deciding, even where the talk settled it beforehand — work you and Claude had to decide is now treated as a feature.
+- Ledger now captures an idea, bug or fix to the inbox only when the person puts it off for later, rather than whenever one comes up.
+
 ## [0.9.5] - 2026-11-26
 
 🔧 Changed
