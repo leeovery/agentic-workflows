@@ -14,7 +14,7 @@ What you settled on in discovery is working ground, never asked again; what the 
 
 ## The conversation
 
-A discussion is a conversation, never a conveyor belt of decisions. The map tracks what is open but never sets the order: the talk follows where it goes, circles back, throws ideas around.
+A discussion is a conversation, never a conveyor belt of decisions. The map tracks what is open but never sets the order: the talk follows where it goes, circles back, throws ideas around. Claude follows your energy and your depth, challenges as a colleague rather than an interviewer, and never forces a move to the next point while you are deep in one. It keeps the record as it goes, at natural pauses rather than every exchange: a point that comes up goes on the map as a question, what is checked lands as a finding, and what is settled as a decision, with the journey to it in the log. Anything waiting for you, a call, a review's findings or a message, waits for a natural break in the talk.
 
 - **Your decision is yours.** Said in the talk, "your call" hands a point to Claude, and it is recorded as Claude's answer; "don't care" leaves it to whoever builds it. Said at a question Claude has put on screen, either is that question's "don't care": Claude's lean lands as Claude's decision. Neither is ever written as yours.
 - **An answer that settles part of a question** puts the rest on the map as a question of its own.
@@ -31,11 +31,11 @@ A claim about the code, a number or the platform is checked before it is said. W
 
 A discussion is a conversation. Until the topic's shape is agreed, what it covers and how it broadly works, Claude makes no call on it alone: each point is worked through with you. Claude puts its view with its reasons, you say what you think, and what you settle between you is recorded as yours as it is said. Where you hand a point over, with "your call" or "go ahead and decide these", Claude decides it and it is recorded as Claude's, handed over by you.
 
-A call Claude makes on its own, on a point you have not weighed in on, goes through the ask rule: whether it reaches you is decided from how often Claude's answers on calls of that kind would have cost the product, read from your verdicts, never by Claude's own confidence. A call that reaches you usually shows Claude's lean beside it, sealed before you answer; now and then one is asked blind, Claude's answer held back until you have given yours. One that does not is recorded on the ledger as Claude's, and shows first on the map the next time you look. A fact only you hold, such as a deadline or an outside constraint, is always asked. [Trust](trust.md) covers the rule.
+A call Claude makes on its own, on a point you have not weighed in on, goes through the ask rule: whether it reaches you is decided from how often Claude's answers on calls of that kind would have cost the product, read from your verdicts, never by Claude's own confidence. A call that reaches you is put to you in the conversation, at a natural break, never mid-thread: the situation the product's user would be in, what Claude would do and why, and the sides to choose between. Claude's lean is sealed before you answer; now and then a call is asked blind, Claude's answer held back until you have given yours. Ask to see the options laid out and the question is drawn on screen. One that does not is recorded on the ledger as Claude's, and shows first on the map the next time you look. A fact only you hold, such as a deadline or an outside constraint, is always asked. [Trust](trust.md) covers the rule.
 
 ### The map
 
-Claude draws the map whenever you ask: your questions beside Claude's calls, the calls made since you last looked first, so you can overrule one when it is made rather than at the end. Ask "what have you decided without me?" and you get each call with the files behind it.
+Claude draws the map at natural breaks and whenever you ask: your questions beside Claude's calls, the calls made since you last looked first, so you can overrule one when it is made rather than at the end. Ask "what have you decided without me?" and you get each call with the files behind it.
 
 ## Research
 
@@ -48,6 +48,8 @@ Files, from spikes or shared by you, live with the work and are linked from the 
 ## Reviews
 
 Once the conversation has got going, a background review reads the topic from its record and its log, never from the conversation, with a clean slate, and runs while you talk. It comes round again as the topic moves on: each further review waits until enough has changed since the last. Where a decision has two defensible ways and you stay unsettled, Claude offers **perspectives**: two agents each argue one side of the tension, and a third reconciles them, so you hear the tensions rather than two advocates.
+
+A review that comes back while you are mid-thread is mentioned in a line, and raised when you pause. Then one line says how many of its findings Claude has settled and how many need you, and those come one at a time, the one closest to what you are talking about first.
 
 Each finding of a review that the topic takes up becomes a question. Claude re-derives each from the record before acting on it: one a decision already answers merges into that decision; one the code or a run answers is answered from what was found; one that hides a real choice, a single defensible answer included, goes through the ask rule; one that belongs to another topic goes there as a message. No finding is cut for count.
 

@@ -58,4 +58,6 @@ A raise is no gate: its answer never goes to `gate`. `{id}` is the one the draw 
 - **Technical** → `raise show {id} --technical`; `raise show {id}` hides the mechanism again.
 - **A comment or a question** about it is talked through, then `raise show {id}`.
 
+Where the phase's skill puts a raise to the person in the conversation, not drawn, the same answers are read from what they say: a row picked is `--pick {key}`, the row's own key; "don't care" is the raise's while it is open, as on screen; and each `raise show {id}` above is the point put to them again in the conversation.
+
 Where the answer carries `care_drop`, propose dropping that care entry, as the framework's **The Record of the Person** says.

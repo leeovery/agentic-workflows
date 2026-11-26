@@ -1083,14 +1083,34 @@ function checkNoResumeSections(files) {
 // Check 39 — no skill paces the conversation (CONVENTIONS.md, The Phase
 // Skill): the decidable part of it, a line keeping the person out of the
 // work, running it without them, or holding a question until they say they
-// are ready for it.
+// are ready for it. A collaborative phase's conduct is the exception
+// (Conduct): the references a phase skill loads in its `## Instructions`
+// after the framework and the ask rule may say how a session moves.
 // ---------------------------------------------------------------------------
 
 const PACING = /\bkeep (?:the person|them) out\b|\bruns?(?: start to finish)? without the person\b|\b(?:once|until|when) (?:the person|they) (?:says? (?:they are|they're) |(?:is|are) )ready to (?:discuss|talk)\b/i;
 
+/** The conduct references: each a phase skill loads in its `## Instructions` after the framework and the ask rule. */
+function conductFiles(files) {
+  const conduct = new Set();
+  for (const file of files) {
+    const name = skillNameOf(file);
+    if (!name || !isOurs(name)) continue;
+    const lines = readLines(file);
+    const { written } = instructionsLines(lines, parseFences(lines).inFence);
+    for (const { text } of written) {
+      if (text.startsWith(FRAMEWORK_LOAD) || text === ASK_RULE_LOAD) continue;
+      for (const [, target] of text.matchAll(LOAD_TARGET)) conduct.add(path.resolve(path.dirname(file), target));
+    }
+  }
+  return conduct;
+}
+
 function checkNoPacing(files) {
   const out = [];
+  const conduct = conductFiles(files);
   for (const file of files) {
+    if (conduct.has(path.resolve(file))) continue;
     const lines = readLines(file);
     const { inFence } = parseFences(lines);
     lines.forEach((line, i) => {
@@ -2003,6 +2023,32 @@ test('check 39 (no pacing) — catches a line keeping the person out of the work
   withTemp((dir) => {
     const skill = write(dir, 'skills/ledger-x/SKILL.md', ['# X', '', 'You land what the agents find, and keep the person out of it except where the engine stops for them.', '', 'The build runs start to finish without the person.', '', 'A question is drawn only once the person says they are ready to discuss it.', '', 'The person says they are ready to talk about a waiting question.', '', 'Claude follows the note without the person typing anything.', '', '```markdown', 'Hold it until they are ready to talk.', '```', ''].join('\n'));
     assert.deepStrictEqual(checkNoPacing([skill]).map((x) => x.line), [3, 5, 7], `got ${report(checkNoPacing([skill]))}`);
+  });
+});
+
+test('check 39 (no pacing) — passes a collaborative phase\'s conduct, a reference its skill loads in its Instructions after the framework and the ask rule; still catches the same line in a reference the skill loads elsewhere, and in the framework or the ask rule', () => {
+  withTemp((dir) => {
+    const pacing = '# R\n\nA question is drawn only once the person says they are ready to discuss it.\n';
+    const skill = write(dir, 'skills/ledger-x/SKILL.md', [
+      '# X', '', '## Instructions', '',
+      'Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.', '',
+      'Load **[raising-a-call.md](../ledger-shared/references/raising-a-call.md)** and follow its instructions as written.', '',
+      'Load **[taking-part.md](references/taking-part.md)** and follow its instructions as written.', '',
+      'Load **[voice.md](../ledger-shared/references/voice.md)** and follow its instructions as written.', '',
+      '## Tools', '',
+      'Load **[later.md](references/later.md)** and follow its instructions as written.', '',
+    ].join('\n'));
+    const own = write(dir, 'skills/ledger-x/references/taking-part.md', pacing);
+    const shared = write(dir, 'skills/ledger-shared/references/voice.md', pacing);
+    const later = write(dir, 'skills/ledger-x/references/later.md', pacing);
+    const framework = write(dir, 'skills/ledger-shared/references/framework.md', pacing);
+    const askRule = write(dir, 'skills/ledger-shared/references/raising-a-call.md', pacing);
+    const v = checkNoPacing([skill, own, shared, later, framework, askRule]);
+    assert.deepStrictEqual(v.map((x) => posix(path.relative(dir, x.file))).sort(), [
+      'skills/ledger-shared/references/framework.md',
+      'skills/ledger-shared/references/raising-a-call.md',
+      'skills/ledger-x/references/later.md',
+    ], `got ${report(v)}`);
   });
 });
 

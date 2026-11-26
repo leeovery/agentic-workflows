@@ -6,9 +6,9 @@ Guidance for Claude Code working in this repo.
 
 **Ledger gets out of Claude's way.** It gives Claude tools where a process makes the work dependable — recording a question, a finding and a decision, the trust arithmetic, the spec, the build — and nothing else.
 
-**A conversation with the person is a field. Claude holds one well untold, so no skill says how to talk, what order to go in, or when to ask.** Guidance belongs only in a corridor: a process whose outcome must be the same every time.
+**The collaborative phases carry their conduct.** Discovery and discussion are conversations first: their skills say how Claude takes part, when anything may interrupt the talk and how a point is put to the person, so the tools serve the conversation and never replace it. Elsewhere guidance belongs only in a corridor: a process whose outcome must be the same every time.
 
-**When Ledger feels wrong in use, strip the prescription that causes it. Never add a rule.** CONVENTIONS.md (The Aim, Fields and Corridors) holds the detail.
+**When Ledger feels wrong in use, find what in the skill produces it: a prescription to strip, or conduct that is missing.** CONVENTIONS.md (The Aim, Fields and Corridors, Conduct) holds the detail.
 
 ## Project Overview
 

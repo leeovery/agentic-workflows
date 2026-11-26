@@ -36,11 +36,11 @@ These sit outside the table:
 - **A rule that holds in every conversation, and that the engine's structure needs** — how a reply at a gate is taken. It belongs to the framework (The Framework Load), never to a skill.
 - **A hard edge no door can refuse** — a question for the person asked in plain prose in the build, an extra review round, a place use showed the obvious move is the wrong one. It stays a line of prose.
 
-A behaviour Ledger gets wrong is fixed by deleting the prose that causes it, never by a counter-rule. A contract that keeps slipping gets a verb or a check, never more prose.
+A behaviour Ledger gets wrong is fixed by deleting the prose that causes it, never by a counter-rule. Conduct is no counter-rule (Conduct). A contract that keeps slipping gets a verb or a check, never more prose.
 
 ## The Phase Skill
 
-A phase skill fences its field and gives its corridors' moves (Fields and Corridors), and nothing else. Outside a corridor it never says how Claude converses, the order a conversation takes, its pacing, what Claude reads — the entry's DATA names what there is, and Claude reads what the work needs — or orders when Claude writes the record (lint check 39 catches the pacing it can decide). A line saying loosely what is wanted — a log written as the talk goes, at the points where it makes sense — is explanation, and stays. Its fence:
+A phase skill fences its field and gives its corridors' moves (Fields and Corridors), and nothing else. Outside a corridor, and outside a collaborative phase's conduct (Conduct), it never says how Claude converses, the order a conversation takes, its pacing, what Claude reads — the entry's DATA names what there is, and Claude reads what the work needs — or orders when Claude writes the record (lint check 39 catches the pacing it can decide). A line saying loosely what is wanted — a log written as the talk goes, at the points where it makes sense — is explanation, and stays. Its fence:
 - **Which phase and which piece of work this is** — its arguments, as the engine's handoff table declares them.
 - **Its goal** — what the phase is for, and where it sits: what feeds it, and what reads what it leaves.
 - **Its done-condition** — what is true when the phase can be left, stated as what the engine holds.
@@ -72,6 +72,10 @@ A field is sized by its phase. Widest first:
 In the build, nothing Claude does in the field leaves it except through a verb or a gate: what reaches the person, what gets recorded and every question to the person; the layout hook, the commit door and the checklists refuse the rest. In a phase that talks, the conversation reaches the person in plain prose; what gets recorded still goes through a verb, or into a log the layout keeps.
 
 A **corridor** is where what works is prescribed, in enough detail to be followed the same way every time: answering a gate or a menu, the cut of the spec into phases, writing a phase's tasks and plan, marking work off, the build's orchestration of its agents, the final review. A corridor's prose is precise — the order of its moves, each a dispatch, a verb or a checklist mark — and that precision belongs there and nowhere else. It says nothing about how an artifact is made: that is the named agent's (Agents and Briefs). Whether the agent runs the corridor's verb, or the skill runs it on the agent's output, is as the spec says, or as the corridor's rewrite decides where the spec is silent.
+
+### Conduct
+
+The collaborative phases, the product's discovery and a topic's discussion, are fields that carry their **conduct**: how Claude takes part, how a session moves, when anything may interrupt the talk, and how a point is put to the person. Conduct is not how-to, and is never cut as it. It is what keeps the conversation ahead of the tools: a collaborative field left with its tools and no conduct becomes its tools, and Claude records and raises before it has talked. Conduct lives in the phase's references and in the shared ones several phases load. It draws no gate and no menu, which are the engine's, and it changes no verb's contract.
 
 ### Requests at Any Point
 
@@ -262,7 +266,7 @@ The framework loads once per conversation, at the head of the skill the conversa
 Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.
 ```
 
-A phase skill that raises a call — discussion, investigation, specification, the build, a quick-fix's and the review phase — loads `raising-a-call.md` on the line after it, and no other skill or reference loads it (lint check 40). The section holds nothing else:
+A phase skill that raises a call — discussion, investigation, specification, the build, a quick-fix's and the review phase — loads `raising-a-call.md` on the line after it, and no other skill or reference loads it (lint check 40). The section holds nothing else, but a collaborative phase's conduct (Conduct), loaded on the lines after these, so the re-read after a compaction loads it again:
 
 ```markdown
 Load **[raising-a-call.md](../ledger-shared/references/raising-a-call.md)** and follow its instructions as written.
@@ -279,7 +283,7 @@ The framework holds only what is true in every conversation and that Claude woul
 A part goes inline or into a reference by two weights: how often and how early its trigger comes, against its size and what its signpost must say.
 - **Inline** — what every turn needs, and the opening. A part of a line or two is inline wherever its trigger comes: it costs less than its signpost.
 - **A reference** — a part needed only at a rare or late moment — a request at any point, a closing, a once-a-project step, a corridor's move — loaded then and only then, even where the signpost and the file come to more words than the part would inline: until its moment, it stays out of the context.
-- **Standing guidance stays in SKILL.md.** A reference holds a procedure that runs to its end at its trigger. What holds across turns is in SKILL.md, which a compaction keeps and a loaded reference does not — the framework and `raising-a-call.md` aside, which the skill's re-read after a compaction loads again (Handoffs and Recovery); SKILL.md opens on what matters most, all of it inside what a compaction keeps of it (Claude Code keeps an invoked skill's first 5,000 tokens).
+- **Standing guidance stays in SKILL.md.** A reference holds a procedure that runs to its end at its trigger. What holds across turns is in SKILL.md, which a compaction keeps and a loaded reference does not — the framework, `raising-a-call.md` and a collaborative phase's conduct aside, which the skill's re-read after a compaction loads again (Handoffs and Recovery); SKILL.md opens on what matters most, all of it inside what a compaction keeps of it (Claude Code keeps an invoked skill's first 5,000 tokens).
 
 A reference is:
 - **Named** for what it covers, in kebab-case: `closing-pass.md`, `sending-a-message.md`.

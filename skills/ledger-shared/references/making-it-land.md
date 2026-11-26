@@ -1,0 +1,13 @@
+# Making It Land
+
+*Shared reference. Loaded by `ledger-discussion-process`, at its `## Instructions` section: the devices a point put to the person ([putting-a-point.md](putting-a-point.md)) makes its problem land with.*
+
+---
+
+An example over a description, every time: a reader who can picture the failure can judge the fix; a reader parsing a mechanism description is still building the picture when your position arrives.
+
+**The devices**: a worked example grounded in the topic or the product (often the normal case resolving fine, then the one adjustment that breaks it — the adjustment *is* the problem being put); a small ASCII diagram where shape or flow helps; a before/after list; a short step-by-step walkthrough; an analogy or simile to another part of the product or codebase, or to an app the person knows. One to three, chosen for understanding-speed, and varied across a walk — twenty identically shaped points read as a template, not a colleague.
+
+**The cheap path**: within a scene already rebuilt this session, or when the ground was visible moments ago, a bridge clause replaces the reconstruction — devices earn their place by understanding-speed, and a scene already standing needs none.
+
+**The test**: the person can picture the problem and knows where you stand — both from a glance.
