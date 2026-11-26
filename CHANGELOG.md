@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.7] - 2026-11-26
+
+🔧 Changed
+- Starting a feature or bugfix now carries on in the same conversation, with nothing cleared, instead of handing off to a fresh one.
+- The "start this work" and move confirmation questions now name the work type, such as "Start it as a feature?", so you can see what your yes agrees to.
+- Discussion no longer adds the brief's open questions to the map as the conversation opens; only a question on the map holds the topic's close.
+
+🐛 Fixed
+- Session-end hooks are given 10 seconds to finish, so presence cleanup and conversation recording are no longer cancelled on a busy machine.
+
 ## [0.9.6] - 2026-11-26
 
 🔧 Changed
