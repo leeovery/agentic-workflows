@@ -1046,6 +1046,14 @@ mark.sc.add { background: var(--add-bg); }
     mark(id, m.s === 'tick' ? { s: thread(m).length ? 'comment' : '', h: el.dataset.h } : { s: 'tick', h: el.dataset.h });
   }
 
+  // a tick by the button or by its key: the line is ticked, and the next one still to tick comes up to `y` and takes
+  // the focus; an untick stays where it is
+  function tickLine(el, y) {
+    const was = (state[el.dataset.id] || {}).s === 'tick';
+    toggleTick(el);
+    if (!was && (state[el.dataset.id] || {}).s === 'tick') bringNext(el, y);
+  }
+
   // compose: "new" for a new message, or the key of the message being edited
   function openCompose(el, key) {
     if (!canWrite) return;
@@ -1107,10 +1115,7 @@ mark.sc.add { background: var(--add-bg); }
     if (!btn) return;
     const act = btn.dataset.act;
     if (btn.classList.contains('tk') || act === 'tick') {
-      const was = (state[el.dataset.id] || {}).s === 'tick';
-      const y = btn.getBoundingClientRect().top;
-      toggleTick(el);
-      if (!was && (state[el.dataset.id] || {}).s === 'tick') bringNext(el, y);
+      tickLine(el, btn.getBoundingClientRect().top);
     } else if (btn.classList.contains('cm')) {
       if (el.dataset.compose) closeCompose(el, false); else startMessage(el);
     } else if (act === 'send') closeCompose(el, true);
@@ -1327,7 +1332,7 @@ mark.sc.add { background: var(--add-bg); }
     const at = focused ? vis.indexOf(focused) : -1;
     if (e.key === 'j') { e.preventDefault(); focusLine(vis[Math.min(vis.length - 1, at + 1)]); }
     else if (e.key === 'k') { e.preventDefault(); focusLine(vis[Math.max(0, at - 1)]); }
-    else if (e.key === 't' && focused) { e.preventDefault(); toggleTick(focused); }
+    else if (e.key === 't' && focused) { e.preventDefault(); tickLine(focused, (focused.querySelector('.tk') || focused).getBoundingClientRect().top); }
     else if (e.key === 'c' && focused) { e.preventDefault(); startMessage(focused); }
     else if (e.key === 'n') { e.preventDefault(); nextItem(); }
   });

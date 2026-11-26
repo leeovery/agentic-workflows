@@ -520,4 +520,24 @@ describe('the page\'s own rules, its state functions run from the template (11.1
     context.keepAnchor({ id: '1-1-1', y: 40 });
     assert.deepStrictEqual(scrolled, [50]);
   });
+
+  it('a tick by its key moves on as a tick by its button does: the next line comes up to where the ticked one was, and an untick stays put', () => {
+    const template = fs.readFileSync(TEMPLATE, 'utf8');
+    /** @type {Array<[string, number]>} */
+    const brought = [];
+    /** @type {Record<string, {s?: string}>} */
+    const state = {};
+    const context = vm.createContext({
+      state,
+      toggleTick: (/** @type {{dataset: {id: string}}} */ el) => { state[el.dataset.id] = { s: (state[el.dataset.id] || {}).s === 'tick' ? '' : 'tick' }; },
+      bringNext: (/** @type {{dataset: {id: string}}} */ el, /** @type {number} */ y) => brought.push([el.dataset.id, y]),
+    });
+    vm.runInContext(declared(template, 'tickLine'), context);
+    const line = { dataset: { id: '1-1-1' } };
+    context.tickLine(line, 120);
+    context.tickLine(line, 120);
+    assert.deepStrictEqual(brought, [['1-1-1', 120]]);
+    assert.match(template, /e\.key === 't' && focused\) \{ e\.preventDefault\(\); tickLine\(focused, /, 'the key ticks through tickLine');
+    assert.match(template, /tickLine\(el, btn\.getBoundingClientRect\(\)\.top\)/, 'the button ticks through tickLine');
+  });
 });
