@@ -18,7 +18,7 @@ Three commitments shape everything Ledger does. Knowing them first makes the res
 
 The amount of you each phase needs falls as the work goes on, by design. At the start nearly every turn is yours: [discovery](discovery.md) and [discussion](discussion.md) are conversations, because a wrong turn caught there costs a sentence and the same wrong turn caught in review costs a rebuild. By the [specification](specification.md) the decisions are on record, so your part shifts to approving. [The build](the-build.md) and the [review phase](review.md) run largely on their own.
 
-A few gates always stop for you: starting the work, approving an epic's map, a topic's decision, ready to build and finish. Everything smaller is a call, and Claude makes most of them the way you would, learning from your own answers: it asks where its calls of a kind have been missing more often than you allow, sooner where a change would be hard to undo, and always where data could be lost or security weakened. When you change one of its calls, you are later asked what its answer would have cost, so it learns. [Trust](trust.md) covers the rule in full.
+A few gates always stop for you: starting the work, approving an epic's map, a topic's decision, ready to build and finish. Everything smaller is a call, and Claude makes most of them the way you would, learning from your own answers: it asks where its calls of a kind have been missing more often than you allow, sooner where a change would be hard to undo, and always where data could be lost or security weakened. When you change one of its calls, you are asked there and then what its answer would have cost, so it learns. [Trust](trust.md) covers the rule in full.
 
 ## Getting started
 

@@ -462,12 +462,14 @@ function ledgerWriteHelpers(dir) {
 
   /**
    * Assert a response shows the entry's short id — its shortest prefix no other
-   * id in the ledger shares — and the state commit carrying the ledger alone.
-   * @param {Record<string, any>} res @param {string} id
+   * id in the ledger shares — and the state commit carrying the ledger alone;
+   * `owed`, the entry a departure owing its verdict, named by that short id.
+   * @param {Record<string, any>} res @param {string} id @param {{ owed?: boolean }} [opts]
    */
-  function assertAnswered(res, id) {
-    assert.deepStrictEqual(Object.keys(res), ['ok', 'id', 'committed']);
+  function assertAnswered(res, id, { owed = false } = {}) {
+    assert.deepStrictEqual(Object.keys(res), ['ok', 'id', 'committed', ...(owed ? ['verdict_owed'] : [])]);
     assert.strictEqual(res.id, shortIds(entries().map((e) => e.id)).get(id));
+    if (owed) assert.strictEqual(res.verdict_owed, res.id);
     assert.strictEqual(res.committed, stateGit(dir(), ['rev-parse', '--short', 'HEAD']).trim());
     assert.strictEqual(stateGit(dir(), ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), layout.ledger);
     assert.strictEqual(stateGit(dir(), ['show', `HEAD:${layout.ledger}`]), ledgerText());

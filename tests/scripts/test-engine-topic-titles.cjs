@@ -369,7 +369,6 @@ describe('every screen names a topic through one helper', () => {
       'state-merge-landing.cjs › openMerge › path.basename(path.dirname(root))',
       'state-merge-rules.cjs › conflictLabel › unit',
       'topic-map.cjs › goneTo › where.unit',
-      'verdict.cjs › placeName › unit',
       'projections/boot.cjs › migrationGuardStop › unit',
       'projections/boot.cjs › leavingQuestion › unit',
     ],

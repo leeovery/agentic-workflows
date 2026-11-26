@@ -109,7 +109,7 @@ describe('the write verbs (6.1.4)', () => {
     });
   });
 
-  it('replace (5.S8): a new answer naming the old and its reason, in the shape of a decision answering the old one\'s question, the old line byte for byte unchanged', () => {
+  it('replace (5.S8): a new answer naming the old and its reason, in the shape of a decision answering the old one\'s question, the old line byte for byte unchanged, and the reversal of Claude\'s call owed its verdict', () => {
     const question = ask().id;
     const old = decide(question).id;
     const before = rawLines();
@@ -123,7 +123,7 @@ describe('the write verbs (6.1.4)', () => {
       answers: full(question), text: 'A frameless surface.', why: 'Lighter on the desk.', rules_out: ['a border'], relies_on: [],
       product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: true, given: 'own', cites: [], task: null,
     });
-    assertAnswered(res, id);
+    assertAnswered(res, id, { owed: true });
     assert.deepStrictEqual(rawLines().slice(0, -1), before);
   });
 
