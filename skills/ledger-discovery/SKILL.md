@@ -115,7 +115,7 @@ The roadmap's waiting items (`roadmap state`) and the live inbox may hold the wo
 
 ### Starting This Work
 
-In the product's conversation or a type call alike, a piece of work — something to build, fix or change — is started on the person's yes or their asking:
+Discovery is for talking, never a race to build: the talk goes on until it is clear what the piece of work is, and the start gate is where its kind and name are put to the person. In the product's conversation or a type call alike, where the talk seems to have come to rest on a piece of work — something to build, fix or change — with nothing left to talk through, you may say so and offer to move it on; the person may keep talking instead. On their yes, or when they ask for it themselves:
 
 Load **[starting-this-work.md](references/starting-this-work.md)** and follow its instructions as written.
 
