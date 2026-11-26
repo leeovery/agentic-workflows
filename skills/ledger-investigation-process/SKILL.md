@@ -37,7 +37,7 @@ A refusal names the way on: say it in a line. Where another session holds the to
 
 Then read what the DATA names, each in full, an `earlier` one as input never changed, a `catch up` transcript as far as the framework says. Take in each `landed` report as **Validations** says, and close each `lost` one with `agent incorporate`. Search earlier work units' entries in the bug's area with `knowledge query`.
 
-The DATA's `kept branch` and `kept work` lines name work that came across into the investigation, set-aside work with the calls its line gives.
+Then open the conversation; never stop in silence once you have read. The opening names each `kept branch` and `kept work` to the person, a piece of work with the calls its line gives. On resume, say in your own words, in a line, where the hunt stands and what comes next.
 
 ## The Hunt
 
@@ -45,7 +45,7 @@ The rigour holds — the symptoms, then the code, and the root cause settled bef
 
 ### Symptoms
 
-The brief, the seeds and discovery's log are the person's account: confirm what they already answer rather than ask it again, and ask what they leave open — what should happen and what happens instead, the exact steps, how often, where, since when, and what they have tried. A point the brief marks as from before is where they had got to before, not yet their account: it goes on the map as an open question asked with its id from before, so every raise of it comes to them, the answer from before your lean. Log each symptom in their words as they give it (`investigation-log symptom`). What they don't know stays unknown, never guessed.
+The brief, the seeds and discovery's log are the person's account: confirm what they already answer rather than ask it again, and ask what they leave open — what should happen and what happens instead, the exact steps, how often, where, since when, and what they have tried. A point the brief marks as from before is where they had got to before, not yet their account: it goes on the map as an open question asked with its id from before, so every raise of it comes to them, the answer from before your lean. Start with what matters most and follow their answers down; never a barrage of questions. Log each symptom in their words as they give it (`investigation-log symptom`). What they don't know stays unknown, never guessed.
 
 ### The Plan
 
