@@ -2,7 +2,7 @@
 
 A design in discussion. Nothing here is built.
 
-It replaces topics as they work today with areas: labels on one record, worked in the main thread, which is the conversation across the whole piece of work, and in focused sessions on one area. Sections 2 to 9 say how it would work. Section 10 lists what is still open, each point to be talked through one at a time.
+It replaces topics as they work today with areas: labels on one record, worked in the main thread, which is the conversation across the whole piece of work, and in focused sessions on one area. Sections 2 to 9 say how it would work. Section 10 holds the names, and section 11 how existing projects move across.
 
 Each line ends with where it stands. "Lee's ruling" with a date is something you said yes to. "Claude's proposal" was put to you and you did not object, which is not a yes. "Open" is not settled. The examples use an invented piece of work, the financial part of a product, with five invented areas: paying in, holding the balance, paying out, identity checks, and fees.
 
@@ -463,19 +463,23 @@ NOTHING WAITING
 
 ### 9.1 Feature and epic
 
-9.1.1 A feature and an epic become one kind of work. A feature is a piece of work that never needed a second area. [Lee's ruling, 25 Nov 2026: "We either create areas or we don't, and it really doesn't matter because whatever we talk about ultimately forms into one specification… I like the simplification"]
+9.1.1 A feature and an epic become one kind of work, called feature (10.1.13). [Lee's ruling, 25 Nov 2026: "We either create areas or we don't, and it really doesn't matter because whatever we talk about ultimately forms into one specification… I like the simplification"]
 
 9.1.2 A bugfix and a quick-fix stay kinds of their own, because their paths differ. [Claude's proposal]
 
 9.1.3 The one kind runs short or long by how much there is to build: its length and the number of phases in its build are a consequence of the work, never a label chosen at the start. [Lee's ruling, 25 Nov 2026]
 
-## 10. Open
+## 10. Names
 
-### 10.1 To be talked through, one at a time
+### 10.1 What things are called
 
-10.1.1 The names of the two kinds of conversation. "Area" stays. "The main thread" and "a focused session" are your working words, used throughout. [open as to the two; Lee's ruling, 26 Nov 2026 for "area": "'areas' is still a good word… softer than 'topic'"; Lee, 26 Nov 2026: "Main thread and focused session… I think main thread"]
+10.1.1 The unit is an area. The conversation across the whole piece of work is the main thread, and one scoped to an area is a focused session. [Lee's ruling, 26 Nov 2026: "'areas' is still a good word… softer than 'topic'"; "Main thread and focused session… I think main thread"]
 
-10.1.13 What the one kind of work (9.1.1) is called: "epic", or a new name. [open]
+10.1.13 The one kind of work is called feature. It is the label for a type of work, as bugfix is: it counts nothing, so it holds for one feature or several and at any size, and it takes in what an epic was. The three kinds are feature, bugfix and quick-fix. [Lee's ruling, 26 Nov 2026: "If you say a bug fix, then it suggests one bug. But if the type of work is labelled 'bug fix,' that implies one or more… It's the same with feature… Let's stick with 'feature,' knowing that that encapsulates the concept of an epic as well"]
+
+10.1.14 How it is said is left to the talk: "a feature" where there is one, "feature work" where that reads better. Nothing in Ledger prescribes the phrasing. [Lee's ruling, 26 Nov 2026: "The way we use it in terms of language can be adapted… We don't necessarily even need to put this into the system. Claude naturally figures that stuff out"]
+
+10.1.15 The word "epic" goes, from the screens, the docs and the engine alike: one name is used everywhere. [Lee's ruling, 26 Nov 2026: "The ubiquitous language is important… It should have a name that's perfectly clear across the product"]
 
 ## 11. Existing projects
 
@@ -489,7 +493,7 @@ NOTHING WAITING
 
 11.2.1 Finished work needs nothing moved: each ledger entry already carries its topic's name, and that name is read as its area. [Lee's ruling, 26 Nov 2026]
 
-11.2.2 One new migration does what needs no reading: a topic's log is registered as its area's first focused-session log, the epic's own discovery logs as the main thread's earlier logs, an experiment kept in a topic's folder moves to the work's folder, and a feature or an epic becomes the one kind. [Lee's ruling, 26 Nov 2026]
+11.2.2 One new migration does what needs no reading: a topic's log is registered as its area's first focused-session log, the epic's own discovery logs as the main thread's earlier logs, an experiment kept in a topic's folder moves to the work's folder, and an epic becomes a feature. [Lee's ruling, 26 Nov 2026]
 
 11.2.3 A decided topic becomes an area with nothing waiting, and its closing pass counts as its fresh read (5.1.3). [Lee's ruling, 26 Nov 2026]
 
