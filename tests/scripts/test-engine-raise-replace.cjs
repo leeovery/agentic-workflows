@@ -51,7 +51,7 @@ const {
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, NOTE_COPY, writtenWorld, ledgerHelpers, copiesHelpers } = require('./ledger-world.cjs');
 const { SESSION, WHY, raiseHelpers, undrawn } = require('./raise-world.cjs');
-const { auditGate } = require('./gate-audit.cjs');
+const { auditGate, statementOf } = require('./gate-audit.cjs');
 const { labelAnswers } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
@@ -68,15 +68,15 @@ const OVER = 'person-moved-claude';
 
 // Claude's decision as it stands, which the raise proposes to replace.
 const KEPT = 'On the screen the cursor is on';
-const MAIN = Object.freeze({ key: '1', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
-const LAST = Object.freeze({ key: '2', name: 'Last', text: 'Where the last note was', notice: 'notes gather on one screen until you move one' });
+const MAIN = Object.freeze({ key: 'a', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
+const LAST = Object.freeze({ key: 'b', name: 'Last', text: 'Where the last note was', notice: 'notes gather on one screen until you move one' });
 const KEEP = Object.freeze({ key: 'keep', name: 'Keep it as it stands', text: KEPT, notice: 'nothing changes' });
 
 /** Claude's call: a new note opening on the main screen, in place of the cursor's. */
 const CALL = Object.freeze({
   question: 'Should a new note open somewhere other than under the cursor?',
   rows: [MAIN, LAST],
-  lean: '1',
+  lean: 'a',
   why: 'Most people work on one screen.',
   sort: 'one',
   mechanism: 'The main display, whatever the pointer is over.',
@@ -88,7 +88,7 @@ const FOCUS_CALL = Object.freeze({
   ...CALL,
   question: 'Should a new note leave the focus where it was?',
   rows: [{ ...MAIN, text: 'The focus stays where it was' }, { ...LAST, text: 'The focus follows the pointer' }],
-  lean: '2',
+  lean: 'b',
 });
 
 const { world, made } = writtenWorld('raise-replace-', PHASES, (write) => {
@@ -206,7 +206,7 @@ const decideFocus = (more = []) => ledgerHelpers(() => dir).write('decide', NOTE
 const affected = () => ok(dir, ['ledger', 'affected', UNIT]).affected.map((/** @type {{id: string}} */ e) => full(e.id));
 
 describe('the draw (16.5.7, 29.19.2)', () => {
-  it('draws Claude\'s proposals, the lean recommended, then keep — the decision\'s answer as it stands — and seals the replacement\'s target, reason and cause beside the call, so the answer needs nothing more', async () => {
+  it('draws Claude\'s proposals, the lean recommended, then keep — the decision\'s answer as it stands, numbered after them — and seals the replacement\'s target, reason and cause beside the call, so the answer needs nothing more', async () => {
     const { res, sections } = await drawn(replacing('new-fact', ['--cause', made.screens, '--relies-on', made.screens]), { env: { LEDGER_GATE_SURFACE: '1' } });
 
     const sealed = /** @type {Record<string, any>} */ (seals())[res.raise];
@@ -219,9 +219,10 @@ describe('the draw (16.5.7, 29.19.2)', () => {
     });
     const gate = /** @type {Record<string, any>} */ (auditGate(sections, 'raise --replaces'));
     assert.deepStrictEqual(gate.options.map((/** @type {Record<string, any>} */ o) => [o.word ?? o.key, o.head, o.recommended]).slice(0, 3),
-      [['1', MAIN.text, true], ['2', LAST.text, false], ['keep', KEPT, false]]);
-    assert.ok(gate.statement.includes(`I lean: ${MAIN.text}`) && gate.statement.includes('- Keep it as it stands: nothing changes'), 'the payload states no lean or no keep');
-    assert.deepStrictEqual(/** @type {any} */ (gateShown()).options.find((/** @type {{key: string}} */ o) => o.key === 'keep').next.argv, ['raise', 'answer', res.raise, '--pick', 'keep']);
+      [['1', MAIN.text, true], ['2', LAST.text, false], ['3', KEPT, false]]);
+    const statement = statementOf(sections);
+    assert.ok(statement.includes(`I lean: ${MAIN.text}`) && statement.includes('- Keep it as it stands: nothing changes'), 'the chat states no lean or no keep');
+    assert.deepStrictEqual(/** @type {any} */ (gateShown()).options.find((/** @type {{key: string}} */ o) => o.key === '3').next.argv, ['raise', 'answer', res.raise, '--pick', '3']);
   });
 
   it('under --always built-otherwise (21.6.16), asks for the mark whatever the counts, its keep row saying keeping the decision has the build change the code to match', async () => {
@@ -232,15 +233,16 @@ describe('the draw (16.5.7, 29.19.2)', () => {
       'ask', 'The code was built otherwise than a decision from before Ledger, so it always comes to you.', 'built-otherwise',
       { key: 'keep', name: 'Keep it as decided', text: CARRIED, notice: 'the build changes the code to match' },
     ]);
-    assert.ok(/** @type {Record<string, any>} */ (auditGate(sections, 'raise --always built-otherwise')).statement.includes('- Keep it as decided: the build changes the code to match'));
+    auditGate(sections, 'raise --always built-otherwise');
+    assert.ok(statementOf(sections).includes('- Keep it as decided: the build changes the code to match'));
   });
 
   it('under --always built-otherwise, Claude may lean to keep: the keep row recommended and stated as the lean', async () => {
     const { res, sections } = await drawn([NOTE, ...builtOtherwise(carried())], { call: KEEP_LEAN, env: { LEDGER_GATE_SURFACE: '1' } });
 
     const gate = /** @type {Record<string, any>} */ (auditGate(sections, 'raise leaning keep'));
-    assert.deepStrictEqual(gate.options.map((/** @type {Record<string, any>} */ o) => [o.word ?? o.key, o.recommended]).slice(0, 3), [['1', false], ['2', false], ['keep', true]]);
-    assert.ok(gate.statement.includes(`I lean: ${CARRIED}`), 'the keep is stated as the lean');
+    assert.deepStrictEqual(gate.options.map((/** @type {Record<string, any>} */ o) => [o.word ?? o.key, o.recommended]).slice(0, 3), [['1', false], ['2', false], ['3', true]]);
+    assert.ok(statementOf(sections).includes(`I lean: ${CARRIED}`), 'the keep is stated as the lean');
     assert.strictEqual(/** @type {Record<string, any>} */ (seals())[res.raise].call.lean, 'keep');
   });
 
@@ -258,7 +260,7 @@ describe('the draw (16.5.7, 29.19.2)', () => {
   it('a second raise to replace the decision in the conversation keeps the first seal, its lean unchanged', async () => {
     const first = await drawn();
 
-    const again = await drawn(replacing(), { call: { ...CALL, lean: '2' } });
+    const again = await drawn(replacing(), { call: { ...CALL, lean: 'b' } });
 
     assert.deepStrictEqual([again.res, again.sections], [{ ...first.res, redrawn: true }, first.sections]);
   });
@@ -308,7 +310,7 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
     assert.strictEqual(await refusedDraw(replacing(), { ...CALL, rows: [MAIN, { ...LAST, key: 'Keep' }] }),
       'raise: the call\'s rows[1] takes the key Keep, which the screen keeps for itself — t, e, technical, explain, comment, keep are its own, in any case');
     assert.strictEqual(await refusedDraw(replacing(), { ...CALL, rows: [MAIN, { ...LAST, text: KEPT }] }),
-      `raise: the call's row 2 proposes ${made.opens}'s answer as it stands — a replacement changes it, and keeping it is the screen's own row`);
+      `raise: the call's row b proposes ${made.opens}'s answer as it stands — a replacement changes it, and keeping it is the screen's own row`);
   });
 });
 
@@ -318,7 +320,7 @@ describe('the answer\'s refusals, recording nothing', () => {
 
     const { error } = refusedPristine(dir, ['raise', 'answer', id, '--pick', 'keep'], { env: conversation(), stdin: JSON.stringify({ why: WHY }) });
 
-    assert.strictEqual(error, 'raise answer: the raise has no row keep — its rows: 1, 2');
+    assert.strictEqual(error, 'raise answer: the raise has no row keep — its rows are numbered 1 to 2');
     assert.deepStrictEqual(logged(), []);
   });
 
@@ -373,7 +375,7 @@ describe('each answer, its line, its raise event, who moved whom and the queue (
     answer(id, ['--pick', '2']);
 
     assert.deepStrictEqual(lastEntry(), replacementOf(id, { who_moved_whom: OVER, text: LAST.text, rules_out: [MAIN.text] }));
-    assert.deepStrictEqual(logged(), [raiseEvent(id, { answer: '2' })]);
+    assert.deepStrictEqual(logged(), [raiseEvent(id, { answer: LAST.key })]);
     assert.deepStrictEqual(queue(), [[id, LAST.text, MAIN.text]]);
     assert.deepStrictEqual(affected(), [full(made.focus)]);
   });
@@ -435,18 +437,18 @@ describe('each answer, its line, its raise event, who moved whom and the queue (
     const id = await draw();
     const log = path.join(config(), 'reader-calls.jsonl');
 
-    answer(id, ['--own'], { text: 'On the main screen, as you say', why: WHY }, { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: MAIN.key } }) });
+    answer(id, ['--own'], { text: 'On the main screen, as you say', why: WHY }, { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: '1' } }) });
 
     const [{ argv }] = fs.readFileSync(log, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
-    assert.deepStrictEqual(JSON.parse(argv[argv.indexOf('--json-schema') + 1]).properties.row.enum, [MAIN.key, LAST.key, 'none of them']);
+    assert.deepStrictEqual(JSON.parse(argv[argv.indexOf('--json-schema') + 1]).properties.row.enum, ['1', '2', 'none of them']);
     assert.deepStrictEqual(lastEntry(), replacementOf(id, { who_moved_whom: 'none', text: 'On the main screen, as you say', rules_out: [] }));
     assert.deepStrictEqual(logged(), [raiseEvent(id, { answer: null, with_text: true, reading: MAIN.key })]);
     assert.deepStrictEqual(queue(), []);
   });
 
-  it('keep, pressed, its why on stdin: the person\'s keep at the raise\'s id — the decision, the reason and the cause, the why, Claude\'s proposal sealed — standing over it; one raise event naming the keep; the decision current, the keep shown beside it in the record and waiting in the queue with the proposal as its lean', async () => {
+  it('keep, pressed — the mod sending its number — its why on stdin: the person\'s keep at the raise\'s id — the decision, the reason and the cause, the why, Claude\'s proposal sealed — standing over it; one raise event naming the keep; the decision current, the keep shown beside it in the record and waiting in the queue with the proposal as its lean', async () => {
     const id = await draw();
-    fs.writeFileSync(inFolder(PRESSED), JSON.stringify({ gate: `raise — ${id}`, answer: 'keep', at: new Date(Date.now() + 1000).toISOString() }));
+    fs.writeFileSync(inFolder(PRESSED), JSON.stringify({ gate: `raise — ${id}`, answer: '3', at: new Date(Date.now() + 1000).toISOString() }));
 
     const res = answer(id, ['--pick', 'keep'], { why: WHY }, { LEDGER_GATE_SURFACE: '1' });
 
@@ -471,7 +473,7 @@ describe('each answer, its line, its raise event, who moved whom and the queue (
     assert.strictEqual(ledgerText(), ledger);
     assert.deepStrictEqual(logged(), [raiseEvent(null, { answer: null, didnt_follow: true })]);
     assert.deepStrictEqual(queue(), []);
-    assert.match(output(dir, ['raise', 'show', id], { env: conversation() }), /^\*\*`keep`\*\* +→ On the screen the cursor is on$/m);
+    assert.match(output(dir, ['raise', 'show', id], { env: conversation() }), /^\*\*`3`\*\* +→ On the screen the cursor is on$/m);
   });
 });
 
@@ -606,8 +608,8 @@ describe('once (E3)', () => {
 
     const res = answer(id, ['--pick', '2']);
 
-    assert.deepStrictEqual([res.already, res.answer, full(res.id)], [true, '2', id]);
-    assert.deepStrictEqual([entries().filter((e) => e.id === id).length, logged()], [1, [raiseEvent(id, { answer: '2' })]]);
+    assert.deepStrictEqual([res.already, res.answer, full(res.id)], [true, LAST.key, id]);
+    assert.deepStrictEqual([entries().filter((e) => e.id === id).length, logged()], [1, [raiseEvent(id, { answer: LAST.key })]]);
   });
 });
 

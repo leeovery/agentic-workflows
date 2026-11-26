@@ -61,10 +61,10 @@ const TASK = Object.freeze({ unit: UNIT, phase: 2, n: 3 });
 const CALL = Object.freeze({
   question: 'When you make a new note, where should its window open?',
   rows: [
-    { key: '1', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' },
-    { key: '2', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' },
+    { key: 'a', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' },
+    { key: 'b', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' },
   ],
-  lean: '1',
+  lean: 'a',
   why: 'A note follows the person.',
   sort: 'several',
   mechanism: 'The screen under the pointer when the note is made.',

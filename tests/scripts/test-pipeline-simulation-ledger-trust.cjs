@@ -103,7 +103,7 @@ describe('pipeline simulation: the trust log', () => {
     // The person's own words, which the separate call reads as the lean's
     // row, the second: an agreement, owed no verdict.
     const stacking = ledger(['ask', note], { ...made, text: 'Does a note stay above other windows?' });
-    const stacked = (await sim.runAsync(['raise', note, '--answers', stacking], null, JSON.stringify({ ...leaningCall('It stays put.', 'It floats.'), lean: '2' }))).raise;
+    const stacked = (await sim.runAsync(['raise', note, '--answers', stacking], null, JSON.stringify({ ...leaningCall('It stays put.', 'It floats.'), lean: 'other' }))).raise;
     sim.run(['raise', 'answer', stacked, '--own'], null, JSON.stringify({ text: 'Keep it floating over the rest.', why: 'The person said why.' }));
     assert.ok(!sim.run(['verdict', 'queue']).departures.some((/** @type {{id: string}} */ d) => stacked.startsWith(d.id)), 'own words read as the lean wait on a verdict');
 

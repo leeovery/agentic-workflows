@@ -5,9 +5,10 @@
 require('./hermetic-env.cjs');
 
 // The GATE payload: each gate stated as data beside the MENU that displays
-// it, for a surface that draws the gate itself. Announced by the environment
-// and by nothing else — the first suite here is the proof that a session
-// without the announcement sees the bytes it always saw. A learned gate run
+// it, for a surface that draws the gate itself, the menu's statement drawn
+// apart in a DISPLAY above it. Announced by the environment and by nothing
+// else — the first suite here is the proof that a session without the
+// announcement sees the bytes it always saw. A learned gate run
 // as an automatic step states none, and leaves no gate shown to answer, the
 // step logged as a step; the import reprompt's showing, set aside, is held
 // at no place for the paths it names alone, and told from another by when
@@ -22,7 +23,7 @@ const path = require('path');
 const { ok, output, refusedPristine, FROZEN_MS } = require('./engine-harness.cjs');
 const { DAY, lines, history, shownIn, showingAnswers } = require('./trust-world.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { GATE_MARKER, announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
+const { GATE_MARKER, announced, auditGate, auditMarkers, statementOf, unannounced } = require('./gate-audit.cjs');
 const { openGate, gateShown, section, menu, menuFrame, cmdOption, promptOption } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
 const decisionPoint = require('../../skills/ledger-engine/scripts/domain/decision-point.cjs');
 const { showingOf, drawnBlind } = require('../../skills/ledger-engine/scripts/domain/learned-gates.cjs');
@@ -38,15 +39,6 @@ function gateOf(out) {
   return auditGate(out, 'gate payload');
 }
 
-/** The same response with its GATE block cut out. @param {string} out */
-function withoutGate(out) {
-  const lines = out.split('\n');
-  const i = lines.indexOf(GATE_MARKER);
-  if (i === -1) return out;
-  lines.splice(i, 2);
-  return lines.join('\n');
-}
-
 /** The section markers of a response, in order. @param {string} out */
 function markers(out) {
   return out.split('\n').filter((l) => l.startsWith('=== '));
@@ -54,14 +46,27 @@ function markers(out) {
 
 /**
  * One menu composed through the builders with the surface announced — the
- * door to a shape no render surface produces today.
- * @param {() => string} compose  the menu body @returns {object}
+ * door to a shape no render surface produces today: the response.
+ * @param {() => string} compose  the menu body @returns {string}
  */
-function collect(compose) {
+function drawn(compose) {
   return announced(() => {
     openGate();
-    return gateOf(section('MENU: builder', 'emit verbatim as markdown (not a code block)', compose()));
+    return section('MENU: builder', 'emit verbatim as markdown (not a code block)', compose());
   });
+}
+
+/** That menu's gate payload, held whole against it. @param {() => string} compose  the menu body @returns {object} */
+function collect(compose) {
+  return gateOf(drawn(compose));
+}
+
+/** A response's section `name`, its lines under its marker. @param {string} out @param {string} name */
+function sectionLines(out, name) {
+  const lines = out.split('\n');
+  const at = lines.findIndex((line) => line.startsWith(`=== ${name} (`));
+  const end = lines.findIndex((line, i) => i > at && line.startsWith('=== '));
+  return lines.slice(at + 1, end === -1 ? lines.length - 1 : end);
 }
 
 /** An epic whose map holds a topic not yet started, its cancel gate the render. @param {string} dir */
@@ -112,14 +117,14 @@ describe('gate payload — the announce switch', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('a render surface says nothing extra unannounced, and the announced bytes differ only by the GATE block', () => {
+  it('a render surface says nothing extra unannounced, and the announced bytes differ only by the statement drawn apart and the GATE block', () => {
     seedCancel(dir);
     const plain = output(dir, CANCEL);
     const announced = output(dir, CANCEL, { env: ANNOUNCED });
 
-    assert.ok(!plain.includes('=== GATE'), plain);
-    assert.notStrictEqual(plain, announced);
-    assert.strictEqual(withoutGate(announced), plain);
+    assert.ok(!plain.includes('=== GATE') && !plain.includes('=== DISPLAY: cancel gate — above the menu'), plain);
+    assert.deepStrictEqual(markers(announced).map((marker) => marker.split(' (')[0]), ['=== DISPLAY: cancel gate — above the menu', '=== GATE', '=== MENU: cancel gate']);
+    assert.strictEqual(unannounced(announced), plain);
   });
 
   it('a value other than 1 is not an announcement', () => {
@@ -192,7 +197,6 @@ describe('gate payload — a render surface', () => {
     const gate = gateOf(output(dir, ['render', 'walkthrough-screen', '--screen', '2', '--from', 'help'], { env: ANNOUNCED }));
 
     assert.strictEqual(gate.question, 'What next?');
-    assert.strictEqual(gate.statement, '');
     assert.deepStrictEqual(gate.options.map((/** @type {{key: string}} */ o) => o.key), ['n', 'b', 's']);
   });
 });
@@ -307,37 +311,64 @@ describe('gate payload — the import reprompt\'s showing, held at no place (N1,
   });
 });
 
-describe('gate payload — the statement', () => {
+describe('gate payload — the statement, drawn apart', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('a statement label over an explicit question is the statement, its markup gone', () => {
+  it('a statement over the question is drawn apart, in a DISPLAY above the GATE that emits it as markdown directly above the menu, and the menu holds the question and the rows alone', () => {
     createManifest(dir, 'pay', {
       work_type: 'epic',
       phases: { discovery: { items: { 'data-export': { source: 'discovery' } } } },
     });
-    const gate = gateOf(output(dir, ['render', 'cancel-gate', 'pay.discovery.data-export'], { env: ANNOUNCED }));
+    const out = output(dir, ['render', 'cancel-gate', 'pay.discovery.data-export'], { env: ANNOUNCED });
 
-    assert.strictEqual(gate.question, 'Cancel it?');
-    assert.strictEqual(gate.statement,
-      'Cancelling Data Export takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later.');
+    assert.deepStrictEqual(markers(out), [
+      '=== DISPLAY: cancel gate — above the menu (emit verbatim as markdown (not a code block), directly above the menu) ===',
+      GATE_MARKER,
+      '=== MENU: cancel gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
+    ]);
+    assert.deepStrictEqual(sectionLines(out, 'DISPLAY: cancel gate — above the menu'), ['Cancelling **Data Export** takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later.']);
+    assert.deepStrictEqual(sectionLines(out, 'MENU: cancel gate'), ['· · · · · · · · · · · ·', '**`◆ Cancel it?`**', '', '**`y/yes`** → Confirm cancellation', '**`n/no`**  → Keep it']);
+    assert.strictEqual(gateOf(out).question, 'Cancel it?');
   });
 
-  it('a statement over the question is the statement', () => {
-    createManifest(dir, 'auth', { phases: { discovery: { items: { 'data-export': { source: 'discovery' } } } } });
-    const gate = gateOf(output(dir, ['render', 'cancel-gate', 'auth.discovery.data-export'], { env: ANNOUNCED }));
+  it('a menu with no statement draws nothing apart', () => {
+    const out = drawn(() => menu('Pick one?', [cmdOption('1', null, 'One')]));
 
-    assert.strictEqual(gate.question, 'Cancel it?');
-    assert.strictEqual(gate.statement, 'Cancelling Data Export takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later.');
+    assert.deepStrictEqual(markers(out).map((marker) => marker.split(' (')[0]), ['=== GATE', '=== MENU: builder']);
+    assert.strictEqual(statementOf(out), '');
   });
 
-  it('every line above the question is statement, in order', () => {
-    const label = ['2 topic(s) have no source file to draft from:', '', '- Billing Core', '- Auth'].join('\n');
-    const gate = collect(() => menu(label, [cmdOption('l', 'leave', 'Leave them unset')], { question: 'How do you want to handle them?' }));
+  it('every line of the statement is drawn apart, in order, its blank lines kept and its markup kept for the chat to render', () => {
+    const label = ['2 topic(s) have no source file to draft from:', '', '- Billing Core', '- `auth_v2`'].join('\n');
+    const out = drawn(() => menu(label, [cmdOption('l', 'leave', 'Leave them unset')], { question: 'How do you want to handle them?' }));
 
-    assert.strictEqual(gate.question, 'How do you want to handle them?');
-    assert.strictEqual(gate.statement, '2 topic(s) have no source file to draft from:\n- Billing Core\n- Auth');
+    assert.deepStrictEqual(sectionLines(out, 'DISPLAY: builder — above the menu'), ['2 topic(s) have no source file to draft from:', '', '- Billing Core', '- `auth_v2`']);
+    assert.strictEqual(gateOf(out).question, 'How do you want to handle them?');
+  });
+
+  it('statement lines apart in the frame stand a blank line apart, and the menu keeps no blank line of theirs', () => {
+    const out = drawn(() => menuFrame(['First.', '', 'Second.', '', '**`◆ Pick one?`**', '', cmdOption('1', null, 'One'), '', 'Last.']));
+
+    assert.deepStrictEqual(sectionLines(out, 'DISPLAY: builder — above the menu'), ['First.', '', 'Second.', '', 'Last.']);
+    assert.deepStrictEqual(sectionLines(out, 'MENU: builder'), ['· · · · · · · · · · · ·', '**`◆ Pick one?`**', '', '**`1`** → One']);
+  });
+
+  it('a menu may give the gate a question of its own: the payload asks it, and the menu keeps its glyphed question', () => {
+    const out = drawn(() => menu('Where should a new note open, on the main screen or under the cursor?', [cmdOption('1', null, 'Main'), cmdOption('2', null, 'Cursor')], { question: 'Which way?', asks: 'Where should a new note open, on the `main` screen or under the cursor?' }));
+    const gate = JSON.parse(out.split('\n')[out.split('\n').indexOf(GATE_MARKER) + 1]);
+
+    assert.strictEqual(gate.question, 'Where should a new note open, on the main screen or under the cursor?');
+    assert.ok(sectionLines(out, 'MENU: builder').includes('**`◆ Which way?`**'), out);
+  });
+
+  it('unannounced, the statement stays in the menu, under its rule', () => {
+    openGate();
+    const out = section('MENU: builder', 'emit verbatim as markdown (not a code block)', menu('Context first.', [cmdOption('1', null, 'One')], { question: 'Pick one?' }));
+
+    assert.deepStrictEqual(markers(out).map((marker) => marker.split(' (')[0]), ['=== MENU: builder']);
+    assert.deepStrictEqual(sectionLines(out, 'MENU: builder'), ['· · · · · · · · · · · ·', 'Context first.', '', '**`◆ Pick one?`**', '', '**`1`** → One']);
   });
 });
 
@@ -370,14 +401,15 @@ describe('gate payload — a menu', () => {
 
 describe('gate payload — every row shape', () => {
   // The shapes the menu builders draw, each met by at least one menu's
-  // payload. The world's titles carry `_ * [ ]` wherever it holds a title.
-  /** @type {Record<string, (gate: import('./gate-audit.cjs').GatePayload) => boolean>} */
+  // payload, or its statement drawn apart. The world's titles carry
+  // `_ * [ ]` wherever it holds a title.
+  /** @type {Record<string, (gate: import('./gate-audit.cjs').GatePayload, out: string) => boolean>} */
   const SHAPES = {
     'a struck row with its cue and its holder': (g) => g.options.some((o) => o.struck && o.cue !== null && o.holder !== null),
     'a row with its tail and a cue': (g) => g.options.some((o) => !o.struck && o.tail !== null && o.cue !== null),
     'a recommended row': (g) => g.options.some((o) => o.recommended),
     'a prompt row': (g) => g.typed.length > 0,
-    'a statement': (g) => g.statement !== '',
+    'a statement': (_, out) => statementOf(out) !== '',
     'a title carrying markup as text': (g) => g.options.some((o) => /[_*[\]]/.test(o.head)),
   };
 
@@ -449,9 +481,9 @@ describe('gate payload — every row shape', () => {
   after(() => { cleanupFixture(dir); });
 
   it('the world reaches every row shape the menu builders draw, over the epic\'s menu, the archived items and the roadmap\'s harvest', () => {
-    const gates = [epicMenu, archived, harvest].map((out) => auditGate(out, 'shape')).filter((g) => g !== null);
+    const gates = [epicMenu, archived, harvest].map((out) => ({ gate: auditGate(out, 'shape'), out })).filter(({ gate }) => gate !== null);
     for (const [shape, drawn] of Object.entries(SHAPES)) {
-      assert.ok(gates.some(drawn), `no menu drew ${shape}`);
+      assert.ok(gates.some(({ gate, out }) => drawn(/** @type {import('./gate-audit.cjs').GatePayload} */ (gate), out)), `no menu drew ${shape}`);
     }
   });
 });
@@ -474,7 +506,6 @@ describe('gate payload — a row\'s detail', () => {
     assert.deepStrictEqual(gate.options.map((/** @type {{detail: string|null}} */ o) => o.detail), ['A note on the first.\nA second note.', null]);
     assert.strictEqual(gate.typed[0].detail, 'A note on the comment.');
     assert.strictEqual(gate.question, 'Pick one?');
-    assert.strictEqual(gate.statement, 'Reply with a number.');
   });
 });
 
@@ -542,17 +573,20 @@ describe('gate payload — escaped text', () => {
     const archived = '.ledger/.inbox/.archived/ideas/2026-05-01--user-id.md';
     createFile(dir, archived, '# Fix user_id in *auth* [draft]\n');
 
-    const item = gateOf(output(dir, ['render', 'archived-item', '--path', archived], { env: ANNOUNCED }));
-    assert.strictEqual(item.statement, 'Selected: Fix user_id in *auth* [draft] (idea, archived)');
+    const item = output(dir, ['render', 'archived-item', '--path', archived], { env: ANNOUNCED });
+    gateOf(item);
+    assert.strictEqual(statementOf(item), 'Selected: Fix user_id in *auth* [draft] (idea, archived)');
 
-    const remove = gateOf(output(dir, ['render', 'archived-delete-gate', '--path', archived], { env: ANNOUNCED }));
-    assert.strictEqual(remove.statement, 'Deleting "Fix user_id in *auth* [draft]" takes it out of the archive for good.');
+    const remove = output(dir, ['render', 'archived-delete-gate', '--path', archived], { env: ANNOUNCED });
+    gateOf(remove);
+    assert.strictEqual(statementOf(remove), 'Deleting "Fix user_id in *auth* [draft]" takes it out of the archive for good.');
   });
 
   it('a code span keeps its content as written', () => {
-    const gate = collect(() => menu('Run `a_b*c` to release it.', [cmdOption('1', null, 'One')], { question: 'Proceed?' }));
+    const out = drawn(() => menu('Run `a_b*c` to release it.', [cmdOption('1', null, 'One')], { question: 'Proceed?' }));
 
-    assert.strictEqual(gate.statement, 'Run a_b*c to release it.');
+    gateOf(out);
+    assert.strictEqual(statementOf(out), 'Run a_b*c to release it.');
   });
 
   it('every part of a row states its text, whatever markup drew it', () => {

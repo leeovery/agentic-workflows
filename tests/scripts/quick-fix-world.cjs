@@ -155,10 +155,10 @@ function accountFigures(dir, task, as) {
 const CALL = Object.freeze({
   question: 'Should --color still work?',
   rows: [
-    { key: '1', name: 'Alias', text: 'Keep --color as an alias', notice: 'old scripts keep working' },
-    { key: '2', name: 'Gone', text: 'Drop --color', notice: 'old scripts fail on the flag' },
+    { key: 'a', name: 'Alias', text: 'Keep --color as an alias', notice: 'old scripts keep working' },
+    { key: 'b', name: 'Gone', text: 'Drop --color', notice: 'old scripts fail on the flag' },
   ],
-  lean: '1',
+  lean: 'a',
   why: 'Scripts in the wild pass --color.',
   sort: 'several',
   mechanism: 'The flag parser maps --color onto --colour.',

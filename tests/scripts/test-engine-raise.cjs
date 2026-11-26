@@ -35,7 +35,7 @@ const { ok, okSectionsAsync, refuses, refusesAsync, output, initRepo, cleanupFix
 const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
 const { SESSION: WRITER, MADE, NOTE, SPACE, ledgerWorld, ledgerHelpers } = require('./ledger-world.cjs');
 const { SESSION, raiseHelpers } = require('./raise-world.cjs');
-const { auditGate, auditMarkers } = require('./gate-audit.cjs');
+const { auditGate, auditMarkers, statementOf, unannounced } = require('./gate-audit.cjs');
 const { labelAnswers } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
@@ -50,15 +50,15 @@ const NO_GATE = 'gate: no gate has been shown in this conversation — render th
 // The way on from a raise the conversation never drew.
 const ELSEWHERE = 'a raise is answered in the conversation that drew it, so after a /clear, or a resume under a new session, raise the question again';
 
-const CURSOR = Object.freeze({ key: '1', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' });
-const MAIN = Object.freeze({ key: '2', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
-const LAST = Object.freeze({ key: '3', name: 'Last', text: 'Where the last note was', notice: 'notes gather on one screen until you move one' });
+const CURSOR = Object.freeze({ key: 'cursor', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' });
+const MAIN = Object.freeze({ key: 'main', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
+const LAST = Object.freeze({ key: 'last', name: 'Last', text: 'Where the last note was', notice: 'notes gather on one screen until you move one' });
 
 /** Claude's call: where a new note opens. */
 const CALL = Object.freeze({
   question: 'When you make a new note, where should its window open?',
   rows: [CURSOR, MAIN],
-  lean: '1',
+  lean: 'cursor',
   why: 'A note follows the person.',
   sort: 'several',
   mechanism: 'The screen under the pointer when the note is made.',
@@ -165,9 +165,6 @@ function show(args, { stdin = '', env } = {}) {
   return { res: JSON.parse(out.slice(0, nl)), sections: out.slice(nl + 1) };
 }
 
-/** Output with the GATE block taken out. @param {string} out */
-const withoutGate = (out) => out.replace(/^=== GATE \(.*\) ===\n.*\n/m, '');
-
 describe('the draw (16.S30, 16.9.2)', () => {
   it('draws what is decided, the lean, what the person would notice with each row and why it asks, then the rows, the lean recommended, the toggle, "I don\'t follow" and a comment — one MENU declared by the raise\'s id, the decision and its reason answered', async () => {
     const { res, sections } = await draw();
@@ -188,8 +185,9 @@ describe('the draw (16.S30, 16.9.2)', () => {
     assert.ok(menu.includes('- Main: a `--force` sync fails at once'), sections);
     assert.ok(menu.includes('**`2`**           → Retry \\*never\\*'), sections);
     const gate = /** @type {Record<string, any>} */ (auditGate(sections, 'raise'));
-    assert.ok(gate.statement.split('\n').includes(probe), gate.statement);
-    assert.ok(gate.statement.split('\n').includes('- Main: a `--force` sync fails at once'), gate.statement);
+    const statement = statementOf(sections).split('\n');
+    assert.ok(statement.includes(probe) && statement.includes('- Main: a `--force` sync fails at once'), statement.join('\n'));
+    assert.strictEqual(gate.question, probe);
     assert.strictEqual(gate.options[1].head, 'Retry *never*');
   });
 
@@ -216,10 +214,10 @@ describe('the draw (16.S30, 16.9.2)', () => {
     const mechanism = 'The screen under the pointer:\n  NSEvent.mouseLocation, read *once*\n\nthen the screen holding it.';
     const { res } = await draw({ ...CALL, mechanism });
 
-    const { sections } = show([res.raise, '--technical'], { env: { LEDGER_GATE_SURFACE: '1' } });
+    const { sections } = show([res.raise, '--technical']);
     const at = sections.indexOf('THE MECHANISM\n\n') + 'THE MECHANISM\n\n'.length;
     assert.strictEqual(sections.slice(at, sections.indexOf('\n\n**`◆', at)), 'The screen under the pointer:\nNSEvent.mouseLocation, read \\*once\\*\n\nthen the screen holding it.');
-    auditGate(sections, 'raise show --technical');
+    auditGate(show([res.raise, '--technical'], { env: { LEDGER_GATE_SURFACE: '1' } }).sections, 'raise show --technical');
   });
 
   it('the mechanism stays behind the toggle at the draw; raise show --technical draws it, its toggle then hiding it, and raise show alone the screen as drawn', async () => {
@@ -243,7 +241,7 @@ describe('the draw (16.S30, 16.9.2)', () => {
     assert.deepStrictEqual(leads().technical, ['raise', 'show', res.raise]);
   });
 
-  it('the gate audit holds the screen to its payload with the mod announced, the notice and the why in its statement; unannounced, the screen is the same less the payload', async () => {
+  it('the gate audit holds the screen to its payload with the mod announced, the payload asking the call\'s own question and the chat the statement, the notice and the why in it; unannounced, the screen is the same, the statement folded back into the menu, less the payload', async () => {
     const plain = await draw();
     const announced = await draw(CALL, { env: { LEDGER_GATE_SURFACE: '1' } });
     const technical = show([plain.res.raise, '--technical'], { env: { LEDGER_GATE_SURFACE: '1' } });
@@ -251,9 +249,10 @@ describe('the draw (16.S30, 16.9.2)', () => {
     auditMarkers(plain.sections, 'raise');
     const gate = auditGate(announced.sections, 'raise');
     auditGate(technical.sections, 'raise show --technical');
-    assert.strictEqual(gate?.gate, `raise — ${plain.res.raise}`);
-    assert.ok(gate?.statement.includes('- Main: every note opens on the same screen') && gate.statement.includes(UNLABELLED), 'the payload states no notice or no why');
-    assert.strictEqual(withoutGate(announced.sections), plain.sections);
+    assert.deepStrictEqual([gate?.gate, gate?.question], [`raise — ${plain.res.raise}`, CALL.question]);
+    const statement = statementOf(announced.sections);
+    assert.ok(statement.includes('- Main: every note opens on the same screen') && statement.includes(UNLABELLED), 'the chat states no notice or no why');
+    assert.strictEqual(unannounced(announced.sections), plain.sections);
   });
 });
 
@@ -308,7 +307,7 @@ describe('the seal (P1, P6)', () => {
     const first = await draw();
     const sealed = seals();
 
-    const again = await draw({ ...CALL, rows: [MAIN, CURSOR], lean: '2', mechanism: 'The main screen, always.' });
+    const again = await draw({ ...CALL, rows: [MAIN, CURSOR], lean: 'main', mechanism: 'The main screen, always.' });
     assert.deepStrictEqual([again.res, again.sections], [{ ...first.res, redrawn: true }, first.sections]);
     assert.deepStrictEqual(seals(), sealed);
 
@@ -320,7 +319,7 @@ describe('the seal (P1, P6)', () => {
   it('raise show draws from the seal alone, whatever Claude hands it, and takes a prefix of the id', async () => {
     const { res } = await draw();
 
-    const shown = show([res.raise.slice(0, 6)], { stdin: JSON.stringify({ ...CALL, lean: '2', question: 'Where else?' }) });
+    const shown = show([res.raise.slice(0, 6)], { stdin: JSON.stringify({ ...CALL, lean: 'main', question: 'Where else?' }) });
     assert.strictEqual(shown.sections, screen(res.raise));
   });
 
@@ -373,7 +372,7 @@ describe('the one-decision check at the draw (5.5.2, E10)', () => {
 
     const { res } = await draw(call, { env: { CLAUDE_STUB_ANSWERS: JSON.stringify({ 'The answer: ': { rules: ['One rule.'] }, '': labelAnswers('behaviour') }), CLAUDE_STUB_LOG: log, CLAUDE_STUB_MEET: `4:${meet}` } });
 
-    assert.deepStrictEqual(seals()[res.raise].rows_judged, ['1', '2', '3'], 'a row went unjudged: its call did not meet the others at the barrier');
+    assert.deepStrictEqual(seals()[res.raise].rows_judged, ['cursor', 'main', 'last'], 'a row went unjudged: its call did not meet the others at the barrier');
     assert.notStrictEqual(seals()[res.raise].label, null, 'the label\'s call did not meet the checks at the barrier');
     const entry = (/** @type {{text: string}} */ row) => [
       `The answer: ${row.text}`,
@@ -389,8 +388,8 @@ describe('the one-decision check at the draw (5.5.2, E10)', () => {
       CLAUDE_STUB_ANSWERS: JSON.stringify({ 'The answer: On the main screen': { rules: ['Open on the main screen.', 'Size it to half the screen.'] }, '': { rules: ['One rule.'] } }),
     });
 
-    assert.strictEqual(error, 'raise: row 2 holds several rules, and the entry a row lands as holds one — nothing drawn. Make each row one answer to the question, and raise what else it decides as a question of its own:\n'
-      + '  row 2:\n    1. Open on the main screen.\n    2. Size it to half the screen.');
+    assert.strictEqual(error, 'raise: row main holds several rules, and the entry a row lands as holds one — nothing drawn. Make each row one answer to the question, and raise what else it decides as a question of its own:\n'
+      + '  row main:\n    1. Open on the main screen.\n    2. Size it to half the screen.');
   });
 
   it('logs each row\'s run as `raise`, in the unit the raise stands in — one, several, unchecked where the call cannot judge it — and a run the log cannot take is a warning the refusal carries (5.5.9)', async (t) => {
@@ -567,7 +566,7 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
       [{ ...CALL, rows: [CURSOR, { ...MAIN, notice: 'One screen,\nalways' }] }, 'raise: the call\'s rows[1]\'s notice is not one line of text'],
       [{ ...CALL, mechanism: '' }, 'raise: the call\'s mechanism is not non-empty text'],
       [{ ...CALL, rows: [CURSOR, { ...MAIN, why: 'Because.' }] }, 'raise: the call\'s rows[1] has no field why — it holds key, name, text, notice'],
-      [{ ...CALL, rows: [CURSOR, { key: '2', name: 'Main', text: 'On the main screen' }] }, 'raise: the call\'s rows[1] needs notice'],
+      [{ ...CALL, rows: [CURSOR, { key: 'main', name: 'Main', text: 'On the main screen' }] }, 'raise: the call\'s rows[1] needs notice'],
       [{ ...CALL, rows: [CURSOR, 'On the main screen'] }, 'raise: the call\'s rows[1] is not a row — {key, name, text, notice}'],
       ...[[], ['Found it.\nAnd more.'], 'Found it.'].map((steppedBack) => [{ ...CALL, stepped_back: steppedBack }, 'raise: the call\'s stepped_back is not a list of lines, one at least']),
     ])) {
@@ -590,11 +589,17 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
   });
 
   it('a key two rows share', async () => {
-    assert.strictEqual(await refusedCall({ ...CALL, rows: [CURSOR, { ...MAIN, key: '1' }] }), 'raise: the call\'s rows share the key 1 — each row\'s key is its own');
+    assert.strictEqual(await refusedCall({ ...CALL, rows: [CURSOR, { ...MAIN, key: 'cursor' }] }), 'raise: the call\'s rows share the key cursor — each row\'s key is its own');
   });
 
   it('a key the trust log cannot key', async () => {
     assert.strictEqual(await refusedCall({ ...CALL, rows: [CURSOR, { ...MAIN, key: 'main screen' }] }), 'raise: the call\'s rows[1]\'s key is not a key: letters, digits, - and _, up to 24 of them');
+  });
+
+  it('a row\'s key that is a number other than its place, which a pick reads as the row drawn under it', async () => {
+    for (const [rows, at, key] of /** @type {[typeof CALL.rows, number, string][]} */ ([[[CURSOR, { ...MAIN, key: '1' }], 1, '1'], [[CURSOR, { ...MAIN, key: '10' }], 1, '10'], [[{ ...CURSOR, key: '2' }, { ...MAIN, key: '1' }], 0, '2']])) {
+      assert.strictEqual(await refusedCall({ ...CALL, rows, lean: rows[0].key }), `raise: the call's rows[${at}] takes the key ${key}, a number other than its place — a row keyed by a number is keyed by its place among the rows, ${at + 1}, as the screen numbers it, since a pick of a number is the row drawn under it`);
+    }
   });
 
   it('a row\'s key that is the screen\'s own word, in any case — keep among them, so a raise event\'s keep always means a keep', async () => {
@@ -604,7 +609,7 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
   });
 
   it('a lean naming no row', async () => {
-    assert.strictEqual(await refusedCall({ ...CALL, lean: '3' }), 'raise: the call leans to 3, and no row has that key — its rows: 1, 2');
+    assert.strictEqual(await refusedCall({ ...CALL, lean: 'last' }), 'raise: the call leans to last, and no row has that key — its rows: cursor, main');
   });
 
   it('a seal that cannot be written', async () => {

@@ -1,7 +1,7 @@
-// A blind question's gate as engine raise states it, Claude's answer held back — no lean, no row recommended, no reason it asks, its rows in the order and the keys its question's id gives them — held to it by tests/scripts/test-engine-raise-blind.cjs.
+// A blind question's gate as engine raise states it, Claude's answer held back — its own question asked, no row recommended, its rows numbered in the order its question's id gives them, what the person reads printed in the chat above it and stated plain as the gate's identity — held to it by tests/scripts/test-engine-raise-blind.cjs.
 export default {
   gate: 'raise — Q3x9mT2bLk7WvP4nRf8Za',
-  question: 'Which way?',
+  question: 'When you make a new note, where should its window open?',
   statement: [
     'Fumi · Note Window',
     'When you make a new note, where should its window open?',

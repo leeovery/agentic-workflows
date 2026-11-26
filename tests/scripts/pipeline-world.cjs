@@ -940,11 +940,11 @@ async function fixDirected(sim, wu, { pick = '1', design = false } = {}) {
   const { raise } = await sim.runAsync(['raise', at, '--answers', fix, ...(design ? ['--always', 'design-problem'] : [])], null, JSON.stringify({
     question: 'How should the save stop crashing?',
     rows: [
-      { key: '1', name: 'Check', text: 'Check the field before the save writes it', notice: 'a save never crashes' },
-      { key: '2', name: 'Default', text: 'Write a default in place of the null', notice: 'a save keeps a placeholder' },
+      { key: 'a', name: 'Check', text: 'Check the field before the save writes it', notice: 'a save never crashes' },
+      { key: 'b', name: 'Default', text: 'Write a default in place of the null', notice: 'a save keeps a placeholder' },
       ...(design ? [{ key: 'rework', name: 'Rework', text: 'Rework saving as a feature', notice: 'nothing changes until saving is decided afresh' }] : []),
     ],
-    lean: '1', why: 'The null is the cause.', sort: 'several', mechanism: 'The save checks the field.', product_wide: false,
+    lean: 'a', why: 'The null is the cause.', sort: 'several', mechanism: 'The save checks the field.', product_wide: false,
     stepped_back: ['The save was right for the fields it knew; a null is a case it never met.'],
   }));
   sim.run(['raise', 'answer', raise, '--pick', pick], null, JSON.stringify({ why: 'It stops the crash at its cause.' }));

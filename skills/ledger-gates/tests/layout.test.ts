@@ -107,7 +107,6 @@ const DROPPED = 'a-long-answer-from-the-last-menu'
  */
 const menuOf = (count: number): Gate =>
   gateOf({
-    statement: 'Specification Overview\nThese topics are ready to be specified.',
     question: 'Which topic would you like to continue?',
     options: Array.from({ length: count }, (_, n) =>
       optionOf({
@@ -249,19 +248,14 @@ describe('layout', () => {
     ])
   })
 
-  test('6.S19: a blind question draws as any raise does, its statement and question over its rows, but none recommended, so the cursor starts on the first, Claude\'s answer nowhere on the band', () => {
+  test('6.S19: a blind question draws as any raise does, its own question over its rows numbered as drawn, but none recommended, so the cursor starts on the first, Claude\'s answer nowhere on the band', () => {
     const { gate: name, ...stated } = BLIND
     const gate: Gate = { name, ...stated }
 
     expect(linesOf(gate, 72).map(read)).toEqual([
       '─',
       '',
-      '  Fumi · Note Window',
-      '  When you make a new note, where should its window open?',
-      "  WHAT YOU'D NOTICE",
-      '  - Main: every note opens on the same screen',
-      '  - Cursor: the note opens where you are looking',
-      '◆ Which way?',
+      '◆ When you make a new note, where should its window open?',
       '',
       'o0 1          On the main screen',
       'o1 2          On the screen the cursor is on',
@@ -274,22 +268,6 @@ describe('layout', () => {
     expect(startingRow(gate.options)).toBe(0)
   })
 
-  test('the statement stands directly above the question, its lines its own, the glyph on the question alone', () => {
-    const gate = gateOf({
-      statement: 'Found existing review for Auth.\nReview covered 2 of 5 tasks.',
-      question: 'Continue the review?',
-    })
-
-    expect(linesOf(gate, 72).map(read).slice(0, 6)).toEqual([
-      '─',
-      '',
-      '  Found existing review for Auth.',
-      '  Review covered 2 of 5 tasks.',
-      '◆ Continue the review?',
-      '',
-    ])
-  })
-
   test('a question too long for the band wraps past the glyph', () => {
     const gate = gateOf({ question: 'Conclude this discussion and mark as completed?' })
 
@@ -300,13 +278,16 @@ describe('layout', () => {
     ])
   })
 
-  test('the question is bold and the statement normal weight', () => {
-    const gate = gateOf({ statement: 'Context.', question: 'Proceed?' })
-    const prose = linesOf(gate, 72).flatMap(line => (line.kind === 'prose' ? [line.runs] : []))
+  test('the head is the question alone, bold on every line it wraps to, the glyph on its first; the statement is never drawn', () => {
+    const gate = gateOf({
+      statement: 'Found existing review for Auth.',
+      question: 'Should a note made while offline sync the moment the network is back?',
+    })
+    const prose = linesOf(gate, 40).flatMap(line => (line.kind === 'prose' ? [line] : []))
 
     expect(prose).toEqual([
-      [{ text: 'Context.' }],
-      [{ text: 'Proceed?', bold: true }],
+      { kind: 'prose', glyph: true, runs: [{ text: 'Should a note made while offline sync', bold: true }] },
+      { kind: 'prose', glyph: false, runs: [{ text: 'the moment the network is back?', bold: true }] },
     ])
   })
 
@@ -646,11 +627,9 @@ describe('layout', () => {
   })
 
   test('a paged band keeps its head and its footer, a page of rows between them over the pager', () => {
-    expect(linesOf(menuOf(6), 72, IDLE, NO_SENDS, 14).map(read)).toEqual([
+    expect(linesOf(menuOf(6), 72, IDLE, NO_SENDS, 12).map(read)).toEqual([
       '─',
       '',
-      '  Specification Overview',
-      '  These topics are ready to be specified.',
       '◆ Which topic would you like to continue?',
       '',
       'o0 1        Continue "Topic 1" — discussion',
@@ -664,10 +643,30 @@ describe('layout', () => {
     ])
   })
 
-  test('a page short of rows is padded out, so the pager and the footer never move', () => {
-    const [, , last] = everyPage(menuOf(6), 72, 14)
+  test('a question too long to leave a line of rows keeps the lines that do, the last ending "…", so the band stands no taller than it may', () => {
+    const question = 'When you make a new note while the network is down and you are on your phone, where should its window open, and should it sync the moment the network is back?'
+    const gate = gateOf({ question, options: [optionOf({ key: '1' }), optionOf({ key: '2' })] })
+    const asked = (lines: Line[]) => lines.flatMap(line => (line.kind === 'prose' ? [textOf(line.runs)] : []))
+    const least = leastOf(gate, 30, NO_SENDS)
 
-    expect(last?.map(read).slice(6, 12)).toEqual([
+    expect(asked(linesOf(gate, 30))).toHaveLength(6)
+    expect(asked(linesOf(gate, 30, IDLE, NO_SENDS, least))).toEqual(['When you make a new note…'])
+
+    for (let maxRows = least; maxRows <= least + 4; maxRows += 1) {
+      const lines = linesOf(gate, 30, IDLE, NO_SENDS, maxRows)
+      const kept = asked(lines)
+
+      expect(lines.length, `${maxRows} high`).toBeLessThanOrEqual(maxRows)
+      expect(rowsOf(lines).length, `${maxRows} high`).toBeGreaterThan(0)
+      expect(kept.at(-1), `${maxRows} high`).toMatch(/…$/)
+      expect(kept.every(line => line.length <= 28), `${maxRows} high`).toBe(true)
+    }
+  })
+
+  test('a page short of rows is padded out, so the pager and the footer never move', () => {
+    const [, , last] = everyPage(menuOf(6), 72, 12)
+
+    expect(last?.map(read).slice(4, 10)).toEqual([
       't1 1–6      Pick items',
       '',
       '',
@@ -782,10 +781,10 @@ describe('layout', () => {
   })
 
   test('a page of typed rows alone opens on no option, and a gate shown whole is its own first page', () => {
-    const [last] = everyPage(menuOf(6), 72, 14).slice(-1)
+    const [last] = everyPage(menuOf(6), 72, 12).slice(-1)
 
     expect(rowsOf(last ?? []).every(line => line.kind === 'typed')).toBe(true)
-    expect(firstOnPage(menuOf(6), 72, NO_SENDS, 14, 2)).toBeNull()
+    expect(firstOnPage(menuOf(6), 72, NO_SENDS, 12, 2)).toBeNull()
     expect(pageOf(menuOf(6), 72, NO_SENDS, Infinity, 5)).toBe(0)
   })
 })

@@ -1,17 +1,23 @@
 'use strict';
 
 // The gate payload held against the MENU it states. A surface that draws the
-// gate from the payload shows the person the payload and nothing else, so
-// every line the MENU draws has to have its home there, the payload has to
-// state nothing the MENU does not draw, and what it states is the text the
-// person reads — never the markup that draws it. Beside it, every section a
-// person is shown names how it renders in one of the four forms, so no older
-// or reworded form comes back. The gate it states is named as the trust log
-// keys it, so every gate a render draws, a templated name's every variant
-// among them, is held to the gate event's rule wherever it renders.
+// gate from the payload shows the person the payload's question and rows in
+// place of the menu, so every row the MENU draws has to have its home there,
+// the payload's question and rows are the menu's and nothing else, and what
+// it states is the text the person reads — never the markup that draws it.
+// What the person reads before the question, the menu's statement, is the
+// chat's: a DISPLAY directly above the payload, the MENU holding the question
+// and the rows alone; the payload states that statement too, read plain, the
+// gate's identity no surface draws. `auditingRender` also holds a render with
+// the statement folded back under its rule to the one an unannounced surface
+// reads. Beside it, every section a person is shown names how it renders in
+// one of the four forms, so no older or reworded form comes back. The gate it
+// states is named as the trust log keys it, so every gate a render draws, a
+// templated name's every variant among them, is held to the gate event's rule
+// wherever it renders.
 
 const assert = require('node:assert');
-const { RENDER_FORMS: FORMS, emitAs, openGate } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+const { RENDER_FORMS: FORMS, STATEMENT_INSTRUCTION, emitAs, openGate, statementSection } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
 const { SCHEMA } = require('../../skills/ledger-engine/scripts/domain/trust-events.cjs');
 
 const SURFACE_ENV = 'LEDGER_GATE_SURFACE';
@@ -24,6 +30,11 @@ const MARKUP = /(?<!`)(`+)(?!`)(.*?[^`])\1(?!`)|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]/
 // kept whole in the payload: the raise, Claude's (projections/raise.cjs,
 // `wordsAsWritten`).
 const LITERAL_GATES = new Set(['raise']);
+// The gates whose payload asks a question of its own in the place of the
+// menu's short one, a line of the statement: the raise, the call's question
+// (projections/raise.cjs).
+const OWN_QUESTION_GATES = new Set(['raise']);
+const PAYLOAD_FIELDS = ['gate', 'question', 'statement', 'options', 'typed'];
 
 // The same markup one token at a time: a code span and an escape carry their
 // text, a strike or an italic marker toggles its span, bold and a stray
@@ -163,11 +174,16 @@ function reading(glyphs) {
 // A row is an option or a typed row, in order and with its whole label; a
 // wrapped label's continuation belongs to the row above it, and so does any
 // other line directly beneath it, as its detail; the line the menu asks on —
-// its glyphed line — is the question; every other line is the statement, in
-// order. Every value the payload states is held as it stands against the menu
-// read plain.
-/** @param {GatePayload} gate @param {string[]} body @param {string} label @param {boolean} literal a gate drawing another's words as written @returns {void} */
-function assertPayloadDrawsMenu(gate, body, label, literal) {
+// its glyphed line — is the question, the payload's, or a line of the
+// statement where the gate asks its own; and no other line stands, the
+// statement drawn apart. Every value the payload states is held as it
+// stands against the menu read plain.
+/**
+ * @param {GatePayload} gate @param {string[]} body @param {string[]} statement the statement's lines, read plain
+ * @param {string} label @param {{literal: boolean, ownQuestion: boolean}} reads how the gate draws its words and its question
+ * @returns {void}
+ */
+function assertPayloadDrawsMenu(gate, body, statement, label, { literal, ownQuestion }) {
   /** @type {DrawnRow[]} */ const rows = [];
   /** @type {{text: string, glyphed: boolean}[]} */ const prose = [];
   /** @type {DrawnRow|null} */ let under = null;
@@ -190,10 +206,14 @@ function assertPayloadDrawsMenu(gate, body, label, literal) {
     }
   }
   const askAt = prose.findIndex((p) => p.glyphed);
-  assert.strictEqual(gate.question, askAt === -1 ? '' : prose[askAt].text,
-    `[${label}] the payload's question is not the line the menu asks on`);
-  assert.deepStrictEqual(gate.statement === '' ? [] : gate.statement.split('\n'), prose.filter((_, i) => i !== askAt).map((p) => p.text),
-    `[${label}] the payload's statement is not every other line the menu draws`);
+  assert.deepStrictEqual(prose.filter((_, i) => i !== askAt).map((p) => p.text), [],
+    `[${label}] the menu draws a line beside its question and its rows — the statement is drawn apart, above the payload`);
+  if (ownQuestion) {
+    assert.ok(statement.includes(gate.question), `[${label}] the payload's own question is no line of the statement`);
+  } else {
+    assert.strictEqual(gate.question, askAt === -1 ? '' : prose[askAt].text,
+      `[${label}] the payload's question is not the line the menu asks on`);
+  }
 
   const keys = rows.filter((r) => !r.typed);
   const typed = rows.filter((r) => r.typed);
@@ -225,12 +245,59 @@ function auditMarkers(out, label) {
   }
 }
 
+/** The marker of the statement the gate `gate` draws apart. @param {string} gate */
+function statementMarker(gate) {
+  return `=== ${statementSection(gate)} (${STATEMENT_INSTRUCTION}) ===`;
+}
+
+/**
+ * The statement an announced response draws apart from its menu, its
+ * lines as the DISPLAY directly above the GATE holds them; none where it
+ * draws none.
+ * @param {string[]} lines  the response's lines @param {number} gateAt where its GATE marker stands
+ * @returns {string[]}
+ */
+function statementAbove(lines, gateAt) {
+  const opens = lines.lastIndexOf(statementMarker(JSON.parse(lines[gateAt + 1]).gate), gateAt);
+  if (opens === -1 || lines.slice(opens + 1, gateAt).some((line) => line.startsWith('=== '))) return [];
+  return lines.slice(opens + 1, gateAt);
+}
+
+/**
+ * The statement an announced response draws apart from its menu, read
+ * plain, a line apiece, as the person reads it in the chat.
+ * @param {string} out @returns {string}
+ */
+function statementOf(out) {
+  const lines = out.split('\n');
+  const gateAt = lines.indexOf(GATE_MARKER);
+  const literal = LITERAL_GATES.has(JSON.parse(lines[gateAt + 1]).gate.split(ENTRY_SEPARATOR)[0]);
+  return statementAbove(lines, gateAt).map((line) => plainText(line, literal)).filter(Boolean).join('\n');
+}
+
+/**
+ * An announced response as an unannounced surface reads it: the GATE
+ * block gone, and the statement drawn apart folded back into the menu,
+ * under its rule, a blank line beneath it.
+ * @param {string} out @returns {string}
+ */
+function unannounced(out) {
+  const lines = out.split('\n');
+  const gateAt = lines.indexOf(GATE_MARKER);
+  if (gateAt === -1) return out;
+  const statement = statementAbove(lines, gateAt);
+  const folded = statement.length === 0 ? [] : [...statement, ''];
+  const [marker, rule, ...rest] = lines.slice(gateAt + 2);
+  return [...lines.slice(0, gateAt - (statement.length === 0 ? 0 : statement.length + 1)), marker, rule, ...folded, ...rest].join('\n');
+}
+
 /**
  * The GATE payload in an announced response, held against its MENU — a
  * response carries one at most: it sits directly above the MENU, asks a
- * question over at least one row to press, and states the whole of the menu. Null when the response carries no
- * menu, which then carries no gate either, and when the menu draws nothing,
- * which leaves nothing to state.
+ * question over at least one row to press, and states every row of the
+ * menu and nothing else, the statement drawn apart above it. Null when the
+ * response carries no menu, which then carries no gate either, and when
+ * the menu draws nothing, which leaves nothing to state.
  * @param {string} out  the response's stdout
  * @param {string} label  what the assertion messages name
  * @returns {GatePayload|null}
@@ -254,9 +321,13 @@ function auditGate(out, label) {
   const gate = JSON.parse(lines[menuAt - 1]);
   const name = gate.gate.split(ENTRY_SEPARATOR)[0];
   assert.ok(GATE_NAME?.test(name), `[${label}] the gate "${name}" is no name the trust log keys — ${GATE_NAME?.is}`);
+  assert.deepStrictEqual(Object.keys(gate), PAYLOAD_FIELDS, `[${label}] the payload states its gate, its question, its statement and its rows, and nothing else`);
   assert.notStrictEqual(gate.question, '', `[${label}] every menu asks — the payload states no question`);
   assert.ok(gate.options.length > 0, `[${label}] every menu has a row to press — the payload states none`);
-  assertPayloadDrawsMenu(gate, body, label, LITERAL_GATES.has(name));
+  const literal = LITERAL_GATES.has(name);
+  const statement = statementAbove(lines, menuAt - 2).map((line) => plainText(line, literal)).filter(Boolean);
+  assert.strictEqual(gate.statement, statement.join('\n'), `[${label}] the payload's statement is not the one drawn apart above it, read plain`);
+  assertPayloadDrawsMenu(gate, body, statement, label, { literal, ownQuestion: OWN_QUESTION_GATES.has(name) });
   return gate;
 }
 
@@ -273,13 +344,15 @@ function auditingRender(renderSurface) {
     const out = renderSurface(dir, surface, args);
     auditMarkers(out, `render ${surface}`);
     if (out.includes('=== MENU')) {
-      auditGate(announced(() => {
+      const drawn = announced(() => {
         openGate();
         return renderSurface(dir, surface, args);
-      }), `render ${surface}`);
+      });
+      auditGate(drawn, `render ${surface}`);
+      assert.strictEqual(unannounced(drawn), out, `[render ${surface}] the statement drawn apart is not the menu's own, folded back`);
     }
     return out;
   };
 }
 
-module.exports = { GATE_MARKER, announced, auditGate, auditMarkers, auditingRender };
+module.exports = { GATE_MARKER, announced, auditGate, auditMarkers, auditingRender, statementOf, unannounced };

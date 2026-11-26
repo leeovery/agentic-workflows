@@ -45,7 +45,7 @@ const { UNIT, MADE, NOTE, PHASES, SESSION_ID, ledgerHelpers } = require('./ledge
 const { SESSION, raiseHelpers, undrawn } = require('./raise-world.cjs');
 const { DAY, lines, history, trustLogHelpers } = require('./trust-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
-const { auditGate } = require('./gate-audit.cjs');
+const { auditGate, unannounced } = require('./gate-audit.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
@@ -137,7 +137,7 @@ afterEach(() => {
 });
 
 const { entries, write, full } = ledgerHelpers(() => dir);
-const { conversation, inFolder, project, answer, raised } = raiseHelpers(() => dir, config, { sort: 'several', lean: '1' });
+const { conversation, inFolder, project, answer, raised } = raiseHelpers(() => dir, config, { sort: 'several', lean: 'a' });
 const { logEvents } = trustLogHelpers(() => dir, config);
 
 /**
@@ -201,8 +201,8 @@ const forecastFor = (out, name) => sectionOf(out, 'DATA').split('\n').find((line
 /** Claude's call on the open question `text`, leaning to its first row. @param {string} text */
 const callOn = (text) => ({
   question: text,
-  rows: [{ key: '1', name: 'Mine', text: `My answer to ${text}`, notice: 'what I would build' }, { key: '2', name: 'Other', text: `Another answer to ${text}`, notice: 'what else it could be' }],
-  lean: '1', why: 'It follows the person.', sort: 'several', mechanism: 'How it is built.', product_wide: false,
+  rows: [{ key: 'a', name: 'Mine', text: `My answer to ${text}`, notice: 'what I would build' }, { key: 'b', name: 'Other', text: `Another answer to ${text}`, notice: 'what else it could be' }],
+  lean: 'a', why: 'It follows the person.', sort: 'several', mechanism: 'How it is built.', product_wide: false,
 });
 
 describe('the run (16.8.7)', () => {
@@ -346,7 +346,7 @@ describe('the offer (16.8.2)', () => {
     const out = offer([], { CLAUDE_STUB_ANSWERS: LABELS, CLAUDE_STUB_MEET: `${Object.keys(OPEN).length}:${meet}` });
 
     const gate = auditGate(out, 'render convergence');
-    assert.deepStrictEqual(screenOf(out, 'MENU: convergence offer'), [
+    assert.deepStrictEqual(screenOf(unannounced(out), 'MENU: convergence offer'), [
       '· · · · · · · · · · · ·',
       '8 agreements in a row on Note Window.',
       '',
@@ -379,7 +379,7 @@ describe('the offer (16.8.2)', () => {
 
     const out = askedOffer();
 
-    assert.deepStrictEqual(screenOf(out, 'MENU: convergence offer').slice(1, 3), ['You\'ve asked me to settle the rest of Note Window.', '']);
+    assert.deepStrictEqual(screenOf(unannounced(out), 'MENU: convergence offer').slice(1, 3), ['You\'ve asked me to settle the rest of Note Window.', '']);
     assert.strictEqual(sectionOf(out, 'DATA').split('\n')[0], 'offer: on the person\'s word');
     assert.strictEqual(notDue(), 'render convergence: no offer is due on Note Window at 3 agreements in a row; on the person\'s word, --asked');
   });

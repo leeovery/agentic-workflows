@@ -199,7 +199,7 @@ FIX DIRECTION ──────────────────────
   })
 
   test('picked: the person\'s pick marked and the rest set aside, the heading theirs; in their own words, the fix as they said it', () => {
-    const picked = { ...fixture, standing: 'validating-fix', waiting: [], fix_direction: { ...fixture.fix_direction, state: 'picked', pick: '1', fix: 'Harden the reads.' } } as View
+    const picked = { ...fixture, standing: 'validating-fix', waiting: [], fix_direction: { ...fixture.fix_direction, state: 'picked', pick: 'harden', fix: 'Harden the reads.' } } as View
     const own = { ...picked, fix_direction: { ...fixture.fix_direction, state: 'picked', options: [], pick: null, fix: 'Harden the reads, and say what a save dropped.' } } as View
 
     expect(sectionOf(drawn(INVESTIGATION, picked).text, 'FIX DIRECTION ').slice(0, 1).concat(sectionOf(drawn(INVESTIGATION, picked).text, 'FIX DIRECTION ').slice(3))).toEqual([
@@ -215,7 +215,7 @@ FIX DIRECTION ──────────────────────
   })
 
   test('20.12.1, 20.12.4: concluded at ready to build\'s yes, the facts line says so and nothing turns, and the unit\'s tab shows the build under way', () => {
-    const done = { ...fixture, standing: 'concluded', waiting: [], fix_direction: { ...fixture.fix_direction, state: 'picked', pick: '1', fix: 'Harden the reads.' } } as View
+    const done = { ...fixture, standing: 'concluded', waiting: [], fix_direction: { ...fixture.fix_direction, state: 'picked', pick: 'harden', fix: 'Harden the reads.' } } as View
     const tab = { ...MINT, type: 'bugfix', here: false, waiting: [], phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'complete', '6 hypotheses'), phase('specification', 'complete', '1 phase'), phase('implementation', 'running', '0 of 1 done', { doing: 'building' })] } as View
     const { text, holds } = drawn(INVESTIGATION, done)
 
@@ -225,7 +225,7 @@ FIX DIRECTION ──────────────────────
   })
 
   test('closed into its spec, not yet concluded at ready to build, the facts line says it is closed and the specification next, and nothing turns', () => {
-    const closed = { ...fixture, standing: 'closed', waiting: [], fix_direction: { ...fixture.fix_direction, state: 'picked', pick: '1', fix: 'Harden the reads.' } } as View
+    const closed = { ...fixture, standing: 'closed', waiting: [], fix_direction: { ...fixture.fix_direction, state: 'picked', pick: 'harden', fix: 'Harden the reads.' } } as View
     const { text, holds } = drawn(INVESTIGATION, closed)
 
     expect(text.slice(2, 4)).toEqual(['6 hypotheses · 3 confirmed · 10 experiments · ✓ closed · the', 'specification next'])
@@ -252,12 +252,12 @@ FIX DIRECTION ──────────────────────
   test('20.12.2: each hypothesis, experiment, the root cause, what stepping back found, an option and a call opens its own page; a decision opens its entry', () => {
     const { lines } = drawn(INVESTIGATION, KILL_ALL)
 
-    expect(['hunt:h:H6', 'hunt:e:E5', 'hunt:root-cause', 'hunt:fix:back', 'hunt:option:2', 'hunt:call:c1Vb6z', 'hunt:decided:r4Tn8w'].map(key => pressOf(lines, key))).toEqual([
+    expect(['hunt:h:H6', 'hunt:e:E5', 'hunt:root-cause', 'hunt:fix:back', 'hunt:option:reads', 'hunt:call:c1Vb6z', 'hunt:decided:r4Tn8w'].map(key => pressOf(lines, key))).toEqual([
       'page:hunt:H6',
       'page:hunt:E5',
       'page:hunt:root-cause',
       'page:hunt:stepped-back',
-      'page:option:2',
+      'page:option:reads',
       'page:entry:c1Vb6z',
       'page:entry:r4Tn8w',
     ])

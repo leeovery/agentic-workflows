@@ -251,6 +251,9 @@ const ASK = {
   detail: null,
 }
 
+/** A question as a raise asks it, too long for a narrow band's one line. */
+const LONG_QUESTION = 'Should a note made while offline sync the moment the network is back?'
+
 const RESULT_SECTION = [
   '=== DISPLAY: task result (emit verbatim as a text code block (```text fence)) ===',
   'Task 1.1 — the login form validates',
@@ -1476,21 +1479,21 @@ describe('register', () => {
     })
   }
 
-  test('the statement draws directly above the question, level with its text', async ($, on) => {
-    world($, on, announced({ statement: 'Found existing review for Auth.' }))
+  test('the band opens on the question alone, a long one wrapping level with its text, bold throughout', async ($, on) => {
+    world($, on, announced({ question: LONG_QUESTION }))
 
     await presented($)
 
-    const ui = await $.ui.mount(MOUNT)
+    const ui = await $.ui.mount({ ...MOUNT, props: { ...BAND, bodyColumns: 40 } })
 
     expect((await linesOf(ui)).slice(1, 5).map(line => line.trimEnd())).toEqual([
       '',
-      '  Found existing review for Auth.',
-      '◆ Approve this task?',
+      '◆ Should a note made while offline sync',
+      '  the moment the network is back?',
       '',
     ])
 
-    expect(await runOf(ui, 'Found existing review for Auth.')).not.toMatchObject({
+    expect(await runOf(ui, 'the moment the network is back?')).toMatchObject({
       props: { bold: true },
     })
 
@@ -1543,8 +1546,7 @@ describe('register', () => {
       announced({
         options: DETAILED,
         typed: [ASK],
-        question: 'What would you like to do?',
-        statement: 'Specification Overview\nTwo discussions are ready to be grouped.',
+        question: LONG_QUESTION,
       }),
     )
 
@@ -2775,6 +2777,27 @@ describe('register', () => {
     await $.turn.complete(TURN_END)
 
     expect(submitted).toEqual(['ping', 'yes'])
+  })
+
+  test('a turn that draws the same question and rows over another statement is another gate: the held answer is dropped unsent, the statement never drawn on the band', async ($, on) => {
+    const { submitted, engineWrites } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+
+    engineWrites(announced({ statement: 'The task changed since you read it.' }))
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(TURN_END)
+
+    expect(submitted).toEqual(['ping'])
+    expect(await footerOf(ui)).toBe('yes not sent — the menu changed')
+    expect(await lineOf(ui, 'The task changed since you read it.')).toBe(-1)
   })
 
   test('a turn that draws another gate drops the held answer unsent, and the new gate’s footer says so until a click', async ($, on) => {

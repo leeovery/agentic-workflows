@@ -38,8 +38,8 @@ const { LEDGER_VERSION } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'
 
 const ONLY_YOU_KNOW = 'Only you know this: it\'s a fact I can\'t check.';
 
-const MONDAY = Object.freeze({ key: '1', name: 'Monday', text: 'The beta ships on Monday', notice: 'the note window is in the first build' });
-const LATER = Object.freeze({ key: '2', name: 'Later', text: 'The beta ships next month', notice: 'the note window can wait for the second build' });
+const MONDAY = Object.freeze({ key: 'a', name: 'Monday', text: 'The beta ships on Monday', notice: 'the note window is in the first build' });
+const LATER = Object.freeze({ key: 'b', name: 'Later', text: 'The beta ships next month', notice: 'the note window can wait for the second build' });
 
 /** A fact with rows: when the beta ships. */
 const FACT = Object.freeze({
@@ -76,7 +76,7 @@ afterEach(() => {
 });
 
 const { full, ledgerText } = ledgerHelpers(() => dir);
-const { conversation, seals: sealed, logText, answer, lastEntry } = raiseHelpers(() => dir, config, { sort: 'several', lean: '1' });
+const { conversation, seals: sealed, logText, answer, lastEntry } = raiseHelpers(() => dir, config, { sort: 'several', lean: 'a' });
 
 /** The conversation's sealed raises, each test's drawn first. */
 const seals = () => /** @type {Record<string, any>} */ (sealed());
@@ -126,7 +126,7 @@ function screen(id, fact, { technical = false } = {}) {
     '',
     '**`◆ What\'s the answer?`**',
     '',
-    ...rows.map((row) => `**\`${row.key}\`**           → ${row.text}`),
+    ...rows.map((row, i) => `**\`${i + 1}\`**           → ${row.text}`),
     `**\`t/technical\`** → ${technical ? 'Hide' : 'Show'} the mechanism`,
     '**`e/explain`**   → I don\'t follow — explain it again',
     '**Comment**     → Tell me in your own words, or ask about it',
@@ -234,7 +234,7 @@ describe('the answer (16.S75, 16.3.2)', () => {
       entryOf(rowed, asked.ships),
       entryOf(bare, asked.team, { text: 'Team ABCDE12345', rules_out: [], product_wide: false }),
     ]);
-    assert.deepStrictEqual([seals()[rowed].answered.answer, seals()[bare].answered.answer], ['1', null]);
+    assert.deepStrictEqual([seals()[rowed].answered.answer, seals()[bare].answered.answer], [MONDAY.key, null]);
     assert.strictEqual(logText(), '');
     assert.ok(!fs.existsSync(log), 'the person\'s words on a fact were read');
   });
@@ -268,8 +268,9 @@ describe('the answer (16.S75, 16.3.2)', () => {
     const refused = (args, given) => refusedPristine(dir, ['raise', 'answer', ...args], { env: conversation(), stdin: JSON.stringify(given) }).error;
 
     assert.strictEqual(refused([rowed, '--pick', '1'], { why: WHY, who_moved_whom: 'none' }), 'raise answer: the answer has no field who_moved_whom — it holds why');
-    assert.strictEqual(refused([rowed, '--pick', 'keep'], { why: WHY }), 'raise answer: the raise has no row keep — its rows: 1, 2');
-    assert.strictEqual(refused([bare, '--pick', '1'], { why: WHY }), 'raise answer: the raise has no row 1 — its rows: none');
+    assert.strictEqual(refused([rowed, '--pick', 'keep'], { why: WHY }), 'raise answer: the raise has no row keep — its rows are numbered 1 to 2');
+    assert.strictEqual(refused([bare, '--pick', '1'], { why: WHY }), 'raise answer: the raise draws no row 1 — it draws none');
+    assert.strictEqual(refused([bare, '--pick', 'monday'], { why: WHY }), 'raise answer: the raise has no row monday — it draws none');
     assert.strictEqual(refused([rowed, '--dont-care'], ''), 'raise answer: a fact is the person\'s to give — "don\'t care" leaves the call to me, and a fact holds no lean of mine to land');
     assert.deepStrictEqual([seals()[rowed].answered, seals()[bare].answered, logText()], [null, null, '']);
   });
@@ -279,7 +280,7 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
   it('a lean, a why or a sort — a fact carries none — and a field it lacks', async () => {
     const { mechanism: _mechanism, ...lacking } = FACT;
     for (const [fact, error] of /** @type {[unknown, string][]} */ ([
-      [{ ...FACT, lean: '1' }, 'raise: the call has no field lean — it holds question, rows, mechanism, product_wide'],
+      [{ ...FACT, lean: 'a' }, 'raise: the call has no field lean — it holds question, rows, mechanism, product_wide'],
       [{ ...FACT, why: 'It is soon.' }, 'raise: the call has no field why — it holds question, rows, mechanism, product_wide'],
       [{ ...FACT, sort: 'one' }, 'raise: the call has no field sort — it holds question, rows, mechanism, product_wide'],
       [lacking, 'raise: the call needs mechanism'],
@@ -291,7 +292,7 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
   it('rows checked as a call\'s are: a row of another shape, a key two rows share, and the screen\'s own word', async () => {
     for (const [rows, error] of /** @type {[unknown[], string][]} */ ([
       [[MONDAY, 'Next month'], 'raise: the call\'s rows[1] is not a row — {key, name, text, notice}'],
-      [[MONDAY, { ...LATER, key: '1' }], 'raise: the call\'s rows share the key 1 — each row\'s key is its own'],
+      [[MONDAY, { ...LATER, key: MONDAY.key }], 'raise: the call\'s rows share the key a — each row\'s key is its own'],
       [[{ ...MONDAY, key: 'Keep' }], 'raise: the call\'s rows[0] takes the key Keep, which the screen keeps for itself — t, e, technical, explain, comment, keep are its own, in any case'],
     ])) {
       assert.strictEqual(await refusedFact({ ...FACT, rows }), error, JSON.stringify(rows));

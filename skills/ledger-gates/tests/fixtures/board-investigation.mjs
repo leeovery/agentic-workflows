@@ -50,9 +50,9 @@ export default {
     state: 'asking',
     stepped_back: ['other tools that save tmux state take a snapshot every 15 minutes and never promise a kill is final.'],
     options: [
-      { key: '1', name: 'Harden the reads, outlast the shutdown, log every drop', lean: true },
-      { key: '2', name: 'Read hardening alone', lean: false },
-      { key: '3', name: 'Read hardening plus hold every removal until tmux outlives it', lean: false },
+      { key: 'harden', name: 'Harden the reads, outlast the shutdown, log every drop', lean: true },
+      { key: 'reads', name: 'Read hardening alone', lean: false },
+      { key: 'hold', name: 'Read hardening plus hold every removal until tmux outlives it', lean: false },
     ],
     pick: null,
     fix: null,

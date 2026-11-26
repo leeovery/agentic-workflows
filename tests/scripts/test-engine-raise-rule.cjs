@@ -67,14 +67,14 @@ const LABELLER = 'claude-sonnet-stub';
 // The model before the newest on its line: one that never reads the newest's answers.
 const PREDECESSOR = MODEL_LINES[0][MODEL_LINES[0].length - 2];
 
-const CURSOR = Object.freeze({ key: '1', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' });
-const MAIN = Object.freeze({ key: '2', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
+const CURSOR = Object.freeze({ key: 'a', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' });
+const MAIN = Object.freeze({ key: 'b', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
 
 /** Claude's call: where a new note opens, leaning to the cursor's screen. */
 const CALL = Object.freeze({
   question: 'When you make a new note, where should its window open?',
   rows: [CURSOR, MAIN],
-  lean: '1',
+  lean: 'a',
   why: 'A note follows the person.',
   sort: 'several',
   mechanism: 'The screen under the pointer when the note is made.',
@@ -85,7 +85,7 @@ const CALL = Object.freeze({
 const FRAMED = Object.freeze({
   ...CALL,
   question: 'Should a note have a thin frame after all?',
-  rows: [{ key: '1', name: 'Thin', text: 'A thin frame', notice: 'notes stand out from the desk' }, { key: '2', name: 'Shadow', text: 'A shadow alone', notice: 'notes float with no edge' }],
+  rows: [{ key: 'a', name: 'Thin', text: 'A thin frame', notice: 'notes stand out from the desk' }, { key: 'b', name: 'Shadow', text: 'A shadow alone', notice: 'notes float with no edge' }],
 });
 
 /** The same proposal, its first row reworded. */

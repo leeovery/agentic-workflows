@@ -688,7 +688,7 @@ describe('engine writes take the writer lock', () => {
       assert.strictEqual(res.code, 0, `engine ${args.join(' ')}: ${res.stderr}`);
     }
     const row = (/** @type {string} */ key) => ({ key, name: `Row ${key}`, text: `Answer ${key}`, notice: `What ${key} changes` });
-    const call = { question: 'Who signs a user in?', rows: [row('1'), row('2')], lean: '1', why: 'One.', sort: 'several', mechanism: 'A provider.', product_wide: false };
+    const call = { question: 'Who signs a user in?', rows: [row('a'), row('b')], lean: 'a', why: 'One.', sort: 'several', mechanism: 'A provider.', product_wide: false };
     const { raise } = (await harness.okSectionsAsync(dir, ['raise', 'payments.discussion.auth-flow', '--answers', asked], { env, stdin: JSON.stringify(call) })).res;
     harness.output(dir, ['raise', 'show', raise], { env });
     harness.okSections(dir, ['person', 'propose'], { env, stdin: JSON.stringify({ preference: 'Show the product first', why: 'People see it before it asks.', examples: ['The tour comes first.'] }) });

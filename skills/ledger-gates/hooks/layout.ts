@@ -28,11 +28,18 @@ export type Typed = {
   detail: string | null
 }
 
-/** A gate as the engine states it. */
+/**
+ * A gate as the engine states it: what the person picks from. What they
+ * read before it, the engine prints in the chat above.
+ */
 export type Gate = {
   /** The gate's name, which a press records for the engine. */
   name: string
   question: string
+  /**
+   * What the person read before the question, as plain text: the gate's
+   * identity beside its question and rows, never drawn on the band.
+   */
   statement: string
   options: Option[]
   typed: Typed[]
@@ -96,8 +103,11 @@ export type Line =
 /** The cursor's gutter, where the footer also sits. */
 export const GUTTER = 2
 
-/** The `◆ ` the question opens with; the statement lines up past it. */
+/** The `◆ ` the question opens with; its wrapped lines line up past it. */
 export const GLYPH_COLUMN = 2
+
+/** The head's lines besides the question: the rule, a blank, and a blank. */
+const HEAD_CHROME = 3
 
 export const IDLE: Footer = { kind: 'idle' }
 
@@ -239,6 +249,24 @@ const paragraphs = (
     : text
         .split('\n')
         .flatMap(line => wrapRuns([{ ...style, text: line }], width))
+
+/**
+ * Wrapped lines cut to `fit`, one at least, the last kept ending in "…"
+ * where any were cut, within `width`.
+ */
+function clipped(lines: Run[][], fit: number, width: number): Run[][] {
+  const keep = Math.max(1, fit)
+
+  if (lines.length <= keep) {
+    return lines
+  }
+
+  const last = lines[keep - 1] ?? []
+  const text = last.map(run => run.text).join('')
+  const cut = [...text].slice(0, Math.max(0, width - 1)).join('').trimEnd()
+
+  return [...lines.slice(0, keep - 1), [{ ...last[0], text: `${cut}…` }]]
+}
 
 /**
  * The band's two columns at this width: the keys, and the labels beside
@@ -453,12 +481,13 @@ const pageHolding = (pages: readonly RowLine[][], cursor: number) =>
 
 /**
  * Every line the band draws for a gate, top to bottom: the rule, a blank, the
- * statement, the question, a blank, the rows, a blank and the footer. Where
- * that would stand taller than `maxRows`, the rows show a page at a time over
- * a pager line, every page padded to one height; the page shown is `page`, or
- * the one holding the option at `cursor`. How many lines there are is the
- * region's height whatever the footer says, whichever row is held and
- * whichever page shows.
+ * question, a blank, the rows, a blank and the footer. Where that would stand
+ * taller than `maxRows`, the rows show a page at a time over a pager line,
+ * every page padded to one height; the page shown is `page`, or the one
+ * holding the option at `cursor`; and a question too long to leave a line of
+ * rows keeps the lines that do, ending "…", the chat above holding it whole.
+ * How many lines there are is the region's height whatever the footer says,
+ * whichever row is held and whichever page shows.
  */
 export function linesOf(
   gate: Gate,
@@ -469,7 +498,6 @@ export function linesOf(
   { page, cursor = -1 }: { page?: number; cursor?: number } = {},
 ): Line[] {
   const width = columns - GLYPH_COLUMN
-  const statement = paragraphs(gate.statement, width)
   const question = paragraphs(gate.question, width, { bold: true })
   const prose = (runs: Run[], glyph: boolean): Line => ({
     kind: 'prose',
@@ -486,11 +514,10 @@ export function linesOf(
   const rows = groups.flat()
   const marks = queued.map((group, n) => group.length - (plain[n]?.length ?? 0))
   const tallest = plain.flat().length + Math.max(0, ...marks)
-  const head: Line[] = [
+  const headOf = (asked: Run[][]): Line[] => [
     RULE,
     BLANK,
-    ...statement.map(runs => prose(runs, false)),
-    ...question.map((runs, n) => prose(runs, n === 0)),
+    ...asked.map((runs, n) => prose(runs, n === 0)),
     BLANK,
   ]
   const foot = [BLANK, ...footerSlot(gate, footer, columns, dropped)]
@@ -500,12 +527,15 @@ export function linesOf(
     { length: tallest - rows.length },
     (): Line => ({ kind: 'footer', runs: [] }),
   )
-  const whole = [...head, ...rows, ...foot, ...spare]
+  const whole = [...headOf(question), ...rows, ...foot, ...spare]
 
   if (whole.length <= maxRows) {
     return whole
   }
 
+  const head = headOf(
+    clipped(question, maxRows - foot.length - HEAD_CHROME - 2, width),
+  )
   const budget = Math.max(1, maxRows - head.length - 1 - foot.length)
   const pages = pagesOf(groups, budget)
   const shown = Math.min(pages.length - 1, page ?? pageHolding(pages, cursor))

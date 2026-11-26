@@ -16,7 +16,9 @@
 //   content reads: italic in a menu, a `↳` line in a fenced display.
 // - Menus. A dot rule opens the menu, and none closes it. Every menu asks
 //   one question, glyphed `◆` (sixty characters or fewer, ending in `?`);
-//   anything to say first is a plain statement above it. Rows are
+//   anything to say first is a plain statement above it, drawn apart in a
+//   DISPLAY above a response's first menu where the gate surface announced,
+//   and stated plain in its payload as the gate's identity. Rows are
 //   `**`k/word`** → Label`, arrows aligned as rendered. A label says what
 //   choosing it does, naming a hard-to-reverse consequence plainly. Command
 //   rows come first and one prompt row last, whose label tells the person
@@ -268,7 +270,14 @@ function drawLabel(label) {
 /** @typedef {{key: string, word: string|null, head: string, tail: string|null, cue: string|null, holder: string|null, detail: string|null, struck: boolean, recommended: boolean}} GateOption */
 /** @typedef {{label: string, description: string, detail: string|null}} GateTyped */
 /** @typedef {GateOption|GateTyped} GateRow */
-/** @typedef {{question: string, statement: string}} GateProse */
+/**
+ * What a gate's frame says around its rows: its question; its statement as
+ * plain text, the gate's identity beside its question and rows, which no
+ * surface draws; and its statement as markdown, drawn apart from the menu
+ * where the gate surface announced — null where it stays in the menu, or
+ * the frame has none.
+ * @typedef {{question: string, statement: string, apart: string|null}} GateProse
+ */
 
 /**
  * What answering a row leads to, as the menu's composer declares it — an
@@ -369,8 +378,9 @@ function illustrate(compose) {
 }
 
 /**
- * The GATE block for the MENU about to be emitted — `''` where the gate
- * surface is unannounced, nothing was collected, or the menu composed
+ * The GATE block for the MENU about to be emitted, the menu's statement in a
+ * DISPLAY above it where its frame drew the statement apart — `''` where the
+ * gate surface is unannounced, nothing was collected, or the menu composed
  * neither a frame nor a row — and the gate it states kept as the gate
  * shown, on a learned gate's showing and its hold. Taken once: a second
  * menu in one response finds nothing, and a response with no menu drops
@@ -395,14 +405,10 @@ function gateBlock(name, { showing, hold }) {
     hold,
   };
   if (!gateSurfaceAnnounced()) return '';
-  const payload = JSON.stringify({
-    gate: name,
-    question,
-    statement: taken.prose?.statement ?? '',
-    options: taken.options,
-    typed: taken.typed,
-  });
-  return `=== GATE (${GATE_INSTRUCTION}) ===\n${payload}\n`;
+  const apart = taken.prose?.apart ?? null;
+  const statement = apart === null ? '' : sectionOf(statementSection(name), STATEMENT_INSTRUCTION, apart);
+  const payload = JSON.stringify({ gate: name, question, statement: taken.prose?.statement ?? '', options: taken.options, typed: taken.typed });
+  return `${statement}=== GATE (${GATE_INSTRUCTION}) ===\n${payload}\n`;
 }
 
 // Angle brackets are escaped alongside the markdown set: a renderer that
@@ -494,37 +500,101 @@ function recordTyped(line, label, description, next) {
   if (next) collected.next.set(typed, next);
 }
 
+/** @typedef {'blank'|'row'|'ask'|'statement'|{detail: GateRow}} LineRole */
+
 /**
- * Record what a frame says around its rows. A line directly beneath a row,
- * no blank between, is that row's detail; the line the frame asks on is the
- * question; every other line is the statement, in order. The first frame
- * composed is the one the MENU draws.
- * @param {string[]} lines  the frame's lines, its label already glyphed
- * @returns {void}
+ * What each of a frame's lines is. A line directly beneath a row, no blank
+ * between, is that row's detail; the first glyphed line elsewhere is the
+ * ask; every other line is the statement.
+ * @param {string[]} lines @param {Map<string, GateRow>} rows
+ * @returns {LineRole[]}
  */
-function recordFrame(lines) {
-  if (collected === null || collected.prose !== null) return;
-  const { rows } = collected;
-  /** @type {string[]} */
-  const prose = [];
+function frameRoles(lines, rows) {
   /** @type {GateRow|null} */
   let above = null;
-  for (const line of lines) {
-    if (line === '') { above = null; continue; }
+  let asked = false;
+  return lines.map((line) => {
+    if (line === '') { above = null; return 'blank'; }
     const row = rows.get(line);
-    if (row) above = row;
-    else if (above !== null && !GLYPHED_LINE.test(line)) describe(above, line);
-    else prose.push(line);
-  }
-  const ask = prose.findIndex((line) => GLYPHED_LINE.test(line));
+    if (row) { above = row; return 'row'; }
+    const glyphed = GLYPHED_LINE.test(line);
+    if (above !== null && !glyphed) return { detail: above };
+    if (glyphed && !asked) { asked = true; return 'ask'; }
+    return 'statement';
+  });
+}
+
+/**
+ * The statement's lines as markdown, in order: lines adjacent in the frame
+ * stay adjacent, and any others stand a blank line apart.
+ * @param {string[]} lines @param {LineRole[]} roles
+ * @returns {string}
+ */
+function statementOf(lines, roles) {
+  /** @type {string[]} */
+  const out = [];
+  roles.forEach((role, i) => {
+    if (role !== 'statement') return;
+    if (out.length > 0 && roles[i - 1] !== 'statement') out.push('');
+    out.push(lines[i]);
+  });
+  return out.join('\n');
+}
+
+/**
+ * The statement's lines as plain text, a line apiece, blank lines dropped.
+ * @param {string[]} lines @param {LineRole[]} roles @returns {string}
+ */
+function plainStatement(lines, roles) {
+  return lines
+    .filter((_, i) => roles[i] === 'statement')
+    .flatMap((line) => line.split('\n').map(stripMarkup))
+    .filter(Boolean)
+    .join('\n');
+}
+
+/**
+ * Record what the gate's frame says around its rows — each row's detail, its
+ * question, its statement as plain text, and as markdown where it is drawn
+ * apart, which the surface announced — the first frame composed being the
+ * one the MENU draws. The question is the glyphed line's, or `asks` where
+ * the menu gives the gate a question of its own. Answers each line's role
+ * where the statement is drawn apart; null otherwise.
+ * @param {string[]} lines  the frame's lines, its label already glyphed
+ * @param {string|undefined} asks
+ * @returns {LineRole[]|null}
+ */
+function recordFrame(lines, asks) {
+  if (collected === null || collected.prose !== null) return null;
+  const roles = frameRoles(lines, collected.rows);
+  roles.forEach((role, i) => { if (typeof role === 'object') describe(role.detail, lines[i]); });
+  const ask = lines.find((_, i) => roles[i] === 'ask');
+  const apart = gateSurfaceAnnounced() && roles.includes('statement');
   collected.prose = {
-    question: ask === -1 ? '' : stripMarkup(GLYPHED_LINE.exec(prose[ask])?.[1] ?? ''),
-    statement: prose
-      .filter((_, i) => i !== ask)
-      .flatMap((line) => line.split('\n').map(stripMarkup))
-      .filter(Boolean)
-      .join('\n'),
+    question: stripMarkup(asks ?? GLYPHED_LINE.exec(ask ?? '')?.[1] ?? ''),
+    statement: plainStatement(lines, roles),
+    apart: apart ? statementOf(lines, roles) : null,
   };
+  return apart ? roles : null;
+}
+
+/**
+ * A frame's lines with its statement drawn apart: the statement's lines
+ * gone, and no blank line left leading, trailing or doubled; `skip`, how
+ * many of the lines left stood among the frame's first `skip`.
+ * @param {string[]} lines @param {LineRole[]} roles @param {number} skip
+ * @returns {{lines: string[], skip: number}}
+ */
+function withoutStatement(lines, roles, skip) {
+  /** @type {number[]} */
+  const shown = [];
+  const lastBlank = () => shown.length === 0 || roles[shown[shown.length - 1]] === 'blank';
+  roles.forEach((role, i) => {
+    if (role === 'statement' || (role === 'blank' && lastBlank())) return;
+    shown.push(i);
+  });
+  if (shown.length > 0 && lastBlank()) shown.pop();
+  return { lines: shown.map((i) => lines[i]), skip: shown.filter((i) => i < skip).length };
 }
 
 /** Add one line to a row's detail. @param {GateRow} row @param {string} line @returns {void} */
@@ -654,6 +724,15 @@ function timedInstruction(form, moment, behaviour = '') {
 // A menu's instruction: the person answers it, so emitting it ends the turn.
 const STOP_CLAUSE = ", then STOP for the user's response";
 const MENU_INSTRUCTION = emitAs('markdown', STOP_CLAUSE);
+// A gate's statement, drawn apart from its menu (`menuFrame`).
+const STATEMENT_INSTRUCTION = emitAs('markdown', ', directly above the menu');
+
+/**
+ * The section a gate's statement is drawn apart in, named apart from any
+ * DISPLAY the surface draws of its own.
+ * @param {string} gate @returns {string}
+ */
+const statementSection = (gate) => `DISPLAY: ${gate} — above the menu`;
 
 // The instructions for a DISPLAY that is the whole response: emitting it
 // leaves the turn open, and the marker says so — a section whose response
@@ -710,14 +789,21 @@ function dataSection(lines) {
  * unless a line already carries the glyph, which makes the leading line
  * context. `skip` exempts that many leading lines from the option scan: a
  * caller whose head chrome interpolates non-constant text must declare it,
- * or an option-shaped run in the text captures the arrow column.
- * @param {string[]} lines @param {{width?: number, skip?: number}} [opts] @returns {string}
+ * or an option-shaped run in the text captures the arrow column. `asks` is
+ * the question the gate states in its glyphed line's place, where the menu
+ * gives it one of its own.
+ *
+ * Where the gate surface announced, the gate's frame draws its statement
+ * apart, in a DISPLAY above the GATE (`gateBlock`): what the person reads
+ * goes to the chat, and the menu holds the question and the rows alone.
+ * @param {string[]} lines @param {{width?: number, skip?: number, asks?: string}} [opts] @returns {string}
  */
-function menuFrame(lines, { width, skip = 0 } = {}) {
+function menuFrame(lines, { width, skip = 0, asks } = {}) {
   const labelled = !lines.some((line) => GLYPHED_LINE.test(line)) && lines[1] === '' && isGlyphable(lines[0]);
   const framed = labelled ? [glyphed(lines[0]), ...lines.slice(1)] : lines;
-  recordFrame(framed);
-  const body = alignOptions(framed, { width, skip });
+  const apart = recordFrame(framed, asks);
+  const shown = apart === null ? { lines: framed, skip } : withoutStatement(framed, apart, skip);
+  const body = alignOptions(shown.lines, { width, skip: shown.skip });
   asksOverRows(body);
   consentAsks(body);
   return [DOTS, ...body].join('\n');
@@ -777,18 +863,19 @@ function isGlyphable(label) {
  * Framed menu for the common shape: contextual label, blank line, options.
  * A label that is itself a short plain question carries the decision glyph;
  * any other label is a statement, and the ask rides `question` beneath it —
- * the statement stays context, the question takes the glyph.
+ * the statement stays context, the question takes the glyph. `asks` is the
+ * gate's own question (`menuFrame`).
  * @param {string} label @param {string[]} options
- * @param {{question?: string}} [opts]
+ * @param {{question?: string, asks?: string}} [opts]
  * @returns {string}
  */
-function menu(label, options, { question } = {}) {
+function menu(label, options, { question, asks } = {}) {
   const lines = label ? [label, ''] : [];
   if (question) lines.push(glyphed(question), '');
   // Everything above the options is head chrome — never scanned for the
   // arrow column, so a label quoting model text cannot shift the options.
   const skip = lines.length;
-  return menuFrame([...lines, ...options], { skip });
+  return menuFrame([...lines, ...options], { skip, asks });
 }
 
 /**
@@ -900,5 +987,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, NBSP, NOTE_SEPARATOR, gateSurfaceAnnounced, openGate, gateShown, gateStepped, illustrate, section, menuSection, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, dataSection, CONTINUE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, menu, drawLabel, cmdOption, bareOption, promptOption, escapeMarkdown, escapeProse, wordsAsWritten, callout, indentedBody, bulletRow, clipped, treeList };
+module.exports = { DOTS, NBSP, NOTE_SEPARATOR, gateSurfaceAnnounced, openGate, gateShown, gateStepped, illustrate, section, menuSection, GATE_MOD_INSTRUCTION, STATEMENT_INSTRUCTION, statementSection, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, dataSection, CONTINUE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, menu, drawLabel, cmdOption, bareOption, promptOption, escapeMarkdown, escapeProse, wordsAsWritten, callout, indentedBody, bulletRow, clipped, treeList };
 

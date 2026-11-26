@@ -21,7 +21,7 @@ One door, the CLI (`engine.cjs`): transactions, lifecycle, and the `manifest` fi
 
 Output sections are one-directional: `DATA` is for reasoning and is never displayed; `DISPLAY` and `MENU` are emitted to the user, each verbatim per its marker, and never parsed for decisions.
 
-`GATE` is for code alone: one line of JSON stating the gate the `MENU` directly below it draws, so a surface can draw that gate without reading the markdown. It is present only while `LEDGER_GATE_SURFACE=1` is in the environment, always sits immediately above the `MENU` it describes, and is never displayed.
+`GATE` is for code alone: one line of JSON stating the gate the `MENU` directly below it draws — its question, its statement as plain text and its rows — so a surface can draw that gate without reading the markdown. It is present only while `LEDGER_GATE_SURFACE=1` is in the environment, always sits immediately above the `MENU` it describes, and is never displayed. There a response's first menu has its statement drawn apart, in a `DISPLAY` directly above the `GATE`, and the `MENU` holds the question and the rows.
 
 `POSITION` is for code alone too: `conversation position`'s one line of JSON, carrying the note its `DATA` section holds, for the gate mod to read. It is never displayed.
 

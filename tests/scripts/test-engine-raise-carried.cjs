@@ -36,14 +36,14 @@ const { raiseHelpers } = require('./raise-world.cjs');
 
 // The person's decision from before Ledger, which the code was built otherwise than.
 const CARRIED = 'On the screen it was last opened on';
-const MAIN = Object.freeze({ key: '1', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
-const LAST = Object.freeze({ key: '2', name: 'Last', text: 'Where the last note was', notice: 'notes gather on one screen until you move one' });
+const MAIN = Object.freeze({ key: 'a', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
+const LAST = Object.freeze({ key: 'b', name: 'Last', text: 'Where the last note was', notice: 'notes gather on one screen until you move one' });
 
 /** Claude's call with one defensible answer: a new note opening where the code opens it. */
 const CALL = Object.freeze({
   question: 'Should a new note open where the code opens it?',
   rows: [MAIN, LAST],
-  lean: '1',
+  lean: 'a',
   why: 'The code has opened notes on the main screen since the spring.',
   sort: 'one',
   mechanism: 'The main display, whatever the pointer is over.',
