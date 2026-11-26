@@ -268,8 +268,9 @@ describe('the answer (16.S75, 16.3.2)', () => {
     const refused = (args, given) => refusedPristine(dir, ['raise', 'answer', ...args], { env: conversation(), stdin: JSON.stringify(given) }).error;
 
     assert.strictEqual(refused([rowed, '--pick', '1'], { why: WHY, who_moved_whom: 'none' }), 'raise answer: the answer has no field who_moved_whom — it holds why');
-    assert.strictEqual(refused([rowed, '--pick', 'keep'], { why: WHY }), 'raise answer: the raise has no row keep — its rows: a, b');
+    assert.strictEqual(refused([rowed, '--pick', 'keep'], { why: WHY }), 'raise answer: the raise has no row keep — its rows are numbered 1 to 2');
     assert.strictEqual(refused([bare, '--pick', '1'], { why: WHY }), 'raise answer: the raise draws no row 1 — it draws none');
+    assert.strictEqual(refused([bare, '--pick', 'monday'], { why: WHY }), 'raise answer: the raise has no row monday — it draws none');
     assert.strictEqual(refused([rowed, '--dont-care'], ''), 'raise answer: a fact is the person\'s to give — "don\'t care" leaves the call to me, and a fact holds no lean of mine to land');
     assert.deepStrictEqual([seals()[rowed].answered, seals()[bare].answered, logText()], [null, null, '']);
   });

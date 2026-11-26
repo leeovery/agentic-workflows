@@ -596,9 +596,9 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
     assert.strictEqual(await refusedCall({ ...CALL, rows: [CURSOR, { ...MAIN, key: 'main screen' }] }), 'raise: the call\'s rows[1]\'s key is not a key: letters, digits, - and _, up to 24 of them');
   });
 
-  it('a row\'s key that is a number, which a pick reads as the row drawn under it', async () => {
-    for (const key of ['2', '10']) {
-      assert.strictEqual(await refusedCall({ ...CALL, rows: [CURSOR, { ...MAIN, key }] }), `raise: the call's rows[1] takes the key ${key}, a number — the screen numbers the rows itself, and a pick of a number is the row drawn under it`);
+  it('a row\'s key that is a number other than its place, which a pick reads as the row drawn under it', async () => {
+    for (const [rows, at, key] of /** @type {[typeof CALL.rows, number, string][]} */ ([[[CURSOR, { ...MAIN, key: '1' }], 1, '1'], [[CURSOR, { ...MAIN, key: '10' }], 1, '10'], [[{ ...CURSOR, key: '2' }, { ...MAIN, key: '1' }], 0, '2']])) {
+      assert.strictEqual(await refusedCall({ ...CALL, rows, lean: rows[0].key }), `raise: the call's rows[${at}] takes the key ${key}, a number other than its place — a row keyed by a number is keyed by its place among the rows, ${at + 1}, as the screen numbers it, since a pick of a number is the row drawn under it`);
     }
   });
 

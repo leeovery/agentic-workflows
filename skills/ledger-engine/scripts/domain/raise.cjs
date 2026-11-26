@@ -611,8 +611,10 @@ function checkFields(value, fields, where, optional = {}) {
 
 /**
  * Refuse a row of another shape, and a key two rows share, the screen
- * keeps, or that is a number, which a pick reads as the number a row is
- * drawn under.
+ * keeps, or that is a number other than the row's place from 1: a pick
+ * reads a number as the row drawn under it, and Claude's rows are drawn
+ * first in the call's order, so a key that is its place names one row
+ * either way.
  * @param {Row[]} rows
  */
 function checkEachRow(rows) {
@@ -620,7 +622,7 @@ function checkEachRow(rows) {
     if (!isObject(row)) throw new Error(`raise: the call's rows[${i}] is not a row — {${Object.keys(ROW_FIELDS).join(', ')}}`);
     checkFields(row, ROW_FIELDS, `raise: the call's rows[${i}]`);
     if (SCREEN_KEYS.includes(row.key.toLowerCase())) throw new Error(`raise: the call's rows[${i}] takes the key ${row.key}, which the screen keeps for itself — ${SCREEN_KEYS.join(', ')} are its own, in any case`);
-    if (NUMBER.test(row.key)) throw new Error(`raise: the call's rows[${i}] takes the key ${row.key}, a number — the screen numbers the rows itself, and a pick of a number is the row drawn under it`);
+    if (NUMBER.test(row.key) && row.key !== String(i + 1)) throw new Error(`raise: the call's rows[${i}] takes the key ${row.key}, a number other than its place — a row keyed by a number is keyed by its place among the rows, ${i + 1}, as the screen numbers it, since a pick of a number is the row drawn under it`);
     if (rows.findIndex((other) => other.key === row.key) !== i) throw new Error(`raise: the call's rows share the key ${row.key} — each row's key is its own`);
   });
 }
@@ -1761,9 +1763,14 @@ function answerOn(form, stdin) {
 function keyPicked(seal, pick) {
   if (!NUMBER.test(pick)) return pick;
   const row = rowDrawn(seal, pick);
-  if (row !== undefined) return row.key;
+  if (row === undefined) throw new Error(`${ANSWER_SAID}: the raise draws no row ${pick} — ${rowsSaid(seal)}`);
+  return row.key;
+}
+
+/** The rows a refused pick is told of, as the screen numbers them. @param {Seal} seal */
+function rowsSaid(seal) {
   const drawn = drawnRows(seal).length;
-  throw new Error(`${ANSWER_SAID}: the raise draws no row ${pick} — ${drawn === 0 ? 'it draws none' : `its rows are numbered 1 to ${drawn}`}`);
+  return drawn === 0 ? 'it draws none' : `its rows are numbered 1 to ${drawn}`;
 }
 
 /**
@@ -1773,7 +1780,7 @@ function keyPicked(seal, pick) {
  */
 function rowOf(seal, key) {
   const row = seal.call.rows.find((r) => r.key === key);
-  if (row === undefined) throw new Error(`${ANSWER_SAID}: the raise has no row ${key} — its rows: ${drawnRows(seal).map((r) => r.key).join(', ') || 'none'}`);
+  if (row === undefined) throw new Error(`${ANSWER_SAID}: the raise has no row ${key} — ${rowsSaid(seal)}`);
   return row;
 }
 
@@ -1837,9 +1844,11 @@ function stillToLand(cwd, seal) {
 
 /**
  * The person's own words on Claude's call — free text, typed — read by the
- * separate call against Claude's rows before anything lands, where
- * `toLand` says it will: read as the lean's row, an agreement, moving no
- * one; read as another, or as none, standing over the lean.
+ * separate call against Claude's rows, the keep row never offered, before
+ * anything lands, where `toLand` says it will: read as the lean's row, an
+ * agreement, moving no one; read as another, or as none, standing over the
+ * lean. Claude's rows are drawn first, in the seal's order, so each is
+ * offered under the number the screen drew it under.
  * @param {CallSeal} seal @param {string} stdin @param {() => boolean} toLand
  * @returns {Given}
  */

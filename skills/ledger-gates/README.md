@@ -36,16 +36,19 @@ which: how to answer, what is in the prompt, or where to type.
 The band holds what the person picks from: the question, the rows and the
 footer. What they read before it — the gate's explanation, and for a raised
 question its whole account — the engine prints in the chat directly above,
-where it scrolls and wraps as any message does. For a raised question the
-band asks the question itself, never a short stand-in, and numbers its
-answers 1, 2, 3 in the order drawn.
+where it scrolls and wraps as any message does; the gate still carries it as
+plain text, never drawn, so a gate whose explanation changed is another
+gate. For a raised question the band asks the question itself, never a
+short stand-in, and numbers its answers 1, 2, 3 in the order drawn.
 
 The band is never taller than the rows Claude Code gives it, so it never
 scrolls. A gate that fits shows whole: a rule, the question, the rows, the
 footer. One that does not keeps its rule, question and footer in
 place and shows its rows a page at a time, every page the same height, over a
 line reading `↑ previous   ↓ next   page 1 of 3`; a click on either turns the
-page and puts the cursor on its first row. The arrows carry the cursor across
+page and puts the cursor on its first row. A question too long to leave a
+line of rows keeps the lines that do, ending `…`, the chat above holding it
+whole. The arrows carry the cursor across
 pages, the page following it, and a row's own key picks that row whichever
 page it is on.
 
@@ -58,8 +61,8 @@ at that gate's stop, so the band empties. A second click while Claude works
 holds the answer instead of sending it: its row reads `· queued`, and the
 footer says it sends when Claude finishes. A click on the queued row takes it
 back to a pick, and a click on another row picks that one instead. As the turn
-ends, the held answer sends if the same gate is still on the band; if the turn
-rendered a different gate, the answer is dropped unsent, and the new gate's
+ends, the held answer sends if the same gate is still on the band — the same
+question, rows and explanation; if the turn rendered a different gate, the answer is dropped unsent, and the new gate's
 footer says so; if Esc stopped the turn with the same gate still up, the
 answer goes back into the prompt box as a pick. When a pick's gate goes, its
 answer leaves the prompt box too, unless the person has edited it there.

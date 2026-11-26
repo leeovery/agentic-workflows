@@ -240,7 +240,7 @@ describe('the person\'s own words, read (16.19.1, 16.19.6)', () => {
     const agreeing = await draw(asked.where, { call: { ...CALL, lean: MAIN.key } });
     const departing = await draw(asked.size);
     const log = path.join(config(), 'reader-calls.jsonl');
-    const env = { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ [AGREES]: { row: MAIN.key }, [DEPARTS]: { row: MAIN.key } }) };
+    const env = { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ [AGREES]: { row: '2' }, [DEPARTS]: { row: '2' } }) };
 
     answer(agreeing, ['--own'], { text: AGREES, why: WHY }, env);
     const agreed = lastEntry();
@@ -254,7 +254,7 @@ describe('the person\'s own words, read (16.19.1, 16.19.6)', () => {
     assert.deepStrictEqual(logged(), [raiseEvent(agreeing, { ...own, sealed: MAIN.key }), raiseEvent(departing, { ...own, chain: full(asked.size) })]);
     const queued = ok(dir, ['verdict', 'queue'], { env: conversation() }).departures.map((/** @type {{id: string}} */ d) => full(d.id));
     assert.deepStrictEqual(queued, [departing]);
-    const options = CALL.rows.map((row) => `- ${row.key}: ${row.text}\n  What you'd notice — ${row.name}: ${row.notice}`).join('\n');
+    const options = CALL.rows.map((row, i) => `- ${i + 1}: ${row.text}\n  What you'd notice — ${row.name}: ${row.notice}`).join('\n');
     const made = fs.readFileSync(log, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
     assert.deepStrictEqual(made.map(({ argv, input }) => [argv[argv.indexOf('--model') + 1], input]), [AGREES, DEPARTS].map((words) => ['opus', `The question: ${CALL.question}\n\nThe options:\n${options}\n\nThe reply: ${words}`]));
     const ledger = statePath(dir, layout.ledger);
@@ -335,6 +335,15 @@ describe('a pick (16.9.2)', () => {
     assert.deepStrictEqual(entries().slice(-2).map((entry) => [entry.id, entry.text]), [[numbered, LAST.text], [keyed, LAST.text]]);
     assert.deepStrictEqual(logged().map((event) => [event.entry, event.answer]), [[numbered, 'last'], [keyed, 'last']]);
     assert.deepStrictEqual([seals()[numbered].answered.answer, seals()[keyed].answered.answer], ['last', 'last']);
+  });
+
+  it('rows keyed by their places draw, and a pick of a number names the one row its place and its key both name', async () => {
+    const placed = { ...CALL, rows: CALL.rows.map((row, i) => ({ ...row, key: String(i + 1) })), lean: '1' };
+    const id = await draw(asked.where, { call: placed });
+
+    answer(id, ['--pick', '2']);
+
+    assert.deepStrictEqual([lastEntry().text, logged().map((event) => event.answer), seals()[id].answered.answer], [MAIN.text, ['2'], '2']);
   });
 });
 
@@ -458,7 +467,7 @@ describe('once (E3)', () => {
 
     const again = answer(id, ['--pick', '1']);
     const ownAgain = answer(own, ['--pick', '1']);
-    const ownWordsAgain = answer(own, ['--own'], { text: 'Half the screen', why: WHY }, { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: 'cursor' } }) });
+    const ownWordsAgain = answer(own, ['--own'], { text: 'Half the screen', why: WHY }, { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: '1' } }) });
 
     assert.deepStrictEqual(again, { ...first, committed: null, already: true, answer: 'main' });
     assert.deepStrictEqual([ownAgain.already, ownAgain.answer, ownWordsAgain.already, ownWordsAgain.answer], [true, null, true, null]);
@@ -578,7 +587,7 @@ describe('the answer\'s refusals, writing nothing', () => {
 
     assert.strictEqual(refusedAnswer([id, '--pick', '4']), 'raise answer: the raise draws no row 4 — its rows are numbered 1 to 3');
     assert.strictEqual(refusedAnswer([id, '--pick', '0']), 'raise answer: the raise draws no row 0 — its rows are numbered 1 to 3');
-    assert.strictEqual(refusedAnswer([id, '--pick', 'first']), 'raise answer: the raise has no row first — its rows: cursor, main, last');
+    assert.strictEqual(refusedAnswer([id, '--pick', 'first']), 'raise answer: the raise has no row first — its rows are numbered 1 to 3');
   });
 
   it('stdin holding no JSON object, lacking what the answer needs, or holding a field it does not take — who moved whom among them for the person\'s own words', async () => {
@@ -609,7 +618,7 @@ describe('the answer\'s refusals, writing nothing', () => {
     const closed = `raise answer: the raise answers ${asked.where}, which is answered by ${decided} now — nothing recorded: a raise answers an open question, and the person's answer stays in the conversation`;
 
     assert.strictEqual(refusedAnswer([id, '--pick', '2']), closed);
-    assert.strictEqual(refusedAnswer([id, '--own'], { text: 'Half the screen', why: WHY }, { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: 'cursor' } }) }), closed);
+    assert.strictEqual(refusedAnswer([id, '--own'], { text: 'Half the screen', why: WHY }, { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: '1' } }) }), closed);
     assert.ok(!fs.existsSync(log), 'own words that will not land were read');
   });
 });

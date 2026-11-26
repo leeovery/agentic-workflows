@@ -8,7 +8,8 @@
 // before the question, the menu's statement, is the chat's: a DISPLAY
 // directly above the payload, the MENU holding the question and the rows
 // alone, and with the statement folded back under its rule the response is
-// the one an unannounced surface reads. Beside it, every section a
+// the one an unannounced surface reads. The payload states the statement
+// too, as plain text, the gate's identity no surface draws. Beside it, every section a
 // person is shown names how it renders in one of the four forms, so no older
 // or reworded form comes back. The gate it states is named as the trust log
 // keys it, so every gate a render draws, a templated name's every variant
@@ -33,7 +34,7 @@ const LITERAL_GATES = new Set(['raise']);
 // (projections/raise.cjs).
 const OWN_QUESTION_GATES = new Set(['raise']);
 const STATEMENT_INSTRUCTION = emitAs('markdown', ', directly above the menu');
-const PAYLOAD_FIELDS = ['gate', 'question', 'options', 'typed'];
+const PAYLOAD_FIELDS = ['gate', 'question', 'statement', 'options', 'typed'];
 
 // The same markup one token at a time: a code span and an escape carry their
 // text, a strike or an italic marker toggles its span, bold and a stray
@@ -320,11 +321,12 @@ function auditGate(out, label) {
   const gate = JSON.parse(lines[menuAt - 1]);
   const name = gate.gate.split(ENTRY_SEPARATOR)[0];
   assert.ok(GATE_NAME?.test(name), `[${label}] the gate "${name}" is no name the trust log keys — ${GATE_NAME?.is}`);
-  assert.deepStrictEqual(Object.keys(gate), PAYLOAD_FIELDS, `[${label}] the payload states its gate, its question and its rows, and nothing else`);
+  assert.deepStrictEqual(Object.keys(gate), PAYLOAD_FIELDS, `[${label}] the payload states its gate, its question, its statement and its rows, and nothing else`);
   assert.notStrictEqual(gate.question, '', `[${label}] every menu asks — the payload states no question`);
   assert.ok(gate.options.length > 0, `[${label}] every menu has a row to press — the payload states none`);
   const literal = LITERAL_GATES.has(name);
   const statement = statementAbove(lines, menuAt - 2).map((line) => plainText(line, literal)).filter(Boolean);
+  assert.strictEqual(gate.statement, statement.join('\n'), `[${label}] the payload's statement is not the one drawn apart above it, read plain`);
   assertPayloadDrawsMenu(gate, body, statement, label, { literal, ownQuestion: OWN_QUESTION_GATES.has(name) });
   return gate;
 }

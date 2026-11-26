@@ -283,6 +283,7 @@ type Stated = {
   options?: readonly unknown[]
   typed?: readonly unknown[]
   question?: string
+  statement?: string
 }
 
 /** An engine response stating a gate, as the surface announces it. */
@@ -291,12 +292,13 @@ function announced(stated: Stated = {}, after: readonly string[] = []): string {
     options = OPTIONS,
     typed = [COMMENT],
     question = 'Approve this task?',
+    statement = '',
   } = stated
 
   return [
     ...RESULT_SECTION,
     GATE_LINE,
-    JSON.stringify({ gate: 'task gate', question, options, typed }),
+    JSON.stringify({ gate: 'task gate', question, statement, options, typed }),
     ...MENU_SECTION,
     ...after,
   ].join('\n')
@@ -541,6 +543,7 @@ const BOOTED = [
 const TASK_GATE = {
   name: 'task gate',
   question: 'Approve this task?',
+  statement: '',
   options: OPTIONS,
   typed: [COMMENT],
 }
@@ -2774,6 +2777,27 @@ describe('register', () => {
     await $.turn.complete(TURN_END)
 
     expect(submitted).toEqual(['ping', 'yes'])
+  })
+
+  test('a turn that draws the same question and rows over another statement is another gate: the held answer is dropped unsent, the statement never drawn on the band', async ($, on) => {
+    const { submitted, engineWrites } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await submitFrom($, { kind: 'task-notification' })
+    await click(ui, COMMIT)
+    await click(ui, COMMIT)
+
+    engineWrites(announced({ statement: 'The task changed since you read it.' }))
+
+    await $.tool.call(ENGINE_CALL)
+    await $.turn.complete(TURN_END)
+
+    expect(submitted).toEqual(['ping'])
+    expect(await footerOf(ui)).toBe('yes not sent — the menu changed')
+    expect(await lineOf(ui, 'The task changed since you read it.')).toBe(-1)
   })
 
   test('a turn that draws another gate drops the held answer unsent, and the new gate’s footer says so until a click', async ($, on) => {

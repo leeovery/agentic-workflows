@@ -65,7 +65,7 @@ describe('pipeline simulation: the trust log', () => {
       ...sim.env,
       CLAUDE_STUB_ANSWERS: JSON.stringify({
         'The answer: ': 'no-login',
-        'The reply: ': { row: 'other' },
+        'The reply: ': { row: '2' },
         'Is a note a window?': labelAnswers('look', { hardToUndo: true }),
         'What is a note?': labelAnswers('behaviour'),
         'Does a note have a title?': labelAnswers('words'),

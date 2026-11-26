@@ -17,7 +17,8 @@
 // - Menus. A dot rule opens the menu, and none closes it. Every menu asks
 //   one question, glyphed `◆` (sixty characters or fewer, ending in `?`);
 //   anything to say first is a plain statement above it, drawn apart in a
-//   DISPLAY above the menu where the gate surface announced. Rows are
+//   DISPLAY above a response's first menu where the gate surface announced,
+//   and stated plain in its payload as the gate's identity. Rows are
 //   `**`k/word`** → Label`, arrows aligned as rendered. A label says what
 //   choosing it does, naming a hard-to-reverse consequence plainly. Command
 //   rows come first and one prompt row last, whose label tells the person
@@ -270,10 +271,12 @@ function drawLabel(label) {
 /** @typedef {{label: string, description: string, detail: string|null}} GateTyped */
 /** @typedef {GateOption|GateTyped} GateRow */
 /**
- * What a gate's frame says around its rows: its question, and its statement
- * as markdown, drawn apart from the menu where the gate surface announced —
- * null where it stays in the menu, or the frame has none.
- * @typedef {{question: string, apart: string|null}} GateProse
+ * What a gate's frame says around its rows: its question; its statement as
+ * plain text, the gate's identity beside its question and rows, which no
+ * surface draws; and its statement as markdown, drawn apart from the menu
+ * where the gate surface announced — null where it stays in the menu, or
+ * the frame has none.
+ * @typedef {{question: string, statement: string, apart: string|null}} GateProse
  */
 
 /**
@@ -404,7 +407,7 @@ function gateBlock(name, { showing, hold }) {
   if (!gateSurfaceAnnounced()) return '';
   const apart = taken.prose?.apart ?? null;
   const statement = apart === null ? '' : sectionOf(`DISPLAY: ${name}`, STATEMENT_INSTRUCTION, apart);
-  const payload = JSON.stringify({ gate: name, question, options: taken.options, typed: taken.typed });
+  const payload = JSON.stringify({ gate: name, question, statement: taken.prose?.statement ?? '', options: taken.options, typed: taken.typed });
   return `${statement}=== GATE (${GATE_INSTRUCTION}) ===\n${payload}\n`;
 }
 
@@ -539,9 +542,21 @@ function statementOf(lines, roles) {
 }
 
 /**
+ * The statement's lines as plain text, a line apiece, blank lines dropped.
+ * @param {string[]} lines @param {LineRole[]} roles @returns {string}
+ */
+function plainStatement(lines, roles) {
+  return lines
+    .filter((_, i) => roles[i] === 'statement')
+    .flatMap((line) => line.split('\n').map(stripMarkup))
+    .filter(Boolean)
+    .join('\n');
+}
+
+/**
  * Record what the gate's frame says around its rows — each row's detail, its
- * question, and its statement where it is drawn apart, which the surface
- * announced — the first frame composed being the one the MENU draws. The
+ * question, its statement as plain text, and as markdown where it is drawn
+ * apart, which the surface announced — the first frame composed being the one the MENU draws. The
  * question is the glyphed line's, or `asks` where the menu gives the gate a
  * question of its own. Answers each line's role where the statement is
  * drawn apart; null otherwise.
@@ -557,6 +572,7 @@ function recordFrame(lines, asks) {
   const apart = gateSurfaceAnnounced() && roles.includes('statement');
   collected.prose = {
     question: stripMarkup(asks ?? GLYPHED_LINE.exec(ask ?? '')?.[1] ?? ''),
+    statement: plainStatement(lines, roles),
     apart: apart ? statementOf(lines, roles) : null,
   };
   return apart ? roles : null;

@@ -734,7 +734,7 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
     parked(1, '2.3');
     beingRead(['2.3'], ['a', 'b']);
 
-    answer(draw('Q1').res.raise, ['--own'], { text: 'Where I am looking, as you lean', why: WHY }, { CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: CURSOR.key } }) });
+    answer(draw('Q1').res.raise, ['--own'], { text: 'Where I am looking, as you lean', why: WHY }, { CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: '1' } }) });
 
     assert.deepStrictEqual([lastEntry().who_moved_whom, marked('2.3')], ['none', { round: 1, n: 1, passed_until: ledgerLines() }]);
   });

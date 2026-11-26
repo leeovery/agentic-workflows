@@ -34,8 +34,8 @@ const { PROMPT, AT_A_GATE, ON_A_RAISE, readAtGate, readOnRaise } = require(path.
 
 const QUESTION = 'When you make a new note, where should its window open?';
 const RAISE_ROWS = [
-  { key: '1', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' },
-  { key: '2', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' },
+  { key: 'cursor', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' },
+  { key: 'main', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' },
 ];
 const GATE_ROWS = [
   { key: 'y', word: 'yes', head: 'Proceed', tail: null, detail: null },
@@ -103,7 +103,7 @@ describe('the call (16.19.1, 16.19.6, 16.S70)', () => {
   it('16.S70: is the stated claude -p on Opus, never --bare, its prompt fixed, the person\'s words on stdin; and reads the key it names', () => {
     arm({ row: '1' });
 
-    assert.strictEqual(readOnRaise(QUESTION, RAISE_ROWS, WORDS), '1');
+    assert.strictEqual(readOnRaise(QUESTION, RAISE_ROWS, WORDS), 'cursor');
 
     const [call, ...more] = calls();
     assert.deepStrictEqual(more, []);
@@ -124,11 +124,11 @@ describe('the call (16.19.1, 16.19.6, 16.S70)', () => {
     ].join('\n\n'));
   });
 
-  it('on a raise, where a misread lands a departure: effort high, within the one-decision check\'s time; each row of Claude\'s its answer, then what the person would notice with it', () => {
+  it('on a raise, where a misread lands a departure: effort high, within the one-decision check\'s time; each row of Claude\'s by the number the screen draws it under, its answer, then what the person would notice with it; the number read is the row\'s own key', () => {
     const { model, effort, timeoutMs, schema, input, reading } = asked(() => readOnRaise(QUESTION, RAISE_ROWS, WORDS), '2');
 
     assert.deepStrictEqual(ON_A_RAISE, { effort: 'high', timeoutMs: TIMEOUT_MS });
-    assert.deepStrictEqual({ model, effort, timeoutMs, schema, reading }, { model: 'opus', effort: 'high', timeoutMs: TIMEOUT_MS, schema: schemaOver(['1', '2']), reading: '2' });
+    assert.deepStrictEqual({ model, effort, timeoutMs, schema, reading }, { model: 'opus', effort: 'high', timeoutMs: TIMEOUT_MS, schema: schemaOver(['1', '2']), reading: 'main' });
     assert.strictEqual(input, [
       `The question: ${QUESTION}`,
       'The options:\n- 1: On the screen the cursor is on\n  What you\'d notice — Cursor: the note opens where you are looking\n- 2: On the main screen\n  What you\'d notice — Main: every note opens on the same screen',

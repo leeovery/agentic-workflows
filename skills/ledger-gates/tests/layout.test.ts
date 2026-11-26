@@ -51,6 +51,7 @@ const COMMENT: Typed = {
 const gateOf = (over: Partial<Gate> = {}): Gate => ({
   name: 'task gate',
   question: 'Approve this task?',
+  statement: '',
   options: [optionOf({ key: 'y', word: 'yes', head: 'Commit' })],
   typed: [],
   ...over,
@@ -277,8 +278,11 @@ describe('layout', () => {
     ])
   })
 
-  test('the head is the question alone, bold on every line it wraps to, the glyph on its first', () => {
-    const gate = gateOf({ question: 'Should a note made while offline sync the moment the network is back?' })
+  test('the head is the question alone, bold on every line it wraps to, the glyph on its first; the statement is never drawn', () => {
+    const gate = gateOf({
+      statement: 'Found existing review for Auth.',
+      question: 'Should a note made while offline sync the moment the network is back?',
+    })
     const prose = linesOf(gate, 40).flatMap(line => (line.kind === 'prose' ? [line] : []))
 
     expect(prose).toEqual([
@@ -637,6 +641,26 @@ describe('layout', () => {
       '',
       '» Click to choose · click again to send · or type',
     ])
+  })
+
+  test('a question too long to leave a line of rows keeps the lines that do, the last ending "…", so the band stands no taller than it may', () => {
+    const question = 'When you make a new note while the network is down and you are on your phone, where should its window open, and should it sync the moment the network is back?'
+    const gate = gateOf({ question, options: [optionOf({ key: '1' }), optionOf({ key: '2' })] })
+    const asked = (lines: Line[]) => lines.flatMap(line => (line.kind === 'prose' ? [textOf(line.runs)] : []))
+    const least = leastOf(gate, 30, NO_SENDS)
+
+    expect(asked(linesOf(gate, 30))).toHaveLength(6)
+    expect(asked(linesOf(gate, 30, IDLE, NO_SENDS, least))).toEqual(['When you make a new note…'])
+
+    for (let maxRows = least; maxRows <= least + 4; maxRows += 1) {
+      const lines = linesOf(gate, 30, IDLE, NO_SENDS, maxRows)
+      const kept = asked(lines)
+
+      expect(lines.length, `${maxRows} high`).toBeLessThanOrEqual(maxRows)
+      expect(rowsOf(lines).length, `${maxRows} high`).toBeGreaterThan(0)
+      expect(kept.at(-1), `${maxRows} high`).toMatch(/…$/)
+      expect(kept.every(line => line.length <= 28), `${maxRows} high`).toBe(true)
+    }
   })
 
   test('a page short of rows is padded out, so the pager and the footer never move', () => {

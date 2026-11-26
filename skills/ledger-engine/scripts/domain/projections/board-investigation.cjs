@@ -446,19 +446,22 @@ function huntPage(at, part) {
 }
 
 /**
- * An option of the fix direction read in full (20.12.2), by its key: its
- * name and words, what the person would notice, and whether it is Claude's
- * lean or the person's pick; refused where this conversation sealed no
- * fix direction holding it.
+ * An option of the fix direction read in full (20.12.2), by its key: named
+ * by the number the raise's screen draws it under, its name and words,
+ * what the person would notice, and whether it is Claude's lean or the
+ * person's pick; refused where this conversation sealed no fix direction
+ * holding it.
  * @param {BoardAt} at @param {string} key @returns {HuntPage}
  */
 function optionPage(at, key) {
   const seal = fixSealOf(at);
-  const row = seal === null || seal.fact ? undefined : drawnRows(seal).find((held) => held.key === key);
+  const rows = seal === null || seal.fact ? [] : drawnRows(seal);
+  const place = rows.findIndex((held) => held.key === key);
+  const row = rows[place];
   if (seal === null || seal.fact || row === undefined) throw new Error(`${at.unit}'s fix direction holds no option ${key} in this conversation`);
   const { state, pick } = fixDirectionOf(at);
   const standing = state === 'picked' && pick === key ? 'picked' : state === 'asking' && leanShown(seal) === key ? 'lean' : 'option';
-  return { kind: 'hunt', unit: at.unit, item: 'option', name: key, title: row.name, state: standing, text: bodyText([row.text, row.notice]) };
+  return { kind: 'hunt', unit: at.unit, item: 'option', name: String(place + 1), title: row.name, state: standing, text: bodyText([row.text, row.notice]) };
 }
 
 module.exports = { investigationView, investigationBanner, raiseLine, investigationDoing, investigationHowFar, hypothesesCount, huntMoments, huntPage, optionPage };

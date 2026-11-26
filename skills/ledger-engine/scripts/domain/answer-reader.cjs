@@ -6,12 +6,14 @@
 // (kernel/claude-call), never by the Claude they said them to.
 //
 // - What it reads: the question the person was asked, the rows it offered,
-//   each by its key and whole as the person saw it, and what they said in
-//   place of a pick: free text at a gate, naming no row (gate.cjs) — each
-//   row its word, its label and its tail, then any detail beneath it; or
-//   their own words answering a raise (raise.cjs) — each row of Claude's
-//   its answer, then what the person would notice with it.
-// - What it answers: the key of the one row the words take as offered;
+//   each by the key the person saw it under and whole as they saw it, and
+//   what they said in place of a pick: free text at a gate, naming no row
+//   (gate.cjs) — each row by its key, its word, its label and its tail, then
+//   any detail beneath it; or their own words answering a raise (raise.cjs)
+//   — each row of Claude's, in the order drawn, by the number the screen
+//   draws it under, its answer, then what the person would notice with it.
+// - What it answers: the key of the one row the words take as offered,
+//   on a raise mapped from its number back to the row's own key;
 //   none where they pick no row — a question, a thought, a request — name
 //   several, or change or add to the one they name. An answer naming a key
 //   the rows lack fits the call's schema no more than any other misfit, so
@@ -104,9 +106,9 @@ function gateOffered({ key, word, head, tail, detail }) {
   return { key, text: detail === null ? line : `${line}\n${detail}` };
 }
 
-/** A raise's row as the person saw it: its answer, then what they would notice. @param {RaiseRow} row @returns {Offered} */
-function raiseOffered({ key, name, text, notice }) {
-  return { key, text: `${text}\nWhat you'd notice — ${name}: ${notice}` };
+/** A raise's row as the person saw it, under the number `number`: its answer, then what they would notice. @param {RaiseRow} row @param {string} number @returns {Offered} */
+function raiseOffered({ name, text, notice }, number) {
+  return { key: number, text: `${text}\nWhat you'd notice — ${name}: ${notice}` };
 }
 
 /**
@@ -119,12 +121,14 @@ function readAtGate(question, rows, words) {
 }
 
 /**
- * The row of Claude's the person's own words pick, read at a raise's pace;
+ * The own key of the row of Claude's the person's own words pick, `drawn`
+ * in the order the screen numbers them from 1, read at a raise's pace;
  * null for none.
- * @param {string} question @param {RaiseRow[]} rows @param {string} words
+ * @param {string} question @param {RaiseRow[]} drawn @param {string} words
  */
-function readOnRaise(question, rows, words) {
-  return readAnswer({ question, rows: rows.map(raiseOffered), words }, ON_A_RAISE);
+function readOnRaise(question, drawn, words) {
+  const read = readAnswer({ question, rows: drawn.map((row, i) => raiseOffered(row, String(i + 1))), words }, ON_A_RAISE);
+  return read === null ? null : drawn[Number(read) - 1].key;
 }
 
 module.exports = { PROMPT, AT_A_GATE, ON_A_RAISE, readAtGate, readOnRaise };

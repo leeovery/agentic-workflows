@@ -320,7 +320,7 @@ describe('the answer\'s refusals, recording nothing', () => {
 
     const { error } = refusedPristine(dir, ['raise', 'answer', id, '--pick', 'keep'], { env: conversation(), stdin: JSON.stringify({ why: WHY }) });
 
-    assert.strictEqual(error, 'raise answer: the raise has no row keep — its rows: a, b');
+    assert.strictEqual(error, 'raise answer: the raise has no row keep — its rows are numbered 1 to 2');
     assert.deepStrictEqual(logged(), []);
   });
 
@@ -437,10 +437,10 @@ describe('each answer, its line, its raise event, who moved whom and the queue (
     const id = await draw();
     const log = path.join(config(), 'reader-calls.jsonl');
 
-    answer(id, ['--own'], { text: 'On the main screen, as you say', why: WHY }, { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: MAIN.key } }) });
+    answer(id, ['--own'], { text: 'On the main screen, as you say', why: WHY }, { CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: '1' } }) });
 
     const [{ argv }] = fs.readFileSync(log, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
-    assert.deepStrictEqual(JSON.parse(argv[argv.indexOf('--json-schema') + 1]).properties.row.enum, [MAIN.key, LAST.key, 'none of them']);
+    assert.deepStrictEqual(JSON.parse(argv[argv.indexOf('--json-schema') + 1]).properties.row.enum, ['1', '2', 'none of them']);
     assert.deepStrictEqual(lastEntry(), replacementOf(id, { who_moved_whom: 'none', text: 'On the main screen, as you say', rules_out: [] }));
     assert.deepStrictEqual(logged(), [raiseEvent(id, { answer: null, with_text: true, reading: MAIN.key })]);
     assert.deepStrictEqual(queue(), []);

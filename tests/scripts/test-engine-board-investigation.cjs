@@ -372,6 +372,17 @@ describe('This session in an investigation (20.12.1)', () => {
     ]);
   });
 
+  it('an option\'s page is named by the number the raise\'s screen draws it under, in the order a blind seal holds its rows', async () => {
+    const fix = await raised(FIX_CALL, made.fix);
+    const shown = path.join(config, 'conversations', 'sess-1', 'raise-shown.json');
+    const seals = JSON.parse(fs.readFileSync(shown, 'utf8'));
+    const call = seals[fix].call;
+    fs.writeFileSync(shown, JSON.stringify({ ...seals, [fix]: { ...seals[fix], blind: true, call: { ...call, rows: [...call.rows].reverse() } } }));
+    atTheHunt();
+
+    assert.deepStrictEqual(['a', 'b'].map((key) => board(['--page', `option:${key}`]).view.name), ['2', '1']);
+  });
+
   it('once picked, the fix is the fix direction\'s and never DECIDED, its question logged or not; the fix validation not yet sent, nothing validates; sent, it is what the investigation does', async () => {
     takenIn(dispatched('root-cause-validation', []).id);
     picked(await raised(FIX_CALL, made.fix), '2');
@@ -701,8 +712,8 @@ describe('the hunt\'s pages (20.12.2)', () => {
       { kind: 'hunt', unit: BUG, item: 'experiment', name: 'E1', title: 'Kill every session, hook on', state: 'each kill shrank it', text: '3 sessions saved, each kill shrank the save.' },
       { kind: 'hunt', unit: BUG, item: 'root-cause', name: null, title: '', state: 'validated', text: `${ROOT_CAUSE}\n\nThe housekeeping pass deletes every file the index no longer names.` },
       { kind: 'hunt', unit: BUG, item: 'stepped-back', name: null, title: '', state: null, text: FIX_CALL.stepped_back.join('\n\n') },
-      { kind: 'hunt', unit: BUG, item: 'option', name: 'a', title: FIX_CALL.rows[0].name, state: 'lean', text: `${FIX_CALL.rows[0].text}\n\n${FIX_CALL.rows[0].notice}` },
-      { kind: 'hunt', unit: BUG, item: 'option', name: 'b', title: FIX_CALL.rows[1].name, state: 'option', text: `${FIX_CALL.rows[1].text}\n\n${FIX_CALL.rows[1].notice}` },
+      { kind: 'hunt', unit: BUG, item: 'option', name: '1', title: FIX_CALL.rows[0].name, state: 'lean', text: `${FIX_CALL.rows[0].text}\n\n${FIX_CALL.rows[0].notice}` },
+      { kind: 'hunt', unit: BUG, item: 'option', name: '2', title: FIX_CALL.rows[1].name, state: 'option', text: `${FIX_CALL.rows[1].text}\n\n${FIX_CALL.rows[1].notice}` },
     ]);
     assert.deepStrictEqual(['hunt:H9', 'option:3'].map((ref) => board(['--page', ref]).view), [
       { kind: 'unavailable', reason: `${BUG}'s investigation holds no H9 — a hunt's page is a hypothesis or an experiment by its name, the root cause, or what stepping back found` },
