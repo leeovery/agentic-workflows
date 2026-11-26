@@ -774,7 +774,7 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
     ]);
   });
 
-  it('says the raises at the end are of a started topic of a unit in progress alone, each a decision only the person can make, what a row\'s notice is, and a point two records carry raised once, its answer merged into the other', () => {
+  it('says the raises at the end are of a started topic of a unit in progress alone, each a decision only the person can make, what a row\'s notice is, a settled_on record\'s account as its mechanism, the lean and why Claude gives where there are rows, a pick by the number the screen draws, a why the person\'s own or saying they gave none, and a point two records carry raised once, its answer merged into the other', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 
     assert.deepStrictEqual([
@@ -789,6 +789,10 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
       'Where a point is `settled_on` a record, tell the person, as its mechanism, that that record\'s own log settled it after the approval, and how: its decisions\' texts.',
       'Where a point is `settled_on` a record, once the person answers it: where the answer agrees with that record\'s decisions, nothing changes on that record — mark it so, `"agrees": true` beside its `log` mark. Where it differs, the person\'s answer is the newer one: record it on that record too, replacing each of its decisions listed,',
       'node .claude/skills/ledger-engine/scripts/engine.cjs ledger replace {place} --replaces {id} --reason other-topic --cause {answered}',
+      'The raise takes one JSON object on stdin, `{"question", "rows", "lean", "why", "mechanism", "product_wide"}`',
+      'where there are rows, the key of the row you would pick as `lean` and your reason as `why`, one line, both left out where there are none;',
+      'what the sources say of it and where, as the mechanism;',
+      'a row they pick, `--pick {n}`, the number the screen draws it under, with `{"why"}` on stdin; their own words, `--own`, with `{"text", "why"}`; each `why` the person\'s reason as they gave it, or that they gave none; where they picked your lean, your lean\'s reason added, said as yours.',
     ].filter((rule) => !text.includes(rule)), []);
   });
 
@@ -879,17 +883,22 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
     const asking = [];
     /** @type {string[]} */
     const titled = [];
+    /** @type {string[]} */
+    const leaning = [];
+    const card = { rows: [{ key: 'card', name: 'A card', text: 'The trial takes a card', notice: 'sign-up asks for a card' }, { key: 'free', name: 'No card', text: 'The trial takes no card', notice: 'sign-up asks for none' }], lean: 'free', why: 'The log\'s trial is free to start.' };
     for (const [{ place, answers }, mechanism] of [[listed, 'The log says nothing of a card.'], [built, 'The log weighs both.']]) {
       const { res, sections } = await okSectionsAsync(dir, ['raise', place, '--answers', answers, '--fact'], {
-        env: SESSION, stdin: JSON.stringify({ question: place === built.place ? unclear.text : point.text, rows: [], mechanism, product_wide: false }),
+        env: SESSION, stdin: JSON.stringify({ question: place === built.place ? unclear.text : point.text, rows: [], ...(place === listed.place ? card : {}), mechanism, product_wide: false }),
       });
       asking.push(/WHY I'M ASKING\n\n(.*)\n/.exec(sections)?.[1] ?? sections);
       titled.push(/^(?:Fumi|Shop)\b.*$/m.exec(sections)?.[0] ?? sections);
+      leaning.push(/^I lean: .*$/m.exec(sections)?.[0] ?? '', /^.*\(recommended\)$/m.exec(sections)?.[0] ?? '');
       if (place === built.place) ok(dir, ['raise', 'answer', res.raise, '--own'], { env: SESSION, stdin: JSON.stringify({ text: 'By price.', why: 'The person said so.' }) });
     }
 
     assert.deepStrictEqual(asking, Array(2).fill('Only you can decide this: nothing from before Ledger settles it.'), 'a decision only the person can make, never a fact');
     assert.deepStrictEqual(titled, ['Fumi · Licensing', 'Shop · Weights'], 'a point raised at a unit\'s specification titled with its topic');
+    assert.deepStrictEqual(leaning, ['I lean: The trial takes no card', '**`2`**           → The trial takes no card (recommended)', '', ''], 'a point with rows drawn with Claude\'s lean, one with none drawn with none');
 
     assert.deepStrictEqual([checked().raise, checked().passed], [[], true]);
     ok(dir, ['checklist', 'close', 'directive', RECORDS], { env: SESSION });

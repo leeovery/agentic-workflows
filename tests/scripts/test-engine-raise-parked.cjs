@@ -452,6 +452,19 @@ describe('a question parked in the build (12.13.2–12.13.4, 12.13.9, 12.S28, 12
     assert.ok(drawn.sections.includes('Q1 · Fumi · parks task 2.3\n') && drawn.sections.includes('What\'s the answer?') && !drawn.sections.includes('I lean'), drawn.sections);
   });
 
+  it('a fact giving Claude\'s lean parks with its lean and why on the line, no sort; raise draw seals it as a fact with both, its lean drawn and recommended, and its answer seals no lean', async () => {
+    const leaning = { ...FACT, lean: 'a', why: 'Notes are personal.' };
+
+    const { res } = await okSectionsAsync(dir, ['raise', BUILD, '--answers', made.where, '--fact', '--parks', '2.3'], { env: conversation(), stdin: JSON.stringify(leaning) });
+
+    assert.deepStrictEqual(lastEntry(), { ...parkedLine({ why_asking: ONLY_YOU_KNOW, call: { ...FACT_CALL, lean: 'a', why: 'Notes are personal.' } }), id: full(res.id) });
+    const drawn = draw('Q1');
+    assert.deepStrictEqual([seals()?.[drawn.res.raise].fact, seals()?.[drawn.res.raise].call], [true, leaning]);
+    assert.ok(drawn.sections.includes('I lean: The personal account') && drawn.sections.includes('→ The personal account (recommended)'), drawn.sections);
+    answer(drawn.res.raise, ['--pick', '1']);
+    assert.deepStrictEqual([lastEntry().by, lastEntry().sealed, lastEntry().who_moved_whom, logged()], ['person', null, 'none', []]);
+  });
+
   it('a replacement proposed in the build parks its task too, the decision it would replace, the reason, the cause and whose the decision is on the line; another task meeting it joins it with all of these copied', async () => {
     const { res } = await parkReplacement('2.4');
     const line = parkedLine({ question: null, replaces: made.frameless, reason: 'was-wrong', task: '2.4', call: FRAMED, replaced_by: 'claude' });
@@ -718,7 +731,7 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
     ]);
   });
 
-  it('12.1.4: a keep of a decision a replacement proposed counts as against the lean and marks its task; a fact, which has no lean, marks none — each task\'s pair briefed and a report of its round written', () => {
+  it('12.1.4: a keep of a decision a replacement proposed counts as against the lean and marks its task; a fact, whose answer is the person\'s own, marks none — each task\'s pair briefed and a report of its round written', () => {
     parkedReplacement(1, '2.4');
     parkedFact(2, '2.3');
     beingRead(['2.3', '2.4'], ['a', 'b']);

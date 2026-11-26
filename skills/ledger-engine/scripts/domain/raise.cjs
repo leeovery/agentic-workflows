@@ -75,19 +75,21 @@
 // - A fact (16.3.8): `raise <unit>.<phase>[.<topic>] --answers <question>
 //   [--relies-on <id> …] --fact`, a fact Claude cannot check and only the
 //   person holds. The call on stdin is the question, its rows, the
-//   mechanism and whether the answer is product-wide: no lean, no why, no
-//   sort. Its rows may be none or any number, each checked as a call's row
-//   is. Nothing of Claude's is in it to judge or to decide, so neither the
-//   one-decision check nor the decision point is reached: it always asks,
-//   its reason its own. Its answer lands as the person's decision, sealing
-//   no lean and moving no one, and logs nothing in the trust log, its "I
-//   don't follow" included: a fact takes no label, adds no evidence and
-//   meets no threshold (16.3.2). It refuses `--replaces`: a fact that
-//   changes is the person's to say, and the decision it changes is replaced
-//   as any other. While the migration runs, its raises at the records
-//   directive's end are drawn so — a point its sources from before Ledger
-//   leave unsettled, a decision the person's alone to make — and why it
-//   asks says that, never that it is a fact.
+//   mechanism and whether the answer is product-wide, and no sort; where
+//   Claude has a lean, the row's key and why, the two given together, the
+//   lean naming a row. Its rows may be none or any number, each checked as
+//   a call's row is. Nothing of Claude's is in it to judge or to decide, so
+//   neither the one-decision check nor the decision point is reached: it
+//   always asks, never blind, its reason its own, its lean drawn as a
+//   call's is. Its answer lands as the person's decision, sealing no lean
+//   and moving no one, and logs nothing in the trust log, its "I don't
+//   follow" included: a fact takes no label, adds no evidence and meets no
+//   threshold (16.3.2). It refuses `--replaces`: a fact that changes is the
+//   person's to say, and the decision it changes is replaced as any other.
+//   While the migration runs, its raises at the records directive's end are
+//   drawn so — a point its sources from before Ledger leave unsettled, a
+//   decision the person's alone to make — and why it asks says that, never
+//   that it is a fact.
 // - The seal (16.1.2): the call as given, sealed before the person answers, so
 //   its lean cannot change — `raise-shown.json` in the conversation's folder
 //   (conversation.cjs), each raise drawn there by its id, with a version of
@@ -240,11 +242,12 @@
 //   wording, is drawn again, holding the tasks it parks now; a seal is
 //   matched to a question waiting by its park alone. Its screen is headed by
 //   its number and the tasks it parks (16.9.5, 12.12.5), and it is answered
-//   as any raise is, a fact's as a fact is, with no lean and nothing in the
-//   trust log. The tasks it parks are read as its answer lands, under the
-//   writer lock, and as "I don't follow" is checked — a task that joined it
-//   since the draw among them, one a close took off it since not: its answer
-//   carries the first of them, none where it parks none, and frees them;
+//   as any raise is, a fact's as a fact is, sealing no lean and logging
+//   nothing in the trust log. The tasks it parks are read as its answer
+//   lands, under the writer lock, and as "I don't follow" is checked — a
+//   task that joined it since the draw among them, one a close took off it
+//   since not: its answer carries the first of them, none where it parks
+//   none, and frees them;
 //   and the answer, or "I don't follow", answers the receipt (questions.cjs).
 //   A call's trust log event, its "I don't follow"'s too, says whether it
 //   blocked build work as the decision point decided it at the first park,
@@ -289,9 +292,10 @@
 //   question alone (16.5.4), Claude's lean landing at the id the draw minted
 //   as the builder's (9.2.14) — Claude's line, given `dont-care`, holding the
 //   lean row's answer, the other rows' as what it rules out and Claude's why,
-//   as a call that proceeds lands, moving no one. A fact refuses it: it holds
-//   no lean of Claude's to land. On a blind question Claude's sealed answer
-//   lands so too, the person never having seen it: no reveal, but Claude's
+//   as a call that proceeds lands, moving no one. A fact refuses it: its
+//   answer is the person's alone, Claude's lean given or not. On a blind
+//   question Claude's sealed answer lands so too, the person never having
+//   seen it: no reveal, but Claude's
 //   answer named as the builder's — by the receipt in the build, by a line of
 //   the reveal's display outside it — and its raise event carries no weight
 //   (trust-evidence.cjs); on Claude's call gone ahead, the call stands as
@@ -415,9 +419,9 @@ const { assertRootCauseAt } = require('./investigation-log.cjs');
  * @typedef {{question: string, rows: Row[], lean: string, why: string, sort: 'one'|'several', mechanism: string, product_wide: boolean, stepped_back?: string[]}} Call
  */
 /**
- * A fact only the person holds, as the draw takes it on stdin: no lean, no
- * why, no sort.
- * @typedef {{question: string, rows: Row[], mechanism: string, product_wide: boolean}} Fact
+ * A fact only the person holds, as the draw takes it on stdin: no sort, and
+ * Claude's lean and why only where it has one.
+ * @typedef {{question: string, rows: Row[], mechanism: string, product_wide: boolean, lean?: string, why?: string}} Fact
  */
 /** @typedef {import('./ledger-write.cjs').Place} Place */
 /** @typedef {import('./ledger-write.cjs').Linked} Linked */
@@ -573,6 +577,9 @@ const CALL_MAY = Object.freeze({ stepped_back: type('a list of lines, one at lea
 /** What a fact holds, each field's type. @type {Readonly<Record<string, Type>>} */
 const FACT_FIELDS = Object.freeze({ question: CALL_SHAPE.question, rows: ROWS, mechanism: CALL_SHAPE.mechanism, product_wide: CALL_SHAPE.product_wide });
 
+/** What a fact may hold besides: Claude's lean and why, given together. @type {Readonly<Record<string, Type>>} */
+const FACT_MAY = Object.freeze({ lean: CALL_SHAPE.lean, why: CALL_SHAPE.why });
+
 /**
  * What the answer on stdin holds, by how the person answered — `fact` a
  * pick on a fact, which moves no one; `blind` a pick on a blind question,
@@ -642,7 +649,12 @@ function checkRows({ rows, lean }, replacing, always) {
   checkEachRow(rows);
   if (lean === KEEP && replacing && always === BUILT_OTHERWISE) return;
   if (replacing && lean === KEEP) throw new Error(`raise: the call leans to ${KEEP}, the entry as it stands — a raise on a replacement leans to one of its proposals, but under ${ALWAYS} ${BUILT_OTHERWISE}, where the code was built otherwise than the decision`);
-  if (!rows.some((row) => row.key === lean)) throw new Error(`raise: the call leans to ${lean}, and no row has that key — its rows: ${rows.map((row) => row.key).join(', ')}`);
+  checkLean(rows, lean);
+}
+
+/** Refuse a lean naming no row of `rows`. @param {Row[]} rows @param {string} lean */
+function checkLean(rows, lean) {
+  if (!rows.some((row) => row.key === lean)) throw new Error(`raise: the call leans to ${lean}, and no row has that key — its rows: ${rows.length === 0 ? 'none' : rows.map((row) => row.key).join(', ')}`);
 }
 
 /**
@@ -660,14 +672,17 @@ function callOf(stdin, replacing, always) {
 
 /**
  * The fact on stdin, checked whole: its rows, where it gives any, each
- * checked as a call's row is.
+ * checked as a call's row is; and Claude's lean, where it gives one, with
+ * its why, naming a row.
  * @param {string} stdin
  * @returns {Fact}
  */
 function factOf(stdin) {
   const fact = stdinObject(stdin, SAID, 'the call');
-  checkFields(fact, FACT_FIELDS, 'raise: the call');
+  checkFields(fact, FACT_FIELDS, 'raise: the call', FACT_MAY);
   checkEachRow(/** @type {Row[]} */ (fact.rows));
+  if (Object.hasOwn(fact, 'lean') !== Object.hasOwn(fact, 'why')) throw new Error('raise: a fact\'s lean comes with its why — give both, or neither');
+  if (Object.hasOwn(fact, 'lean')) checkLean(/** @type {Row[]} */ (fact.rows), /** @type {string} */ (fact.lean));
   return /** @type {Fact} */ (fact);
 }
 
@@ -1469,9 +1484,9 @@ function parkedLine(task, name, asks, tasks, phase, aside) {
   return `Task ${task} parks on ${name}, waiting for you: ${asks}${kept} The other tasks carry on.`;
 }
 
-/** A fact as its park seals it: as a call, with no lean, why or sort. @param {Fact} fact */
-function parkedFact({ question, rows, mechanism, product_wide: productWide }) {
-  return { question, rows, lean: null, why: null, sort: null, mechanism, product_wide: productWide };
+/** A fact as its park seals it: as a call with no sort, its lean and why null where it gives none. @param {Fact} fact */
+function parkedFact({ question, rows, lean, why, mechanism, product_wide: productWide }) {
+  return { question, rows, lean: lean ?? null, why: why ?? null, sort: null, mechanism, product_wide: productWide };
 }
 
 /**
@@ -1656,7 +1671,7 @@ function drawParked(cwd, args) {
   /** @type {Seal} */
   const seal = {
     v: SEAL_VERSION, id, menu: raiseMenu(id), place, ...target,
-    ...(lean === null ? { call: { ...fact, question: asks }, fact: true } : { call: { ...line.call, question: asks }, fact: false }),
+    ...(sort === null ? { call: { ...fact, ...(lean === null ? {} : { lean, why }), question: asks }, fact: true } : { call: { ...line.call, question: asks }, fact: false }),
     rows_judged: line.rows_judged, label: line.label, model: line.model, ...questions.decidedFromIn(line),
     reason: line.why_asking, by: line.asked_by, blind: line.blind, at: new Date().toISOString(), raised: line.at, answered: null, didnt_follow: 0,
     parks: { park: question.park, number: question.number, tasks: question.tasks, went_ahead: line.went_ahead },
@@ -1977,7 +1992,7 @@ function answeredWith(seal, given) {
  * @returns {Answering}
  */
 function leftToTheBuilder(seal) {
-  if (seal.fact) throw new Error(`${ANSWER_SAID}: a fact is the person's to give — "don't care" leaves the call to me, and a fact holds no lean of mine to land`);
+  if (seal.fact) throw new Error(`${ANSWER_SAID}: a fact is the person's to give — "don't care" leaves the call to me, and a fact's answer is never mine to land, my lean or none`);
   const { call, replaces } = seal;
   /** @type {Logged} */
   const logged = { answer: call.lean, via: 'typed', with_text: false, reading: null, dont_care: true };

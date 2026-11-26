@@ -207,11 +207,13 @@ describe('the events and their schemas', () => {
     assert.throws(() => validEvent(unexplained), { message: 'the kept event needs why' });
   });
 
-  it('holds a park to its shape: a question answered or a replacement proposed, one and not both, the reason and cause a replacement\'s alone; a task as screens show it, or none; the task Claude\'s call went ahead for, a blind question\'s on it alone, asked-blind, parking none — the park holding that task open asked-blind too, parking it, naming none gone ahead; a number from 1, and the call sealed whole, leaning to a row it holds — or a fact\'s, answering a question, with no lean, why or sort — its label a model\'s id and twelve answers, or none, and what it was decided from: whether it blocks build work, who decided what it would replace, or none, a mark a question always asks by, or none, the experiment still running that measures its question, or none, and its question\'s id the blind draw hashes, or none; a task taken off its questions names the task and the parks', () => {
+  it('holds a park to its shape: a question answered or a replacement proposed, one and not both, the reason and cause a replacement\'s alone; a task as screens show it, or none; the task Claude\'s call went ahead for, a blind question\'s on it alone, asked-blind, parking none — the park holding that task open asked-blind too, parking it, naming none gone ahead; a number from 1, and the call sealed whole, leaning to a row it holds — or a fact\'s, answering a question, with no sort, and a lean and a why together, leaning to a row it holds, or neither — its label a model\'s id and twelve answers, or none, and what it was decided from: whether it blocks build work, who decided what it would replace, or none, a mark a question always asks by, or none, the experiment still running that measures its question, or none, and its question\'s id the blind draw hashes, or none; a task taken off its questions names the task and the parks', () => {
     const park = { v: LEDGER_VERSION, id: newId(), at: AT, ...parked(newId()) };
     const fact = { ...park, call: { ...park.call, rows: [], lean: null, why: null, sort: null } };
+    const leaningFact = { ...park, call: { ...park.call, sort: null } };
     const unparked = { v: LEDGER_VERSION, id: newId(), event: 'unparked', ...TAGS, topic: null, phase: 'implementation', at: AT, task: '2.3', parks: [newId()] };
     assert.deepStrictEqual(validEvent(fact), fact);
+    assert.deepStrictEqual(validEvent(leaningFact), leaningFact);
     assert.deepStrictEqual(validEvent(unparked), unparked);
     const replacing = { ...park, question: null, replaces: newId(), reason: 'was-wrong', chain: null };
     assert.deepStrictEqual(validEvent(park), park);
@@ -246,9 +248,13 @@ describe('the events and their schemas', () => {
       [{ ...park, always: 'urgent' }, /its always is not one of design-problem, live-server, built-otherwise, or null$/],
       [{ ...park, measured: 'the timing experiment' }, /its measured is not an experiment's id, or null$/],
       [{ ...park, chain: 'Q1' }, /its chain is not an entry id, or null$/],
-      [{ ...fact, call: { ...fact.call, why: 'A note follows the person.' } }, /its call has a lean, a why and a sort, or, a fact, none of them/],
+      [{ ...fact, call: { ...fact.call, why: 'A note follows the person.' } }, /its call has a lean and a why together, or, a fact, neither/],
+      [{ ...leaningFact, call: { ...leaningFact.call, why: null } }, /its call has a lean and a why together, or, a fact, neither/],
+      [{ ...park, call: { ...park.call, lean: null, why: null } }, /its call has a lean, a why and a sort, or, a fact, no sort/],
+      [{ ...leaningFact, call: { ...leaningFact.call, lean: '3' } }, /its call leans to 3, a row it does not hold/],
       [{ ...fact, question: null, replaces: newId(), reason: 'was-wrong' }, /a fact parked answers a question, never proposes a replacement/],
-      [{ ...fact, blind: true }, /a fact parked is never blind: it has no answer of Claude's to hold back/],
+      [{ ...fact, blind: true }, /a fact parked is never blind: a fact never holds its lean back/],
+      [{ ...leaningFact, blind: true }, /a fact parked is never blind: a fact never holds its lean back/],
       [{ ...replacing, went_ahead: '2.3', task: null, blind: true }, goneAhead],
       [{ ...ahead, went_ahead: null }, parksOne],
       [{ ...ahead, task: '2.3' }, parksOne],

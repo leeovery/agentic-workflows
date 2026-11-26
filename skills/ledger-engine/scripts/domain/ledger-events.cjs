@@ -121,10 +121,9 @@
 //   person's is given — a call the decision point would have let Claude
 //   make alone, drawn (16.17.2, raise.cjs) — a task joining it parks under
 //   all of it as the question's first park holds it. A fact only the person
-//   holds (16.3.8) parks in the same shape, as the ledger holds a fact's
-//   answer, with no lean: its call's lean, why and sort null, its rows any
-//   number, never labelled, decided under no model, marked with none and
-//   never blind. It names no maker, is no entry and is never replaced: it
+//   holds (16.3.8) parks in the same shape: its call's sort null, its lean
+//   and why null where Claude gives none, its rows any number, never
+//   labelled, decided under no model, marked with none and never blind. It names no maker, is no entry and is never replaced: it
 //   waits while what it is about stands open (questions.cjs).
 // - unparked: a task closed in the build, taken off the questions of its
 //   unit that parked it (task-parks.cjs, questions.cjs): the task, as
@@ -298,20 +297,21 @@ const CONTENT = {
 
 /**
  * What a parked question's call holds: Claude's call, or a fact only the
- * person holds, its lean, why and sort null.
+ * person holds, its sort null, and its lean and why null where it gives none.
  */
 const PARKED_CALL_FIELDS = Object.freeze({ ...CALL_FIELDS, lean: nullable(KEY), why: nullable(LINE), sort: nullable(oneOf('one', 'several')) });
 
 /**
  * Why a parked question's fields disagree, or null where they keep together:
  * it answers a question or proposes a replacement, one and not both; the
- * reason and the cause are a replacement's alone, its reason given; a fact
- * answers a question, and has no lean, why or sort, and is never blind,
- * while a call has all three and leans to a row it holds, or under the
- * built-otherwise mark to keep the decision it would replace; and a blind
- * question on Claude's call gone ahead (`went_ahead`) proposes to replace
- * that call for its reason, asked blind, parking no task — the park holding
- * that task open, for that reason, asked blind too.
+ * reason and the cause are a replacement's alone, its reason given; a fact,
+ * which has no sort, answers a question, has a lean and a why together or
+ * neither, and is never blind, while a call has all three; a lean names a
+ * row the call holds, or under the built-otherwise mark keeps the decision
+ * it would replace; and a blind question on Claude's call gone ahead
+ * (`went_ahead`) proposes to replace that call for its reason, asked blind,
+ * parking no task — the park holding that task open, for that reason, asked
+ * blind too.
  * @param {Record<string, any>} parked
  * @returns {string|null}
  */
@@ -322,12 +322,12 @@ function parkHolds({ question, replaces, reason, cause, task, went_ahead: wentAh
   if (wentAhead !== null && reason !== ASKED_BLIND) return `a blind question on Claude's call gone ahead proposes to replace it for its reason, ${ASKED_BLIND}`;
   if (reason === ASKED_BLIND && !blind) return `a park for ${ASKED_BLIND} is asked blind: Claude's call gone ahead, or the task it went ahead for held open`;
   if (reason === ASKED_BLIND && (wentAhead === null) === (task === null)) return 'a blind question on Claude\'s call gone ahead names the task it went ahead for and parks none; the park holding that task open parks it, naming none gone ahead';
-  const leans = [call.lean, call.why, call.sort].filter((given) => given !== null).length;
-  if (leans === 0) {
-    if (blind) return 'a fact parked is never blind: it has no answer of Claude\'s to hold back';
-    return replaces === null ? null : 'a fact parked answers a question, never proposes a replacement';
-  }
-  if (leans < 3) return 'its call has a lean, a why and a sort, or, a fact, none of them';
+  if ((call.lean === null) !== (call.why === null)) return 'its call has a lean and a why together, or, a fact, neither';
+  if (call.sort === null) {
+    if (blind) return 'a fact parked is never blind: a fact never holds its lean back';
+    if (replaces !== null) return 'a fact parked answers a question, never proposes a replacement';
+    if (call.lean === null) return null;
+  } else if (call.lean === null) return 'its call has a lean, a why and a sort, or, a fact, no sort';
   if (call.lean === 'keep' && replaces !== null && always === 'built-otherwise') return null;
   return call.rows.some((/** @type {{key: string}} */ row) => row.key === call.lean) ? null : `its call leans to ${call.lean}, a row it does not hold`;
 }

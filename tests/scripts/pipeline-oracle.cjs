@@ -1176,7 +1176,7 @@ function auditTrust(sim, label, ran = []) {
   for (const seal of sealed.filter((s) => s.parks !== null)) {
     assert.deepStrictEqual(seal.label, byId.get(seal.parks.park)?.label, ctx(`the raise ${seal.id} drawn from ${seal.parks.park} holds a label the park did not seal`));
   }
-  assert.deepStrictEqual([...sealed.filter((s) => s.fact), ...entries.filter((e) => e.event === 'parked' && e.call.lean === null)].filter((s) => s.label !== null).map((s) => s.id), [],
+  assert.deepStrictEqual([...sealed.filter((s) => s.fact), ...entries.filter((e) => e.event === 'parked' && e.call.sort === null)].filter((s) => s.label !== null).map((s) => s.id), [],
     ctx('a fact holds a label'));
   const drawnBlind = [
     ...sealed.filter((s) => s.blind && s.parks === null).map((s) => [s.id, kindOf(s.label)]),
