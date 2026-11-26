@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.4] - 2026-11-26
+
+Discussions now work as a conversation: what you settle with Claude is recorded as yours, and handing points over is recorded as Claude's.
+
+🔧 Changed
+- Discussions no longer require the topic's shape to be agreed before Claude can make calls — what you settle in the talk, in your own words or by agreeing Claude's view, is recorded as yours.
+- Saying "your call" or "decide the rest" hands points to Claude, and each is recorded as Claude's, handed over by you, without coming back to you.
+- Ticking a line in the spec page with the `t` key now brings up the next line still to tick, matching the tick button.
+
 ## [0.9.3] - 2026-11-26
 
 Raised-question menus are easier to read and answer: the explanation prints in the chat above the buttons, and answers are numbered.
