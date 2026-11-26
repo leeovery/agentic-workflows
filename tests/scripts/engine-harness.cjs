@@ -1071,8 +1071,10 @@ if (!process.env.STUB_MIGRATE_NO_REPORT) {
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/ledger-engine/scripts/engine.cjs"';
 /** A hook running an engine verb. @param {string} verb */
 const engineHook = (verb) => ({ type: 'command', command: `${HOOK_ENGINE} ${verb}` });
+/** A SessionEnd hook running an engine verb, with the time boot gives it to finish. @param {string} verb */
+const endHook = (verb) => ({ ...engineHook(verb), timeout: 10 });
 /** Ledger's own SessionEnd hooks, in every project whatever the label choice. */
-const LEDGER_HOOKS = [engineHook('presence cleanup'), engineHook('conversation end')];
+const LEDGER_HOOKS = [endHook('presence cleanup'), endHook('conversation end')];
 /** The layout hook's group, before every write, in every project whatever the label choice. */
 const LAYOUT_GROUP = { matcher: 'Write|Edit|NotebookEdit', hooks: [engineHook('layout guard')] };
 /** The brief hook's group, before every dispatch, in every project whatever the label choice. */
@@ -1170,7 +1172,7 @@ function startItem(dir, workUnit, phase, topic) {
 }
 
 module.exports = {
-  ENGINE, STAND_INS, harness, stubEngine, engineHook, LEDGER_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, RESUME_GROUP, OWN_HOOKS, hooked,
+  ENGINE, STAND_INS, harness, stubEngine, engineHook, endHook, LEDGER_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, RESUME_GROUP, OWN_HOOKS, hooked,
   call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, sectionOf, screenOf, holdLock, lockAttempts, contend, killedAt,
   FROZEN_MS, FROZEN_AT, withFrozenClock, withEnv, datedAt,
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,

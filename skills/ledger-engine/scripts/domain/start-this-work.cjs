@@ -51,13 +51,13 @@
 //   roadmap, is kept for the quick-fix's close or cancel to put it back
 //   there (topic-leave.cjs). A failure part-way leaves no unit. One commit
 //   takes it all.
-// - What comes next: a feature into its discussion, a bugfix into its
-//   investigation, each a handoff (24.1.2); a quick-fix into its work, its
-//   skill invoked in this same conversation, nothing cleared (19.5.1,
-//   24.1.5); an epic carries the conversation on into its own discovery,
-//   with no handoff, to shape its topics (8.8.13, 24.S15) — moving from the
-//   product's conversation, or entering it from a type call, which holds no
-//   place to move from.
+// - What comes next keeps the conversation that shaped the work, nothing
+//   cleared: a feature into its discussion, a bugfix into its
+//   investigation and a quick-fix into its work (19.5.1, 24.1.5), each its
+//   skill invoked in this same conversation; an epic carries the
+//   conversation on into its own discovery to shape its topics (8.8.13,
+//   24.S15) — moving from the product's conversation, or entering it from
+//   a type call, which holds no place to move from.
 // - A unit moved to a feature or a bugfix meets the same gate (19.4.22,
 //   19.5.9): `workunit move` stages its payload where a start's is staged
 //   and draws the same screen, and the yes moves the unit rather than
@@ -300,15 +300,14 @@ function noteSeedsOf(cwd, roadmap) {
 }
 
 /**
- * What comes after the yes: an epic's own discovery, moved to from the
- * product's conversation where `moving`; a quick-fix's skill, invoked in
- * this conversation (19.5.1); any other type's first phase, by a handoff.
+ * What comes after the yes, in the conversation that shaped the work: an
+ * epic's own discovery, moved to from the product's conversation where
+ * `moving`; any other type's first phase, its skill invoked here.
  * @param {string} type @param {string} unit @param {boolean} [moving] @returns {Next}
  */
 function nextAfter(type, unit, moving = false) {
   if (type === 'epic') return { kind: 'engine', argv: ['enter', 'discovery', unit, ...(moving ? ['--move'] : [])] };
-  const skill = phaseSkill(OPENS_IN[type], type);
-  return { kind: type === 'quick-fix' ? 'invoke' : 'handoff', skill, args: [type, unit] };
+  return { kind: 'invoke', skill: phaseSkill(OPENS_IN[type], type), args: [type, unit] };
 }
 
 /**

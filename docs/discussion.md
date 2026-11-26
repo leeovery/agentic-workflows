@@ -8,7 +8,7 @@ Every question, finding and decision lands on the ledger, every answer you give 
 
 The topic starts from its brief, and for a feature the discovery logs and the seeds; the record of every topic decided so far, never their logs; the product record, with what discovery found of the product; each spike; and earlier work on the topic's subject, searched in the [knowledge base](knowledge-base.md) each time the topic opens: an earlier decision that still holds is built on, and one that must change is replaced, never decided a second time beside it. A topic that waited on the roadmap, or a piece of work that moved here from another kind, also has the record it left in its first place, as input it never changes. Claude reads what the work needs of it.
 
-The opening is short: what the brief covers and what came across into the topic, then where you want to start. It decides nothing. The brief's open questions go on the map as the conversation starts, wherever it begins, so none can be missed when the topic closes.
+Only a question on the map holds the topic's close, so a question the talk leaves open goes there.
 
 What you settled on in discovery is working ground, never asked again; what the brief leaves open is still open. Settled ground moves when something here contradicts it, or when you reopen it yourself. A point the brief carries from the [record from before](discovery.md#what-you-bring-from-before) is not: it goes on the map as an open question, with the answer from before as Claude's lean, and always comes to you, however quiet its kind.
 

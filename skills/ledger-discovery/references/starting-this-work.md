@@ -6,10 +6,10 @@
 
 ## The Types
 
-- **A feature** — one piece of work that needs discussion, planning or exploration. One that grows pivots to an epic later.
+- **A feature** — one piece of work whose shape takes decisions, whether they are still to make or the talk has made them: its decisions go on the record and it is built against a spec. One that grows pivots to an epic later.
 - **An epic** — parts that each need decisions of their own.
 - **A bugfix** — a bug whose cause is not known.
-- **A quick-fix** — settled work of any size, a known cause with a settled fix among it, needing no decision beyond a quick call.
+- **A quick-fix** — work of any size that takes no deciding beyond a quick call, a known cause with a known fix among it.
 
 Seeds take the largest shape among them; a bug or a quick-fix among them rides along as material. A bug riding along in a feature or an epic gets no investigation of its own: tell the person.
 
