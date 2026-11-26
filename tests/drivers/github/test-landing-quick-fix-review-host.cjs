@@ -28,9 +28,9 @@ const { reviewHost } = require('./quick-fix-review-host.cjs');
 
 const { side, as, mergedOnHost, reviewing } = reviewHost('github-landing-quick-fix-review-host-');
 
-/** Where the area reader's brief lays the project out: the line naming it and the commit its call lays. @param {string} at */
+/** Where the section reader's brief lays the project out: the line naming it and the commit its call lays. @param {string} at */
 function laidOut(at) {
-  const { id } = ok(at, ['brief', 'review-area', UNIT, '--area', '1', '--base', 'main', '--letter', 'a'], as());
+  const { id } = ok(at, ['brief', 'review-section', UNIT, '--section', '1', '--base', 'main', '--letter', 'a'], as());
   const brief = fs.readFileSync(path.join(as().env.LEDGER_CONFIG_DIR ?? '', 'conversations', 'sess-1', 'briefs', path.basename(briefPath('sess-1', id))), 'utf8');
   return { line: brief.split('\n').find((line) => line.startsWith('- the project\'s repository: ')), commit: /scratch lay \S+ ([0-9a-f]{40})/.exec(brief)?.[1] };
 }

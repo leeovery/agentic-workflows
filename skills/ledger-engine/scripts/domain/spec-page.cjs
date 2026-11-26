@@ -15,7 +15,7 @@
 // `out_dir`, `<dir>/<collection>/<doc>.json`. Its collections, beside the
 // page's own `marks` (spec-review.cjs):
 // - `spec`: `index`, `{title, h1, intro, sections: [{num, title, count}],
-//   total, c, f}`, `c` the last change the spec holds; and `s<N>` an area,
+//   total, c, f}`, `c` the last change the spec holds; and `s<N>` a section,
 //   `{items, f}`, its items as the model draws them, with each line the spec
 //   no longer holds kept where it stood, `{k: 'removed', id, num, kind,
 //   parts, src?, c}`;
@@ -39,10 +39,10 @@
 // `push-<k>/`, and answers the page's address: one numbered change, its
 // reason, the lines whose conversations led to it, and the lines it added,
 // reworded and removed; each reworded line's last wording appended to its
-// history; each removed line kept where it stood, an area that loses every
+// history; each removed line kept where it stood, a section that loses every
 // line kept with its removed lines alone, counted 0 in the index; and
 // Claude's ticks redrawn. It writes only the documents that differ from the
-// store's, the history first, then the change, the areas, and the index
+// store's, the history first, then the change, the sections, and the index
 // last, so a push that stops part way is planned again from the same listing
 // and finishes the change it started: until the index lands, the store's
 // newest change is numbered past the index's `c`. A write to a document the
@@ -89,11 +89,11 @@ const KINDS = /** @type {const} */ (['added', 'reworded', 'removed']);
 
 /** @typedef {import('./spec-page-model.cjs').SpecPage} SpecPage */
 /** @typedef {import('./spec-page-model.cjs').Item} Item */
-/** A line of an area. @typedef {Extract<Item, {k: 'line'}>} LineItem */
+/** A line of a section. @typedef {Extract<Item, {k: 'line'}>} LineItem */
 /** @typedef {(typeof COLLECTIONS)[number]} Collection */
 /** A line the spec no longer holds, kept where it stood. @typedef {{k: 'removed', id: string, num: string, kind: string, parts: [string, string][], src?: string, c: number}} Removed */
-/** An item of an area as the store holds it. @typedef {Item | Removed} Stored */
-/** An area's document. @typedef {{items: Stored[], f: string}} AreaDoc */
+/** An item of a section as the store holds it. @typedef {Item | Removed} Stored */
+/** A section's document. @typedef {{items: Stored[], f: string}} SectionDoc */
 /** An earlier wording of a line. @typedef {{h: string, at: string, parts: [string, string][], c: number}} Previous */
 /** A history document. @typedef {{lines: Record<string, Previous[]>}} HistoryDoc */
 /** A change. @typedef {{n: number, at: string, why: string, from: string[], added: string[], reworded: string[], removed: string[]}} Change */
@@ -134,8 +134,8 @@ const same = (a, b) => canonical(a) === canonical(b);
 
 /**
  * The `spec` collection a page draws: its index, without the last change it
- * holds, and an area's document by `s<N>`.
- * @param {SpecPage} page @returns {{index: Record<string, unknown> & {f: string}, areas: Record<string, AreaDoc>}}
+ * holds, and a section's document by `s<N>`.
+ * @param {SpecPage} page @returns {{index: Record<string, unknown> & {f: string}, sections: Record<string, SectionDoc>}}
  */
 function specDocs(page) {
   const index = withF({
@@ -145,11 +145,11 @@ function specDocs(page) {
     sections: page.sections.map(({ num, title, items }) => ({ num, title, count: items.filter(({ k }) => k === 'line').length })),
     total: page.lines.length,
   });
-  return { index, areas: Object.fromEntries(page.sections.map(({ num, items }) => [`s${num}`, withF({ items: /** @type {Stored[]} */ (items) })])) };
+  return { index, sections: Object.fromEntries(page.sections.map(({ num, items }) => [`s${num}`, withF({ items: /** @type {Stored[]} */ (items) })])) };
 }
 
 /**
- * The `assess` collection a page's ticks draw, by area: each tick the time
+ * The `assess` collection a page's ticks draw, by section: each tick the time
  * the store's own assessment of it was made, where it holds the same.
  * @param {SpecPage} page @param {Record<string, any>} held the store's `assess` @param {string} at
  * @returns {Record<string, {lines: Record<string, Assessment>}>}
@@ -168,7 +168,7 @@ function assessDocs(page, held, at) {
   return docs;
 }
 
-/** An item's key among its area's items. @param {Stored} item */
+/** An item's key among its section's items. @param {Stored} item */
 const keyOf = (item) => `${item.k}:${'id' in item ? item.id : item.t}`;
 
 /** Whether an item is a line. @param {Stored} item @returns {item is LineItem} */
@@ -214,23 +214,23 @@ function removedItem({ id, num, kind, parts, src }, c) {
 const wordingOf = (parts) => parts.map(([kind, text]) => (kind === 'text' ? text.split(/\s+/).filter(Boolean).join(' ') : text)).join('\n');
 
 /**
- * One change, from the store's areas `prev` (null for a store not yet seeded)
- * to the page's: the areas to store, the history with each wording the
+ * One change, from the store's sections `prev` (null for a store not yet seeded)
+ * to the page's: the sections to store, the history with each wording the
  * change replaced, and the change, or null where no line changed. A line
  * whose id comes back takes its removed item's place, the wording removed
  * joining its history with the change that removed it, at that change's
  * time.
- * @param {Record<string, AreaDoc>|null} prev @param {Record<string, AreaDoc>} areas @param {Record<string, HistoryDoc>} history
+ * @param {Record<string, SectionDoc>|null} prev @param {Record<string, SectionDoc>} sections @param {Record<string, HistoryDoc>} history
  * @param {{n: number, at: string, why: string, from: string[], when: (c: number) => string}} change
- * @returns {{merged: Record<string, AreaDoc>, history: Record<string, HistoryDoc>, change: Change|null}}
+ * @returns {{merged: Record<string, SectionDoc>, history: Record<string, HistoryDoc>, change: Change|null}}
  */
-function step(prev, areas, history, { n, at, why, from, when }) {
+function step(prev, sections, history, { n, at, why, from, when }) {
   /** @type {Record<string, HistoryDoc>} */
   const kept = Object.fromEntries(Object.entries(history).map(([doc, { lines }]) => [doc, { lines: Object.fromEntries(Object.entries(lines).map(([id, was]) => [id, [...was]])) }]));
   const oldItems = Object.values(prev ?? {}).flatMap(({ items }) => items);
   const oldLines = new Map(oldItems.filter(isLine).map((item) => [item.id, item]));
   const oldRemoved = new Map(oldItems.filter(isRemoved).map((item) => [item.id, item]));
-  const newIds = new Set(Object.values(areas).flatMap(({ items }) => items).filter(isLine).map(({ id }) => id));
+  const newIds = new Set(Object.values(sections).flatMap(({ items }) => items).filter(isLine).map(({ id }) => id));
   /** @type {Record<(typeof KINDS)[number], string[]>} */
   const changed = { added: [], reworded: [], removed: [] };
   const previous = (/** @type {string} */ doc, /** @type {string} */ id, /** @type {Previous} */ was) => {
@@ -238,9 +238,9 @@ function step(prev, areas, history, { n, at, why, from, when }) {
     const before = lines[id] ?? [];
     lines[id] = before.at(-1)?.h === was.h ? before : [...before, was];
   };
-  /** @type {Record<string, AreaDoc>} */
+  /** @type {Record<string, SectionDoc>} */
   const merged = {};
-  const docs = [...new Set([...Object.keys(areas), ...Object.keys(prev ?? {})])].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
+  const docs = [...new Set([...Object.keys(sections), ...Object.keys(prev ?? {})])].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
   for (const doc of docs) {
     const old = prev?.[doc]?.items ?? [];
     const keep = new Map(old.filter(isRemoved).filter(({ id }) => !newIds.has(id)).map((item) => [item.id, item]));
@@ -249,11 +249,11 @@ function step(prev, areas, history, { n, at, why, from, when }) {
       changed.removed.push(item.id);
       keep.set(item.id, removedItem(item, n));
     }
-    if (!(doc in areas)) {
+    if (!(doc in sections)) {
       if (keep.size > 0) merged[doc] = withF({ items: placed(old, [], keep) });
       continue;
     }
-    for (const item of areas[doc].items) {
+    for (const item of sections[doc].items) {
       if (!isLine(item) || prev === null) continue;
       const was = oldLines.get(item.id);
       if (was === undefined) {
@@ -265,7 +265,7 @@ function step(prev, areas, history, { n, at, why, from, when }) {
         previous(doc, item.id, { h: was.h, at, parts: was.parts, c: n });
       }
     }
-    merged[doc] = withF({ items: placed(old, areas[doc].items, keep) });
+    merged[doc] = withF({ items: placed(old, sections[doc].items, keep) });
   }
   const any = KINDS.some((kind) => changed[kind].length > 0);
   return { merged, history: kept, change: any ? { n, at, why, from, ...changed } : null };
@@ -286,22 +286,22 @@ const asId = (given) => given.trim().replaceAll('.', '-');
 
 /**
  * The writes that bring the store up to the page, recording what changed as
- * one change: the history first, then the change, the areas, the index last,
+ * one change: the history first, then the change, the sections, the index last,
  * then Claude's ticks; each only where the store holds otherwise.
  * @param {SpecPage} page @param {Listing} store @param {{at: string, why: string, from: string[]}} given
  * @returns {{writes: Write[], change: Change|null, resumed: boolean}}
  */
 function planned(page, store, { at, why, from }) {
-  const { index, areas } = specDocs(page);
+  const { index, sections: docs } = specDocs(page);
   const seeded = 'index' in store.spec;
   const prev = seeded ? Object.fromEntries(Object.entries(store.spec).filter(([doc]) => doc !== 'index')) : null;
   const changes = new Map(Object.values(seeded ? store.changes : {}).map((change) => [change.n, /** @type {Change} */ (change)]));
   const last = Math.max(0, ...changes.keys());
   const pending = seeded && last > (store.spec.index.c ?? 0) ? changes.get(last) : undefined;
-  const known = new Set([...Object.values(areas), ...Object.values(prev ?? {})].flatMap(({ items }) => items).filter(isNumbered).map(({ id }) => id));
+  const known = new Set([...Object.values(docs), ...Object.values(prev ?? {})].flatMap(({ items }) => items).filter(isNumbered).map(({ id }) => id));
   const unknown = from.filter((id) => !known.has(id));
   if (unknown.length > 0) throw new Error(`--from names lines the spec does not have: ${unknown.join(', ')}`);
-  const stepped = step(prev, areas, seeded ? store.history : {}, {
+  const stepped = step(prev, docs, seeded ? store.history : {}, {
     n: pending?.n ?? last + 1, at, why, from, when: (c) => changes.get(c)?.at ?? at,
   });
   let { change } = stepped;
@@ -315,7 +315,7 @@ function planned(page, store, { at, why, from }) {
   if (change !== null) changes.set(change.n, change);
   const lastC = change?.n ?? (seeded ? store.spec.index.c ?? 0 : 0);
   const titled = new Map((store.spec.index?.sections ?? []).map((/** @type {{num: number, title: string}} */ { num, title }) => [num, title]));
-  const emptied = Object.keys(stepped.merged).filter((doc) => !(doc in areas)).map((doc) => ({ num: Number(doc.slice(1)), title: titled.get(Number(doc.slice(1))) ?? '', count: 0 }));
+  const emptied = Object.keys(stepped.merged).filter((doc) => !(doc in docs)).map((doc) => ({ num: Number(doc.slice(1)), title: titled.get(Number(doc.slice(1))) ?? '', count: 0 }));
   const sections = [.../** @type {{num: number, title: string, count: number}[]} */ (index.sections), ...emptied].sort((a, b) => a.num - b.num);
   const storedIndex = withF({ ...index, sections, c: lastC });
   const write = (/** @type {Collection} */ collection, /** @type {string} */ doc, /** @type {Record<string, unknown>} */ body) => ({ collection, doc, body });
@@ -400,9 +400,9 @@ function buildPage(cwd, unit) {
     const dir = pageDir(cwd, unit);
     fs.rmSync(dir, { recursive: true, force: true });
     fs.mkdirSync(dir, { recursive: true });
-    const { index, areas } = specDocs(page);
+    const { index, sections } = specDocs(page);
     const file = path.join(dir, 'page.html');
-    fs.writeFileSync(file, pageHtml(page.h1, { index, ...areas }));
+    fs.writeFileSync(file, pageHtml(page.h1, { index, ...sections }));
     const { batches } = writeBatches(path.join(dir, 'seed'), seed, listingOf(null));
     return { unit, page: file, title: page.h1, icon: 'checklist', capabilities: CAPABILITIES, lines: page.lines.length, batches };
   } catch (err) {

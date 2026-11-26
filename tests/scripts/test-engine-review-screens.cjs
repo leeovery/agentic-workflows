@@ -59,7 +59,7 @@ const callCounts = () => [
 ];
 
 /**
- * Round 1 recorded failing: area 1's receipt fixed by 3.1, a finding out of
+ * Round 1 recorded failing: section 1's receipt fixed by 3.1, a finding out of
  * scope filed to the inbox by Claude's call, a nit dropped below the floor.
  */
 function firstRoundRecorded() {
@@ -69,8 +69,8 @@ function firstRoundRecorded() {
   const item = filed({ kind: 'idea', text: '# Card expiry\n\nNothing checks it.', call });
   recorded({ can_now: ['Pay by card.'], findings: [
     RECEIPT,
-    { area: 'tests', scope: 'out', call: 'bug', text: 'A card\'s expiry is checked nowhere.', from: ['tests-a#1'], inbox: item.filed, ledger: call },
-    { area: '2-refunds', scope: 'in', call: 'nit', text: 'A refund\'s label is terse.', from: ['2-refunds-a#1'], drop: 'Below the floor.' },
+    { section: 'tests', scope: 'out', call: 'bug', text: 'A card\'s expiry is checked nowhere.', from: ['tests-a#1'], inbox: item.filed, ledger: call },
+    { section: '2-refunds', scope: 'in', call: 'nit', text: 'A refund\'s label is terse.', from: ['2-refunds-a#1'], drop: 'Below the floor.' },
   ] });
 }
 
@@ -125,7 +125,7 @@ describe('render review-report: a round\'s report (14.4.1)', () => {
     const first = screen(['review-report', UNIT]);
     nextRound(2, 'Send the receipt', 'src/send.js');
     const drop = reviewCall('Dropped: the amount is on the statement.', 'The bank shows it.');
-    recorded({ can_now: ['Pay by card.'], findings: [{ area: '1-cards', scope: 'in', call: 'bug', text: 'The receipt names no amount.', from: ['1-cards-b#1'], drop: 'The amount is on the card statement.', ledger: drop }], settled: 'The amount is the bank\'s to show.' });
+    recorded({ can_now: ['Pay by card.'], findings: [{ section: '1-cards', scope: 'in', call: 'bug', text: 'The receipt names no amount.', from: ['1-cards-b#1'], drop: 'The amount is on the card statement.', ledger: drop }], settled: 'The amount is the bank\'s to show.' });
     const settled = screen(['review-report', UNIT]);
 
     assert.ok(settled.startsWith('Pay — review settled in round 2, the certificate of the work\n'), settled);
@@ -142,7 +142,7 @@ describe('render review-report: a round\'s report (14.4.1)', () => {
     firstRoundRecorded();
     nextRound(2, 'Send the receipt', 'src/send.js');
     fixPhaseWritten(4, [['Name the amount', '§1.2']]);
-    recorded({ can_now: ['Pay by card.'], findings: [{ area: '1-cards', scope: 'in', call: 'bug', text: 'The receipt names no amount.', from: ['1-cards-b#1'], fix: '4.1' }] });
+    recorded({ can_now: ['Pay by card.'], findings: [{ section: '1-cards', scope: 'in', call: 'bug', text: 'The receipt names no amount.', from: ['1-cards-b#1'], fix: '4.1' }] });
     nextRound(3, 'Name the amount', 'src/amount.js');
     recorded({ can_now: ['Pay by card and keep the receipt.'], findings: [] });
     const shown = screen(['review-report', UNIT]);
@@ -183,7 +183,7 @@ describe('render review-report: a round\'s report (14.4.1)', () => {
     named(['1-cards']);
     reported(2, ['1-cards'], { '1-cards-a': ['nit: The receipt\'s label is terse.'] });
     fixPhaseWritten(4, [['Word the label', '§1.2']]);
-    recorded({ can_now: ['Pay by card.'], findings: [{ area: '1-cards', scope: 'in', call: 'nit', text: 'The receipt\'s label is terse.', from: ['1-cards-a#1'], fix: '4.1' }] });
+    recorded({ can_now: ['Pay by card.'], findings: [{ section: '1-cards', scope: 'in', call: 'nit', text: 'The receipt\'s label is terse.', from: ['1-cards-a#1'], fix: '4.1' }] });
     const building = screen(['review-report', UNIT]);
     const counted = callCounts();
     fixBuilt(4, 1, 'Word the label', 'main', 'src/label.js');
@@ -307,7 +307,7 @@ describe('render build-stop: the review stopped (12.13.22)', () => {
       `render build-stop: ${UNIT}'s review goes on: round 1's readers are still to brief or reading: 1-cards-a, 1-cards-b, 2-refunds-a, 2-refunds-b, tests-a`,
       'drawn',
       `render build-stop: ${UNIT}'s build goes on with task 3.1, which no question parks`,
-      `render build-stop: ${UNIT}'s review goes on: round 2's reads are named next: review reads ${UNIT} <area> …`,
+      `render build-stop: ${UNIT}'s review goes on: round 2's reads are named next: review reads ${UNIT} <section> …`,
       `render build-stop: ${UNIT}'s review goes on: round 2's readers are still to brief or reading: 1-cards-a, 1-cards-b`,
     ]);
   });

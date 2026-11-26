@@ -1,13 +1,13 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The pipeline simulation's review phase reading an area in a reader's own
+// The pipeline simulation's review phase reading a section in a reader's own
 // scratch worktree, as its skill and the reader's brief run it (13.2.2,
 // 14.2.2): a feature whose build has closed its cut, its product's drive
 // needing an ignored `.env` the checkout's `.worktreeinclude` names and a
-// `node_modules` the settings link. Round 1's area reader lays its scratch
+// `node_modules` the settings link. Round 1's section reader lays its scratch
 // worktree out by the first call its brief names, prepared as the
-// project's checkout is, proves the area's scenario there through the
+// project's checkout is, proves the section's scenario there through the
 // engine its brief names by its absolute path, and takes the worktree apart
 // by the second once its report is written; the round passes, and its
 // report reads the scenario proven by running it. A reader that dies
@@ -58,7 +58,7 @@ const scratchWorld = worldFrom('pipeline-review-scratch-', (sim) => {
   git(sim.dir, ['commit', '-q', '-m', 'chore: the drive reads the environment']);
 }, worlds.cutClosed);
 
-describe('pipeline simulation: an area read in its reader\'s scratch worktree', () => {
+describe('pipeline simulation: a section read in its reader\'s scratch worktree', () => {
   let sim;
   beforeEach(() => {
     sim = new Sim(scratchWorld);
@@ -67,9 +67,9 @@ describe('pipeline simulation: an area read in its reader\'s scratch worktree', 
     sim.destroy();
   });
 
-  it('13.2.2, 14.2.2: an area\'s reader lays out its scratch worktree by its brief\'s calls, prepared as the project\'s checkout is, proves the area\'s scenario there and takes it apart; the round passes, its report reading the scenario proven by running it', () => {
+  it('13.2.2, 14.2.2: a section\'s reader lays out its scratch worktree by its brief\'s calls, prepared as the project\'s checkout is, proves the section\'s scenario there and takes it apart; the round passes, its report reading the scenario proven by running it', () => {
     assert.strictEqual(reviewNext(sim, WU).move, 'round');
-    const reader = sim.run(['brief', 'review-area', WU, '--area', '1', '--base', 'main', '--letter', 'a']);
+    const reader = sim.run(['brief', 'review-section', WU, '--section', '1', '--base', 'main', '--letter', 'a']);
     const [lay, remove] = scratchCalls(briefOf(sim, reader));
     const { path: project } = sim.run(lay);
     const prepared = [fs.readFileSync(path.join(project, '.env'), 'utf8'), fs.lstatSync(path.join(project, 'node_modules')).isSymbolicLink()];
@@ -80,7 +80,7 @@ describe('pipeline simulation: an area read in its reader\'s scratch worktree', 
     assert.deepStrictEqual(prepared, ['KEY=1\n', true], 'the ignored file copied and the folder linked');
     assert.deepStrictEqual([run.verdict, run.standing], ['pass', 'proven'], 'the drive passes in the scratch worktree, at the change\'s tip');
     assert.strictEqual(fs.existsSync(project), false, 'taken apart once the report is written');
-    landed(placeIn(sim, sim.run(['brief', 'review-area', WU, '--area', '1', '--base', 'main', '--letter', 'b']), 'Where your report goes'), PASSED_REPORT);
+    landed(placeIn(sim, sim.run(['brief', 'review-section', WU, '--section', '1', '--base', 'main', '--letter', 'b']), 'Where your report goes'), PASSED_REPORT);
     testsRead(sim, WU);
     sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger.'], findings: [] })]);
     assert.match(sim.render(['review-report', WU], { expect: 'content' }), /PROVEN BY RUNNING IT \(1 of 1\)\n\s*└─ 1\.S1 /, 'the round\'s report reads the scenario proven');
@@ -96,8 +96,8 @@ describe('pipeline simulation: an area read in its reader\'s scratch worktree', 
       return { reader, project };
     };
     const readers = [
-      dies(['brief', 'review-area', WU, '--area', '1', '--base', 'main', '--letter', 'a']),
-      dies(['brief', 'review-area', WU, '--area', '1', '--base', 'main', '--letter', 'b']),
+      dies(['brief', 'review-section', WU, '--section', '1', '--base', 'main', '--letter', 'a']),
+      dies(['brief', 'review-section', WU, '--section', '1', '--base', 'main', '--letter', 'b']),
       dies(['brief', 'test-surface', WU, '--base', 'main']),
     ];
     const leftover = laidBeside(sim, readers[0].reader, `${WU}-phase-1-a`);

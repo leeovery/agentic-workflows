@@ -21,32 +21,32 @@ const review = (change: Record<string, unknown>, from: View = REVIEW): View => (
 /** The board at the review phase, its view `view`, `questions` waiting on the person. */
 const answered = (view: View, questions: Question[] = []): Answer => ({ kind: 'board', board: { ...BUILD, place: { ...BUILD.place, phase: 'review' }, questions, view } as Board })
 
-type Area = { area: string; title: string; before: 'built' | 'partly' | null; state: string; ran: number; found: number; since: string | null }
+type Section = { section: string; title: string; before: 'built' | 'partly' | null; state: string; ran: number; found: number; since: string | null }
 
-const AREAS = REVIEW.areas as Area[]
+const SECTIONS = REVIEW.sections as Section[]
 
-/** The areas round 2 reads again, as the locked board's replay has them: §4, §5, §6, §12, §16, §18 and the tests. */
+/** The sections round 2 reads again, as the locked board's replay has them: §4, §5, §6, §12, §16, §18 and the tests. */
 const READ_AGAIN = new Set(['4', '5', '6', '12', '16', '18', 'tests'])
 
-/** Round 2 under way, each area it reads again being read, as the replay's step 5 draws it. */
+/** Round 2 under way, each section it reads again being read, as the replay's step 5 draws it. */
 const secondReading = review({
   waiting: [],
   recorded: false,
   verdict: null,
   found: [],
   not_proven: (REVIEW.not_proven as { scenario: string }[]).map(check => ({ ...check, round: 1 })),
-  areas: AREAS.map(area => (READ_AGAIN.has(area.area) ? { ...area, state: 'reading', ran: 0, since: '2026-10-21T14:57:42.000Z' } : area)),
+  sections: SECTIONS.map(section => (READ_AGAIN.has(section.section) ? { ...section, state: 'reading', ran: 0, since: '2026-10-21T14:57:42.000Z' } : section)),
 })
 
 describe('the review phase\'s This session (20.10)', () => {
-  test('the locked board\'s replay, step 7: round 2 passed, finish waiting on the person under WAITING ON YOU (D18), round 1\'s fix tasks still shown (N2), the areas the fixes did not change unchanged, not read again (20.S11)', () => {
+  test('the locked board\'s replay, step 7: round 2 passed, finish waiting on the person under WAITING ON YOU (D18), round 1\'s fix tasks still shown (N2), the sections the fixes did not change unchanged, not read again (20.S11)', () => {
     expect(paneDrawn(answered(REVIEW), { now: NOW })).toEqual([
       '⌂ This session   ≡ Token-aware diff sizing   ≡ All work',
       '━━━━━━━━━━━━━━────────────────────────────────────────────────',
       '',
       'Token-aware diff sizing · review',
       'Mint · feature · 99 tasks built',
-      'round 2 · 19 of 19 areas read · ⚑ finish waits on you',
+      'round 2 · 19 of 19 sections read · ⚑ finish waits on you',
       '',
       'WAITING ON YOU ───────────────── 1 · asked in the conversation',
       '⚑ Finish: the report of every round, and your verdict on each',
@@ -57,7 +57,7 @@ describe('the review phase\'s This session (20.10)', () => {
       '✓ 9.2 Add or repair the 4 tests the criteria name         done',
       '✓ 9.3 Correct the 11 comments that no longer match the c… done',
       '',
-      'ROUND 2 ────────────────────────── the areas the fixes changed',
+      'ROUND 2 ─────────────────────── the sections the fixes changed',
       '✓ §1 Purpose and Scope               unchanged, not read again',
       '✓ §2 The Lean Default AI Command     unchanged, not read again',
       '✓ §3 Quote-Aware ai_command Parsing  unchanged, not read again',
@@ -104,8 +104,8 @@ describe('the review phase\'s This session (20.10)', () => {
       '',
       'Token-aware diff sizing · review',
       'Mint · feature · 99 tasks built',
-      'round 1 · 19 of 19 areas read · ✗ round 1 fails · 3 fix tasks',
-      'to build',
+      'round 1 · 19 of 19 sections read · ✗ round 1 fails · 3 fix',
+      'tasks to build',
       '',
       'FIX TASKS · PHASE 9 ────────────────────────────── 0 of 3 done',
       '○ 9.1 The notes stage\'s live line after a failed check waiting',
@@ -130,7 +130,7 @@ describe('the review phase\'s This session (20.10)', () => {
       '△ §6 The AUTO-UNWIND header says the unwind "re-commits the e…',
       '△ §12 The phase 11 comment-corrections commit (49f7b86) delet…',
       '',
-      'ROUND 1 ───────────────────────────── every area, read and run',
+      'ROUND 1 ────────────────────────── every section, read and run',
       '✓ §1 Purpose and Scope                           nothing found',
       '✓ §2 The Lean Default AI Command                 nothing found',
       '✓ §3 Quote-Aware ai_command Parsing              nothing found',
@@ -166,7 +166,7 @@ describe('the review phase\'s This session (20.10)', () => {
       '» The file header still says processOneVersion returns "a per…',
       '',
       'VERDICT ─────────────────────────────────────────────────────',
-      '✗ round 1 fails: the fix tasks build, then every area they',
+      '✗ round 1 fails: the fix tasks build, then every section they',
       '  change is read again',
     ])
   })
@@ -178,14 +178,14 @@ describe('the review phase\'s This session (20.10)', () => {
       '',
       'Token-aware diff sizing · review',
       'Mint · feature · 99 tasks built',
-      'round 2 · 12 of 19 areas read · ◐ 7 being read',
+      'round 2 · 12 of 19 sections read · ◐ 7 being read',
       '',
       'FIX TASKS · PHASE 9 ────────────────────────────── 3 of 3 done',
       '✓ 9.1 The notes stage\'s live line after a failed check    done',
       '✓ 9.2 Add or repair the 4 tests the criteria name         done',
       '✓ 9.3 Correct the 11 comments that no longer match the c… done',
       '',
-      'ROUND 2 ────────────────────────── the areas the fixes changed',
+      'ROUND 2 ─────────────────────── the sections the fixes changed',
       '✓ §1 Purpose and Scope               unchanged, not read again',
       '✓ §2 The Lean Default AI Command     unchanged, not read again',
       '✓ §3 Quote-Aware ai_command Parsing  unchanged, not read again',
@@ -221,7 +221,7 @@ describe('the review phase\'s This session (20.10)', () => {
       '» The file header still says processOneVersion returns "a per…',
       '',
       'VERDICT ─────────────────────────────────────────────────────',
-      '○ once every area is read',
+      '○ once every section is read',
     ])
   })
 
@@ -234,11 +234,11 @@ describe('the review phase\'s This session (20.10)', () => {
       fixes: null,
       inbox: [],
       found: [
-        { round: 1, finding: null, from: '4-the-per-call-size-cap-a#1', area: '4-the-per-call-size-cap', call: 'nit', text: 'The comment above the regeneration stage says every exit closes it.' },
-        { round: 1, finding: null, from: '16-progress-narration-b#1', area: '16-progress-narration', call: 'bug', text: 'In pretty mode, a failed check kills the notes stage\'s live line.' },
+        { round: 1, finding: null, from: '4-the-per-call-size-cap-a#1', section: '4-the-per-call-size-cap', call: 'nit', text: 'The comment above the regeneration stage says every exit closes it.' },
+        { round: 1, finding: null, from: '16-progress-narration-b#1', section: '16-progress-narration', call: 'bug', text: 'In pretty mode, a failed check kills the notes stage\'s live line.' },
       ],
       not_proven: [{ round: 1, scenario: '13.S1', standing: 'not proven', text: 'Afterwards notes.md is still untracked.' }],
-      areas: AREAS.map((area, at) => ({ ...area, state: at < 17 ? 'read' : 'reading', since: at < 17 ? null : '2026-10-21T14:57:42.000Z' })),
+      sections: SECTIONS.map((section, at) => ({ ...section, state: at < 17 ? 'read' : 'reading', since: at < 17 ? null : '2026-10-21T14:57:42.000Z' })),
     })
     const lines = reviewLines(reading, kitAt(NOW))
     const rows = drawnRows(lines)
@@ -273,8 +273,8 @@ describe('the review phase\'s This session (20.10)', () => {
     const facts = (change: Record<string, unknown>) => drawnRows(reviewLines(review({ waiting: [], ...change }), kitAt(NOW)))[2]
 
     expect([facts({ round: 1, verdict: 'passed' }), facts({ verdict: 'settled' })]).toEqual([
-      'round 1 · 19 of 19 areas read · ✓ round 1 passes',
-      'round 2 · 19 of 19 areas read · ✓ round 2 settled',
+      'round 1 · 19 of 19 sections read · ✓ round 1 passes',
+      'round 2 · 19 of 19 sections read · ✓ round 2 settled',
     ])
   })
 
@@ -283,7 +283,7 @@ describe('the review phase\'s This session (20.10)', () => {
     const rows = drawnRows(reviewLines(review({ type: 'quick-fix', waiting: [close] }), kitAt(NOW)))
 
     expect(rows.slice(2, 7)).toEqual([
-      'round 2 · 19 of 19 areas read · ⚑ close waits on you',
+      'round 2 · 19 of 19 sections read · ⚑ close waits on you',
       '',
       'WAITING ON YOU ───────────────── 1 · asked in the conversation',
       '⚑ Close: what was proven; you changed none of Claude\'s calls,',
@@ -303,7 +303,7 @@ describe('the review phase\'s This session (20.10)', () => {
     ])
   })
 
-  test('a round under way: how many areas are read and how many being read, each read with its clock, and its verdict once every area is read', () => {
+  test('a round under way: how many sections are read and how many being read, each read with its clock, and its verdict once every section is read', () => {
     const since = '2026-10-21T14:57:42.000Z'
     const reading = review({
       round: 1,
@@ -313,19 +313,19 @@ describe('the review phase\'s This session (20.10)', () => {
       fixes: null,
       not_proven: [],
       inbox: [],
-      areas: AREAS.map((area, at) => ({ ...area, state: at < 17 ? 'read' : 'reading', since: at < 17 ? null : since })),
+      sections: SECTIONS.map((section, at) => ({ ...section, state: at < 17 ? 'read' : 'reading', since: at < 17 ? null : since })),
     })
     const rows = paneDrawn(answered(reading), { now: NOW })
 
     expect([rows[5], rows.filter(row => row.startsWith('◐')), rows.slice(-2)]).toEqual([
-      'round 1 · 17 of 19 areas read · ◐ 2 being read',
+      'round 1 · 17 of 19 sections read · ◐ 2 being read',
       ['◐ §18 Documentation and the Setup Guide           reading 2:18', '◐ Tests held against the specification            reading 2:18'],
-      ['VERDICT ─────────────────────────────────────────────────────', '○ once every area is read'],
+      ['VERDICT ─────────────────────────────────────────────────────', '○ once every section is read'],
     ])
   })
 
-  test('21.8.8: an area built before the migration cut the unit, whole or in part, says so on the line beneath its own, its title kept whole', () => {
-    const migrated = review({ areas: AREAS.map(area => ({ '1': { ...area, before: 'built' }, '4': { ...area, before: 'partly' } })[area.area] ?? area) })
+  test('21.8.8: a section built before the migration cut the unit, whole or in part, says so on the line beneath its own, its title kept whole', () => {
+    const migrated = review({ sections: SECTIONS.map(section => ({ '1': { ...section, before: 'built' }, '4': { ...section, before: 'partly' } })[section.section] ?? section) })
     const rows = paneDrawn(answered(migrated), { now: NOW })
     const at = rows.findIndex(row => row.startsWith('✓ §1 '))
 
@@ -405,7 +405,7 @@ describe('a question its fix tasks wait on (S1, 20.5.3)', () => {
 
   test('N5: the fix phase stopped on its question: the facts line says the round fails and the review stopped until the person answers, as the build\'s This session says it (D6), no fix task said to build', () => {
     expect(drawnRows(reviewLines(review({ stopped: true }, parked), kitAt(NOW)).slice(2, 3))).toEqual([
-      'round 1 · 19 of 19 areas read · ✗ round 1 fails · ⚑ stopped',
+      'round 1 · 19 of 19 sections read · ✗ round 1 fails · ⚑ stopped',
       'until you answer',
     ])
   })
@@ -432,7 +432,7 @@ describe('a finding\'s and a check\'s pages (20.10.3)', () => {
     unit: UNIT,
     round: 1,
     finding: 3,
-    area: '4-the-per-call-size-cap',
+    section: '4-the-per-call-size-cap',
     scope: 'in',
     call: 'bug',
     text: 'The comment above the regeneration stage says every exit closes it via "success via the timed completion closure, a transport failure via the spinner-stopping AI-failure Warn …, any other failure via surface\'s StageFailed". This task added the over-cap branch at run.go:681-684.',
@@ -441,7 +441,7 @@ describe('a finding\'s and a check\'s pages (20.10.3)', () => {
     reviewer: null,
   }
 
-  test('a finding in scope: its opening words, whole words on three rows at most, where it went under its mark and its area, then its words in full', () => {
+  test('a finding in scope: its opening words, whole words on three rows at most, where it went under its mark and its section, then its words in full', () => {
     expect(drawnRows(findingLines(finding, kitAt(NOW)))).toEqual([
       'The comment above the regeneration stage says every exit',
       'closes it via "success via the timed completion closure, a',
@@ -456,9 +456,9 @@ describe('a finding\'s and a check\'s pages (20.10.3)', () => {
     ])
   })
 
-  test('D13, D19: a finding filed to the inbox wraps where it went, hung under its mark, so its area and round show whole; one dropped says so', () => {
+  test('D13, D19: a finding filed to the inbox wraps where it went, hung under its mark, so its section and round show whole; one dropped says so', () => {
     const went = (change: Record<string, unknown>) => {
-      const rows = drawnRows(findingLines({ ...finding, area: '12-the-remediation-floor', scope: 'out', fix: null, ...change }, kitAt(NOW)))
+      const rows = drawnRows(findingLines({ ...finding, section: '12-the-remediation-floor', scope: 'out', fix: null, ...change }, kitAt(NOW)))
 
       return rows.slice(rows.findIndex(row => /^[»–]/.test(row)), rows.findIndex(row => row.startsWith(' ─')))
     }
@@ -469,7 +469,7 @@ describe('a finding\'s and a check\'s pages (20.10.3)', () => {
     ])
   })
 
-  test('N4: a finding while its round is read: its opening words, that it is being read under its mark by its call, its call, area and reviewer, then its words in full', () => {
+  test('N4: a finding while its round is read: its opening words, that it is being read under its mark by its call, its call, section and reviewer, then its words in full', () => {
     const read = { ...finding, finding: null, scope: null, fix: null, reviewer: 'b', text: 'The comment above the regeneration stage says every exit closes it.' }
 
     expect(drawnRows(findingLines(read, kitAt(NOW)))).toEqual([
@@ -482,7 +482,7 @@ describe('a finding\'s and a check\'s pages (20.10.3)', () => {
     ])
   })
 
-  test('a check not proven: where it stands under its mark, its scenario, area and round, then its scenario\'s words', () => {
+  test('a check not proven: where it stands under its mark, its scenario, section and round, then its scenario\'s words', () => {
     const check = { kind: 'check', unit: UNIT, round: 1, scenario: '13.S2', standing: 'not proven', text: 'Given a notes file, when the release runs, then notes.md is still untracked.' }
 
     expect(drawnRows(checkLines(check, kitAt(NOW)))).toEqual([

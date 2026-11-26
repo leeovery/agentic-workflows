@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // A review round recorded on the board (ledger-engine/scripts/domain/
 // projections/board-review.cjs, 20.10.1–20.10.4, 14.S15): the checks each
-// area ran, its findings, its checks not proven, what went to the inbox,
+// section ran, its findings, its checks not proven, what went to the inbox,
 // its verdict and its fix tasks as the build's next phase; a later round's
 // own findings beside the earlier round's fix tasks; a finding's page and a
 // check's; and that reading it writes nothing. A round that ends the phase
@@ -11,7 +11,7 @@
 // test-engine-board-review.cjs.
 //
 // Layer: verb. World: the review phase's (review-world.cjs) — `pay`, its
-// build finished, its spec of two areas — copied for each test.
+// build finished, its spec of two sections — copied for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -23,7 +23,7 @@ const {
 } = require('./review-world.cjs');
 const { treeSnapshot, head: stateHead } = require('./engine-harness.cjs');
 const { fixture, misfits } = require('./board-world.cjs');
-const { area, tests, reviewBoard } = require('./review-board-world.cjs');
+const { section, tests, reviewBoard } = require('./review-board-world.cjs');
 
 /** @type {string} */
 let dir;
@@ -33,7 +33,7 @@ useWorld((made) => {
 
 const { board, head } = reviewBoard(() => dir);
 
-/** Round 1 recorded failing: area 1's receipt fixed by task 3.1, not yet built, and a card's expiry, out of scope, filed to the inbox. */
+/** Round 1 recorded failing: section 1's receipt fixed by task 3.1, not yet built, and a card's expiry, out of scope, filed to the inbox. */
 function roundOneFiled() {
   enter();
   reported(1, EVERY, { '1-cards-a': ['bug: The receipt is never sent.'], '1-cards-b': ['bug: A card\'s expiry is checked nowhere.'] });
@@ -42,13 +42,13 @@ function roundOneFiled() {
   const item = filed({ kind: 'idea', text: '# Card expiry\n\nNo screen checks a card\'s expiry.', call });
   recorded({
     can_now: ['Pay by card.'],
-    findings: [RECEIPT, { area: '1-cards', scope: 'out', call: 'bug', text: 'A card\'s expiry is checked nowhere.', from: ['1-cards-b#1'], inbox: item.filed, ledger: call }],
+    findings: [RECEIPT, { section: '1-cards', scope: 'out', call: 'bug', text: 'A card\'s expiry is checked nowhere.', from: ['1-cards-b#1'], inbox: item.filed, ledger: call }],
   });
   enter();
 }
 
 describe('a round recorded (20.10.1, 20.10.2)', () => {
-  it('a failing round shows its finding in scope, its verdict and its fix tasks as the build\'s phase after the cut until the next round opens; open, the next waits on the areas they changed, every other unchanged, the fix task built counted among the tasks built (20.10.2); the banner says the round fails, its fix tasks building while any is not done, then the next round reading (D36); drawing it writes nothing (20.1); the unit\'s tab says what each phase\'s records hold (20.15.1); and its pages (20.10.3): while it is read, a finding as its reviewer\'s report holds it, by its report item, and a check as it stands at the change\'s tips (N4); recorded, a finding in full — its area, scope, call, words and the fix task it went to — by its number or the report item it answers, and a check by where the round stands it; what the round lacks or never ran unavailable, saying why', () => {
+  it('a failing round shows its finding in scope, its verdict and its fix tasks as the build\'s phase after the cut until the next round opens; open, the next waits on the sections they changed, every other unchanged, the fix task built counted among the tasks built (20.10.2); the banner says the round fails, its fix tasks building while any is not done, then the next round reading (D36); drawing it writes nothing (20.1); the unit\'s tab says what each phase\'s records hold (20.15.1); and its pages (20.10.3): while it is read, a finding as its reviewer\'s report holds it, by its report item, and a check as it stands at the change\'s tips (N4); recorded, a finding in full — its section, scope, call, words and the fix task it went to — by its number or the report item it answers, and a check by where the round stands it; what the round lacks or never ran unavailable, saying why', () => {
     firstRoundReady();
     const pages = () => [board(['--page', 'finding:1:1-cards-a#1']).view, board(['--page', 'check:1:1.S2']).view];
     const reading = pages();
@@ -65,16 +65,16 @@ describe('a round recorded (20.10.1, 20.10.2)', () => {
     enter();
     const built = board().banner;
     named(['1-cards']);
-    const found = [{ round: 1, finding: 1, from: null, area: '1-cards', call: 'bug', text: 'The receipt is never sent.' }];
+    const found = [{ round: 1, finding: 1, from: null, section: '1-cards', call: 'bug', text: 'The receipt is never sent.' }];
     const fixes = (/** @type {string} */ state) => ({ phase: 3, round: 1, tasks: [{ task: '3.1', title: 'Send the receipt', state, since: null, on: [] }] });
 
     assert.deepStrictEqual(after, before);
     assert.deepStrictEqual([failed, board().view], [
       {
-        ...head(1), recorded: true, areas: [area('1', 'Cards', 'read', { ran: 2, found: 1 }), area('2', 'Refunds', 'read', { ran: 1 }), tests('read')], found, not_proven: failed.not_proven, inbox: [], verdict: 'failed', fixes: fixes('not-started'),
+        ...head(1), recorded: true, sections: [section('1', 'Cards', 'read', { ran: 2, found: 1 }), section('2', 'Refunds', 'read', { ran: 1 }), tests('read')], found, not_proven: failed.not_proven, inbox: [], verdict: 'failed', fixes: fixes('not-started'),
       },
       {
-        ...head(2), built: 4, recorded: false, areas: [area('1', 'Cards', 'waiting'), area('2', 'Refunds', 'unchanged'), tests('unchanged')], found: [], not_proven: failed.not_proven, inbox: [], verdict: null, fixes: fixes('done'),
+        ...head(2), built: 4, recorded: false, sections: [section('1', 'Cards', 'waiting'), section('2', 'Refunds', 'unchanged'), tests('unchanged')], found: [], not_proven: failed.not_proven, inbox: [], verdict: null, fixes: fixes('done'),
       },
     ]);
     assert.deepStrictEqual(failed.not_proven.map(/** @param {{round: number}} check */ ({ round }) => round), [1, 1], 'round 1\'s checks stand under round 2 until it is recorded (N2)');
@@ -89,10 +89,10 @@ describe('a round recorded (20.10.1, 20.10.2)', () => {
       { phase: 'review', state: 'running', words: 'round 2' },
     ]);
     const check = { kind: 'check', unit: UNIT, round: 1, scenario: '1.S2', standing: 'not proven', text: 'Given a charge, when it lands, then a receipt follows.' };
-    const receipt = { kind: 'finding', unit: UNIT, round: 1, finding: 1, area: '1-cards', scope: 'in', call: 'bug', text: 'The receipt is never sent.', fix: '3.1', inbox: null, reviewer: null };
+    const receipt = { kind: 'finding', unit: UNIT, round: 1, finding: 1, section: '1-cards', scope: 'in', call: 'bug', text: 'The receipt is never sent.', fix: '3.1', inbox: null, reviewer: null };
 
     assert.deepStrictEqual([reading, read, byNumber], [
-      [{ kind: 'finding', unit: UNIT, round: 1, finding: null, area: '1-cards', scope: null, call: 'bug', text: 'The receipt is never sent.\nScenario: A customer pays.', fix: null, inbox: null, reviewer: 'a' }, check],
+      [{ kind: 'finding', unit: UNIT, round: 1, finding: null, section: '1-cards', scope: null, call: 'bug', text: 'The receipt is never sent.\nScenario: A customer pays.', fix: null, inbox: null, reviewer: 'a' }, check],
       [receipt, check],
       receipt,
     ]);
@@ -121,10 +121,10 @@ describe('a round recorded (20.10.1, 20.10.2)', () => {
 
     assert.deepStrictEqual(
       [reading.found, reading.not_proven.map(({ round }) => round), reading.inbox, [reading.fixes.phase, reading.fixes.round]],
-      [[{ round: 2, finding: null, from: '1-cards-a#1', area: '1-cards', call: 'nit', text: 'The receipt says Reciept.' }], [1, 1], filedOne, [3, 1]],
+      [[{ round: 2, finding: null, from: '1-cards-a#1', section: '1-cards', call: 'nit', text: 'The receipt says Reciept.' }], [1, 1], filedOne, [3, 1]],
     );
     assert.deepStrictEqual([passed.verdict, passed.found, passed.inbox, [passed.fixes.phase, passed.fixes.round]], ['passed', [], filedOne, [3, 1]]);
-    assert.deepStrictEqual(fixPage, [{ round: 1, finding: 1, from: null, area: '1-cards', call: 'bug', text: 'The receipt is never sent.' }]);
+    assert.deepStrictEqual(fixPage, [{ round: 1, finding: 1, from: null, section: '1-cards', call: 'bug', text: 'The receipt is never sent.' }]);
     assert.deepStrictEqual(
       [misfits(failing, failed), misfits(ended, passed), held(failing), held(failed), held(ended).slice(1), held(passed).slice(1)],
       [[], [], [true, true, true, true], [true, true, true, true], [true, true, true], [true, true, true]],

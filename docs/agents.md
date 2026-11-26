@@ -23,8 +23,8 @@ Behind a live [discussion](discussion.md), agents work in the background while t
 
 ## Between the topics and the spec
 
-- **The sweep** runs once every topic of an epic is decided: it reads across all the records, and the project's in the areas they touch, for work no topic owns and for answers that conflict.
-- **The spec writer** assembles the work unit's one spec, by area, from the records, every statement citing the entries it comes from.
+- **The sweep** runs once every topic of an epic is decided: it reads across all the records, and the project's on the subjects they touch, for work no topic owns and for answers that conflict.
+- **The spec writer** assembles the work unit's one spec, section by section, from the records, every statement citing the entries it comes from.
 - **The spec reviewer** reads the spec against the records and the code, re-running each recorded measurement, and reports its gaps.
 - **The phase cutter** cuts the spec into build phases, in build order, from what each part relies on.
 
@@ -34,7 +34,7 @@ In a bugfix, **the root-cause validator** re-traces the cause from the record an
 
 - **The task writer** writes each build phase's tasks as the phase starts, against the code the phases before it left.
 - **The builder** builds one task, with the tests that prove it, to its task, the spec's sections it cites and the decided calls, proves it by running the product, commits it through the engine's door, writes its account, and takes its review's fix rounds.
-- **The reviewer** is an independent reviewer who did not write the code, at three reviews: each task's change, read by the reviewers Claude chooses for it, usually one; and as a pair, each build phase's whole change and the whole change against one area of the spec in the review phase. Each runs the tests and reports each finding with its call and the user scenario that meets it.
+- **The reviewer** is an independent reviewer who did not write the code, at three reviews: each task's change, read by the reviewers Claude chooses for it, usually one; and as a pair, each build phase's whole change and the whole change against one section of the spec in the review phase. Each runs the tests and reports each finding with its call and the user scenario that meets it.
 - **The consolidation agent**, at a build phase's end, reads its notes for later against the phase's finished code, drops what the code settled, and makes the rest tasks of the phase.
 - **The test-surface agent**, in the review phase, reads every test of the whole change against every scenario the spec asks them to guard, runs them, and breaks what they guard to see that they notice.
 

@@ -108,7 +108,7 @@ describe('the spec writer\'s brief (11.1.5, 11.3.2, 11.S2)', () => {
 
     assert.strictEqual(closed, 'None recorded.');
     assert.strictEqual(section(issued(['spec-writer', UNIT]).brief, 'The numbers held'), [
-      'The person\'s review page is open, so these numbers are held: every line keeps its number; a line added takes the next free number at the end of its part — and a scenario or a screen added, at the end of its area\'s scenarios or its line\'s screens — and a number removed is never given to another line.',
+      'The person\'s review page is open, so these numbers are held: every line keeps its number; a line added takes the next free number at the end of its part — and a scenario or a screen added, at the end of its section\'s scenarios or its line\'s screens — and a number removed is never given to another line.',
       '',
       '- 1.1.1, 1.1.2 · next free 1.1.3',
       '- 1.2.1 · next free 1.2.2',
@@ -248,7 +248,7 @@ describe('the land\'s record (E4)', () => {
 });
 
 describe('the spec reviewer\'s brief (11.7.1, 11.7.8, 11.7.9)', () => {
-  it('the first pass: the spec\'s path and every section, the title and introduction first, an area\'s own text with its scenarios, the lines that do not trace, the measured findings, the product-wide entries cited, the records and its report — its dispatch bound to the land it reviews', () => {
+  it('the first pass: the spec\'s path and every section, the title and introduction first, a section\'s own text with its scenarios, the lines that do not trace, the measured findings, the product-wide entries cited, the records and its report — its dispatch bound to the land it reviews', () => {
     writeSpec(spec());
     land();
     const pass = dispatchReview();

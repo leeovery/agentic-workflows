@@ -5,11 +5,11 @@
 // mid-build, as the review phase's skill runs it (21.8.8, 14.1.1): its first
 // phase built before the migration, its last built since by today's build.
 // The tasks that landed before read as landed by every reader, the review's
-// change what landed since: its area, partly built before, briefed with the
+// change what landed since: its section, partly built before, briefed with the
 // landings since and told the work landed before stands at the change's
 // tips, as the test surface's reader is of its tests; the board drawing the
-// round and the area partly built before; round 1 failing, its one fix task
-// landed on top through its gate and its phase's, the area read again still
+// round and the section partly built before; round 1 failing, its one fix task
+// landed on top through its gate and its phase's, the section read again still
 // partly built before; round 2 passing, and finish's review passed. An epic
 // built whole before the migration is
 // test-pipeline-simulation-review-migrated-epic.cjs's; the build of a cut
@@ -34,7 +34,7 @@ const path = require('path');
 const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 const {
   Sim, readyForSim, worldFrom, startPhase, briefOf, landed, placeIn, answerGate, buildLoop, builders, taskBuilt, writePhaseTasks,
-  areaRead, reviewNext, finished, PASSED_REPORT, VERIFY_FILES,
+  sectionRead, reviewNext, finished, PASSED_REPORT, VERIFY_FILES,
 } = require('./pipeline-world.cjs');
 const {
   oldTask, oldSpecPath, buildingUnit, oldFiles, movedProject, migratedCut, migrationCommitted,
@@ -44,8 +44,8 @@ const WU = 'quill';
 
 const UNDONE = '## Findings\n\n- bug: an undo past the first edit loses the note\n  Scenario: two edits undone\n\nVerdict: fail\n';
 
-/** What the area's brief says of the work of it landed before the migration. */
-const PARTLY = 'Some of §1 was built before the migration cut the unit: that work landed before Ledger, so no commit of the change carries it, and the rest is the change\'s. Hold the product at the change\'s tips against the area';
+/** What the section's brief says of the work of it landed before the migration. */
+const PARTLY = 'Some of §1 was built before the migration cut the unit: that work landed before Ledger, so no commit of the change carries it, and the rest is the change\'s. Hold the product at the change\'s tips against the section';
 
 /** The project from before Ledger, the feature moved and cut, the migration's commit made: built once. */
 function buildMigrated(/** @type {string} */ dir) {
@@ -102,8 +102,8 @@ const world = worldFrom('pipeline-review-migrated-feature-', (sim) => {
   loop.cleared();
 }, migrated);
 
-/** The area reader's brief of the area in the round under review, by `letter`: its id. @param {Sim} sim @param {string} letter */
-const areaBrief = (sim, letter) => sim.run(['brief', 'review-area', WU, '--area', '1', '--base', 'main', '--letter', letter]);
+/** The section reader's brief of the section in the round under review, by `letter`: its id. @param {Sim} sim @param {string} letter */
+const sectionBrief = (sim, letter) => sim.run(['brief', 'review-section', WU, '--section', '1', '--base', 'main', '--letter', letter]);
 
 describe('pipeline simulation: the review of a feature the migration cut mid-build', () => {
   let sim;
@@ -114,29 +114,29 @@ describe('pipeline simulation: the review of a feature the migration cut mid-bui
     sim.destroy();
   });
 
-  it('21.8.8: its review\'s change what landed since the migration, the tasks landed before it read as landed by the briefs, the round, the board and the fix phase, its area partly built before in every round; round 1 failing, its fix task landed on top, round 2 passing, finish\'s review passed (14.1.1, 14.S14)', () => {
+  it('21.8.8: its review\'s change what landed since the migration, the tasks landed before it read as landed by the briefs, the round, the board and the fix phase, its section partly built before in every round; round 1 failing, its fix task landed on top, round 2 passing, finish\'s review passed (14.1.1, 14.S14)', () => {
     const { move, fixPhase: phase } = reviewNext(sim, WU);
     assert.deepStrictEqual([move, phase], ['round', 3]);
-    const second = areaBrief(sim, 'b');
-    const first = areaBrief(sim, 'a');
+    const second = sectionBrief(sim, 'b');
+    const first = sectionBrief(sim, 'a');
     const brief = briefOf(sim, first);
     const commits = brief.slice(brief.indexOf('# The change\'s commits'), brief.indexOf('# Laying out your scratch worktree'));
     assert.match(commits, /### Landed: `[0-9a-f]{12}` /, 'the landing since the migration drawn');
     assert.ok(!commits.includes('Not landed yet'), 'nothing waits to land');
-    assert.ok(brief.includes(PARTLY), 'the area, its first phase built before the migration and its second since, partly built before');
+    assert.ok(brief.includes(PARTLY), 'the section, its first phase built before the migration and its second since, partly built before');
     landed(placeIn(sim, second, 'Where your report goes'), PASSED_REPORT);
     landed(placeIn(sim, first, 'Where your report goes'), UNDONE);
     const tests = sim.run(['brief', 'test-surface', WU, '--base', 'main']);
     assert.ok(briefOf(sim, tests).includes('Work of the unit landed before the migration cut it, and its tests with it: they stand in the product at the change\'s tips'), 'the test surface read at the tips, the tests landed before among them');
     landed(placeIn(sim, tests, 'Where your report goes'), PASSED_REPORT);
     const { view } = sim.board();
-    assert.deepStrictEqual([view.kind, view.areas.map(({ area, before, state }) => [area, before, state]), view.not_proven.map(({ scenario }) => scenario)], ['review', [['1', 'partly', 'read'], ['tests', null, 'read']], ['1.S1']],
-      'the board draws round 1 read, the area partly built before, its checks judged at the change\'s tips');
+    assert.deepStrictEqual([view.kind, view.sections.map(({ section, before, state }) => [section, before, state]), view.not_proven.map(({ scenario }) => scenario)], ['review', [['1', 'partly', 'read'], ['tests', null, 'read']], ['1.S1']],
+      'the board draws round 1 read, the section partly built before, its checks judged at the change\'s tips');
 
     writePhaseTasks(sim, WU, phase, 'The review\'s fixes', [{ title: 'Undo every edit', type: 'fix', scenarios: ['two edits undone'], reference: '§1' }]);
     const failed = sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, {
       can_now: ['Undo an edit.'],
-      findings: [{ area: `1-${WU}`, scope: 'in', call: 'bug', text: 'An undo past the first edit loses the note.', from: [`1-${WU}-a#1`], fix: `${phase}.1` }],
+      findings: [{ section: `1-${WU}`, scope: 'in', call: 'bug', text: 'An undo past the first edit loses the note.', from: [`1-${WU}-a#1`], fix: `${phase}.1` }],
     })]);
     assert.strictEqual(failed.ends, false);
 
@@ -150,9 +150,9 @@ describe('pipeline simulation: the review of a feature the migration cut mid-bui
 
     assert.strictEqual(reviewNext(sim, WU).move, 'reads');
     sim.run(['review', 'reads', WU, `1-${WU}`]);
-    assert.ok(briefOf(sim, areaBrief(sim, 'a')).includes(PARTLY), 'the area read again after its fix still partly built before');
-    assert.deepStrictEqual(sim.board().view.areas.map(({ area, before }) => [area, before]), [['1', 'partly'], ['tests', null]]);
-    areaRead(sim, WU);
+    assert.ok(briefOf(sim, sectionBrief(sim, 'a')).includes(PARTLY), 'the section read again after its fix still partly built before');
+    assert.deepStrictEqual(sim.board().view.sections.map(({ section, before }) => [section, before]), [['1', 'partly'], ['tests', null]]);
+    sectionRead(sim, WU);
     assert.strictEqual(sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Undo every edit.'], findings: [] })]).ends, true);
 
     assert.strictEqual(reviewNext(sim, WU).move, 'closing');

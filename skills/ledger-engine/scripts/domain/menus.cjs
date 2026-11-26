@@ -103,7 +103,7 @@ const START_HELP = Object.freeze({
   closing: 'Ask about anything else, or walk through the whole thing.',
   rows: Object.freeze([
     { key: 'w', word: 'walk', label: 'Walk through how Ledger works', next: Object.freeze({ kind: 'continue' }) },
-    { key: 't', word: 'topics', label: 'Read about one area in more depth', next: Object.freeze({ kind: 'engine', argv: ['render', 'help-topics'] }) },
+    { key: 't', word: 'topics', label: 'Read about one subject in more depth', next: Object.freeze({ kind: 'engine', argv: ['render', 'help-topics'] }) },
   ]),
 });
 

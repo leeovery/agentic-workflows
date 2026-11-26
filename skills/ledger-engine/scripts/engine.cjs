@@ -1542,7 +1542,7 @@ function runDrivers(call, argv) {
 
 // ---------------------------------------------------------------------------
 // review — a round of the review phase recorded, with its report and its
-// checks (domain/review-round.cjs); a later round's areas named, and the
+// checks (domain/review-round.cjs); a later round's sections named, and the
 // working tree taken as it is (domain/review-verbs.cjs) or put back
 // (domain/review-tree.cjs).
 // ---------------------------------------------------------------------------

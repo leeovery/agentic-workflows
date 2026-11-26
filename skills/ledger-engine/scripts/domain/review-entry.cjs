@@ -34,13 +34,13 @@
 // `reviewOpened`, 7.2.36, 7.2.38), under the writer lock: a conflict
 // refuses the entry, nothing taken over or snapshotted, the merge begun in
 // a worktree the refusal names, so the entry again takes the settlement —
-// only round 1's first entry, so a later round reads no area changed by
+// only round 1's first entry, so a later round reads no section changed by
 // what no fix touched.
 //
 // It answers, in its DATA: the round under review, or how the round that
-// ended the phase did, and what is next; the spec's areas, each by its name
+// ended the phase did, and what is next; the spec's sections, each by its name
 // in the layout and its title — a quick-fix's one, the change, its record
-// and its change-set from the base (19.5.14); the areas the round reads, the test surface
+// and its change-set from the base (19.5.14); the sections the round reads, the test surface
 // among them, or that a later round's are not yet named, with those it must
 // take (14.3.3); each report of the round under review already in, reading
 // as a reviewer's, so a return to the round briefs only the readers whose
@@ -181,16 +181,16 @@ function fixPhaseWords(manifest, { rounds, round, ended, waiting }) {
   return `phase ${fixPhase(manifest, round)}, where round ${round}'s fix tasks are written`;
 }
 
-/** An area as its line says it: the spec's by its section, a quick-fix's change by what it reads. @param {string} unit @param {Record<string, any>} manifest @param {import('./review-phase.cjs').Area} area */
-function areaWords(unit, manifest, { name, number, title }) {
+/** A section as its line says it: the spec's by its section, a quick-fix's change by what it reads. @param {string} unit @param {Record<string, any>} manifest @param {import('./review-phase.cjs').Section} section */
+function sectionWords(unit, manifest, { name, number, title }) {
   return quickFixBuild(manifest) ? `${name} — ${title.toLowerCase()}: ${unit}'s record and its change-set from the base` : `${name} — §${number} ${title}`;
 }
 
-/** Where the review phase stands, a line each: the round, the areas, the reads, the reports in, the fix phase, the fix tasks waiting and, in step, their phase's merge. @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {ReviewStanding} standing @returns {Line[]} */
+/** Where the review phase stands, a line each: the round, the sections, the reads, the reports in, the fix phase, the fix tasks waiting and, in step, their phase's merge. @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {ReviewStanding} standing @returns {Line[]} */
 function standingLines(cwd, unit, manifest, standing) {
   return [
     ['round', roundWords(unit, standing)],
-    ...standing.areas.map((area) => /** @type {Line} */ (['area', areaWords(unit, manifest, area)])),
+    ...standing.sections.map((section) => /** @type {Line} */ (['section', sectionWords(unit, manifest, section)])),
     ...(standing.ended ? [] : [/** @type {Line} */ (['reads', readsLine(unit, standing, manifest.build?.position === 'step')])]),
     ...reportsIn(cwd, unit, standing).map((file) => /** @type {Line} */ (['report in', file])),
     ['fix phase', fixPhaseWords(manifest, standing)],

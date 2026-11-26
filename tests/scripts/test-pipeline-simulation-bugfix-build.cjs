@@ -27,7 +27,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
   Sim, investigated, specEntry, specReviewed, cutTheSpec, readyToBuild, answerGate, intoTheBuild, buildEntry, writePhaseTasks, startPhase,
-  builders, taskBuilt, landed, placeIn, continueInto, reviewNext, areaRead, testsRead, PASSED_REPORT, VERIFY_FILES,
+  builders, taskBuilt, landed, placeIn, continueInto, reviewNext, sectionRead, testsRead, PASSED_REPORT, VERIFY_FILES,
 } = require('./pipeline-world.cjs');
 
 /** @typedef {import('./pipeline-world.cjs').Sim} Sim */
@@ -39,7 +39,7 @@ const TEST = 'sh test/crash.sh';
 
 const SECOND_BASKET = '## Findings\n\n- bug: the crash returns on a second basket\n  Scenario: a second basket\n\nVerdict: fail\n';
 
-/** The bugfix investigated, its spec of one area and one scenario landed and reviewed, cut into one phase, and ready to build's yes in auto taken into the build. @param {Sim} sim */
+/** The bugfix investigated, its spec of one section and one scenario landed and reviewed, cut into one phase, and ready to build's yes in auto taken into the build. @param {Sim} sim */
 async function bugfixToBuild(sim) {
   await investigated(sim, WU, 'Fix the crash');
   specEntry(sim, WU, [WU]);
@@ -90,12 +90,12 @@ describe('pipeline simulation: a bugfix\'s build', () => {
     continueInto(sim, WU, 'review');
     const { move, fixPhase } = reviewNext(sim, WU);
     assert.strictEqual(move, 'round');
-    areaRead(sim, WU, SECOND_BASKET);
+    sectionRead(sim, WU, SECOND_BASKET);
     testsRead(sim, WU);
     writePhaseTasks(sim, WU, /** @type {number} */ (fixPhase), 'The review\'s fixes', [{ title: 'Hold a second basket', type: 'fix', scenarios: ['a second basket'] }]);
     const round = sim.write(`.ledger/.cache/${WU}/review/round.json`, {
       can_now: ['The work holds.'],
-      findings: [{ area: '1-the-work', scope: 'in', call: 'bug', text: 'The crash returns on a second basket.', from: ['1-the-work-a#1'], fix: `${fixPhase}.1` }],
+      findings: [{ section: '1-the-work', scope: 'in', call: 'bug', text: 'The crash returns on a second basket.', from: ['1-the-work-a#1'], fix: `${fixPhase}.1` }],
     });
     sim.refuses(['review', 'round', WU, '--file', round], null);
     sim.run(['verify', 'run', WU, '1.S1', '--unfixed', '--test', TEST]);

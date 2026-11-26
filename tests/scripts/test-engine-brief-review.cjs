@@ -3,9 +3,9 @@
 // ---------------------------------------------------------------------------
 // The review phase's briefs (ledger-engine/scripts/domain/brief.cjs, its
 // records domain/brief-records.cjs, the change domain/review-change.cjs,
-// content/briefs/review-area.md and test-surface.md): an area review's, the
-// reviewer's third template, `brief review-area <unit> --area N --base
-// <branch> --letter <a|b>` — the area of the spec verbatim, the other areas
+// content/briefs/review-section.md and test-surface.md): a section review's, the
+// reviewer's third template, `brief review-section <unit> --section N --base
+// <branch> --letter <a|b>` — the section of the spec verbatim, the other sections
 // and where they meet it, the unit's calls whole, read for calls wrong in
 // combination (16.17.8, 16.S61), the change's commits in each repository —
 // the unit's own work alone: each of its landings against its first
@@ -15,11 +15,11 @@
 // they last met, here or as last fetched, whichever is later, a merge's
 // settlement onto it among it, then its work not landed from where it
 // leaves that branch, a later round's entry bringing nothing in (14.1.6) —
-// the scratch worktree's layout, the area's scenarios' runs at the
+// the scratch worktree's layout, the section's scenarios' runs at the
 // change's tips, the linters, and where the reviewer's report goes; the test
 // surface's, `brief test-surface <unit> --base <branch>` — every scenario
 // of the spec, the commits, the layout, the linters and its one report
-// (14.2.4); each area its pair's two reports and the tests one, in the
+// (14.2.4); each section its pair's two reports and the tests one, in the
 // round's folder (14.S2); a later round's briefs reading the fix phase's
 // tip and only the reads named for it (14.3.3); a report that does not read
 // named as the one a fresh brief's replaces; what they refuse; and the
@@ -37,7 +37,7 @@ const fs = require('fs');
 const path = require('path');
 const { template, filledTemplate, scratchCalls, ENGINE_DRAWN } = require('./brief-build-world.cjs');
 const {
-  UNIT, OTHER, AREAS, EVERY, RECEIPT, calls, useWorld, env, enter, reported, named, recorded, firstRoundReady, fixBranch, fixBuilt, commitFile, stateText, issued, storedBriefs, areaText,
+  UNIT, OTHER, SECTIONS, EVERY, RECEIPT, calls, useWorld, env, enter, reported, named, recorded, firstRoundReady, fixBranch, fixBuilt, commitFile, stateText, issued, storedBriefs, joinedSectionText,
   refusedPristine, statePath, writeState, reportText, git, initRepo, readManifest, createManifest, assert,
 } = require('./review-world.cjs');
 
@@ -48,8 +48,8 @@ const { runsRel } = require(path.join(SCRIPTS, 'domain/runs.cjs'));
 let dir;
 useWorld((at) => { dir = at; });
 
-/** An area review's brief by reviewer `letter`. @param {string} area @param {string} [letter] */
-const areaReview = (area, letter = 'a') => issued(['review-area', UNIT, '--area', area, '--base', 'main', '--letter', letter]);
+/** A section review's brief by reviewer `letter`. @param {string} section @param {string} [letter] */
+const sectionReview = (section, letter = 'a') => issued(['review-section', UNIT, '--section', section, '--base', 'main', '--letter', letter]);
 
 /** A brief refused, nothing written and no brief stored: its error. @param {string[]} args */
 function refusedBrief(args) {
@@ -83,7 +83,7 @@ const projectCommits = (unlanded = []) => [`## In the project's repository`, ...
 /** A brief's section, by its heading, to the next. @param {string} brief @param {string} heading */
 const sectionIn = (brief, heading) => brief.slice(brief.indexOf(`# ${heading}\n\n`) + heading.length + 4, brief.indexOf('\n\n# ', brief.indexOf(`# ${heading}\n\n`)));
 
-/** Round 1 recorded failing on area 1, its fix task 3.1 built on main in the repository at `repo`, round 2 entered and area 1 named its read. @param {string} [repo] */
+/** Round 1 recorded failing on section 1, its fix task 3.1 built on main in the repository at `repo`, round 2 entered and section 1 named its read. @param {string} [repo] */
 function secondRound(repo = dir) {
   firstRoundReady();
   recorded({ can_now: [], findings: [RECEIPT] });
@@ -92,20 +92,20 @@ function secondRound(repo = dir) {
   named(['1-cards']);
 }
 
-describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)', () => {
-  it('16.S61: the area verbatim, where the others meet it, the unit\'s calls whole, the change\'s commits — each of its landings, never another unit\'s or a commit naming no task — the layout, the area\'s runs at the change\'s tips, the linters and its report — dispatched as the reviewer', () => {
-    const { res, brief, whose } = areaReview('1', 'b');
+describe('the section review\'s brief, the reviewer\'s third template (14.1, 14.2)', () => {
+  it('16.S61: the section verbatim, where the others meet it, the unit\'s calls whole, the change\'s commits — each of its landings, never another unit\'s or a commit naming no task — the layout, the section\'s runs at the change\'s tips, the linters and its report — dispatched as the reviewer', () => {
+    const { res, brief, whose } = sectionReview('1', 'b');
     const spec = stateText(`${UNIT}/spec.md`);
     const run = (/** @type {string} */ scenario, /** @type {string} */ verdict, /** @type {number} */ hour) => `  - ${verdict}, recorded 2026-11-01T1${hour}:00:00.000Z: ${pathDrawn(`${runsRel(UNIT, scenario)}/run-001.json`)}`;
 
     assert.deepStrictEqual([res, whose], [
-      { ok: true, id: res.id, role: 'review-area', agent: 'ledger-reviewer', pointer: `brief:${res.id}` },
-      { role: 'review-area', agent: 'ledger-reviewer', unit: UNIT, task: null, topic: null, area: '1', round: 1 },
+      { ok: true, id: res.id, role: 'review-section', agent: 'ledger-reviewer', pointer: `brief:${res.id}` },
+      { role: 'review-section', agent: 'ledger-reviewer', unit: UNIT, task: null, topic: null, section: '1', round: 1 },
     ]);
-    assert.strictEqual(brief, `Brief ${res.id} — the area review's, for ${UNIT}\n\n${filledTemplate('review-area', {
+    assert.strictEqual(brief, `Brief ${res.id} — the section review's, for ${UNIT}\n\n${filledTemplate('review-section', {
       engine: ENGINE_DRAWN,
-      'area-sections': [pathDrawn(`${UNIT}/spec.md`), areaText(spec, 1)].join('\n\n'),
-      'area-meets': `The other areas:\n\n- §2 Refunds\n\nWhere they meet it:\n\n- §2.1 relies on §1.2: 2.1.1 cites ${calls.refund}, which relies on ${calls.copy}, cited by 1.2.1`,
+      'section-text': [pathDrawn(`${UNIT}/spec.md`), joinedSectionText(spec, 1)].join('\n\n'),
+      'section-meets': `The other sections:\n\n- §2 Refunds\n\nWhere they meet it:\n\n- §2.1 relies on §1.2: 2.1.1 cites ${calls.refund}, which relies on ${calls.copy}, cited by 1.2.1`,
       'unit-calls': [
         `- ${calls.token}, Claude's, at ${UNIT}.specification: A card is tokenised.\n  It answers: How is a card kept?\n  Why: No number is kept.`,
         `- ${calls.copy}, Claude's, at ${UNIT}.specification: The receipt names the shop.\n  It answers: What does the receipt say?\n  Why: Customers know it.`,
@@ -115,19 +115,19 @@ describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)'
         `- ${calls.refund}, the person's, at ${UNIT}.specification: A refund's receipt names the shop.\n  It answers: What does a refund's receipt say?\n  Why: As its charge's did.`,
       ].join('\n'),
       'change-commits': projectCommits(),
-      'change-scratch-layout': `- the project's repository: \`main\` — the change's tip there\n\n${scratchCalls(`${UNIT}-area-1-b`, mainCommit())}`,
-      'area-runs': [
+      'change-scratch-layout': `- the project's repository: \`main\` — the change's tip there\n\n${scratchCalls(`${UNIT}-section-1-b`, mainCommit())}`,
+      'section-runs': [
         '- 1.S1: proven', '  Given a card form, when the number is typed, then it is checked. (1.1.1)', run('1.S1', 'pass', 0),
         '- 1.S2: not proven', '  Given a charge, when it lands, then a receipt follows. (1.2.1)', run('1.S2', 'fail', 1),
       ].join('\n'),
       linters: '- eslint: npx eslint .',
-      'area-report-to': pathDrawn(`${UNIT}/review/round-1/1-cards-b.md`),
-      'area-authority': 'Every task and every phase of the build has passed its own review. Hold the product at the change\'s tips against this area of the spec, as one piece. The spec\'s intent for the area, and the product it describes, are your authority, never a task\'s criteria:',
+      'section-report-to': pathDrawn(`${UNIT}/review/round-1/1-cards-b.md`),
+      'section-authority': 'Every task and every phase of the build has passed its own review. Hold the product at the change\'s tips against this section of the spec, as one piece. The spec\'s intent for the section, and the product it describes, are your authority, never a task\'s criteria:',
     })}`);
   });
 
-  it('14.S2: each area\'s pair writes two reports of its own in the round\'s folder, and the test surface one beside them', () => {
-    const placed = AREAS.flatMap((area, at) => ['a', 'b'].map((letter) => /# Where your report goes\n\n(.*)\n/.exec(areaReview(String(at + 1), letter).brief)?.[1]));
+  it('14.S2: each section\'s pair writes two reports of its own in the round\'s folder, and the test surface one beside them', () => {
+    const placed = SECTIONS.flatMap((section, at) => ['a', 'b'].map((letter) => /# Where your report goes\n\n(.*)\n/.exec(sectionReview(String(at + 1), letter).brief)?.[1]));
     const tests = /# Where your report goes\n\n(.*)\n/.exec(issued(['test-surface', UNIT, '--base', 'main']).brief)?.[1];
 
     assert.deepStrictEqual([...placed, tests], ['1-cards-a', '1-cards-b', '2-refunds-a', '2-refunds-b', 'tests-a'].map((name) => pathDrawn(`${UNIT}/review/round-1/${name}.md`)));
@@ -139,23 +139,23 @@ describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)'
     for (const name of ['1-cards-a', 'tests-a']) writeState(dir, `${UNIT}/review/round-1/${name}.md`, '# Review\n\nHalf written.\n');
     writeState(dir, `${UNIT}/review/round-1/1-cards-b.md`, reportText([]));
 
-    assert.deepStrictEqual([placeOf(areaReview('1').brief), placeOf(issued(['test-surface', UNIT, '--base', 'main']).brief)], ['1-cards-a', 'tests-a'].map((name) => (
+    assert.deepStrictEqual([placeOf(sectionReview('1').brief), placeOf(issued(['test-surface', UNIT, '--base', 'main']).brief)], ['1-cards-a', 'tests-a'].map((name) => (
       `${pathDrawn(`${UNIT}/review/round-1/${name}.md`)} — the report there does not read as a reviewer's report — ${notRead}; yours replaces it`
     )));
-    assert.strictEqual(refusedBrief(['review-area', UNIT, '--area', '1', '--base', 'main', '--letter', 'b']), `${UNIT}/review/round-1/1-cards-b.md is written already — that reviewer's report of the round is in`);
+    assert.strictEqual(refusedBrief(['review-section', UNIT, '--section', '1', '--base', 'main', '--letter', 'b']), `${UNIT}/review/round-1/1-cards-b.md is written already — that reviewer's report of the round is in`);
   });
 
   it('14.S3: a later round reads the change to its fix phase\'s tip, the work not landed from where it leaves the base, and only the reads named for it', () => {
     secondRound();
     const tip = fixBranch(3, 1, 'Send the receipt');
-    const { brief } = areaReview('1');
+    const { brief } = sectionReview('1');
 
     assert.strictEqual(sectionIn(brief, 'The change\'s commits'), projectCommits([unlandedDrawn(dir, tip, 'src/send.js')]));
     assert.ok(brief.includes(`# Laying out your scratch worktree\n\n- the project's repository: \`${tip}\` — the change's tip there\n`), brief);
     assert.ok(brief.includes(`# Where your report goes\n\n${pathDrawn(`${UNIT}/review/round-2/1-cards-a.md`)}\n`), brief);
     assert.deepStrictEqual([
-      refusedBrief(['review-area', UNIT, '--area', '2', '--base', 'main', '--letter', 'a']), refusedBrief(['test-surface', UNIT, '--base', 'main']),
-    ], ['area 2 is not read in round 2, which reads 1-cards', 'the test surface is not read in round 2, which reads 1-cards']);
+      refusedBrief(['review-section', UNIT, '--section', '2', '--base', 'main', '--letter', 'a']), refusedBrief(['test-surface', UNIT, '--base', 'main']),
+    ], ['section 2 is not read in round 2, which reads 1-cards', 'the test surface is not read in round 2, which reads 1-cards']);
   });
 
   it('the change across repositories: a child repository holding part of its landings, another unit\'s beside them left out, and one holding only its work not landed', () => {
@@ -169,7 +169,7 @@ describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)'
     commitFile(refunds, 'index.js');
     secondRound(refunds);
 
-    assert.strictEqual(sectionIn(areaReview('1').brief, 'The change\'s commits'), [
+    assert.strictEqual(sectionIn(sectionReview('1').brief, 'The change\'s commits'), [
       projectCommits(), '## In `lib/cards`', landingDrawn(cards, 'main~1', 'card/token.js'), '## In `lib/refunds`', unlandedDrawn(refunds, fixBranch(3, 1, 'Send the receipt'), 'src/send.js'),
     ].join('\n\n'));
   });
@@ -189,7 +189,7 @@ describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)'
     commitFile(dir, 'src/later.js');
     const held = readManifest(dir, UNIT);
     createManifest(dir, UNIT, { ...held, build: { ...held.build, branch } });
-    const { brief } = areaReview('1');
+    const { brief } = sectionReview('1');
 
     assert.strictEqual(sectionIn(brief, 'The change\'s commits'), [
       '## In the project\'s repository',
@@ -215,7 +215,7 @@ describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)'
     const held = readManifest(dir, UNIT);
     createManifest(dir, UNIT, { ...held, build: { ...held.build, branch } });
 
-    assert.strictEqual(sectionIn(areaReview('1').brief, 'The change\'s commits'), [
+    assert.strictEqual(sectionIn(sectionReview('1').brief, 'The change\'s commits'), [
       '## In the project\'s repository', `### The unit's branch against main: \`${short(dir, 'origin/main')}..${branch}\``, statOf('src/own.js'),
     ].join('\n\n'));
   });
@@ -236,14 +236,14 @@ describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)'
     named(['1-cards']);
     const fix = fixBranch(3, 1, 'Send the receipt');
 
-    assert.deepStrictEqual([git(dir, ['rev-parse', branch]).trim(), sectionIn(areaReview('1').brief, 'The change\'s commits')], [before, [
+    assert.deepStrictEqual([git(dir, ['rev-parse', branch]).trim(), sectionIn(sectionReview('1').brief, 'The change\'s commits')], [before, [
       '## In the project\'s repository', `### The unit's branch against main: \`${short(dir, 'main~1')}..${branch}\``, statOf('src/own.js'), `### Not landed yet: \`${short(dir, branch)}..${fix}\``, statOf('src/send.js'),
     ].join('\n\n')]);
   });
 });
 
 describe('the test surface\'s brief (14.2.4)', () => {
-  it('every scenario of the spec with its area, the change\'s range, the layout, the linters and its one report — dispatched as the test reader', () => {
+  it('every scenario of the spec with its section, the change\'s range, the layout, the linters and its one report — dispatched as the test reader', () => {
     const { res, brief, whose } = issued(['test-surface', UNIT, '--base', 'main']);
 
     assert.deepStrictEqual(whose, { role: 'test-surface', agent: 'ledger-test-surface', unit: UNIT, task: null, topic: null, round: 1 });
@@ -262,8 +262,8 @@ describe('the test surface\'s brief (14.2.4)', () => {
 });
 
 describe('the review phase\'s briefs refused, nothing stored or written', () => {
-  it('an area the spec lacks, a base no repository has, a unit whose review phase cannot be entered, a round waiting on its fix tasks, and one whose reads are not named', () => {
-    const lacking = refusedBrief(['review-area', UNIT, '--area', '3', '--base', 'main', '--letter', 'a']);
+  it('a section the spec lacks, a base no repository has, a unit whose review phase cannot be entered, a round waiting on its fix tasks, and one whose reads are not named', () => {
+    const lacking = refusedBrief(['review-section', UNIT, '--section', '3', '--base', 'main', '--letter', 'a']);
     const trunk = refusedBrief(['test-surface', UNIT, '--base', 'trunk']);
     const half = refusedBrief(['test-surface', 'half', '--base', 'main']);
     firstRoundReady();
@@ -271,12 +271,12 @@ describe('the review phase\'s briefs refused, nothing stored or written', () => 
     const waiting = refusedBrief(['test-surface', UNIT, '--base', 'main']);
     fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
 
-    assert.deepStrictEqual([lacking, trunk, half, waiting, refusedBrief(['review-area', UNIT, '--area', '1', '--base', 'main', '--letter', 'a'])], [
-      'the spec has no area 3 — its areas are §1, §2',
+    assert.deepStrictEqual([lacking, trunk, half, waiting, refusedBrief(['review-section', UNIT, '--section', '1', '--base', 'main', '--letter', 'a'])], [
+      'the spec has no section 3 — its sections are §1, §2',
       'the base trunk is no local branch in any repository of the project',
       'half\'s review phase starts once every phase of its cut has closed — phase 2 of 2 has not: enter implementation half',
       'round 2 is read once every fix task of round 1 is done — task 3.1 not started',
-      `round 2's areas are not yet named — review reads ${UNIT} <area> …, from what round 1's fix tasks changed, among them 1-cards`,
+      `round 2's sections are not yet named — review reads ${UNIT} <section> …, from what round 1's fix tasks changed, among them 1-cards`,
     ]);
   });
 
@@ -293,20 +293,20 @@ describe('the review phase\'s briefs refused, nothing stored or written', () => 
 });
 
 describe('the templates', () => {
-  it('14.3.1: the area review\'s floor is guidance in its template — a finding names the failure it prevents — its product run through the verify setup, and the call, the report and its rules the phase review\'s, as are the test surface\'s, its notes for later beyond the work unit\'s change', () => {
+  it('14.3.1: the section review\'s floor is guidance in its template — a finding names the failure it prevents — its product run through the verify setup, and the call, the report and its rules the phase review\'s, as are the test surface\'s, its notes for later beyond the work unit\'s change', () => {
     const tail = (/** @type {string} */ text) => text.slice(text.indexOf('# Each finding\'s call'));
-    const area = template('review-area');
+    const section = template('review-section');
     const phaseTail = tail(template('phase-review')).replaceAll('beyond the task', 'beyond the work unit\'s change');
 
     for (const rule of [
       'A finding names the failure it prevents: what goes wrong, for whom, and how it would be noticed. One that cannot is not written.',
       'the unit\'s calls read whole: a call fine alone and wrong in combination with another is a finding;',
       'A scenario its runs leave "not proven", or "named, not run", at the change\'s tips is a finding, and reads so in your report, in those words.',
-      'each scenario of the area\'s above through the project\'s verify setup, one at a time: the engine\'s `verify run {unit} {scenario}`, the unit this brief is for.',
+      'each scenario of the section\'s above through the project\'s verify setup, one at a time: the engine\'s `verify run {unit} {scenario}`, the unit this brief is for.',
       '# The engine\n\n{{engine}}\n',
       'Where the project has no verify setup recorded, say so in your report instead of running.',
-    ]) assert.ok(area.includes(rule), rule);
+    ]) assert.ok(section.includes(rule), rule);
     assert.notStrictEqual(phaseTail, tail(template('phase-review')));
-    assert.deepStrictEqual([tail(area), tail(template('test-surface'))], [phaseTail, phaseTail]);
+    assert.deepStrictEqual([tail(section), tail(template('test-surface'))], [phaseTail, phaseTail]);
   });
 });

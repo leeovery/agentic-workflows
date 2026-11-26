@@ -27,6 +27,6 @@ export default {
     },
   ],
   fixes: [
-    { round: 1, finding: 12, from: null, area: '16-progress-narration', call: 'serious', text: 'In pretty mode, a failed check kills the notes stage\'s live line for the rest of the stage.' },
+    { round: 1, finding: 12, from: null, section: '16-progress-narration', call: 'serious', text: 'In pretty mode, a failed check kills the notes stage\'s live line for the rest of the stage.' },
   ],
 }

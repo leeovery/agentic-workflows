@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the whole change the review phase holds against the spec
 // (14.1.1), read off git in every repository of the project holding the
-// unit's work (7.2.17) — what an area pair's and the test reader's briefs
+// unit's work (7.2.17) — what a section pair's and the test reader's briefs
 // draw its commits and scratch worktree from (brief-records.cjs), and the
 // code a round's scenarios are judged at (runs.cjs, 15.3.3).
 //
@@ -81,7 +81,7 @@
 // landed work before the migration cut it (`landedAnyBefore`), whose change
 // is what landed since (21.8.8): none holding any, its change is empty,
 // standing at each repository's base, its tips there, where the review
-// reads every area built before at the change's tips.
+// reads every section built before at the change's tips.
 // The cut's scenarios — a quick-fix's, its fixes' (fix-acceptance.cjs) —
 // stand where their runs at or behind the change's tips put them
 // (`cutStandings`), as a round records them and the board shows

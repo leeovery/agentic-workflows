@@ -4,37 +4,37 @@
 // Domain ring: the spec's sections and lines — how a unit's `spec.md` is
 // addressed and read, the one reading every verb that names a section, a
 // scenario or a statement shares (a brief's spec sections, the phase cut's,
-// the land's trace). The spec is written by area (11.3.2): an area is a
+// the land's trace). The spec is written by section (11.3.2): a section is a
 // numbered heading at level two, `## N. Title`, and a part of it one at
 // level three, `### N.M Title`. A section runs from its heading to the next
-// heading at its level or above, so an area holds its parts. Headings inside
+// heading at its level or above, so a section holds its parts. Headings inside
 // a fenced block are text: a block opened by a line holding, at any indent,
 // a list item's among them, three backticks or tildes at least, and closed
 // by one holding as many of that mark at least and nothing else — the one
 // fence rule every reader here keeps, and the migration's join of old specs
 // (078) with it (`fences`). A spec that numbers one section twice, or a part
-// under another area's number, is refused: its sections cannot be addressed.
+// under another section's number, is refused: its sections cannot be addressed.
 //
 // A reference cites sections in runs. A run opens at `§` or `§§` and goes
 // on over numbers joined by `,`, `and` or `&` — `§1.1, 1.2`, `§1.1 and 2.1`,
-// `§§1.1 & 1.2` — each number an area, `N`, or a part, `N.M`. Two numbers
+// `§§1.1 & 1.2` — each number a section, `N`, or a part, `N.M`. Two numbers
 // joined by `–`, `-` or `to` are a range — `§1.1–1.3`, `§1.1-1.3`, `§1 to 3`
 // — drawing every section at their level from the first to the last, in the
 // spec's order, both included. Every number a run holds is cited: a reference
 // citing none, a number deeper than a part, a range whose ends differ in
 // level or that runs backwards, and a section the spec lacks are refused,
 // naming the reference. The sections are drawn in the order cited, each
-// once, a part whose own area is drawn left to the area, which holds it.
+// once, a part whose own section is drawn left to the section, which holds it.
 //
 // The spec's lines (11.4.5, 11.11.3) are read as its review page reads them
 // (`specStatements`), so the page, the trace and the cut agree on each, its
 // rows split at `\n`, `\r\n` or `\r`. The spec opens with its title,
-// `# Title`, and what comes before its first area — a contents section,
+// `# Title`, and what comes before its first section — a contents section,
 // `## Contents`, among it — is its introduction. The rest is read in blocks
 // split on blank lines, a fenced block kept whole:
 // - A block opening with a number and a space starts a line: `N.M.K `, a
-//   statement, in the part `### N.M`; or `N.Sk `, a scenario, in its area's
-//   block of scenarios, `## N-S. …`, after the area.
+//   statement, in the part `### N.M`; or `N.Sk `, a scenario, in its section's
+//   block of scenarios, `## N-S. …`, after the section.
 // - A block opening `Screen…:` after a line starts a screen of it, numbered
 //   `<line>-scr<k>` for the k-th.
 // - A line owns every block after it up to the next line, screen or heading:
@@ -51,13 +51,13 @@
 //   parentheses, `(1.1.1, 1.2.3)`.
 // - A line's wording is its blocks, its number and its bracket aside, each
 //   block not fenced on one line.
-// Its headings are kept in its order beside its lines: each area's, each
+// Its headings are kept in its order beside its lines: each section's, each
 // block of scenarios', and each part's, numbered or not.
-// A spec is refused, naming every fault: one with no title, no area or no
+// A spec is refused, naming every fault: one with no title, no section or no
 // statement; one its sections refuse; a heading not standing alone, or a
-// second title; a heading at level two that is neither an area nor its
-// scenarios; a block of scenarios after another area; a statement outside
-// its part or a scenario outside its area's block; a line numbered twice; a
+// second title; a heading at level two that is neither a section nor its
+// scenarios; a block of scenarios after another section; a statement outside
+// its part or a scenario outside its section's block; a line numbered twice; a
 // note, a block after a heading opening no line; a screen straight after a
 // heading; a block reading as a line — ending in a source bracket, or for a
 // scenario's number in its statements — that opens with a number the
@@ -70,8 +70,8 @@
 //
 // A spec the migration joined (21.8.5; the manifest's `spec.joined`, the
 // topics joined, which each reader passes as whether it is joined) is the
-// unit's old specs, each an area, `## N. Title`, verbatim but for its
-// headings, all below the parts' level: an area's blocks are its text,
+// unit's old specs, each a section, `## N. Title`, verbatim but for its
+// headings, all below the parts' level: a section's blocks are its text,
 // opening no line, and a scenario of the `## N-S.` blocks the migration's
 // cut adds may close on no statements, the spec holding none. Its other
 // rules stand.
@@ -94,7 +94,7 @@ const RUN = new RegExp(String.raw`§§?\s*${NUMBER}(?:${JOIN}${NUMBER})*`, 'g');
 /** A number in a run, or the mark of a range. */
 const TOKEN = new RegExp(String.raw`(${NUMBER})|(${RANGE})`, 'g');
 
-/** An area's or a part's heading. */
+/** A section's or a part's heading. */
 const NUMBERED = [
   { level: 2, pattern: /^## +([1-9][0-9]*)\. +\S/ },
   { level: 3, pattern: /^### +([1-9][0-9]*\.[1-9][0-9]*) +\S/ },
@@ -106,11 +106,11 @@ const HEADING = /^(#{1,6})(?: |$)/;
 /** A line that opens a fenced block, or may close one: at any indent, three backticks or tildes at least. */
 const FENCE = /^[ \t]*(`{3,}|~{3,})/;
 
-/** Where the spec's areas begin: its first heading at level two but its contents. */
+/** Where the spec's sections begin: its first heading at level two but its contents. */
 const BODY = /^## (?!Contents\b)/;
 
-/** A heading at level two, read as an area's, `## N. Title`, or its scenarios', `## N-S. …`. */
-const AREA = /^## (\d+)(-S)?\. (.*)/;
+/** A heading at level two, read as a section's, `## N. Title`, or its scenarios', `## N-S. …`. */
+const SECTION = /^## (\d+)(-S)?\. (.*)/;
 
 /** A block that starts a line: its number, a statement's or a scenario's, and a space. */
 const LINE = /^(\d+\.\d+\.\d+|\d+\.S\d+) /;
@@ -146,7 +146,7 @@ const DRAWS_ON = new RegExp(`\\(\\s*(${STATEMENT_NUMBER}(?:\\s*,\\s*${STATEMENT_
 /**
  * A line of the spec: a statement, a scenario, a screen, or a note, a block
  * after a heading that opens none, which refuses the spec. Its number — a
- * screen's `<line>-scr<k>`, a note's `<line or area>-note<k>` — the line of
+ * screen's `<line>-scr<k>`, a note's `<line or section>-note<k>` — the line of
  * the text it opens on, from 1, its wording, and its bracket's contents as
  * written, null where it has none; the entries its bracket cites by short
  * id and whether it is the builder's; the line a screen or a note follows,
@@ -158,11 +158,11 @@ const DRAWS_ON = new RegExp(`\\(\\s*(${STATEMENT_NUMBER}(?:\\s*,\\s*${STATEMENT_
  * }} Line
  */
 /**
- * A heading of the spec's body: an area's, `## N. Title`, its block of
- * scenarios', `## N-S. Title`, or a part's, `### …`; its number — the area's,
+ * A heading of the spec's body: a section's, `## N. Title`, its block of
+ * scenarios', `## N-S. Title`, or a part's, `### …`; its number — the section's,
  * or the part's `N.M`, null for a part with none — what follows its number,
  * a part's whole text after its marks, and the line of the text it stands on.
- * @typedef {{kind: 'area'|'scenarios'|'part', number: string|null, title: string, line: number}} Heading
+ * @typedef {{kind: 'section'|'scenarios'|'part', number: string|null, title: string, line: number}} Heading
  */
 /** A spec's lines and headings in its order, and the faults that refuse it. @typedef {{lines: Line[], headings: Heading[], faults: string[]}} SpecReading */
 
@@ -176,7 +176,7 @@ function shown({ from, to }) {
   return from === to ? `§${from}` : `§${from}–${to}`;
 }
 
-/** How deep an address is: 1 for an area, 2 for a part. @param {string} address */
+/** How deep an address is: 1 for a section, 2 for a part. @param {string} address */
 const depth = (address) => address.split('.').length;
 
 /** The cites one run holds, in order. @param {string} run @returns {Cite[]} */
@@ -268,7 +268,7 @@ function sectionEnd(levels, at, level) {
  * Every section a spec's text numbers, by address: its level and its text,
  * from its heading to the next heading at its level or above, the blank
  * lines before that heading left out. Refuses a section numbered twice, and
- * a part numbered under another area than the one it sits in.
+ * a part numbered under another section than the one it sits in.
  * @param {string} text @returns {Map<string, Section>}
  */
 function specSections(text) {
@@ -277,26 +277,26 @@ function specSections(text) {
   /** @type {Map<string, Section>} */
   const sections = new Map();
   /** @type {string|null} */
-  let area = null;
+  let section = null;
   lines.forEach((line, at) => {
-    if (levels[at] === 1 || levels[at] === 2) area = null;
+    if (levels[at] === 1 || levels[at] === 2) section = null;
     const numbered = NUMBERED.find(({ level, pattern }) => levels[at] === level && pattern.test(line));
     if (numbered === undefined) return;
     const address = /** @type {RegExpExecArray} */ (numbered.pattern.exec(line))[1];
     if (sections.has(address)) throw new Error(`the spec numbers §${address} twice`);
-    if (numbered.level === 2) area = address;
-    else if (address.split('.')[0] !== area) throw new Error(`§${address} sits under ${area === null ? 'no area' : `§${area}`}`);
+    if (numbered.level === 2) section = address;
+    else if (address.split('.')[0] !== section) throw new Error(`§${address} sits under ${section === null ? 'no section' : `§${section}`}`);
     sections.set(address, { address, level: numbered.level, text: lines.slice(at, sectionEnd(levels, at, numbered.level)).join('\n').trimEnd() });
   });
   return sections;
 }
 
-/** Where a spec's body begins, the row of its first area; -1 where it has none. @param {string[]} lines */
+/** Where a spec's body begins, the row of its first section; -1 where it has none. @param {string[]} lines */
 const bodyAt = (lines) => lines.findIndex((line) => BODY.test(line));
 
 /**
- * A spec's title and introduction: every row before its first area, the
- * blank lines before that area left out — the whole text where it has none.
+ * A spec's title and introduction: every row before its first section, the
+ * blank lines before that section left out — the whole text where it has none.
  * @param {string} text @returns {string}
  */
 function specIntroduction(text) {
@@ -306,7 +306,7 @@ function specIntroduction(text) {
 }
 
 /**
- * Each area's block of scenarios in a spec's text, by the area's number:
+ * Each section's block of scenarios in a spec's text, by the section's number:
  * from its heading, `## N-S. …`, to the next heading at level two or above.
  * @param {string} text @returns {Map<string, string>}
  */
@@ -316,10 +316,10 @@ function scenarioBlocks(text) {
   /** @type {Map<string, string>} */
   const blocks = new Map();
   lines.forEach((line, at) => {
-    const area = levels[at] === 2 ? AREA.exec(line) : null;
-    if (area === null || area[2] === undefined) return;
+    const section = levels[at] === 2 ? SECTION.exec(line) : null;
+    if (section === null || section[2] === undefined) return;
     const block = lines.slice(at, sectionEnd(levels, at, 2)).join('\n').trimEnd();
-    blocks.set(area[1], blocks.has(area[1]) ? `${blocks.get(area[1])}\n${block}` : block);
+    blocks.set(section[1], blocks.has(section[1]) ? `${blocks.get(section[1])}\n${block}` : block);
   });
   return blocks;
 }
@@ -363,13 +363,13 @@ function blocksOf(lines, from) {
 
 /**
  * A spec's body as it is read: its text's lines; where the reading stands —
- * the area, the part, the area whose scenarios it is in, the last statement
+ * the section, the part, the section whose scenarios it is in, the last statement
  * or scenario, which a screen follows, and the line whose blocks it is
  * gathering; the lines opened and the headings read; each statement's and
  * scenario's text line by its number; each line's screens and each place's
  * notes counted; the faults found; and whether the spec is joined.
  * @typedef {{
- *   lines: string[], area: string|null, part: string|null, scenariosOf: string|null, last: string|null, open: Opened|null,
+ *   lines: string[], section: string|null, part: string|null, scenariosOf: string|null, last: string|null, open: Opened|null,
  *   opened: Opened[], headings: Heading[], given: Map<string, number>, counted: Map<string, number>, faults: string[], joined: boolean,
  * }} Reading
  */
@@ -419,25 +419,25 @@ function blankLineFaults({ lines, faults }, { at, end }) {
 }
 
 /**
- * A heading at level two: an area's, which closes the part, the scenarios
+ * A heading at level two: a section's, which closes the part, the scenarios
  * and the last line; or its scenarios', which must follow it.
  * @param {Reading} reading @param {number} at @param {string} text
  */
-function readArea(reading, at, text) {
+function readSectionHeading(reading, at, text) {
   Object.assign(reading, { open: null, part: null });
-  const heading = AREA.exec(text);
+  const heading = SECTION.exec(text);
   if (heading === null) {
-    reading.faults.push(`the heading on line ${at + 1} is neither an area, ## N. Title, nor its scenarios, ## N-S. Scenarios for §N`);
+    reading.faults.push(`the heading on line ${at + 1} is neither a section, ## N. Title, nor its scenarios, ## N-S. Scenarios for §N`);
     return;
   }
   const [, number, scenarios, title] = heading;
-  reading.headings.push({ kind: scenarios === undefined ? 'area' : 'scenarios', number, title, line: at + 1 });
+  reading.headings.push({ kind: scenarios === undefined ? 'section' : 'scenarios', number, title, line: at + 1 });
   if (scenarios === undefined) {
-    Object.assign(reading, { area: number, scenariosOf: null, last: null });
+    Object.assign(reading, { section: number, scenariosOf: null, last: null });
     return;
   }
-  const { area } = reading;
-  if (number !== area) reading.faults.push(`the scenarios on line ${at + 1} are §${number}'s, but follow ${area === null ? 'no area' : `§${area}`} — an area's scenarios follow it, under ## N-S.`);
+  const { section } = reading;
+  if (number !== section) reading.faults.push(`the scenarios on line ${at + 1} are §${number}'s, but follow ${section === null ? 'no section' : `§${section}`} — a section's scenarios follow it, under ## N-S.`);
   reading.scenariosOf = number;
 }
 
@@ -452,12 +452,12 @@ function readPart(reading, at, text) {
 function readNumbered(reading, at, text, number) {
   const line = at + 1;
   const kind = number.includes('.S') ? 'scenario' : 'statement';
-  const [area, part] = [number.split('.')[0], number.split('.').slice(0, 2).join('.')];
+  const [section, part] = [number.split('.')[0], number.split('.').slice(0, 2).join('.')];
   if (kind === 'statement' && reading.part !== part) {
     reading.faults.push(`statement ${number} on line ${line} sits under ${reading.part === null ? 'no part' : `§${reading.part}`} — a statement N.M.K sits under ### N.M`);
   }
-  if (kind === 'scenario' && reading.scenariosOf !== area) {
-    reading.faults.push(`scenario ${number} on line ${line} sits ${reading.scenariosOf === null ? 'in no block of scenarios' : `among §${reading.scenariosOf}'s scenarios`} — a scenario N.Sk sits under ## N-S., after its area`);
+  if (kind === 'scenario' && reading.scenariosOf !== section) {
+    reading.faults.push(`scenario ${number} on line ${line} sits ${reading.scenariosOf === null ? 'in no block of scenarios' : `among §${reading.scenariosOf}'s scenarios`} — a scenario N.Sk sits under ## N-S., after its section`);
   }
   const first = reading.given.get(number);
   if (first === undefined) reading.given.set(number, line);
@@ -476,7 +476,7 @@ function readScreen(reading, at, text) {
 /** A block after a heading that opens no line: a note, refused, gathering the blocks after it. @param {Reading} reading @param {number} at @param {Part} part */
 function readNote(reading, at, part) {
   reading.faults.push(`line ${at + 1} opens a note, a block with no number after a heading — every requirement is a numbered line, N.M.K or N.Sk`);
-  openLine(reading, { kind: 'note', number: nextNumber(reading, reading.last ?? reading.area ?? '0', 'note'), line: at + 1, of: reading.last, parts: [part] });
+  openLine(reading, { kind: 'note', number: nextNumber(reading, reading.last ?? reading.section ?? '0', 'note'), line: at + 1, of: reading.last, parts: [part] });
 }
 
 /**
@@ -501,16 +501,16 @@ function readOwned(reading, { at, closed }, part) {
   else reading.open.parts.push(part);
 }
 
-/** Whether the reading is in a joined spec's area, before its scenarios: where every block is the area's text. @param {Reading} reading */
-const inJoinedArea = ({ joined, area, scenariosOf }) => joined && area !== null && scenariosOf === null;
+/** Whether the reading is in a joined spec's section, before its scenarios: where every block is the section's text. @param {Reading} reading */
+const inJoinedSection = ({ joined, section, scenariosOf }) => joined && section !== null && scenariosOf === null;
 
 /**
- * A block of a joined spec's area that is not a heading: its text, opening
+ * A block of a joined spec's section that is not a heading: its text, opening
  * no line, a heading in it not standing alone and a fence left open still
  * faults.
  * @param {Reading} reading @param {Block} block
  */
-function readAreaText(reading, block) {
+function readSectionText(reading, block) {
   if (block.kind === 'text') headingFaults(reading, block);
   else if (!block.closed) reading.faults.push(`the fenced block opened on line ${block.at + 1} is never closed`);
 }
@@ -518,12 +518,12 @@ function readAreaText(reading, block) {
 /** A block of the body read: a heading, a line opened, a screen, or a block the open line owns. @param {Reading} reading @param {Block} block */
 function readBlock(reading, block) {
   const text = reading.lines.slice(block.at, block.end).join('\n');
-  const areaText = inJoinedArea(reading) && !/^#{2,3} /.test(text);
-  if (areaText) return readAreaText(reading, block);
+  const joinedText = inJoinedSection(reading) && !/^#{2,3} /.test(text);
+  if (joinedText) return readSectionText(reading, block);
   if (block.kind === 'fence') return readOwned(reading, block, { kind: 'fence', text });
   headingFaults(reading, block);
   blankLineFaults(reading, block);
-  if (text.startsWith('## ')) return readArea(reading, block.at, text);
+  if (text.startsWith('## ')) return readSectionHeading(reading, block.at, text);
   if (text.startsWith('### ')) return readPart(reading, block.at, text);
   const numbered = LINE.exec(text);
   if (numbered !== null) return readNumbered(reading, block.at, text, numbered[1]);
@@ -641,7 +641,7 @@ function specReading(text, joined = false) {
   const lines = rowsOf(text);
   /** @type {Reading} */
   const reading = {
-    lines, area: null, part: null, scenariosOf: null, last: null, open: null, opened: [], headings: [], given: new Map(), counted: new Map(), faults: [], joined,
+    lines, section: null, part: null, scenariosOf: null, last: null, open: null, opened: [], headings: [], given: new Map(), counted: new Map(), faults: [], joined,
   };
   if (!lines[0].startsWith('# ')) reading.faults.push('the spec does not open with its title — its first line is # Title');
   try {
@@ -650,7 +650,7 @@ function specReading(text, joined = false) {
     reading.faults.push(messageOf(err));
   }
   const body = bodyAt(lines);
-  if (body === -1) reading.faults.push('the spec has no area — an area is a heading ## N. Title');
+  if (body === -1) reading.faults.push('the spec has no section — a section is a heading ## N. Title');
   else for (const block of blocksOf(lines, body)) readBlock(reading, block);
   const read = reading.opened.map((opened) => finished(reading, opened));
   return { lines: read, headings: reading.headings, faults: [...reading.faults, ...wholeFaults(read, joined)] };
@@ -677,19 +677,19 @@ function specScenarios(text, joined = false) {
 }
 
 /**
- * An area's words as a joined spec holds them: its text under its heading,
- * verbatim; '' for an area the spec lacks.
- * @param {string} text @param {string} area
+ * A section's words as a joined spec holds them: its text under its heading,
+ * verbatim; '' for a section the spec lacks.
+ * @param {string} text @param {string} number
  */
-function areaText(text, area) {
-  const section = specSections(text).get(area);
+function joinedSectionText(text, number) {
+  const section = specSections(text).get(number);
   return section === undefined ? '' : section.text.split('\n').slice(1).join('\n').trim();
 }
 
 /**
  * The sections a reference cites, each verbatim from a spec's text, in the
  * order cited, each once — a range's in the spec's order, a part whose own
- * area is drawn left out. Refuses, naming the reference, what
+ * section is drawn left out. Refuses, naming the reference, what
  * `citedSections` does, a section the spec lacks, and a range run backwards.
  * @param {string} text @param {string} reference @returns {Section[]}
  */
@@ -729,5 +729,5 @@ function readCitedSections(cwd, unit, reference) {
 
 module.exports = {
   SPEC_FILE, specPath, readSpec, headingLevels, citedSections, specSections, scenarioBlocks, specReading, specStatements, specScenarios, sectionsCited, readCitedSections,
-  specIntroduction, areaText, fencedLines, unclosedFence, rowsOf, sectionEnd, DRAWS_ON,
+  specIntroduction, joinedSectionText, fencedLines, unclosedFence, rowsOf, sectionEnd, DRAWS_ON,
 };

@@ -9,13 +9,13 @@
 // The plan the directive writes is one JSON object:
 // - `phases`, required: the cut as `cut` takes it (cut.cjs), in build order,
 //   a phase built before the migration `{name, goal, sections, built:
-//   true}`, its sections the areas its old plan built (21.8.6), an area of
+//   true}`, its sections those its old plan built (21.8.6), a section of
 //   the joined spec that no old plan built placed by a phase still to build,
 //   and each phase the old plan put in the tracker naming its parent there
 //   by the tracker's own id, `tracker` (21.8.8);
-// - `scenarios`: by the number of the area each belongs to, the text of the
+// - `scenarios`: by the number of the section each belongs to, the text of the
 //   scenarios the unfinished phases place (21.8.7), one line each, which
-//   `spec.md` takes as the area's block of scenarios after it, `## N-S.
+//   `spec.md` takes as the section's block of scenarios after it, `## N-S.
 //   Scenarios for §N`, numbered `N.S1` on in the order given, where the cut
 //   finds them (11.5.9);
 // - `notes`: the notes for later, each its text — what the build must
@@ -35,12 +35,12 @@
 // It refuses, writing nothing: outside the migration; a unit the project
 // lacks, one whose specs the migration did not join (`spec.joined`, 078) —
 // a quick-fix's never are — and one this cut has marked (below); a plan it
-// cannot read, or of another shape; scenarios for an area `spec.md` lacks,
+// cannot read, or of another shape; scenarios for a section `spec.md` lacks,
 // or text that is not one line; a note holding nothing, or a heading at
 // level one or two (notes.cjs); a correction of another shape, or ending a
 // task of a phase naming no tracker parent; two phases naming one tracker
 // parent; a phase marked built naming no tracker parent, or no section, and
-// one still to build placing no scenario; an area of `spec.md` no phase places,
+// one still to build placing no scenario; a section of `spec.md` no phase places,
 // naming it, its sections or a scenario; and the cut, against `spec.md` as
 // its scenarios leave it, as `cut` refuses it.
 // Unlike `cut`, it marks a phase built and names its tracker parent anywhere
@@ -53,7 +53,7 @@
 // as ended, and refused, every fault named and the tracker left as it was,
 // where a correction names a task no adopted phase holds, or titles it
 // otherwise than the tracker, where a phase marked built holds a task
-// neither done nor closed or names a section outside the area of its old
+// neither done nor closed or names an address outside the section of its old
 // plan's topic — the topic its plan's root names, a single-topic unit's
 // plan the whole spec's — a phase not marked built holds none, or a link
 // holds a task neither done nor closed after one neither, of a later phase
@@ -69,9 +69,9 @@
 // cut, the build begun in step, `build: {position: 'step'}`, which the
 // person switches with `workunit position` (P3), naming the tasks of the
 // phases not built that the tracker holds done, `done_before`, each built
-// and landed before Ledger (derivations.cjs, `landedBefore`), and the areas
-// each task of them neither done nor closed cites, `cites: {"N.n": ["<area>",
-// …]}`, a task citing none left out (`citedAreas`), and every item past the
+// and landed before Ledger (derivations.cjs, `landedBefore`), and the sections
+// each task of them neither done nor closed cites, `cites: {"N.n": ["<section>",
+// …]}`, a task citing none left out (`oldTaskCites`), and every item past the
 // topics', the old plan's and its review's, dropped (P12, old-layout.cjs's
 // `PAST_THE_TOPICS`) — committed to the state
 // branch, the commit held for the migration's (21.9.3). Last, the mark,
@@ -84,8 +84,8 @@
 // before 15 February 2026; `{root}/specification/{topic}/specification.md`
 // from then, its root `docs/workflow` or the old state (old-layout.cjs's
 // `OLD_STATE`); and `{old state}/{unit}/specification/{topic}/specification.md`
-// once the work was kept by unit, the unit the one cut. Each topic joined is the area of
-// its place in `spec.joined`, the areas in the spec's order; a path naming
+// once the work was kept by unit, the unit the one cut. Each topic joined is the section of
+// its place in `spec.joined`, the sections in the spec's order; a path naming
 // another unit, or a topic not joined, cites none.
 // ---------------------------------------------------------------------------
 
@@ -98,7 +98,7 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { migrationRuns } = require('./state-worktree.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { specJoined, joinedTopics, areaOfAddress } = require('./derivations.cjs');
+const { specJoined, joinedTopics, sectionOfAddress } = require('./derivations.cjs');
 const { OLD_STATE, OLD_PLANNING, PAST_THE_TOPICS } = require('../../../ledger-migrate/scripts/old-layout.cjs');
 const { readSpec, specPath, specReading, rowsOf, fencedLines, SPEC_FILE } = require('./spec-sections.cjs');
 const { phasesOf, placing, specIn, againstSpec, refuse } = require('./cut.cjs');
@@ -117,7 +117,7 @@ const MIGRATING_USAGE = 'cut <work-unit> --migrating --file <plan.json>';
 /** What a plan may hold, `phases` the one it must. */
 const PLAN_KEYS = Object.freeze(['phases', 'scenarios', 'notes', 'corrections', 'answers']);
 
-const PLAN_SHAPE = '{"phases": [the cut\'s phases], "scenarios": {"<area>": ["<text>", …]}, "notes": ["<text>", …], "corrections": [{"was", "found", "changed"}, …], "answers": {…}}';
+const PLAN_SHAPE = '{"phases": [the cut\'s phases], "scenarios": {"<section>": ["<text>", …]}, "notes": ["<text>", …], "corrections": [{"was", "found", "changed"}, …], "answers": {…}}';
 
 /** What a correction says, each one line. */
 const CORRECTION_SAYS = Object.freeze(['was', 'found', 'changed']);
@@ -135,32 +135,32 @@ const TYPES = Object.freeze({ bugfix: 'fix' });
 const migratedType = (workType) => TYPES[/** @type {keyof TYPES} */ (workType)] ?? 'feat';
 
 const LEVEL_TWO = /^## /;
-const AREA_OF = /^## ([0-9]+)\. /;
+const SECTION_OF = /^## ([0-9]+)\. /;
 const SCENARIOS_OF = /^## [0-9]+-S\. /;
-const AREA_NUMBER = /^[1-9][0-9]*$/;
+const SECTION_NUMBER = /^[1-9][0-9]*$/;
 const SHOWN_TASK = /^([1-9][0-9]*)\.([1-9][0-9]*)$/;
 
 /** An old spec's path in a task's text (the header's): the unit's folder where it names one, and the topic. */
 const OLD_SPEC_PATH = new RegExp(`(?:docs/workflow|${OLD_STATE.replace('.', '\\.')})/(?:([^/\\s\`'"()]+)/)?specification/([^/\\s\`'"()]+?)(?:/specification)?\\.md`, 'g');
 
 /**
- * The areas an old task's text cites (the header's), in the spec's order.
- * @param {string} text @param {string} unit @param {string[]} topics the topics joined, area by area @returns {string[]}
+ * The sections an old task's text cites (the header's), in the spec's order.
+ * @param {string} text @param {string} unit @param {string[]} topics the topics joined, section by section @returns {string[]}
  */
 function oldCitations(text, unit, topics) {
-  const areas = [...text.matchAll(OLD_SPEC_PATH)].flatMap(([, folder, topic]) => (folder === undefined || folder === unit ? [topics.indexOf(topic) + 1] : []));
-  return [...new Set(areas.filter((area) => area > 0))].sort((a, b) => a - b).map(String);
+  const sections = [...text.matchAll(OLD_SPEC_PATH)].flatMap(([, folder, topic]) => (folder === undefined || folder === unit ? [topics.indexOf(topic) + 1] : []));
+  return [...new Set(sections.filter((section) => section > 0))].sort((a, b) => a - b).map(String);
 }
 
 /**
- * The areas each task neither done nor closed cites, by the task, shown; a
+ * The sections each task neither done nor closed cites, by the task, shown; a
  * task citing none left out.
  * @param {{task: string, text: string}[]} open @param {string} unit @param {string[]} topics @returns {Record<string, string[]>}
  */
 function citesOf(open, unit, topics) {
   return Object.fromEntries(open.flatMap(({ task, text }) => {
-    const areas = oldCitations(text, unit, topics);
-    return areas.length === 0 ? [] : [[task, areas]];
+    const sections = oldCitations(text, unit, topics);
+    return sections.length === 0 ? [] : [[task, sections]];
   }));
 }
 
@@ -170,13 +170,13 @@ const markPath = (cwd, unit) => statePath(cwd, '.cache', 'migrate', 'cut', `${un
 /** @param {unknown} text */
 const isLine = (text) => typeof text === 'string' && text.trim() !== '' && !/[\r\n]/.test(text);
 
-/** The faults in a plan's scenarios, by area. @param {unknown} scenarios */
+/** The faults in a plan's scenarios, by section. @param {unknown} scenarios */
 function scenarioFaults(scenarios) {
-  if (!isObject(scenarios)) return ['the plan\'s scenarios are not lists of text by area number'];
-  return Object.entries(scenarios).flatMap(([area, texts]) => {
-    if (!AREA_NUMBER.test(area)) return [`the plan's scenarios name "${area}", which is no area's number`];
-    if (!Array.isArray(texts) || texts.length === 0) return [`the plan's scenarios for area ${area} are not a list of text`];
-    return texts.flatMap((text, at) => (isLine(text) ? [] : [`scenario ${area}.S${at + 1} is not one line of text`]));
+  if (!isObject(scenarios)) return ['the plan\'s scenarios are not lists of text by section number'];
+  return Object.entries(scenarios).flatMap(([section, texts]) => {
+    if (!SECTION_NUMBER.test(section)) return [`the plan's scenarios name "${section}", which is no section's number`];
+    if (!Array.isArray(texts) || texts.length === 0) return [`the plan's scenarios for section ${section} are not a list of text`];
+    return texts.flatMap((text, at) => (isLine(text) ? [] : [`scenario ${section}.S${at + 1} is not one line of text`]));
   });
 }
 
@@ -220,9 +220,9 @@ function correctionFaults(corrections, phases) {
 const trackerCorrections = (unit, corrections) => corrections.flatMap(({ task, title, to, found }) => (task === undefined ? [] : [{ ref: parseShownTask(unit, task), title: /** @type {string} */ (title), to: /** @type {'done'|'closed'} */ (to), why: found }]));
 
 /**
- * The topics joined, area by area, against which a phase built names its
+ * The topics joined, section by section, against which a phase built names its
  * sections: an epic's; null for a single-topic unit, whose plan built the
- * whole spec (task-verbs.cjs, `areaFaults`).
+ * whole spec (task-verbs.cjs, `sectionFaults`).
  * @param {Record<string, any>} manifest @returns {string[]|null}
  */
 const cutTopics = (manifest) => (manifest.work_type === 'epic' ? joinedTopics(manifest) : null);
@@ -273,21 +273,21 @@ function migratedFaults(phases) {
     if (!('built' in phase)) return phase.scenarios.length === 0 ? [`phase ${at + 1} places no scenario — a phase still to build proves one at least`] : [];
     return [
       ...(phase.tracker === undefined ? [`phase ${at + 1} is marked built and names no tracker parent — a phase built before the migration is its old plan's, adopted from the tracker`] : []),
-      ...(phase.sections.length === 0 ? [`phase ${at + 1} is marked built and names no section — a phase built before the migration names the area its old plan built`] : []),
+      ...(phase.sections.length === 0 ? [`phase ${at + 1} is marked built and names no section — a phase built before the migration names the section its old plan built`] : []),
     ];
   });
 }
 
 /**
- * The faults of an area of the spec no phase places: names it, its sections
+ * The faults of a section of the spec no phase places: names it, its parts
  * or a scenario of it.
  * @param {string} text the spec @param {Phase[]} phases
  */
 function placedFaults(text, phases) {
-  const placed = new Set(phases.flatMap((phase) => [...placing(phase).sections, ...placing(phase).scenarios].map(areaOfAddress)));
+  const placed = new Set(phases.flatMap((phase) => [...placing(phase).sections, ...placing(phase).scenarios].map(sectionOfAddress)));
   return specReading(text, true).headings
-    .filter((heading) => heading.kind === 'area' && !placed.has(String(heading.number)))
-    .map(({ number, title }) => `§${number} ${title} is placed by no phase — a phase built before the migration names the area its old plan built in its sections, and an area none built is placed by a phase still to build`);
+    .filter((heading) => heading.kind === 'section' && !placed.has(String(heading.number)))
+    .map(({ number, title }) => `§${number} ${title} is placed by no phase — a phase built before the migration names the section its old plan built in its sections, and a section none built is placed by a phase still to build`);
 }
 
 /**
@@ -315,7 +315,7 @@ function planIn(file) {
 
 /**
  * A spec's text cut at each heading at level two outside a fenced block:
- * what comes before the first, then each area and each block of scenarios.
+ * what comes before the first, then each section and each block of scenarios.
  * @param {string} text @returns {string[]}
  */
 function partsOf(text) {
@@ -330,31 +330,31 @@ function partsOf(text) {
   return parts.map((part) => part.join('\n').trimEnd()).filter((part) => part !== '');
 }
 
-/** An area's block of scenarios, numbered in the order given. @param {string} area @param {string[]} texts */
-const scenarioBlock = (area, texts) => [`## ${area}-S. Scenarios for §${area}`, ...texts.map((text, at) => `${area}.S${at + 1} ${text.trim()}`)].join('\n\n');
+/** A section's block of scenarios, numbered in the order given. @param {string} section @param {string[]} texts */
+const scenarioBlock = (section, texts) => [`## ${section}-S. Scenarios for §${section}`, ...texts.map((text, at) => `${section}.S${at + 1} ${text.trim()}`)].join('\n\n');
 
 /**
- * The joined spec with the plan's blocks of scenarios, each after its area,
+ * The joined spec with the plan's blocks of scenarios, each after its section,
  * any block it held before dropped.
  * @param {string} text @param {Record<string, string[]>} scenarios
  */
 function withScenarios(text, scenarios) {
   return `${partsOf(text).filter((part) => !SCENARIOS_OF.test(part)).flatMap((part) => {
-    const area = AREA_OF.exec(part)?.[1];
-    return area !== undefined && Object.hasOwn(scenarios, area) ? [part, scenarioBlock(area, scenarios[area])] : [part];
+    const section = SECTION_OF.exec(part)?.[1];
+    return section !== undefined && Object.hasOwn(scenarios, section) ? [part, scenarioBlock(section, scenarios[section])] : [part];
   }).join('\n\n')}\n`;
 }
 
 /**
  * The spec as the plan's scenarios leave it, refused where they name an
- * area it lacks.
+ * section it lacks.
  * @param {string} cwd @param {string} unit @param {Plan} plan
  */
 function plannedSpec(cwd, unit, plan) {
   const text = readSpec(cwd, unit);
-  const areas = new Set(specReading(text, true).headings.flatMap((heading) => (heading.kind === 'area' ? [String(heading.number)] : [])));
-  const lacking = Object.keys(plan.scenarios).filter((area) => !areas.has(area));
-  if (lacking.length > 0) refuse(lacking.map((area) => `the plan's scenarios are for area ${area}, which ${SPEC_FILE} lacks`));
+  const sections = new Set(specReading(text, true).headings.flatMap((heading) => (heading.kind === 'section' ? [String(heading.number)] : [])));
+  const lacking = Object.keys(plan.scenarios).filter((section) => !sections.has(section));
+  if (lacking.length > 0) refuse(lacking.map((section) => `the plan's scenarios are for section ${section}, which ${SPEC_FILE} lacks`));
   return withScenarios(text, plan.scenarios);
 }
 

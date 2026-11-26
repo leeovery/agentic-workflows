@@ -1,6 +1,6 @@
 # Your task
 
-Every topic of this work is decided, and its spec is written next. Read across all its records — a topic's whole record, each entry's why and what it relies on, with `ledger record <unit> <topic>` — for what falls between the topics: work the decisions create that no topic owns, and two topics whose answers cannot both be built. Then read wider, for conflicting answers: the whole project's current entries in the areas this work touches, found with `knowledge query` and read with `ledger record` and `ledger product` (`node .claude/skills/ledger-engine/scripts/engine.cjs …`), each held against this work's decisions.
+Every topic of this work is decided, and its spec is written next. Read across all its records — a topic's whole record, each entry's why and what it relies on, with `ledger record <unit> <topic>` — for what falls between the topics: work the decisions create that no topic owns, and two topics whose answers cannot both be built. Then read wider, for conflicting answers: the whole project's current entries on the subjects this work touches, found with `knowledge query` and read with `ledger record` and `ledger product` (`node .claude/skills/ledger-engine/scripts/engine.cjs …`), each held against this work's decisions.
 
 ## Where each thing you find goes
 

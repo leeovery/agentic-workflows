@@ -65,7 +65,7 @@ function payments(dir, status, more = {}) {
 /** Each entry's short id by name, filled as the world is built. @type {Record<string, string>} */
 const made = {};
 
-/** The spec, its statements as given, the second area's part fixed. @param {string[]} statements */
+/** The spec, its statements as given, the second section's part fixed. @param {string[]} statements */
 function spec(statements) {
   return [
     '# Payments', '', '## 1. Cards', '', '### 1.1 The form', '', ...statements.flatMap((line) => [line, '']),
@@ -307,7 +307,7 @@ describe('marks refused, nothing stored', () => {
     writeState(dir, SPEC, '# Payments\n\nNothing numbered.\n');
     const file = marksFile({});
 
-    assert.match(refused([UNIT, '--file', file]), /^spec marks: the spec has no area/);
+    assert.match(refused([UNIT, '--file', file]), /^spec marks: the spec has no section/);
     assert.strictEqual(refused([UNIT]), 'Usage: engine spec marks <work-unit> --file <marks.json>');
   });
 });

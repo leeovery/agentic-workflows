@@ -266,7 +266,7 @@ const cutOf = (phases = PHASES) => ({ phases: Array.from({ length: phases }, (_,
 /**
  * The unit's build finished, in auto — its own branch kept, where its
  * manifest records one — through a cut of a phase for each the tracker
- * holds, each closed, its spec of one area, with the checklists and the
+ * holds, each closed, its spec of one section, with the checklists and the
  * state files given besides — committed on the state branch under
  * `message`, so no landing verb reads it as a change of the test's.
  * @param {string} dir @param {Record<string, unknown>} checklists @param {Record<string, string>} files @param {string} message

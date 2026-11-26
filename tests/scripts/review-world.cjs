@@ -4,8 +4,8 @@
 // The review phase's suites' world and helpers (test-engine-review-*.cjs,
 // test-engine-brief-review.cjs): a project, built once per run and
 // copied for each test, with a feature, `pay`, whose build has finished —
-// its spec of two areas, each with its scenarios, its statements citing
-// the ledger so the second area relies on the first; its cut of two
+// its spec of two sections, each with its scenarios, its statements citing
+// the ledger so the second section relies on the first; its cut of two
 // phases, each closed, their tasks done in the tracker through the default
 // driver, one closed, and landed on main, each commit naming its task —
 // between them a commit naming none and another unit's landing, and another
@@ -18,7 +18,7 @@
 // the person's at the spec, one replaced and so no longer current, one
 // relying on Claude's call on the receipt; and the project's linters.
 // Beside it a quick-fix, a unit whose build has not begun, one whose second phase has not closed, one with no
-// phase closed, one of one area and one of five, each its one phase closed.
+// phase closed, one of one section and one of five, each its one phase closed.
 // A round's suite lands the quick-fix on main, recorded, as its close in
 // another conversation leaves the checkout (`quickFixLanded`).
 // ---------------------------------------------------------------------------
@@ -56,7 +56,7 @@ const ENGINE = 'node .claude/skills/ledger-engine/scripts/engine.cjs';
 const ENGINE_LINE = `engine: \`node ${path.join(__dirname, '../../skills/ledger-engine/scripts/engine.cjs')}\` — the engine by its absolute path, for a call made from a task's worktree`;
 
 /**
- * A spec of two areas, each its scenarios, each statement citing the entry
+ * A spec of two sections, each its scenarios, each statement citing the entry
  * `cites` gives it, where it gives one.
  * @param {{token?: string, copy?: string, refund?: string}} [cites]
  */
@@ -72,16 +72,16 @@ function specOf(cites = {}) {
     '## 2-S. Scenarios for §2', '', '2.S1 Given a charge, when it is refunded whole, then the card is credited. (2.1.1)', '',
   ].join('\n');
 }
-/** An area of a spec, its heading to its last part. @param {string} spec @param {number} area */
-const areaText = (spec, area) => spec.slice(spec.indexOf(`## ${area}. `), spec.indexOf(`\n\n## ${area}-S.`));
-/** The areas by their names in the layout. */
-const AREAS = Object.freeze(['1-cards', '2-refunds']);
-/** Round 1's reads: every area and the test surface. */
-const EVERY = Object.freeze([...AREAS, 'tests']);
+/** A section of a spec, its heading to its last part. @param {string} spec @param {number} section */
+const joinedSectionText = (spec, section) => spec.slice(spec.indexOf(`## ${section}. `), spec.indexOf(`\n\n## ${section}-S.`));
+/** The sections by their names in the layout. */
+const SECTIONS = Object.freeze(['1-cards', '2-refunds']);
+/** Round 1's reads: every section and the test surface. */
+const EVERY = Object.freeze([...SECTIONS, 'tests']);
 
-/** The five-area spec's area titles, in its order. */
+/** The five-section spec's section titles, in its order. */
 const FIVE = Object.freeze(['Cards', 'Refunds', 'Receipts', 'Disputes', 'Payouts']);
-/** A spec of five areas, each with one part and one scenario. */
+/** A spec of five sections, each with one part and one scenario. */
 const fiveSpec = () => ['# Payments', '', ...FIVE.flatMap((title, at) => [
   `## ${at + 1}. ${title}`, '', `### ${at + 1}.1 The ${title.toLowerCase()}`, '', `${at + 1}.1.1 ${title} work.`, '',
   `## ${at + 1}-S. Scenarios for §${at + 1}`, '', `${at + 1}.S1 Given a charge, when ${title.toLowerCase()} run, then they work. (${at + 1}.1.1)`, '',
@@ -248,7 +248,7 @@ function reportText(findings, notes = []) {
   return `# Review\n\n${later}## Findings\n\n${listed}\n\nVerdict: ${findings.every((finding) => finding.startsWith('nit: ')) ? 'pass' : 'fail'}\n`;
 }
 
-/** Every report a round's reads ask for written — each area's pair, the test surface's one — each holding the findings `found` gives it by its name, else none, and the notes for later `noted` gives it. @param {number} round @param {readonly string[]} reads @param {Record<string, string[]>} [found] @param {Record<string, string[]>} [noted] */
+/** Every report a round's reads ask for written — each section's pair, the test surface's one — each holding the findings `found` gives it by its name, else none, and the notes for later `noted` gives it. @param {number} round @param {readonly string[]} reads @param {Record<string, string[]>} [found] @param {Record<string, string[]>} [noted] */
 function reported(round, reads, found = {}, noted = {}) {
   for (const name of reads.flatMap((read) => (read === 'tests' ? ['tests-a'] : [`${read}-a`, `${read}-b`]))) {
     writeState(dir, `${UNIT}/review/round-${round}/${name}.md`, reportText(found[name] ?? [], noted[name] ?? []));
@@ -339,12 +339,12 @@ const reviewCall = (text, why) => decided(dir, `${UNIT}.review`, 'Is this findin
 /** An item filed through `inbox file`, which must succeed, under the frozen clock: its response. @param {object} item */
 const filed = (item) => withFrozenClock(() => ok(dir, ['inbox', 'file', UNIT, '--file', payload('item.json', item)], { env: env() }));
 
-/** Area 1's finding in scope; it answering round 1's first reviewer of area 1, fixed by task 3.1; and that report failing on it. */
-const FOUND = Object.freeze({ area: '1-cards', scope: 'in', call: 'bug', text: 'The receipt is never sent.' });
+/** Section 1's finding in scope; it answering round 1's first reviewer of section 1, fixed by task 3.1; and that report failing on it. */
+const FOUND = Object.freeze({ section: '1-cards', scope: 'in', call: 'bug', text: 'The receipt is never sent.' });
 const RECEIPT = Object.freeze({ ...FOUND, from: ['1-cards-a#1'], fix: '3.1' });
 const FAILING = Object.freeze({ '1-cards-a': ['bug: The receipt is never sent.'] });
 
-/** Round 1 under review: entered, its reports written, failing on area 1's receipt, its fix task 3.1 written. */
+/** Round 1 under review: entered, its reports written, failing on section 1's receipt, its fix task 3.1 written. */
 function firstRoundReady() {
   enter();
   reported(1, EVERY, FAILING);
@@ -367,7 +367,7 @@ function quickFixLanded(dir, file, text) {
   return commit;
 }
 
-/** Round 1 recorded failing, area 1's finding fixed by task 3.1, not yet built. */
+/** Round 1 recorded failing, section 1's finding fixed by task 3.1, not yet built. */
 function firstRoundFailed() {
   firstRoundReady();
   recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
@@ -434,7 +434,7 @@ async function fixParked() {
   await raisedAtReview(MAILED.question, '3.1');
 }
 
-/** Round 1 recorded failing, its fix task 3.1 built and done, and round 2 under review: entered, area 1 named its read, its reports written, `found` its findings. @param {Record<string, string[]>} [found] */
+/** Round 1 recorded failing, its fix task 3.1 built and done, and round 2 under review: entered, section 1 named its read, its reports written, `found` its findings. @param {Record<string, string[]>} [found] */
 function secondRoundReady(found = {}) {
   firstRoundFailed();
   fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
@@ -450,7 +450,7 @@ function storedBriefs() {
 }
 
 module.exports = {
-  UNIT, OTHER, ENGINE, ENGINE_LINE, SESSION_ID, areaText, AREAS, EVERY, FIVE, calls,
+  UNIT, OTHER, ENGINE, ENGINE_LINE, SESSION_ID, joinedSectionText, SECTIONS, EVERY, FIVE, calls,
   useWorld, env, enter, inStep, payload, reportText, reported, named, recorded, refusedRound, taskMade, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, fixClosed, commitFile, data, stateText, lastStateCommit, issued, storedBriefs,
   decided, reviewCall, filed, raisedAtReview, replacedAtReview, reviewPassed, finishClosed, finishReady, FOUND, RECEIPT, FAILING, firstRoundReady, firstRoundFailed, secondRoundReady, fixParked, quickFixLanded,
   ok, okSections, refusedPristine, statePath, writeState, readManifest, git, stateGit, createManifest, initRepo, assert,

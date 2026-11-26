@@ -308,7 +308,7 @@ press away, a scenario opening on what its run drove and checked and the
 evidence kept with the run. The page holds its questions wherever the session
 goes; each has its `▸ discuss` while the session is in the task's unit, the
 discussion being the session's. In the review phase it shows the round: each
-area's read, the fix tasks a failing round brought, what was found, the
+section's read, the fix tasks a failing round brought, what was found, the
 checks not proven, what went to the inbox and the verdict, and what waits on
 you as the build shows it: the review's own questions, then whatever else
 of the review's waits, finish once the review is over and no question waits

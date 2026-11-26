@@ -88,15 +88,15 @@ const MADE = Object.freeze({ who_moved_whom: 'none' });
 const LINTERS = Object.freeze([{ name: 'eslint', command: 'npx eslint .', fix: 'npx eslint . --fix' }, { name: 'tsc', command: 'npx tsc --noEmit' }]);
 const PROJECT_WORDS = 'Always answer in French.';
 
-/** The unit's spec: two areas, the first with two parts, a heading in a fence. */
+/** The unit's spec: two sections, the first with two parts, a heading in a fence. */
 const SPEC = [
   '# Payments', '',
   '## 1. Cards', '', 'A card is taken once.', '',
-  '### 1.1 The form', '', 'The form asks for the number.', '', '```sh', '## 2. Not an area', 'pay --dry-run', '```', '',
+  '### 1.1 The form', '', 'The form asks for the number.', '', '```sh', '## 2. Not a section', 'pay --dry-run', '```', '',
   '### 1.2 The receipt', '', 'A receipt follows every charge.', '',
   '## 2. Refunds', '', 'A refund names its charge.', '',
 ].join('\n');
-const FORM = ['### 1.1 The form', '', 'The form asks for the number.', '', '```sh', '## 2. Not an area', 'pay --dry-run', '```'].join('\n');
+const FORM = ['### 1.1 The form', '', 'The form asks for the number.', '', '```sh', '## 2. Not a section', 'pay --dry-run', '```'].join('\n');
 const REFUNDS = ['## 2. Refunds', '', 'A refund names its charge.'].join('\n');
 
 /** The task branches the world holds, and the folder of the repository nested in the project. */
@@ -173,12 +173,12 @@ function decided(dir, address, decision) {
 /** What the world's decisions are, by name, as their short ids. @type {Record<string, string>} */
 const calls = {};
 
-/** Task 1.1's spec reference: an area and a part, over two lines. */
+/** Task 1.1's spec reference: a section and a part, over two lines. */
 const TAKE_A_CARD = 'Refunds, §2;\nthe form, §1.1';
 
 /**
  * The unit: its spec, its linters, a CLAUDE.md and a project skill; its
- * first phase written — 1.1 citing an area and a part with two additions,
+ * first phase written — 1.1 citing a section and a part with two additions,
  * 1.2 done, 1.3 closed, 1.4 citing a section the spec lacks; Claude's
  * decision over several lines and the person's at its own level, one
  * replaced, and one on its topic; two reports on 1.1 in its build folder,
@@ -445,7 +445,7 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
     const rule = '# Ledger\'s own references\n\nLedger\'s own references never go into the product\'s code or comments: task ids, phase numbers and spec sections. Meeting one in the work, return it as a nit.';
     const read = (/** @type {string} */ role) => fs.readFileSync(path.join(TEMPLATES, `${role}.md`), 'utf8');
 
-    for (const role of ['reviewer', 'test-surface', 'phase-review', 'review-area']) assert.ok(read(role).includes(rule), role);
+    for (const role of ['reviewer', 'test-surface', 'phase-review', 'review-section']) assert.ok(read(role).includes(rule), role);
     assert.ok(!read('builder').includes('Ledger\'s own references'), 'the builder\'s template');
   });
 
@@ -598,7 +598,7 @@ describe('the refusals, nothing written and no brief stored', () => {
       'migration-phase <unit> --directive <id> --phase <N>', 'migration-phase-verifier <unit> --directive <id> --phase <N>', 'phase-cut <unit>', 'sweep <unit>',
       'spec-writer <unit> [--wording <file>]', 'spec-reviewer <unit> --agent <id>',
       'task-writer <unit> <N>', 'consolidation <unit> <N> [--base <branch>]', 'phase-review <unit> <N> [--base <branch>] --letter <a|b>',
-      'review-area <unit> --area <N> --base <branch> --letter <a|b>', 'test-surface <unit> --base <branch>',
+      'review-section <unit> --section <N> --base <branch> --letter <a|b>', 'test-surface <unit> --base <branch>',
       'root-cause-validation <unit> --agent <id>', 'fix-validation <unit> --agent <id>',
     ].map((line) => `engine brief ${line.replace(/[|[\]]/g, '\\$&')}`).join(' \\| ')}$`);
     for (const args of [
@@ -638,7 +638,7 @@ describe('the refusals, nothing written and no brief stored', () => {
       'task-writer': [UNIT, '1'],
       consolidation: [UNIT, '1', '--base', 'main'],
       'phase-review': [UNIT, '1', '--base', 'main', '--letter', 'a'],
-      'review-area': [UNIT, '--area', '1', '--base', 'main', '--letter', 'a'],
+      'review-section': [UNIT, '--section', '1', '--base', 'main', '--letter', 'a'],
       'test-surface': [UNIT, '--base', 'main'],
       'root-cause-validation': [UNIT, '--agent', 'root-cause-validation-001'],
       'fix-validation': [UNIT, '--agent', 'fix-validation-001'],

@@ -8,7 +8,7 @@
 // gate over the tree and put back there (14.S13); its fix task built
 // through the task loop, stopping at its gate, and its fix phase merging at
 // its own before the next round's reads are named (14.S14); round 2
-// reading the area the fix changed and passing; and finish, its gate's yes
+// reading the section the fix changed and passing; and finish, its gate's yes
 // landing nothing left, the fix phase merged with the rest, and handing the
 // work to the start menu (24.1.2). The review phase in auto is
 // test-pipeline-simulation-review.cjs's; a round failing again and
@@ -29,7 +29,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, worlds, CUT_CLOSED_UNIT, answerGate, writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, strayRound, finished,
+  Sim, worlds, CUT_CLOSED_UNIT, answerGate, writePhaseTasks, builders, taskBuilt, sectionRead, testsRead, reviewNext, strayRound, finished,
 } = require('./pipeline-world.cjs');
 
 const WU = CUT_CLOSED_UNIT;
@@ -48,12 +48,12 @@ describe('pipeline simulation: finish in step', () => {
     sim.run(['workunit', 'position', WU, 'step']);
     const { move, fixPhase: phase } = reviewNext(sim, WU);
     assert.strictEqual(move, 'round');
-    areaRead(sim, WU, UNCHECKED);
+    sectionRead(sim, WU, UNCHECKED);
     testsRead(sim, WU);
     writePhaseTasks(sim, WU, phase, 'The review\'s fixes', [{ title: 'Check the hash on read', type: 'fix', scenarios: ['an entry read back'], reference: '§1' }]);
     strayRound(sim, WU, {
       can_now: ['Keep a ledger.'],
-      findings: [{ area: '1-the-work', scope: 'in', call: 'bug', text: 'The ledger never checks its hash on read.', from: ['1-the-work-a#1'], fix: `${phase}.1` }],
+      findings: [{ section: '1-the-work', scope: 'in', call: 'bug', text: 'The ledger never checks its hash on read.', from: ['1-the-work-a#1'], fix: `${phase}.1` }],
     }, 'p');
     assert.strictEqual(fs.existsSync(path.join(sim.dir, 'stray.txt')), false, 'put back: the stray file the round found is gone');
     sim.render(['review-report', WU], { expect: 'content' });
@@ -68,8 +68,8 @@ describe('pipeline simulation: finish in step', () => {
 
     assert.strictEqual(reviewNext(sim, WU).move, 'reads');
     sim.run(['review', 'reads', WU, '1-the-work']);
-    assert.deepStrictEqual(reviewNext(sim, WU).data.reads, ['1-the-work'], 'once its fix phase has merged, the next round reads the area it changed');
-    areaRead(sim, WU);
+    assert.deepStrictEqual(reviewNext(sim, WU).data.reads, ['1-the-work'], 'once its fix phase has merged, the next round reads the section it changed');
+    sectionRead(sim, WU);
     assert.strictEqual(sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger whose entries are checked.'], findings: [] })]).ends, true);
     sim.render(['review-report', WU], { expect: 'content' });
 

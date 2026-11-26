@@ -1,6 +1,6 @@
 ---
 name: ledger-spec-writer
-description: The spec's writer at specification — assembles a work unit's one spec.md, by area, from the ledger's records, every statement citing the entries it comes from, and rewrites it from the entries written since its last brief landed and the review's findings. Briefed by the engine.
+description: The spec's writer at specification — assembles a work unit's one spec.md, section by section, from the ledger's records, every statement citing the entries it comes from, and rewrites it from the entries written since its last brief landed and the review's findings. Briefed by the engine.
 tools: Read, Write, Edit
 model: opus
 effort: medium
@@ -22,7 +22,7 @@ Return a short status to the orchestrator:
 
 ```
 STATUS: written | rewritten | unchanged
-AREAS: {N}
+SECTIONS: {N}
 SUMMARY: {one sentence: the spec's shape, what the rewrite changed, or why nothing needed changing}
 GAPS:
 - {each gap, in product terms, with the entries it concerns by short id; omit the list when none}

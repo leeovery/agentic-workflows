@@ -17,7 +17,7 @@ Seeds take the largest shape among them; a bug or a quick-fix among them rides a
 
 Write it to the DATA's `payload`, this conversation's own:
 - `type` and `name` — a kebab-case name, never asked: the one the person offered, else a single seed's, else derived from the description.
-- `description` — one line in the person's framing; `reason` — one line on why it is this type. For a quick-fix, one `knowledge query` on the area it touches, what it found of earlier work folded into the `reason`, said nowhere first; each point from before that bears on the quick-fix is put to the person, and the `description` carries what they say.
+- `description` — one line in the person's framing; `reason` — one line on why it is this type. For a quick-fix, one `knowledge query` on the code it touches, what it found of earlier work folded into the `reason`, said nowhere first; each point from before that bears on the quick-fix is put to the person, and the `description` carries what they say.
 - `shaped_by` — each part of the product's logs that shaped the work, `.product/sessions/session-NNN.md#{anchor}`; at least one in the product's conversation. A type call, which keeps no log, names the parts its roadmap seeds' `source` lines point at and those the picture's points on the work link to, and none where there are none.
 - `seeds` — the inbox paths it starts from; `roadmap` — the waiting roadmap items it starts from.
 - `from_before` and `shared_files` — for an epic, each point from before that bears on it, `{"id", "point", "file"}`, and each shared file, `{"path", "holds", "kind": "reference|to read"}`, each path from the state root.

@@ -1,6 +1,6 @@
 # Your task
 
-Write this unit's spec, `spec.md`, at the path under "Where the spec goes": one spec for the whole unit, in sections by area, each assembled from the records below, and a topic's log read where a statement needs a why. It is the document the build reads and the person reviews line by line, so every statement says what the product does, for someone building it who has read nothing else.
+Write this unit's spec, `spec.md`, at the path under "Where the spec goes": one spec for the whole unit, in numbered sections, each assembled from the records below, and a topic's log read where a statement needs a why. It is the document the build reads and the person reviews line by line, so every statement says what the product does, for someone building it who has read nothing else.
 
 Where no spec is written yet, write it whole. Where one is, rewrite from what is recorded below, and leave every other line as it stands:
 
@@ -16,7 +16,7 @@ A finding the records contradict, or one already answered, you leave, saying why
 
 - **From the records alone.** Each statement comes from the entries it cites: a decision's answer, or a finding. Say what they decided, never more; where the build would meet a detail no entry decides, that is a gap (below), never a line you fill in.
 - **The why, where the builder needs it.** Where a statement needs to say why a decision was made, take the why from the decision and from its topic's log. A why written in neither is a gap.
-- **Areas chosen by your judgement.** Choose the areas by how the product falls apart for someone building it, never by topic: a topic's entries may feed several areas, and an area draw on several topics.
+- **Sections chosen by your judgement.** Choose the sections by how the product falls apart for someone building it, never by topic: a topic's entries may feed several sections, and a section draws on several topics.
 - **A bugfix's spec is assembled from its investigation**, under "The investigation": the root cause, the fix, and each rule the fix keeps, which names the check that holds it as an invariant does.
 - **Invariants name their check.** Each invariant — a rule that holds across the product — names the hard check that enforces it: an architecture test, a lint, an import-graph rule. One no check can enforce says so.
 - **Canonical assets linked.** Link each canonical asset below from the statement it informs, with a markdown link by its path from the spec's folder, `assets/{file}`.
@@ -26,14 +26,14 @@ A finding the records contradict, or one already answered, you leave, saying why
 
 The engine reads `spec.md` line by line; a spec it cannot read is refused.
 
-- It opens with its title, `# {Title}`. What stands before its first area is its introduction.
-- **An area** is `## N. Title`, numbered from 1; **a part** is `### N.M Title`, inside its area. Every heading stands alone, between blank lines.
-- **A statement** is a paragraph opening with its number and a space, `N.M.K `, inside its part `### N.M`, numbered from 1 within the part — while numbers are held below, as they say. Every requirement is a numbered statement: a block under a heading that opens no statement is refused, an introduction to an area or a part among them.
+- It opens with its title, `# {Title}`. What stands before its first section is its introduction.
+- **A section** is `## N. Title`, numbered from 1; **a part** is `### N.M Title`, inside its section. Every heading stands alone, between blank lines.
+- **A statement** is a paragraph opening with its number and a space, `N.M.K `, inside its part `### N.M`, numbered from 1 within the part — while numbers are held below, as they say. Every requirement is a numbered statement: a block under a heading that opens no statement is refused, an introduction to a section or a part among them.
 - **Blocks** are split on blank lines. A statement owns every block after it up to the next statement, screen or heading: a second paragraph, a list, a fenced block.
 - **Never open a block with a number unless it starts a line.** A paragraph opening `3.2.1 ` is a new statement. To refer to one, put its number later in the sentence: `As 3.2.1 says, …`.
 - **The source bracket closes the statement**: `[Ab12Cd, Ef34Gh]`, the short ids of the entries it comes from, as the records below give them. It is the statement's last thing, nothing after it, not even a full stop. It closes the statement's last text block: a statement with a list or a second paragraph under it carries its bracket at the end of that last block, never on its first paragraph. A fenced block never holds it.
 - **A screen** — what the person sees, drawn — follows the statement it shows: a block opening `Screen` and ending its caption with `:`, its own bracket closing the caption, then the drawing fenced, ```` ```text ````. The caption holds no `.` before its `:`; one that does is not read as a screen.
-- **Scenarios** follow their area, under `## N-S. Scenarios for §N`, after the area's last part and before the next area: each a paragraph opening `N.Sk `, numbered from 1, in Given, when, then, closing on the statements it proves in parentheses, `(1.1.1, 1.2.3)` — never a bracket.
+- **Scenarios** follow their section, under `## N-S. Scenarios for §N`, after the section's last part and before the next section: each a paragraph opening `N.Sk `, numbered from 1, in Given, when, then, closing on the statements it proves in parentheses, `(1.1.1, 1.2.3)` — never a bracket.
 - **Never a number another way:** `1.1.1.`, `- 1.1.1` and `**1.1.1**` do not start a line, and every number is given once.
 
 ````markdown

@@ -302,24 +302,24 @@ function epicView(at, atMenu) {
 
 /** The spec's sections and the phases cut, as LATELY says them of the spec landed, null where the spec is not written. @param {BoardAt} at */
 function landedWords(at) {
-  const areas = specAreas(at);
-  if (areas === null) return null;
+  const count = sectionCount(at);
+  if (count === null) return null;
   const cut = cutLength(at.manifest);
-  return [counted(areas, 'section'), ...(cut > 0 ? [`${counted(cut, 'phase')} cut`] : [])].join(', ');
+  return [counted(count, 'section'), ...(cut > 0 ? [`${counted(cut, 'phase')} cut`] : [])].join(', ');
 }
 
 /** How many sections the unit's spec holds, null where it is not written. @param {BoardAt} at */
-function specAreas(at) {
+function sectionCount(at) {
   const file = specPath(at.cwd, at.unit);
-  return fs.existsSync(file) ? specReading(fs.readFileSync(file, 'utf8'), specJoined(at.manifest)).headings.filter(({ kind }) => kind === 'area').length : null;
+  return fs.existsSync(file) ? specReading(fs.readFileSync(file, 'utf8'), specJoined(at.manifest)).headings.filter(({ kind }) => kind === 'section').length : null;
 }
 
 /** The spec's sections, and the build phases cut once it is complete, else the passes reported, as the tab says them. @param {BoardAt} at */
 function specWords(at) {
-  const areas = specAreas(at);
-  if (areas === null) return '';
+  const count = sectionCount(at);
+  if (count === null) return '';
   const after = buildBegun(at.manifest) ? counted(cutLength(at.manifest), 'build phase') : counted(reportedOf(at).length, 'pass', 'passes');
-  return `${counted(areas, 'section')} · ${after}`;
+  return `${counted(count, 'section')} · ${after}`;
 }
 
 /** The cut's tasks done, of them while the build runs, as the tab says them, or the start menu's words before it has any; the review's fix tasks are not the build's. @param {BoardAt} at */

@@ -41,7 +41,7 @@ Your own coding rules stay where you keep them, in the project's skills and your
 
 ## Bugs found after review
 
-Where the project has a verify setup, a bugfix's investigation records which area of the feature map the bug sits in, and which piece of work built the code it fixes. Ledger's measures count the bugs found after review by area, for Claude to read when you ask how the work is holding up. No flag is raised on any screen because of it.
+Where the project has a verify setup, a bugfix's investigation records which part of the feature map the bug sits in, and which piece of work built the code it fixes. Ledger's measures count the bugs found after review by part, for Claude to read when you ask how the work is holding up. No flag is raised on any screen because of it.
 
 ## Verification never quiets the questions
 

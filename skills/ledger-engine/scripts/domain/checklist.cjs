@@ -34,7 +34,7 @@
 // of the cut naming its scenarios and its sections, what it relies on maybe nothing; every
 // statement and screen of `spec.md` traced to the ledger (spec-trace.cjs), a
 // spec its grammar cannot read failing it; every part of `spec.md` drawn on
-// by a phase, directly or through its area, an area with no parts whole;
+// by a phase, directly or through its section, a section with no parts whole;
 // the review's last pass reported on `spec.md`'s print as it stands, no pass
 // in flight, no gap it found waiting on the person and nothing it left
 // waiting, for the writer or to be surfaced (spec-passes.cjs); every file the
@@ -256,7 +256,7 @@ function phasesComplete({ cwd, unit, manifest, warnings }) {
     && cutRequests(cwd, at, warnings).length === 0;
 }
 
-/** Every part of the spec drawn on by a phase of the cut, directly or through its area; an area with no parts, whole. @param {Named} named */
+/** Every part of the spec drawn on by a phase of the cut, directly or through its section; a section with no parts, whole. @param {Named} named */
 function sectionsDrawn({ cwd, unit, manifest }) {
   const phases = cutPhases(manifest);
   if (phases.length === 0) return false;

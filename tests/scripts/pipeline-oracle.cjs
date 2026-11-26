@@ -316,9 +316,9 @@ function auditState(dir, label) {
     const conclusion = manifest.checklists?.conclusion;
     if (conclusion !== undefined) {
       assert.deepStrictEqual([manifest.work_type, Object.keys(conclusion)], ['bugfix', [wu]], ctx(`${wu}: a conclusion close on a ${manifest.work_type}, or keyed by another topic`));
-      const { closed, voided, taken, hunt, root_cause: rootCause, fix, fixes, area, ...more } = conclusion[wu];
+      const { closed, voided, taken, hunt, root_cause: rootCause, fix, fixes, part, ...more } = conclusion[wu];
       assert.deepStrictEqual([typeof closed, typeof hunt, typeof rootCause, typeof fix, more], ['string', 'string', 'string', 'string', {}], ctx(`${wu}: a conclusion close out of its shape`));
-      assert.ok([voided, taken, fixes, area].every((field) => field === undefined || typeof field === 'string'), ctx(`${wu}: a conclusion close's optional fields out of their shape`));
+      assert.ok([voided, taken, fixes, part].every((field) => field === undefined || typeof field === 'string'), ctx(`${wu}: a conclusion close's optional fields out of their shape`));
       const item = manifest.phases?.investigation?.items?.[wu];
       if (item?.status === 'completed') assert.strictEqual(conclusion[wu].taken, item.concluded_at, ctx(`${wu}: concluded at ${item.concluded_at}, its close taken at ${conclusion[wu].taken}`));
     }

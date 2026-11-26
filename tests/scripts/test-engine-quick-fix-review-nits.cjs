@@ -54,7 +54,7 @@ describe('19.S23: a quick-fix\'s review round passing with a nit to fix', () => 
     const { ask, decide } = ledgerReadHelpers(() => dir);
     const call = decide(`${UNIT}.review`, ask(`${UNIT}.review`, 'Is the man page this change\'s?'), 'Dropped: the man page is generated.');
     const answered = run(['review', 'notes', UNIT, '--file', payload('notes.json', {
-      findings: [{ area: 'notes', scope: 'out', call: 'nit', text: 'The man page spells it --color.', from: [`notes#${note}`], drop: 'The man page is generated.', ledger: call }],
+      findings: [{ section: 'notes', scope: 'out', call: 'nit', text: 'The man page spells it --color.', from: [`notes#${note}`], drop: 'The man page is generated.', ledger: call }],
     })]);
 
     assert.deepStrictEqual([done.next, answered.next], [undefined, CLOSE]);

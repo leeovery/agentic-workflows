@@ -6,12 +6,12 @@
 // task-verbs.cjs; 21.7.1, 21.8.4–21.8.8, 21.5.21, 11.5.8, 11.5.9, P3, E6,
 // E13): a unit whose building started cut by the migration, its plan
 // applied whole — its old plans' phases the cut, the built ones name, goal,
-// the areas their old plan built and built, the unfinished ones their
-// scenarios, written into the joined spec's block for their area, their
+// the sections their old plan built and built, the unfinished ones their
+// scenarios, written into the joined spec's block for their section, their
 // sections and what they rely on; each phase's tracker parent adopted,
 // every task's id and tracker state as they stood but the type of each not
 // ended, its other tags kept; the tasks of the phases not built it holds
-// done named done before, a cancelled one not among them; the areas each
+// done named done before, a cancelled one not among them; the sections each
 // task of them not ended cites by an old spec's path, in each of its forms,
 // recorded once each, a path naming another unit or a topic not joined
 // citing none and a task citing none left out; the notes for later written
@@ -19,21 +19,21 @@
 // for the migration's commit, then the unit marked. The unit read after as
 // the build reads it: its built phases merged and closed, with no
 // checklist, in the build's standing, its progress, an adopted phase
-// written, and its review's fix numbering; how much of an area was built
+// written, and its review's fix numbering; how much of a section was built
 // before the migration, from the phases placing it alone; its joined
-// spec's areas on the board's section page, in the task writer's and
-// builder's briefs and as the review's areas; concluded from the move on,
+// spec's sections on the board's section page, in the task writer's and
+// builder's briefs and as the review's sections; concluded from the move on,
 // before any cut, for the spec's land and the layout's hook. Refused, the
 // tracker read through and nothing written to it or anywhere else: a plan
 // marking built a phase with a task open, or not built one with none, the
-// tracker winning; a built phase naming a section outside the area of its
+// tracker winning; a built phase naming a section outside the section of its
 // old plan's topic; a link holding a task not ended after an unfinished one
 // of a later phase or another unit's, naming each by its titles and the
 // remedy, the tracker's, the tracker left as it was so a plan cut in the
 // link's order is then taken, or, the link taken off, the waiting phase
 // relying on the other unit (21.S62); and, writing nothing at all, a built phase
 // naming no tracker parent or no section, a phase still to build placing no
-// scenario, an area of the joined spec no phase places, and every refusal
+// scenario, a section of the joined spec no phase places, and every refusal
 // of the verb's own —
 // outside the migration, a unit marked or not joined, a plan of another
 // shape or whose cut the spec refuses. A run killed at each of its writes
@@ -74,7 +74,7 @@ const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { jsonText } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 const { briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { markPath, migratedType, oldPlanOrder } = require(path.join(SCRIPTS, 'domain/cut-migrating.cjs'));
-const { areaBuilt } = require(path.join(SCRIPTS, 'domain/derivations.cjs'));
+const { sectionBuilt } = require(path.join(SCRIPTS, 'domain/derivations.cjs'));
 
 const HELD = 'held for the migration\'s commit';
 
@@ -201,7 +201,7 @@ function world() {
   return copyWorld(template, path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'cut-migrating-')), 'shop'));
 }
 
-/** The epic's plan as the directive writes it: three phases built, each with the area its old plan built, two not, the tracker parents named. */
+/** The epic's plan as the directive writes it: three phases built, each with the section its old plan built, two not, the tracker parents named. */
 function shopPlan() {
   const [cart1, cart2] = PLANS.cart.phases;
   const [pay1, pay2, pay3] = PLANS.pay.phases;
@@ -289,7 +289,7 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
   beforeEach(() => { dir = world(); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
-  it('21.S28: two specs joined, one built and one partly, cut through the verbs — the built plan\'s phases name, goal, sections and built, the unfinished ones their scenarios, sections and relies-on, their scenarios in spec.md\'s block for their area; each phase naming its tracker parent; every task\'s id and tracker state as they stood, each neither done nor closed now typed feat beside its other tags; the tasks done before, and the areas each task not ended cites; the build begun in step and the items of the old plan and its review gone, all held, the unit marked (21.5.21, 11.5.8, 11.5.9, P3)', () => {
+  it('21.S28: two specs joined, one built and one partly, cut through the verbs — the built plan\'s phases name, goal, sections and built, the unfinished ones their scenarios, sections and relies-on, their scenarios in spec.md\'s block for their section; each phase naming its tracker parent; every task\'s id and tracker state as they stood, each neither done nor closed now typed feat beside its other tags; the tasks done before, and the sections each task not ended cites; the build begun in step and the items of the old plan and its review gone, all held, the unit marked (21.5.21, 11.5.8, 11.5.9, P3)', () => {
     const before = SIDE.apartFromNames(statePath(dir), 'shop', false);
     const plan = shopPlan();
 
@@ -331,19 +331,19 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     assert.deepStrictEqual(ok(dir, ['checklist', 'show', 'phase-start', 'shop', '4'], { env: SESSION }).items.find(({ key }) => key === 'relies-on-done').state, 'done');
   });
 
-  it('tells how much of an area was built before the migration from the phases placing it — by their sections, scenarios or a task\'s citation — built where each placing it was built, partly where some was or holds a task done before, none where none was and for a unit that landed nothing before, a task of phase 12 never phase 1\'s (21.8.8)', () => {
+  it('tells how much of a section was built before the migration from the phases placing it — by their sections, scenarios or a task\'s citation — built where each placing it was built, partly where some was or holds a task done before, none where none was and for a unit that landed nothing before, a task of phase 12 never phase 1\'s (21.8.8)', () => {
     const built = (/** @type {string[]} */ sections) => ({ name: 'Built', goal: 'Built.', sections, built: true });
     const toBuild = (/** @type {string[]} */ sections) => ({ name: 'To build', goal: 'To build.', sections, scenarios: [], relies_on: [] });
     const unit = (/** @type {object[]} */ phases, build = {}) => ({ cut: { phases }, build: { position: 'step', ...build } });
-    const areas = (/** @type {Record<string, any>} */ manifest, /** @type {string[]} */ numbers) => numbers.map((area) => areaBuilt(manifest, area));
+    const sections = (/** @type {Record<string, any>} */ manifest, /** @type {string[]} */ numbers) => numbers.map((section) => sectionBuilt(manifest, section));
 
     assert.deepStrictEqual([
-      areas(unit([built(['1']), built(['1.2']), toBuild(['2']), toBuild(['3'])], { done_before: ['3.1'] }), ['1', '2', '3', '4']),
-      areas(unit([built(['1']), toBuild(['1', '2'])]), ['1', '2']),
-      areas(unit([built(['1']), toBuild(['2'])], { cites: { '2.1': ['1'] } }), ['1', '2']),
-      areas(unit([toBuild(['1']), toBuild(['2'])], { cites: { '2.1': ['1'] } }), ['1', '2']),
-      areas(unit([toBuild(['1'])], { done_before: ['12.1'] }), ['1']),
-      areas(unit([built(['2'])], { cites: { '12.1': ['1'] } }), ['1']),
+      sections(unit([built(['1']), built(['1.2']), toBuild(['2']), toBuild(['3'])], { done_before: ['3.1'] }), ['1', '2', '3', '4']),
+      sections(unit([built(['1']), toBuild(['1', '2'])]), ['1', '2']),
+      sections(unit([built(['1']), toBuild(['2'])], { cites: { '2.1': ['1'] } }), ['1', '2']),
+      sections(unit([toBuild(['1']), toBuild(['2'])], { cites: { '2.1': ['1'] } }), ['1', '2']),
+      sections(unit([toBuild(['1'])], { done_before: ['12.1'] }), ['1']),
+      sections(unit([built(['2'])], { cites: { '12.1': ['1'] } }), ['1']),
     ], [
       ['built', 'partly', null, null],
       ['partly', null],
@@ -351,12 +351,12 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
       [null, null],
       [null],
       [null],
-    ], 'built by each phase placing it, a part placing its area; partly where a phase still to build places it too, holds a task done before alone or cites it; none where no phase built or done before places it');
+    ], 'built by each phase placing it, a part placing its section; partly where a phase still to build places it too, holds a task done before alone or cites it; none where no phase built or done before places it');
   });
 
-  it('reads the joined spec as joined: an area whole on the board\'s section page and in the task writer\'s brief, an area a builder\'s task cites in its brief, the spec complete on the board', () => {
+  it('reads the joined spec as joined: a section whole on the board\'s section page and in the task writer\'s brief, a section a builder\'s task cites in its brief, the spec complete on the board', () => {
     cut('shop', shopPlan());
-    const area = '## 2. Pay\n\n#### Cards\n\nVisa and more.\n\n##### Refunds\n\nWhole or part.';
+    const section = '## 2. Pay\n\n#### Cards\n\nVisa and more.\n\n##### Refunds\n\nWhole or part.';
     const task = statePath(dir, '.cache/shop/build/phase-4/task-writer/receipt.md');
     writeState(dir, '.cache/shop/build/phase-4/task-writer/receipt.md', [
       '# Email a receipt', '', '## Type', 'feat', '', '## Problem', 'A refund sends nothing.', '', '## Solution', 'Email the receipt.', '',
@@ -365,11 +365,11 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     ok(dir, ['task', 'create', 'shop', '4', '--file', task], { env: SESSION });
 
     const { view } = ok(dir, ['board', SESSION.CLAUDE_CODE_SESSION_ID, '--tab', 'unit', '--unit', 'shop', '--page', 'section:2'], { env: SESSION });
-    assert.deepStrictEqual(view, { kind: 'section', unit: 'shop', number: '2', title: 'Pay', changed_by: [], text: area.slice('## 2. Pay\n\n'.length) });
-    assert.ok(briefText(['task-writer', 'shop', '5']).includes(`- §2, first built in phase 3, before the migration cut the unit\n\n${area}`), 'the task writer reads the area its phase draws on, first built by a phase built before');
-    assert.ok(briefText(['builder', 'shop', '4.4']).includes(area), 'the builder reads the area its task cites');
+    assert.deepStrictEqual(view, { kind: 'section', unit: 'shop', number: '2', title: 'Pay', changed_by: [], text: section.slice('## 2. Pay\n\n'.length) });
+    assert.ok(briefText(['task-writer', 'shop', '5']).includes(`- §2, first built in phase 3, before the migration cut the unit\n\n${section}`), 'the task writer reads the section its phase draws on, first built by a phase built before');
+    assert.ok(briefText(['builder', 'shop', '4.4']).includes(section), 'the builder reads the section its task cites');
     const old = briefText(['builder', 'shop', '4.2']);
-    assert.deepStrictEqual([old.includes(area), old.includes('## 1. Cart')], [true, false], 'an old task, citing §2 by an old spec\'s path, briefed on §2 alone');
+    assert.deepStrictEqual([old.includes(section), old.includes('## 1. Cart')], [true, false], 'an old task, citing §2 by an old spec\'s path, briefed on §2 alone');
     assert.deepStrictEqual(ok(dir, ['board', SESSION.CLAUDE_CODE_SESSION_ID, '--tab', 'unit', '--unit', 'shop'], { env: SESSION }).view.spec.state, 'complete');
   });
 
@@ -384,11 +384,11 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     }
   });
 
-  it('a unit whose every phase was built goes on to its review: the joined spec\'s areas its areas, its fix phase numbered past the built phases (P14)', () => {
+  it('a unit whose every phase was built goes on to its review: the joined spec\'s sections its sections, its fix phase numbered past the built phases (P14)', () => {
     assert.deepStrictEqual(cut('tally', tallyPlan()).typed, []);
 
     const lines = okSections(dir, ['enter', 'review', 'tally'], { env: SESSION }).sections.split('\n');
-    assert.deepStrictEqual(lines.filter((line) => /^(area|fix phase): /.test(line)), ['area: 1-tally — §1 Tally', 'fix phase: phase 3, where round 1\'s fix tasks are written']);
+    assert.deepStrictEqual(lines.filter((line) => /^(section|fix phase): /.test(line)), ['section: 1-tally — §1 Tally', 'fix phase: phase 3, where round 1\'s fix tasks are written']);
   });
 
   it('21.S29: the tracker stands where the manifest disagrees — the task it credits still in progress, the disagreement an open note; a plan marking a phase built while it holds a task open, or not built while it holds none, refused, the tracker winning, nothing written to it or the unit', () => {
@@ -408,10 +408,10 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
       [`## Note 1\n\n${NOTES[0]}\n\n## Note 2\n\n${NOTES[1]}\n`, 'in-progress']);
   });
 
-  it('refuses, nothing written to the tracker or the unit, a phase marked built naming a section outside the area of its old plan\'s topic — the topic its plan\'s root names', () => {
+  it('refuses, nothing written to the tracker or the unit, a phase marked built naming a section outside the section of its old plan\'s topic — the topic its plan\'s root names', () => {
     const plan = shopPlan();
     assert.strictEqual(trackerUntouched('shop', cutArgs('shop', { ...plan, phases: plan.phases.map((phase, at) => (at === 2 ? { ...phase, sections: ['1', '2'] } : phase)) })),
-      'cut: phase 3 is marked built with §1, outside §2, the area of its old plan\'s topic, pay — a phase built before the migration names only what its old plan built');
+      'cut: phase 3 is marked built with §1, outside §2, the section of its old plan\'s topic, pay — a phase built before the migration names only what its old plan built');
   });
 
   it('says a phase\'s review passes with nothing to read only where nothing was built since the migration: a phase whose every task was closed since, none landed before, is no such phase', () => {
@@ -529,15 +529,15 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     assert.strictEqual(git(statePath(dir), ['rev-parse', 'HEAD']), head);
   });
 
-  it('refuses, writing nothing, a unit it has cut, one whose specs the move did not join, and a plan of another shape, its scenarios or notes amiss, its cut refused by the spec its scenarios leave, an area of the spec placed by no phase, or a phase as the migration holds none — built with no tracker parent or no section, or still to build placing no scenario', () => {
+  it('refuses, writing nothing, a unit it has cut, one whose specs the move did not join, and a plan of another shape, its scenarios or notes amiss, its cut refused by the spec its scenarios leave, a section of the spec placed by no phase, or a phase as the migration holds none — built with no tracker parent or no section, or still to build placing no scenario', () => {
     const plan = shopPlan();
     const cuts = [
       ['memo', plan, 'cut: memo\'s specs were not joined by the migration — it cuts only a unit whose building started, its spec.md those specs joined'],
       ['shop', 'not json', /^cut: .*shop-plan\.json holds no plan: /],
       ['shop', { ...plan, staging: [] }, /^cut: .*shop-plan\.json holds no plan — a plan is \{"phases"/],
       ['shop', { ...plan, scenarios: { 2: ['Given a card,\nwhen it is charged'], first: ['x'] }, notes: ['', '## Note 9\n\nA note in a note.'] },
-        'cut: scenario 2.S1 is not one line of text; the plan\'s scenarios name "first", which is no area\'s number; note 1 holds nothing; note 2 holds a heading at level one or two, which would read as another note — "## Note 9"'],
-      ['shop', { ...plan, scenarios: { ...plan.scenarios, 3: ['Given more.'] } }, 'cut: the plan\'s scenarios are for area 3, which spec.md lacks'],
+        'cut: scenario 2.S1 is not one line of text; the plan\'s scenarios name "first", which is no section\'s number; note 1 holds nothing; note 2 holds a heading at level one or two, which would read as another note — "## Note 9"'],
+      ['shop', { ...plan, scenarios: { ...plan.scenarios, 3: ['Given more.'] } }, 'cut: the plan\'s scenarios are for section 3, which spec.md lacks'],
       ['shop', { ...plan, phases: plan.phases.map((phase, at) => (at === 4 ? { ...phase, scenarios: [], tracker: plan.phases[3].tracker } : phase)) },
         `cut: phases 4 and 5 name one tracker parent, ${plan.phases[3].tracker}; phase 5 places no scenario — a phase still to build proves one at least; scenario 2.S3 is in no phase`],
       ['shop', { ...plan, scenarios: { 2: SCENARIOS.slice(0, 2) }, phases: plan.phases.map((phase, at) => (at === 4 ? { ...phase, scenarios: [] } : phase)) },
@@ -545,9 +545,9 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
       ['shop', { ...plan, phases: plan.phases.map((phase, at) => (at === 0 ? { name: phase.name, goal: phase.goal, sections: ['1'], built: true } : phase)) },
         'cut: phase 1 is marked built and names no tracker parent — a phase built before the migration is its old plan\'s, adopted from the tracker'],
       ['shop', { ...plan, phases: plan.phases.map((phase, at) => (at === 2 ? { ...phase, sections: [] } : phase)) },
-        'cut: phase 3 is marked built and names no section — a phase built before the migration names the area its old plan built'],
+        'cut: phase 3 is marked built and names no section — a phase built before the migration names the section its old plan built'],
       ['shop', { ...plan, phases: plan.phases.map((phase, at) => (at < 2 ? { ...phase, sections: ['2'] } : phase)) },
-        'cut: §1 Cart is placed by no phase — a phase built before the migration names the area its old plan built in its sections, and an area none built is placed by a phase still to build'],
+        'cut: §1 Cart is placed by no phase — a phase built before the migration names the section its old plan built in its sections, and a section none built is placed by a phase still to build'],
     ];
     for (const [unit, given, refusal] of cuts) {
       const error = untouched(cutArgs(String(unit), given));

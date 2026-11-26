@@ -9,8 +9,8 @@
 // ready to build's `review-settled` (checklist.cjs).
 //
 // What changed, one comparison (`changedSince`): a section's own text is the
-// title and introduction, everything before the first area; a part's text;
-// an area's from its heading to its first part, with its block of
+// title and introduction, everything before the first section; a part's text;
+// a section's from its heading to its first part, with its block of
 // scenarios. Its print is that text's fingerprint, by address; a section
 // changed where its print differs or is new, and one gone where it is no
 // longer there. A section's order, and the blank lines between sections,
@@ -122,7 +122,7 @@ const ledgerFacts = (cwd, warnings) => foldLedger(stateRoot(cwd), ID_FACTS, warn
 
 /**
  * Each section's own text, by address, in the spec's order: the title and
- * introduction; a part's text; an area's to its first part, with its block
+ * introduction; a part's text; a section's to its first part, with its block
  * of scenarios after it.
  * @param {string} text @returns {Map<string, string>}
  */

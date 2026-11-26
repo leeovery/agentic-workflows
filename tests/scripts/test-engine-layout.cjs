@@ -8,7 +8,7 @@
 // along as it takes them, a topic's brief the engine's alone (8.7.6) — and a
 // sample outside each folder is in none, today's briefs folder among them; each
 // report place takes a letter per reviewer of the count (13.3.4), and an
-// area's report the area's number and slug, so none is named as another's;
+// section's report the section's number and slug, so none is named as another's;
 // names are compared as the fold spells them; the tracker's store is each
 // shipped task driver's; the product's conversation keeps one folder of
 // logs, its picture beside it; the asset homes, and the spike folders among
@@ -83,7 +83,7 @@ const DRAWN = Object.freeze({
   'pay/build/phases/phase-1/review-a.md': 'file {unit}/build/phases/phase-{N}/review-{letter}.md',
   'pay/build/phases/phase-1/review-b.md': 'file {unit}/build/phases/phase-{N}/review-{letter}.md',
   'pay/build/phases/phase-1/consolidation.md': 'file {unit}/build/phases/phase-{N}/consolidation.md',
-  'pay/build/phases/phase-1/3-checkout-a.md': 'file {unit}/build/phases/phase-{N}/{area}-{letter}.md',
+  'pay/build/phases/phase-1/3-checkout-a.md': 'file {unit}/build/phases/phase-{N}/{section}-{letter}.md',
   'pay/build/phases/phase-1/settlement.json': 'engine {unit}/build/phases/phase-{N}/settlement.json',
   'pay/build/runs/3.S2/run-001.json': 'engine {unit}/build/runs/{n}.S{m}/run-{NNN}.json',
   'pay/review/round-1.md': 'engine {unit}/review/round-{N}.md',
@@ -91,7 +91,7 @@ const DRAWN = Object.freeze({
   'pay/review/round-1.json': 'engine {unit}/review/round-{N}.json',
   'pay/review/round-2-reads.json': 'engine {unit}/review/round-{N}-reads.json',
   'pay/review/round-1/tests-b.md': 'file {unit}/review/round-{N}/tests-{letter}.md',
-  'pay/review/round-1/3-checkout-a.md': 'file {unit}/review/round-{N}/{area}-{letter}.md',
+  'pay/review/round-1/3-checkout-a.md': 'file {unit}/review/round-{N}/{section}-{letter}.md',
 });
 
 /** Paths outside every place: beside each folder's places, a free folder named as a file, a name a placeholder refuses, and a unit's .state/. */
@@ -139,17 +139,17 @@ describe('4.11\'s places (4.11.17)', () => {
     }
   });
 
-  it('an area\'s report is named by the area\'s number and slug, so none is named as the tests\' or a phase review\'s, and one without the number is in no area\'s place', () => {
-    const area = (/** @type {string} */ folder) => `{unit}/${folder}/{area}-{letter}.md`;
+  it('a section\'s report is named by the section\'s number and slug, so none is named as the tests\' or a phase review\'s, and one without the number is in no section\'s place', () => {
+    const section = (/** @type {string} */ folder) => `{unit}/${folder}/{section}-{letter}.md`;
     assert.deepStrictEqual(Object.fromEntries([
       'pay/build/phases/phase-1/review-a.md', 'pay/build/phases/phase-1/1-review-a.md', 'pay/build/phases/phase-1/payments-a.md',
       'pay/review/round-1/tests-a.md', 'pay/review/round-1/3-tests-a.md',
     ].map((rel) => [rel, layoutPlace(rel)?.path ?? null])), {
       'pay/build/phases/phase-1/review-a.md': '{unit}/build/phases/phase-{N}/review-{letter}.md',
-      'pay/build/phases/phase-1/1-review-a.md': area('build/phases/phase-{N}'),
+      'pay/build/phases/phase-1/1-review-a.md': section('build/phases/phase-{N}'),
       'pay/build/phases/phase-1/payments-a.md': null,
       'pay/review/round-1/tests-a.md': '{unit}/review/round-{N}/tests-{letter}.md',
-      'pay/review/round-1/3-tests-a.md': area('review/round-{N}'),
+      'pay/review/round-1/3-tests-a.md': section('review/round-{N}'),
     });
   });
 

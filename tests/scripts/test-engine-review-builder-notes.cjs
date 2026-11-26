@@ -8,7 +8,7 @@
 // Claude's call, listed in the round's report (14.3.5). A note no phase's
 // report took and no round answered stands: the entry names it, `notes#{k}`,
 // with the notes' file; the next round recorded answers it among its items,
-// of the area `notes`; where the round that ended the phase made the fix
+// of the section `notes`; where the round that ended the phase made the fix
 // task, `engine review notes <unit> --file <notes.json>` answers it once
 // that round's fix tasks are done, its findings joining that round's record
 // and report; and finish's checklist holds the review open, naming each
@@ -39,7 +39,7 @@ const linesOf = (key) => enter().sections.split('\n').filter((line) => line.star
 function filedNote(item, title) {
   const call = reviewCall(`Filed: ${title}.`, 'It lies beside the change.');
   const { filed: inbox } = filed({ kind: 'bug', text: `# ${title}\n\nA builder met it.`, call });
-  return { area: 'notes', scope: 'out', call: 'bug', text: `${title}.`, from: [item], inbox, ledger: call };
+  return { section: 'notes', scope: 'out', call: 'bug', text: `${title}.`, from: [item], inbox, ledger: call };
 }
 
 /** `review notes`, which must succeed: its response. @param {object} answers */
@@ -58,7 +58,7 @@ const reviewItem = () => {
 function passedOnAFix() {
   reported(1, EVERY, { '2-refunds-a': ['nit: A refund\'s label is terse.'] });
   fixPhaseWritten(3, [['Word the label', '§2.1']]);
-  recorded({ can_now: ['Pay by card.'], findings: [{ area: '2-refunds', scope: 'in', call: 'nit', text: 'A refund\'s label is terse.', from: ['2-refunds-a#1'], fix: '3.1' }] });
+  recorded({ can_now: ['Pay by card.'], findings: [{ section: '2-refunds', scope: 'in', call: 'nit', text: 'A refund\'s label is terse.', from: ['2-refunds-a#1'], fix: '3.1' }] });
   fixBuilt(3, 1, 'Word the label', 'main', 'src/label.js');
 }
 
@@ -70,7 +70,7 @@ describe('the notes a fix task\'s builder banks, answered by the review phase (1
     assert.strictEqual(refusedNotes({ findings: [] }), 'review notes: round 2 is read once every fix task of round 1 is done — task 3.1 not started');
   });
 
-  it('a note banked in a fix phase is an item of the next round, notes#{k}, named by the entry with the notes\' file — one a phase\'s consolidation took is not — answered out of scope by a finding of the area notes, and listed in the round\'s report', () => {
+  it('a note banked in a fix phase is an item of the next round, notes#{k}, named by the entry with the notes\' file — one a phase\'s consolidation took is not — answered out of scope by a finding of the section notes, and listed in the round\'s report', () => {
     banked('The cut\'s own note.');
     writeState(dir, `${UNIT}/build/phases/phase-2/consolidation.md`, '# Consolidation\n\n## The notes\n\n- Note 1: dropped — the code settled it\n');
     secondRoundReady();
@@ -79,15 +79,15 @@ describe('the notes a fix task\'s builder banks, answered by the review phase (1
     const unanswered = refusedRound({ can_now: [], findings: [] });
     const finding = filedNote(`notes#${note}`, 'Export skips refunds');
     const inScope = refusedRound({ can_now: [], findings: [{ ...finding, scope: 'in', fix: '4.1', inbox: undefined, ledger: undefined }] });
-    const wrongArea = refusedRound({ can_now: [], findings: [{ ...finding, area: '3-reports' }] });
-    const notesArea = refusedRound({ can_now: [], findings: [finding, { ...finding, from: ['1-cards-a#1'] }] });
+    const wrongSection = refusedRound({ can_now: [], findings: [{ ...finding, section: '3-reports' }] });
+    const notesSection = refusedRound({ can_now: [], findings: [finding, { ...finding, from: ['1-cards-a#1'] }] });
     const res = recorded({ can_now: [], findings: [finding] });
 
     assert.deepStrictEqual(lines, [`builder note: notes#${note}`, `notes: ${statePath(dir, `${UNIT}/build/notes.md`)}`]);
     assert.strictEqual(unanswered, `review round: notes#${note} is answered by no finding — every item of every report lands in the round's record (14.3.1)`);
     assert.match(inScope, /finding 1 answers a note for later, which lies beyond the change — its scope is out, and it is filed or dropped, never fixed/);
-    assert.strictEqual(wrongArea, 'review round: finding 1 is of "3-reports", which the round does not read — it reads 1-cards; a finding answering builders\' notes alone is of notes');
-    assert.ok(notesArea.includes('finding 2 is of "notes", which the round does not read — it reads 1-cards;'), notesArea);
+    assert.strictEqual(wrongSection, 'review round: finding 1 is of "3-reports", which the round does not read — it reads 1-cards; a finding answering builders\' notes alone is of notes');
+    assert.ok(notesSection.includes('finding 2 is of "notes", which the round does not read — it reads 1-cards;'), notesSection);
     assert.strictEqual(res.round, 2);
     assert.ok(stateText(`${UNIT}/review/round-2.md`).includes('Export skips refunds (bug)'));
     assert.deepStrictEqual(linesOf('builder note'), []);
@@ -101,7 +101,7 @@ describe('the notes a fix task\'s builder banks, answered by the review phase (1
     const round = enter().sections.split('\n').find((line) => line.startsWith('round: '));
     const open = reviewItem();
     const drop = reviewCall('Dropped: the export\'s refunds.', 'The export is rewritten next month.');
-    const res = answered({ findings: [{ area: 'notes', scope: 'out', call: 'nit', text: 'The export skips refunds.', from: [`notes#${note}`], drop: 'The export is rewritten next month.', ledger: drop }] });
+    const res = answered({ findings: [{ section: 'notes', scope: 'out', call: 'nit', text: 'The export skips refunds.', from: [`notes#${note}`], drop: 'The export is rewritten next month.', ledger: drop }] });
     const commit = lastStateCommit();
 
     assert.strictEqual(underReview, `review notes: round 1 is under review, and answers the builders' notes standing among its items — review round ${UNIT} --file <round.json>`);
@@ -118,7 +118,7 @@ describe('the notes a fix task\'s builder banks, answered by the review phase (1
     enter();
     reported(1, EVERY, { '2-refunds-a': ['nit: A refund\'s label is terse.'] });
     fixPhaseWritten(3, [['Word the label', '§2.1']]);
-    recorded({ can_now: ['Pay by card.'], findings: [{ area: '2-refunds', scope: 'in', call: 'nit', text: 'A refund\'s label is terse.', from: ['2-refunds-a#1'], fix: '3.1' }] });
+    recorded({ can_now: ['Pay by card.'], findings: [{ section: '2-refunds', scope: 'in', call: 'nit', text: 'A refund\'s label is terse.', from: ['2-refunds-a#1'], fix: '3.1' }] });
     const note = banked('The ledger export skips refunds, at src/export.js.');
     const waiting = refusedNotes({ findings: [] });
     fixBuilt(3, 1, 'Word the label', 'main', 'src/label.js');

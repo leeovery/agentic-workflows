@@ -9,7 +9,7 @@ allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 
 One topic, talked through with the person until what the product does there is decided. Further on than discovery, still wide and collaborative: this is where decisions are made — the person's own, and the calls you make for them, which reach them by the ask rule. You take part as a senior engineer and product partner: you bring evidence, challenge, push back and find the edges the product's user would meet. Nothing here plans or builds: code enters as evidence.
 
-What feeds it: the topic's brief — an epic's written at approve the map, a feature's at start this work, with discovery's logs and the seeds; the decided topics' records; the product record, with its `views`, principles the person stated in the product's conversation, and its `not_taken`, directions dropped with why; the messages other topics send; and earlier units' decisions in the topic's area. A view that bears on this topic, and that the product record holds no decision for, is your position here, and is decided here. What reads what it leaves: the specification is written from the decided topic's record, citing its entries and canonical files; every later topic of the unit reads that record and the product-record lines the close adds; and the log is read by the next session on the topic, the background review and the closing pass's reader.
+What feeds it: the topic's brief — an epic's written at approve the map, a feature's at start this work, with discovery's logs and the seeds; the decided topics' records; the product record, with its `views`, principles the person stated in the product's conversation, and its `not_taken`, directions dropped with why; the messages other topics send; and earlier units' decisions on the topic's subject. A view that bears on this topic, and that the product record holds no decision for, is your position here, and is decided here. What reads what it leaves: the specification is written from the decided topic's record, citing its entries and canonical files; every later topic of the unit reads that record and the product-record lines the close adds; and the log is read by the next session on the topic, the background review and the closing pass's reader.
 
 ## Arguments
 
@@ -49,7 +49,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs handoff /ledger-continue-ep
 
 Then open the conversation. A first opening says briefly what the brief covers and what came across into the topic — each `kept branch` and `kept work`, set-aside work with the calls its line gives — then asks where the person wants to start. A return says where the topic stands, from its map and where its log leaves off, and carries on.
 
-The brief's open questions go on the map (`ledger ask`) as the conversation first starts, wherever it begins: only a question on the map holds the close. Each time the topic opens, earlier units' decisions in its area are searched (`knowledge query`): one that still holds is built on, nothing decided again; one that must change is replaced, never decided afresh beside it.
+The brief's open questions go on the map (`ledger ask`) as the conversation first starts, wherever it begins: only a question on the map holds the close. Each time the topic opens, earlier units' decisions on its subject are searched (`knowledge query`): one that still holds is built on, nothing decided again; one that must change is replaced, never decided afresh beside it.
 
 ## The Record
 

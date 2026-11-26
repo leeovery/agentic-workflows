@@ -7,7 +7,7 @@ allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 
 # Specification
 
-The work unit's one spec, `spec.md`: the document its build reads and the person reviews line by line, written by area from the ledger's records, every statement citing the entries it comes from; then the phase cut, and ready to build. You orchestrate: named agents sweep the records, write the spec, review it and cut it, each from a brief the engine issues, and never from this conversation. What they find goes to the ledger, the writer or the person, and you bring the person to ready to build. Nothing here decides the product afresh: a gap the spec meets is decided as any call is, and lands on the ledger.
+The work unit's one spec, `spec.md`: the document its build reads and the person reviews line by line, written section by section from the ledger's records, every statement citing the entries it comes from; then the phase cut, and ready to build. You orchestrate: named agents sweep the records, write the spec, review it and cut it, each from a brief the engine issues, and never from this conversation. What they find goes to the ledger, the writer or the person, and you bring the person to ready to build. Nothing here decides the product afresh: a gap the spec meets is decided as any call is, and lands on the ledger.
 
 ## Arguments
 

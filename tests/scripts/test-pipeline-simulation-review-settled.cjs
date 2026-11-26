@@ -4,7 +4,7 @@
 // The pipeline simulation's review phase settling a stuck round, as its
 // skill runs it (14.6.3): a feature whose build has closed its cut, in auto;
 // round 1 failing, its report drawn and its fix built through the task
-// loop, its builder banking a note for later; round 2 reading the area the
+// loop, its builder banking a note for later; round 2 reading the section the
 // fix changed and failing again on what the fix addressed, the finding
 // dropped by Claude's call and the round settled, the builder's note
 // answered among its items, dropped so too (14.3.5), a stray change in the
@@ -28,7 +28,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, worlds, CUT_CLOSED_UNIT, writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, reviewCall, strayRound,
+  Sim, worlds, CUT_CLOSED_UNIT, writePhaseTasks, builders, taskBuilt, sectionRead, testsRead, reviewNext, reviewCall, strayRound,
 } = require('./pipeline-world.cjs');
 
 const WU = CUT_CLOSED_UNIT;
@@ -45,12 +45,12 @@ describe('pipeline simulation: a stuck round settled', () => {
 
   it('round 2 failing again on what its fix addressed is settled by Claude, a stray change kept at the gate over the tree, and the review is over (14.S15, 14.S13)', () => {
     const { fixPhase: phase } = reviewNext(sim, WU);
-    areaRead(sim, WU, UNCHECKED);
+    sectionRead(sim, WU, UNCHECKED);
     testsRead(sim, WU);
     writePhaseTasks(sim, WU, phase, 'The review\'s fixes', [{ title: 'Check the hash on read', type: 'fix', scenarios: ['an entry read back'], reference: '§1' }]);
     sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, {
       can_now: ['Keep a ledger.'],
-      findings: [{ area: '1-the-work', scope: 'in', call: 'bug', text: 'The ledger never checks its hash on read.', from: ['1-the-work-a#1'], fix: `${phase}.1` }],
+      findings: [{ section: '1-the-work', scope: 'in', call: 'bug', text: 'The ledger never checks its hash on read.', from: ['1-the-work-a#1'], fix: `${phase}.1` }],
     })]);
     sim.render(['review-report', WU], { expect: 'content' });
     assert.strictEqual(reviewNext(sim, WU).move, 'fixes');
@@ -62,14 +62,14 @@ describe('pipeline simulation: a stuck round settled', () => {
     assert.deepStrictEqual([reads.move, reads.data['builder note']], ['reads', [`notes#${note}`]], 'the fix task\'s builder\'s note is an item of the next round');
     sim.run(['review', 'reads', WU, '1-the-work']);
     assert.strictEqual(reviewNext(sim, WU).move, 'round');
-    areaRead(sim, WU, UNCHECKED);
+    sectionRead(sim, WU, UNCHECKED);
     const dropped = reviewCall(sim, WU, 'Is the hash on read, found again, fixed or dropped?', `Dropped: task ${phase}.1 checks the hash on read.`, 'The reader read the hash before the fix.');
     const later = reviewCall(sim, WU, 'Is the export\'s note filed or dropped?', 'Dropped: the export\'s refunds.', 'The export is rewritten next.');
     const settled = strayRound(sim, WU, {
       can_now: ['Keep a ledger whose entries are checked.'],
       findings: [
-        { area: '1-the-work', scope: 'in', call: 'bug', text: 'The ledger never checks its hash on read.', from: ['1-the-work-a#1'], drop: `Fixed by task ${phase}.1.`, ledger: dropped },
-        { area: 'notes', scope: 'out', call: 'nit', text: 'The export skips refunds.', from: [`notes#${note}`], drop: 'The export is rewritten next.', ledger: later },
+        { section: '1-the-work', scope: 'in', call: 'bug', text: 'The ledger never checks its hash on read.', from: ['1-the-work-a#1'], drop: `Fixed by task ${phase}.1.`, ledger: dropped },
+        { section: 'notes', scope: 'out', call: 'nit', text: 'The export skips refunds.', from: [`notes#${note}`], drop: 'The export is rewritten next.', ledger: later },
       ],
       settled: `Task ${phase}.1 checks the hash on read, and its test proves it.`,
     }, 'k');

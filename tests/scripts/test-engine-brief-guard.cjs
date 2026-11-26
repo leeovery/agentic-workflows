@@ -56,7 +56,7 @@ const TASK = [
 /** The two reviewers' reports of the first task's first round, failing it, in the unit's build folder. */
 const REPORTS = Object.freeze([layout.unit(UNIT, 'build/tasks/1.1/round-1-a.md'), layout.unit(UNIT, 'build/tasks/1.1/round-1-b.md')]);
 
-/** The unit, its spec of one area, its first task citing it, and a round's two reports on that task. */
+/** The unit, its spec of one section, its first task citing it, and a round's two reports on that task. */
 const unitWorld = fixtureFrom('brief-guard-', (dir) => {
   createManifest(dir, UNIT, {});
   writeState(dir, layout.unit(UNIT, SPEC_FILE), '# Payments\n\n## 1. Cards\n\nA card is taken once.\n');

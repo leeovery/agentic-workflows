@@ -1441,7 +1441,7 @@ describe('migration 078: a small project', () => {
       run(dir);
       const at = (/** @type {string} */ rel) => fs.readFileSync(path.join(dir, '.ledger/store', rel), 'utf8');
       const reading = specReading(at('spec.md'), true);
-      assert.deepStrictEqual([at('spec.md'), reading.faults, reading.headings.map(({ kind, title }) => `${kind} ${title}`)], [STORE_SPEC, [], ['area Cart', 'area Pay', 'area Ship']]);
+      assert.deepStrictEqual([at('spec.md'), reading.faults, reading.headings.map(({ kind, title }) => `${kind} ${title}`)], [STORE_SPEC, [], ['section Cart', 'section Pay', 'section Ship']]);
       const { spec, phases } = JSON.parse(at('manifest.json'));
       assert.deepStrictEqual([spec, Object.keys(phases.specification.items).sort(), phases.discussion.items.stock], [{ joined: ['cart', 'pay', 'ship'] }, ['cart', 'dropped', 'later', 'old-cart', 'pay', 'ship'], { status: 'completed' }]);
       assert.deepStrictEqual(tree(path.join(dir, '.ledger/store'), 'assets'), ['sketch.md', 'specs/dropped.md', 'specs/later.md', 'specs/old-cart.md', 'specs/stock.md']);

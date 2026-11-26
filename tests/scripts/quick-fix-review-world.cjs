@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // What the suites of a quick-fix's review share
 // (test-engine-quick-fix-review.cjs, -review-rounds.cjs, -review-nits.cjs and
-// test-engine-board-quick-fix-review.cjs): its one area (`AREA`), the
+// test-engine-board-quick-fix-review.cjs): its one section (`SECTION`), the
 // finding round 1's first reader of the change makes, which fix task 2.1
 // fixes (`FOUND`), and where the review hands back once it is over, its
 // close (`CLOSE`); the world, `twoFixesBuilt` (quick-fix-world.cjs) with
@@ -26,11 +26,11 @@ const { reportText } = require('./review-world.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 
-/** The quick-fix's one area, by its name in the layout. */
-const AREA = '1-the-change';
+/** The quick-fix's one section, by its name in the layout. */
+const SECTION = '1-the-change';
 
 /** The finding round 1's first reader of the change makes, and the fix task 2.1 that fixes it. */
-const FOUND = Object.freeze({ area: AREA, scope: 'in', call: 'bug', text: 'The docs still say --color.', from: [`${AREA}-a#1`], fix: '2.1' });
+const FOUND = Object.freeze({ section: SECTION, scope: 'in', call: 'bug', text: 'The docs still say --color.', from: [`${SECTION}-a#1`], fix: '2.1' });
 
 /** Where a quick-fix's review hands back once it is over: its close. */
 const CLOSE = Object.freeze({ kind: 'engine', argv: ['render', 'finish', UNIT] });
@@ -71,7 +71,7 @@ function reviewSteps(dir, as) {
   }
 
   function firstRoundRecorded() {
-    reported(1, [AREA, 'tests'], { [`${AREA}-a`]: [`bug: ${FOUND.text}`] });
+    reported(1, [SECTION, 'tests'], { [`${SECTION}-a`]: [`bug: ${FOUND.text}`] });
     run(['task', 'phase', UNIT, '2', '--title', 'The review\'s fixes, round 1']);
     run(['task', 'create', UNIT, '2', '--file', writeState(dir(), layout.cache('review-fix.md'), fixFile(1, 'Name the flag in the docs').replace('- 1.S1 ', '- '))]);
     run(['review', 'round', UNIT, '--file', payload('round-1.json', { can_now: ['Pass --colour.'], findings: [FOUND] })]);
@@ -100,8 +100,8 @@ function reviewSteps(dir, as) {
 
   function secondRoundPassed() {
     entered();
-    run(['review', 'reads', UNIT, AREA, 'tests']);
-    reported(2, [AREA, 'tests']);
+    run(['review', 'reads', UNIT, SECTION, 'tests']);
+    reported(2, [SECTION, 'tests']);
     return run(['review', 'round', UNIT, '--file', payload('round-2.json', { can_now: ['Pass --colour, and read it in the docs.'], findings: [] })]);
   }
 
@@ -110,11 +110,11 @@ function reviewSteps(dir, as) {
     firstRoundFailed();
     fixTaskBuilt();
     entered();
-    run(['review', 'reads', UNIT, AREA, 'tests']);
-    reported(2, [AREA, 'tests'], { [`${AREA}-a`]: ['nit: The help could name the flag twice.'] });
+    run(['review', 'reads', UNIT, SECTION, 'tests']);
+    reported(2, [SECTION, 'tests'], { [`${SECTION}-a`]: ['nit: The help could name the flag twice.'] });
     run(['task', 'phase', UNIT, '3', '--title', 'The review\'s fixes, round 2']);
     run(['task', 'create', UNIT, '3', '--file', writeState(dir(), layout.cache('review-nit.md'), fixFile(1, 'Name the flag twice').replace('- 1.S1 ', '- '))]);
-    const nit = { area: AREA, scope: 'in', call: 'nit', text: 'The help could name the flag twice.', from: [`${AREA}-a#1`], fix: '3.1' };
+    const nit = { section: SECTION, scope: 'in', call: 'nit', text: 'The help could name the flag twice.', from: [`${SECTION}-a#1`], fix: '3.1' };
     return run(['review', 'round', UNIT, '--file', payload('round-2.json', { can_now: ['Pass --colour.'], findings: [nit] })]);
   }
 
@@ -161,4 +161,4 @@ function quickFixReview(at) {
   return { as, run, refused, issued, closeMenu, ...reviewSteps(at, as) };
 }
 
-module.exports = { AREA, FOUND, CLOSE, closeReached, reviewSteps, quickFixReview };
+module.exports = { SECTION, FOUND, CLOSE, closeReached, reviewSteps, quickFixReview };
