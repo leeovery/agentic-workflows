@@ -465,6 +465,8 @@ NOTHING WAITING
 
 7.1.5 What waits under an area put off (5.4.1) is not counted by 7.1.2 or 7.1.4. [Claude's derivation: 5.4.1, 7.1.1]
 
+7.1.6 A piece of work with one area owes no pass across areas, as a single topic owes none today. [Claude's derivation: 7.1.3; the engine as it is today]
+
 ### 7.2 The close of the whole
 
 7.2.1 Once nothing is waiting anywhere (7.1), the piece of work has one close of its own, and that close is what takes it into the spec. [Lee's ruling, 26 Nov 2026]
@@ -528,6 +530,8 @@ NOTHING WAITING
 10.1.15 The word "epic" goes, from the screens, the docs and the engine alike: one name is used everywhere. [Lee's ruling, 26 Nov 2026: "The ubiquitous language is important… It should have a name that's perfectly clear across the product"]
 
 10.1.16 "Area" means the discussion's unit and nothing else. The top-level parts of the spec, called areas today in the spec and review prose, the glossary and the review's reader brief, are called sections. [Lee's ruling, 26 Nov 2026]
+
+10.1.17 The verify setup's feature map is also grouped by areas today. Those become its parts, under the same rule. [Claude's derivation: 10.1.16]
 
 ## 11. Existing projects
 
