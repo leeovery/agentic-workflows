@@ -481,6 +481,8 @@ NOTHING WAITING
 
 10.1.15 The word "epic" goes, from the screens, the docs and the engine alike: one name is used everywhere. [Lee's ruling, 26 Nov 2026: "The ubiquitous language is important… It should have a name that's perfectly clear across the product"]
 
+10.1.16 "Area" means the discussion's unit and nothing else. The top-level parts of the spec, called areas today in the spec and review prose, the glossary and the review's reader brief, are called sections. [Lee's ruling, 26 Nov 2026]
+
 ## 11. Existing projects
 
 ### 11.1 Where they stand
