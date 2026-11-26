@@ -121,10 +121,9 @@
 //   person's is given — a call the decision point would have let Claude
 //   make alone, drawn (16.17.2, raise.cjs) — a task joining it parks under
 //   all of it as the question's first park holds it. A fact only the person
-//   holds (16.3.8) parks in the same shape, as the ledger holds a fact's
-//   answer, with no lean: its call's lean, why and sort null, its rows any
-//   number, never labelled, decided under no model, marked with none and
-//   never blind. It names no maker, is no entry and is never replaced: it
+//   holds (16.3.8) parks in the same shape: its call's sort null, its lean
+//   and why null where Claude gives none, its rows any number, never
+//   labelled, decided under no model, marked with none and never blind. It names no maker, is no entry and is never replaced: it
 //   waits while what it is about stands open (questions.cjs).
 // - unparked: a task closed in the build, taken off the questions of its
 //   unit that parked it (task-parks.cjs, questions.cjs): the task, as

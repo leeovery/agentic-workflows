@@ -731,7 +731,7 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
     ]);
   });
 
-  it('12.1.4: a keep of a decision a replacement proposed counts as against the lean and marks its task; a fact, which has no lean, marks none — each task\'s pair briefed and a report of its round written', () => {
+  it('12.1.4: a keep of a decision a replacement proposed counts as against the lean and marks its task; a fact, whose answer is the person\'s own, marks none — each task\'s pair briefed and a report of its round written', () => {
     parkedReplacement(1, '2.4');
     parkedFact(2, '2.3');
     beingRead(['2.3', '2.4'], ['a', 'b']);

@@ -36,7 +36,7 @@ The call is one JSON object on stdin, through a quoted heredoc (`<<'JSON'`) as e
 - `mechanism` — how it works beneath, in the code's terms: shown only behind the screen's `t/technical`.
 - `product_wide` — `true` where the answer is a rule for the whole product, `false` where it holds for this work alone.
 
-A fact only the person holds — a deadline, an outside constraint, an account you cannot reach — is raised with `--fact` where the phase's skill gives that door, its payload `{"question", "rows", "mechanism", "product_wide"}`, no `sort`, and `rows` `[]` unless the answers are few and known; where you lean to one of its rows, add `lean` and `why`, as the call's. It is always asked, never blind, and counts for nothing in what the engine learns.
+A fact only the person holds — a deadline, an outside constraint, an account you cannot reach — is raised with `--fact` where the phase's skill gives that door, its payload `{"question", "rows", "mechanism", "product_wide"}`: no `lean`, `why` or `sort`, and `rows` `[]` unless the answers are few and known. It is always asked, and counts for nothing in what the engine learns.
 
 ## What the Raise Answers
 

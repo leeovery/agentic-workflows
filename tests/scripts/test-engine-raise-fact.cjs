@@ -296,7 +296,7 @@ describe('the answer (16.S75, 16.3.2)', () => {
     assert.deepStrictEqual([lastEntry().text, logText()], [LATER.text, '']);
   });
 
-  it('refuses, writing nothing, who moved whom on a pick — it moves no one — a key that is no row, a fact with none saying so, and "don\'t care", which leaves the call to Claude, whose a fact\'s answer never is, its lean given or not', async () => {
+  it('refuses, writing nothing, who moved whom on a pick, its lean given or not — it moves no one — a key that is no row, a fact with none saying so, and "don\'t care", which leaves the call to Claude, whose a fact\'s answer never is, its lean given or not', async () => {
     const rowed = (await raiseFact()).res.raise;
     const leaning = (await raiseFact(LEANING, { answers: asked.trains })).res.raise;
     const bare = (await raiseFact(BARE, { answers: asked.team })).res.raise;
@@ -304,6 +304,7 @@ describe('the answer (16.S75, 16.3.2)', () => {
     const refused = (args, given) => refusedPristine(dir, ['raise', 'answer', ...args], { env: conversation(), stdin: JSON.stringify(given) }).error;
 
     assert.strictEqual(refused([rowed, '--pick', '1'], { why: WHY, who_moved_whom: 'none' }), 'raise answer: the answer has no field who_moved_whom — it holds why');
+    assert.strictEqual(refused([leaning, '--pick', '2'], { why: WHY, who_moved_whom: 'claude-moved-person' }), 'raise answer: the answer has no field who_moved_whom — it holds why');
     assert.strictEqual(refused([rowed, '--pick', 'keep'], { why: WHY }), 'raise answer: the raise has no row keep — its rows are numbered 1 to 2');
     assert.strictEqual(refused([bare, '--pick', '1'], { why: WHY }), 'raise answer: the raise draws no row 1 — it draws none');
     assert.strictEqual(refused([bare, '--pick', 'monday'], { why: WHY }), 'raise answer: the raise has no row monday — it draws none');

@@ -245,9 +245,9 @@
 //   as any raise is, a fact's as a fact is, sealing no lean and logging
 //   nothing in the trust log. The tasks it parks are read as its answer
 //   lands, under the writer lock, and as "I don't follow" is checked — a
-//   task that joined it
-//   since the draw among them, one a close took off it since not: its answer
-//   carries the first of them, none where it parks none, and frees them;
+//   task that joined it since the draw among them, one a close took off it
+//   since not: its answer carries the first of them, none where it parks
+//   none, and frees them;
 //   and the answer, or "I don't follow", answers the receipt (questions.cjs).
 //   A call's trust log event, its "I don't follow"'s too, says whether it
 //   blocked build work as the decision point decided it at the first park,
@@ -292,9 +292,10 @@
 //   question alone (16.5.4), Claude's lean landing at the id the draw minted
 //   as the builder's (9.2.14) — Claude's line, given `dont-care`, holding the
 //   lean row's answer, the other rows' as what it rules out and Claude's why,
-//   as a call that proceeds lands, moving no one. A fact refuses it: it holds
-//   no lean of Claude's to land. On a blind question Claude's sealed answer
-//   lands so too, the person never having seen it: no reveal, but Claude's
+//   as a call that proceeds lands, moving no one. A fact refuses it: its
+//   answer is the person's alone, Claude's lean given or not. On a blind
+//   question Claude's sealed answer lands so too, the person never having
+//   seen it: no reveal, but Claude's
 //   answer named as the builder's — by the receipt in the build, by a line of
 //   the reveal's display outside it — and its raise event carries no weight
 //   (trust-evidence.cjs); on Claude's call gone ahead, the call stands as
