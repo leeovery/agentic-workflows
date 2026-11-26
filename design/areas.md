@@ -44,6 +44,8 @@ Each line ends with where it stands. "Lee's ruling" with a date is something you
 
 2.1.4 A close shows its summary before your yes: what you decided, a count of Claude's calls by kind, the lines proposed for the product record, and any new work the decisions create. [Lee's ruling, 24 Nov 2026]
 
+2.1.5 Settling the rest stays. After eight agreements in a row, or when you say so, Claude offers to settle what is still open: how many points, how many it would settle, and which still come to you by the rule. It is counted in the conversation it is offered in: one area in a focused session, everything in view in the main thread. Your yes settles those points and closes nothing. [Claude's derivation: 2.1 keeps the trust surfaces, and 5.1.1 leaves no close for that yes to lead to; today it is counted in a topic, and its yes leads into the topic's close]
+
 ### 2.2 How an area is worked
 
 2.2.1 Early on, before the talk has given a direction, each point is worked through with you and Claude makes no call. When there is a direction to fill in from is Claude's read of the conversation: it may be minutes in or hours in, and it rests on no decision of yours having been made first. [Lee's ruling, 25 Nov 2026: "Who's to say that we might not start making decisions right away? versus actually sometimes we might talk for hours… I might not make any decisions at all. That's possible and ok"]
@@ -84,6 +86,10 @@ Each line ends with where it stands. "Lee's ruling" with a date is something you
 
 3.1.7 Nothing that protects the work rests on areas. That rests on each point: no question open, no point from discovery left, and the pass that reads across the whole (7.1). [Lee's ruling, 26 Nov 2026]
 
+3.1.8 The fresh read is taken an area at a time (3.1.6), and what it protects is each entry: an area counts as changed when an entry under it was written or replaced, or moved in or out, since it was last read. [Claude's derivation: 3.1.6, 3.1.7, 7.1.1]
+
+3.1.9 Left to the builder: whether the engine keeps the areas' names in the manifest or works them out from the labels. Either way an area with nothing under it is not shown (8.1.5). [engineering, with nothing you would see]
+
 ### 3.2 How areas come to exist
 
 3.2.1 Areas are never cut up front and never approved as a set. [Lee's ruling, 25 Nov 2026]
@@ -116,6 +122,10 @@ start with holding.
 3.3.1 A relabel is one line appended to the ledger, naming the entries that move and the area they move to. No entry is edited. [Lee's ruling, 25 Nov 2026: "if we want to split, it's simply relabeling"; the mechanism is today's, used when a feature is absorbed into an epic]
 
 3.3.2 Every view reads an entry under the area its latest relabel put it in, and the trail keeps where it was first recorded and each move since. [Claude's derivation: 3.3.1]
+
+3.3.3 A relabel moves whatever belongs with the area: questions, findings and decisions, each with its earlier versions and its answer. Renaming an area is a relabel of everything under it. [Claude's derivation: 3.3.1]
+
+3.3.4 A point on the starting page carries its label where the engine tracks the point (6.4.1), never on the ledger (2.3.1). A regrouping that moves points changes the label there. [Claude's derivation: 2.3.1, 3.1.1, 6.4.1]
 
 ### 3.4 Where to start
 
@@ -165,6 +175,8 @@ start with holding.
 
 4.1.9 No conversation loads the full record of every area at its open. On one real piece of work of four topics that record is about 34,000 words: 370 decisions, 74 questions and 30 findings. [Claude's derivation: 4.1.6, 2.3.3; the sizes are the Mint project's release tool]
 
+4.1.10 Either kind of conversation also opens on what a topic opens on today, which this note leaves alone: the product record, the spikes, the search of earlier work in the knowledge base, and where its last log left off. [Claude's derivation: section 2; today's opening]
+
 ### 4.2 A focused session
 
 4.2.1 A focused session has one area in view. It is for when one of you feels something needs the whole attention: it keeps the context clear and keeps you both on the one problem. You ask for it — "let's focus on holding" — or Claude suggests it in a line and you say yes. [Lee's ruling, 25 Nov 2026: "If… even me or Claude feels like that actually we really need to focus on this one area, then we can go specific and then we only talk about that area, which helps keep the context clear"]
@@ -183,7 +195,7 @@ start with holding.
 
 ### 4.3 What a focused session may write
 
-4.3.1 Claude's own calls land in the conversation's area alone. The engine refuses one made in another area. [Claude's proposal; the refusal is today's, between topics]
+4.3.1 In a focused session, Claude's own calls are made in its area. A point that belongs to another area is recorded as a question there (4.3.2), or decided only once Claude has pulled that area's record, as in the main thread (4.1.8). This is an instruction to Claude, and the engine refuses nothing by area. [Claude's proposal: 2.3.2, 3.1.7; a call under the wrong area shows on the map and is replaced on the spot]
 
 4.3.2 A point that belongs to another area is recorded as a question under that area, with the reasoning, and the conversation carries on with its own. [Claude's proposal]
 
@@ -200,6 +212,8 @@ start with holding.
 4.4.4 It is not mail. Nothing has to be opened to receive it, nothing is reopened by it, and any conversation can pick it up. [Lee's ruling, 26 Nov 2026: "There's no mailbox because everything is fair game"]
 
 4.4.5 Anything that comes up, in either kind of conversation, can be marked to come back to: it is recorded as a question under its area, or under the whole. It is picked up in the main thread when the talk reaches that area, in a focused session, or at the end, where it holds the spec. [Lee's ruling, 26 Nov 2026: "we could say, 'Let's mark this and come back to it.' Then it gets logged so that either we come back to it in the main thread… or we can go into a focused session and deal with it there"]
+
+4.4.6 A point for a piece of work that arrives from outside its conversations has no mailbox to wait in either. One from the product's conversation, or kept in passing from any other conversation, joins the work's starting page as a point under its area, waiting as any point from discovery does (6.4). One from inside the work's own phases, such as what the pass that reads across areas raises, lands as a question under its area. [Claude's proposal: 4.4.4, 8.1.2; today each arrives as mail]
 
 ### 4.5 The log
 
@@ -273,6 +287,8 @@ proceed if you know that session is no longer working.
 
 4.8.4 Two conversations that decide one point differently corrupt nothing: both decisions show on the map, and the pass that reads across areas (7.1.3) catches the clash. No further guard is added. [Claude's derivation: 2.3.2]
 
+4.8.5 The main thread is held as an area is: a second conversation opening it, or a focused session handing back while one is open, is told and asked the same way (4.8.3). [Claude's derivation: 4.8.1, 4.8.3]
+
 ### 4.9 The reader agents
 
 4.9.1 The background reviewer and the fresh reader (5.1.3) are given, for an area, what they are given for a topic today: the area's record and log, the other areas' records, the product record, and what you struck or removed. [Lee's ruling, 25 Nov 2026]
@@ -296,6 +312,8 @@ proceed if you know that session is no longer working.
 4.10.3 An experiment follows its question: where the question is relabelled to another area, the experiment goes with it. [Lee's ruling, 25 Nov 2026]
 
 4.10.4 Spikes and shared files are kept for the whole piece of work and read from any area, as today. [Lee's ruling, 25 Nov 2026]
+
+4.10.5 Experiments are numbered across the piece of work, not within an area. Where the conversation that spawned one has ended, its result is on the ledger as a finding under its question, and the next conversation on that area opens on it. One waiting to be run has its own row on the menu, as the laboratory has today. [Claude's proposal: 4.10.2, 4.11.2; today each topic numbers its own]
 
 ### 4.11 The menu
 
@@ -341,6 +359,8 @@ NOTHING WAITING
 
 5.1.4 Any area's summary — what you decided, and Claude's calls by kind — is drawn when you ask for it. [Lee's ruling, 26 Nov 2026]
 
+5.1.5 An entry flagged because a decision it relied on was replaced counts as waiting under its area, until you confirm it still holds or it is replaced. It shows in the area's row and holds the spec (7.1). [Claude's derivation: 3.1.7; today a decided topic holding one waits on you]
+
 ### 5.2 A late question
 
 5.2.1 A question that arrives under an area that had settled is added and answered like any other. Nothing is reopened, because nothing was closed. [Lee's ruling, 26 Nov 2026; today a message to a finished topic reopens it, and it closes again through a whole fresh pass]
@@ -371,6 +391,10 @@ NOTHING WAITING
 
 5.4.5 Putting off stays open until your yes at ready to build, where a split is made. [Lee's ruling, 25 Nov 2026; as today]
 
+5.4.6 An area put off comes back when it is pulled forward from the roadmap, as a postponed topic does today: into this piece of work while it is still before its spec, or into a later one. [Claude's derivation: 5.4.1; as today]
+
+5.4.7 The decision that drops an area (5.4.2) also replaces the decisions already made under it that no longer hold, so none of them reaches the spec. [Claude's derivation: 5.4.2]
+
 ### 5.5 Verdicts
 
 5.5.1 A verdict is asked once, at the moment you change a call of Claude's, in conversation or outright: what Claude's answer would have cost — nothing, a fix later, or a real loss. [Lee's ruling, 26 Nov 2026: "Why can't we just give that response at the moment when I change something?… Why do we have to wait till the closeout, which could be hours or days later?"]
@@ -384,6 +408,8 @@ NOTHING WAITING
 5.5.5 Claude never takes a "nothing" from silence. [Lee's ruling, 26 Nov 2026]
 
 5.5.6 What a verdict feeds is as today. For each kind of question the engine keeps how often Claude's answer would have cost the product something, and a kind goes quiet once that rate is safely under your threshold: thirteen clean answers bring it under 20%, and one loss in twenty puts it at 21%. A verdict is what tells a change of taste from a save. [the engine as it is today]
+
+5.5.7 The rule of 5.5.1 to 5.5.5 holds in every phase. A change made in the specification, the build, the review or a quick-fix gets its verdict at that moment, and ready to build, finish and a quick-fix's close ask none. What counts as a change is what counts today: an answer against Claude's lean, a blind answer that differs from Claude's, and a later reversal. [Claude's derivation: 5.5.1, 5.5.2, 8.1.8; today these three screens ask the verdicts]
 
 ## 6. From product discovery into a piece of work
 
@@ -417,6 +443,8 @@ NOTHING WAITING
 
 6.4.4 A point you no longer want is dropped at your word, and counts as dealt with. [Claude's proposal]
 
+6.4.5 The points from before Ledger and the shared files that bear on the work are kept with the work as today, and each point from before is still asked rather than built on. Only the brief that used to list them goes (8.1.1). [Claude's derivation: section 2, 8.1.1]
+
 ## 7. Ready for the spec
 
 ### 7.1 What the engine holds
@@ -429,6 +457,8 @@ NOTHING WAITING
 
 7.1.4 It refuses until no point from discovery is left: each is on the ledger, or dropped at your word. [Claude's proposal]
 
+7.1.5 What waits under an area put off (5.4.1) is not counted by 7.1.2 or 7.1.4. [Claude's derivation: 5.4.1, 7.1.1]
+
 ### 7.2 The close of the whole
 
 7.2.1 Once nothing is waiting anywhere (7.1), the piece of work has one close of its own, and that close is what takes it into the spec. [Lee's ruling, 26 Nov 2026]
@@ -438,6 +468,10 @@ NOTHING WAITING
 7.2.3 Your yes takes the work into the spec. No verdict is asked here: each was asked when you made the change (5.5). [Lee's ruling, 26 Nov 2026]
 
 7.2.4 For a small piece of work (3.5.4) this is its only close, and it is a feature's close as it is today. [Lee's ruling, 26 Nov 2026]
+
+7.2.5 The order at the close: once no question is open, no point from discovery is left and every area has had its fresh read, the close runs the pass that reads across areas. What the pass raises is worked like anything else, and the close is come back to. The summary and your yes are offered once a pass has raised nothing still open. [Claude's derivation: 7.1.3, 7.2.1, 7.2.2]
+
+7.2.6 The close of the whole makes the checks a topic's close makes today, across the whole piece of work: every decision made in the talk has its entry, no two answers contradict, and each measurement a decision rests on is run again. [Claude's derivation: 5.1.1 moved the close and removed none of its checks]
 
 ## 8. What goes
 
@@ -468,6 +502,8 @@ NOTHING WAITING
 9.1.2 A bugfix and a quick-fix stay kinds of their own, because their paths differ. [Claude's proposal]
 
 9.1.3 The one kind runs short or long by how much there is to build: its length and the number of phases in its build are a consequence of the work, never a label chosen at the start. [Lee's ruling, 25 Nov 2026]
+
+9.1.4 A bugfix's investigation is not changed by this note: one conversation, its log, and its close at ready to build. With mailboxes gone (8.1.2), a point that reaches it from outside arrives as 4.4.6 says. [Claude's proposal]
 
 ## 10. Names
 
