@@ -774,7 +774,7 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
     ]);
   });
 
-  it('says the raises at the end are of a started topic of a unit in progress alone, each a decision only the person can make, what a row\'s notice is, the history Claude tells above each point\'s screen, quoting the line that leaves the point open, a settled_on record\'s account among it, and its lean and why where there are rows, the mechanism the sources and where, a why the person\'s own or saying they gave none, and a point two records carry raised once, its answer merged into the other', () => {
+  it('says the raises at the end are of a started topic of a unit in progress alone, each a decision only the person can make, what a row\'s notice is, a settled_on record\'s account as its mechanism, the lean and why Claude gives where there are rows, a pick by the number the screen draws, a why the person\'s own or saying they gave none, and a point two records carry raised once, its answer merged into the other', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 
     assert.deepStrictEqual([
@@ -786,13 +786,13 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
       'each `{"key", "name", "text", "notice"}` — its key, a short name for the answer, the answer, and what the person would notice were it the one, each one line;',
       'node .claude/skills/ledger-engine/scripts/engine.cjs ledger merge {place} --question {answers} --into {answered}',
       'and, as `settled_on`, each record marked as its own log\'s for the same sections, `{"place", "decisions"}`, each decision of it citing a side still current, `{"id", "text"}`. A point with `settled_on` stays listed, once answered with its own `answered`, until each is done; one the person leaves open is raised, and listed no more.',
+      'Where a point is `settled_on` a record, tell the person, as its mechanism, that that record\'s own log settled it after the approval, and how: its decisions\' texts.',
       'Where a point is `settled_on` a record, once the person answers it: where the answer agrees with that record\'s decisions, nothing changes on that record — mark it so, `"agrees": true` beside its `log` mark. Where it differs, the person\'s answer is the newer one: record it on that record too, replacing each of its decisions listed,',
       'node .claude/skills/ledger-engine/scripts/engine.cjs ledger replace {place} --replaces {id} --reason other-topic --cause {answered}',
       'The raise takes one JSON object on stdin, `{"question", "rows", "lean", "why", "mechanism", "product_wide"}`',
       'where there are rows, the key of the row you would pick as `lean` and your reason as `why`, one line, both left out where there are none;',
       'what the sources say of it and where, as the mechanism;',
-      'In your reply, above each point\'s screen, tell its history in order — what was decided first, what came after and where they part — quoting the sources\' line that explains why the point is left open; where it is `settled_on` a record, that that record\'s own log settled it after the approval, and how: its decisions\' texts; and, where there are rows, which you lean to and why.',
-      'each `why` the person\'s reason as they gave it; where they picked a row and gave none, the `why` says they gave none, and where the row is your lean, adds your lean\'s reason, said as yours.',
+      'a row they pick, `--pick {n}`, the number the screen draws it under, with `{"why"}` on stdin; their own words, `--own`, with `{"text", "why"}`; each `why` the person\'s reason as they gave it, or that they gave none; where they picked your lean, your lean\'s reason added, said as yours.',
     ].filter((rule) => !text.includes(rule)), []);
   });
 
