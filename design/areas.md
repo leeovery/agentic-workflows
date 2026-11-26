@@ -517,6 +517,8 @@ NOTHING WAITING
 
 9.1.4 A bugfix's investigation is not changed by this note: one conversation, its log, and its close at ready to build. With mailboxes gone (8.1.2), a point that reaches it from outside arrives as 4.4.6 says. [Claude's proposal]
 
+9.1.5 The first conversation names the work as one of the three kinds: feature, bugfix or quick-fix. The line between a quick-fix and a feature stays where it is today: a quick-fix is settled work needing no decision beyond a quick call, with no discussion and no spec, and one that turns out to need a real decision moves to a feature. [Lee's ruling, 26 Nov 2026: "where we have to be careful is not slipping, not merging the definition between quick fix and feature"]
+
 ## 10. Names
 
 ### 10.1 What things are called
