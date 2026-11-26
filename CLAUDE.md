@@ -139,7 +139,7 @@ Migrations keep existing projects' `.ledger/` in step with the current design, r
 The migration into Ledger runs from a project's `.workflows/` at 072: the guard (074) first, then what the chain still owes (073), the split (075–077, its directive 076), the move (078), the records (directive 079), the cut and the merges (directive 080), and the finish (081). Boot stops at each directive for the session to carry it out, then at the finish for the review, whose yes makes the migration's commit. `tests/scripts/migration-audit.cjs` checks a migrated project migrated cleanly.
 
 - **Upgrades live in migrations, never in code.** Converting, renaming, deleting or tolerating a shape an older version left behind is a migration. Runtime code may keep the current version's own requirements in place, but never recognises what an earlier version did — runtime code handling old leftovers can never be deleted.
-- **A released migration is never touched** — not edited, not deleted; a correction is a new migration.
+- **A released migration is repaired by a new one, improved in place** — a repair of projects that already ran it is a new migration; a change only for projects yet to run it, those that ran it left sound, may edit it in place with its suite, keeping whole a project part-way through it when the upgrade lands. Never deleted.
 - **A migration may stage in git and never commits** — the migration commit, on the user's yes at the migration gate, records it.
 - **Migrations must not use `engine manifest`** — they read and write `manifest.json` directly; the field surface validates against today's schema, and a migration is a point-in-time snapshot.
 - **The paths Ledger owns are `OWNED_PATHS`** (`skills/ledger-engine/scripts/domain/commit.cjs`); a path a migration writes that the list does not hold joins it in the same change.
@@ -158,7 +158,7 @@ The gates, run locally before every commit (`docs/contributing.md` lists what ea
 - **A change that moves retrieval re-pins the knowledge eval baseline** in the same PR (`node tests/scripts/knowledge-eval.cjs --pin`).
 - **Where a tool may be named** is held by `tests/scripts/test-tool-names.cjs`: a driver's tool, in the forms only it takes, nowhere outside the places Tool Names allows, and in help and the glossary not even as a word.
 - **The glossary** is held by `tests/scripts/test-glossary.cjs`: no retired term, every term the design adds, and no entry speaking in an engine verb, a path or a skill name.
-- **The docs** are held by `tests/scripts/test-docs.cjs`: the book's chapters, the effort line, the README's pipeline table, none of the author's own products named, the product called Ledger in the docs, help and the glossary, and never workflows in the skills, the agents, the book, the README and the tests — but in the glossary's avoid line, `history.md`, released migrations and their suites, fixtures, `.cache` folders, and the suite itself.
+- **The docs** are held by `tests/scripts/test-docs.cjs`: the book's chapters, the effort line, the README's pipeline table, none of the author's own products named, the product called Ledger in the docs, help and the glossary, and never workflows in the skills, the agents, the book, the README and the tests — but in the glossary's avoid line, `history.md`, the migrations released before the product was named Ledger and their suites, fixtures, `.cache` folders, and the suite itself.
 
 ## Skill Authoring
 

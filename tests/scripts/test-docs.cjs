@@ -136,7 +136,7 @@ const ORDINARY = [
   'Workflows differ between teams.',
   '## Git Workflow',
 ];
-/** The last migration released: its words, and those its suite pins, are never edited. */
+/** The last migration released before the product was named Ledger: its words, and those its suite pins, name the system before it as it was named then. */
 const LAST_RELEASED = 72;
 /** A migration's file or its suite's, its number captured. */
 const MIGRATION_NUMBERED = /^(?:skills\/ledger-migrate\/scripts\/migrations\/|tests\/scripts\/test-migration-)(\d{3})\b/;

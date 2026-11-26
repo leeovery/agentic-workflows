@@ -125,8 +125,8 @@ A test of replaced behaviour is deleted with that behaviour, in the same change.
 ## 9. Migrations
 
 - **One suite per migration,** `test-migration-NNN.cjs`, added to `package.json`'s `test` script.
-- **It drives `run()` against a plain temp project** of the shape the migration migrates from, with counting `reportUpdate`/`reportSkip` stubs, never against the live fixture: a frozen migration tested in today's world moves whenever today's world does. It covers the happy path, the skip, idempotency (run twice), content preservation, and every defensive guard. `test-migration-070.cjs` is the model.
-- **A released migration's suite is frozen with it.** The `.sh` fleet (001–046) is frozen and runs under `test:migrations`.
+- **It drives `run()` against a plain temp project** of the shape the migration migrates from, with counting `reportUpdate`/`reportSkip` stubs, never against the live fixture: a migration is written against the shape at its number, and tested in today's world it moves whenever today's world does. It covers the happy path, the skip, idempotency (run twice), content preservation, and every defensive guard. `test-migration-070.cjs` is the model.
+- **A released migration's suite changes only with it,** updated to match where the migration is improved in place. The `.sh` fleet (001–046) stays as it is, the shell tier closing (§2), and runs under `test:migrations`.
 - **A directive** is tested through the migration's harness, `migration-world.cjs`: the engine copied beside the real runner and the directives, and a project the migration is under way in, its `ledger-state` with no commit yet. `test-migration-directives.cjs` lints every directive's head (`directive-lint.cjs`) and proves the machinery on the fixture directives in `tests/fixtures/directives/`; a directive's own suite drives its check over that world.
 
 The rules every migration keeps are CLAUDE.md's (Migrations); the module contract is the header of `skills/ledger-migrate/scripts/migrate.cjs`.

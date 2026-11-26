@@ -3,8 +3,8 @@
 //
 // What the legacy split's three steps share (21.4) — its detection (075),
 // its directive's check (076) and its apply (077): where the split works,
-// where it is staged and how its staging reads. Released with them, it is
-// frozen with them.
+// where it is staged and how its staging reads: released with them, and
+// changed only with them.
 //
 // The staging is `.cache/migrate/split/` in the state, which no commit
 // takes and the move (078) leaves where it is:

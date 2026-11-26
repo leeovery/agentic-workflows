@@ -74,7 +74,7 @@
 // did, a `.worktreeinclude` of `.workflows/` lines alone,
 // settings that do not parse, and user-level folders that are links
 // elsewhere. The
-// tracker's store is where its driver's frozen declaration says a project
+// tracker's store is where its driver's declaration says a project
 // from before Ledger keeps it, read as the move reads it. The mail holds
 // messages as today's sessions wrote them, the sender's line under the title
 // and under a blank line after it. The linters' carry (reshape/linters.cjs)

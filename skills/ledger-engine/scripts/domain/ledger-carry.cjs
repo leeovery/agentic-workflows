@@ -98,11 +98,12 @@
 //   carried, its verifier's passing round is kept with the rounds before
 //   it, its findings, rulings and verdicts, and they, the record its
 //   verifier was briefed on and any refusal beside the record are cleared.
-// - Frozen with 079: the record this takes and the carried file it keeps
-//   are the directive's, released with it, so a later ledger version keeps
-//   taking them while 079 can run. The check rests on those two things
-//   alone: the carried file's record, and each of its ids standing as a
-//   line's `id` in the ledger, never another field of a line.
+// - Released with 079, and changed only with it: the record this takes and
+//   the carried file it keeps are the directive's, so a later ledger
+//   version keeps taking them while 079 can run, a project part-way
+//   through it among them. The check rests on those two things alone: the
+//   carried file's record, and each of its ids standing as a line's `id`
+//   in the ledger, never another field of a line.
 // - It refuses, carrying nothing: outside the migration; argv of another
 //   shape; a place of
 //   another shape, a phase the directive carries no topic of, a unit the

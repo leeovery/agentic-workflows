@@ -4,8 +4,9 @@
 // record-files.cjs — the files a topic's record is kept in as the records
 // directive composes, verifies and carries it (079), which its check and the
 // engine's carry (ledger-carry.cjs) both read, so neither keeps a copy and no
-// migration loads the engine. Frozen with 079, as the carry's record is: a
-// later version keeps reading them while 079 can run.
+// migration loads the engine. Released with 079, and changed only with it, as
+// the carry's record is: a later version keeps reading them while 079 can
+// run.
 //
 // Each file is state-relative, beneath the composed records' folder or the
 // carried ones', a topic's in its unit's folder and a unit's own beside it;

@@ -161,13 +161,14 @@ in the same header:
   from another checkout, it warns of each file of that checkout's
   `.workflows/` that differs from the main checkout's and stays where it
   is (`old-layout.cjs`, `unmoved`).
-- `migrations/reshape/` is what the reshape's released steps share: it is
-  frozen with them, and holds its own reading of the layout. The
-  runtime's is `old-layout.cjs`, free to change. Neither loads the other.
+- `migrations/reshape/` is what the reshape's released steps share:
+  released with them, and changed only with them. It holds its own
+  reading of the layout; the runtime's is `old-layout.cjs`, free to
+  change. Neither loads the other.
 - The files a topic's record is kept in as the records directive
   composes, verifies and carries it are `record-files.cjs`, read by the
-  directive's check and the engine's carry alike: frozen with the
-  directive, so no migration loads the engine.
+  directive's check and the engine's carry alike: released with the
+  directive, and changed only with it, so no migration loads the engine.
 - Where the chain before the guard hands back checks, the runner stops
   before the move reads `.workflows/`, and boot answers `checks`: the
   session makes each check where it says — the old state's on the main
@@ -207,7 +208,8 @@ in the same header:
   `.claude/agents/*.md` and immediately testing will exercise the old
   definition. Reload plugins, or restart, before trusting a result.
 - **`CHANGELOG.md` is generated** — CLAUDE.md (Changelog).
-- **Released migrations are frozen** — CLAUDE.md (Migrations).
+- **A released migration is repaired by a new one, improved in place** —
+  CLAUDE.md (Migrations).
 
 ## The docs
 
@@ -226,8 +228,8 @@ hold what can be checked:
   the glossary's avoid line may say; and the skills, the agents, the book,
   the README and the tests never calling it workflows, in any of the
   forms the suite lists, but in the glossary's avoid line, `history.md`, a
-  released migration and its suite, the tests' fixtures, any `.cache`
-  folder, and the suite itself.
+  migration released before the product was named Ledger and its suite,
+  the tests' fixtures, any `.cache` folder, and the suite itself.
 - `tests/scripts/test-tool-names.cjs` — a tool a driver wraps named only
   where CLAUDE.md's Tool Names allows: the docs and `README.md` may name
   one, help and the glossary never.

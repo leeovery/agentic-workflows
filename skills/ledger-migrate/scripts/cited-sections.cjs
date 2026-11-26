@@ -4,7 +4,8 @@
 // cited-sections.cjs — the section a record's cite names (079): the one
 // resolver every reader of a cite takes, so the carry, the records' check,
 // its count of the sections no record cites and the verifier's walk sheet
-// read each cite alike. Frozen with 079, as the record-files beside it are.
+// read each cite alike. Released with 079, and changed only with it, as the
+// record-files beside it are.
 //
 // A cite names a heading of its file by the heading, or by the heading's
 // path, `{heading} > {heading}`, the outermost first: the headings whose
