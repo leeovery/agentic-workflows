@@ -147,6 +147,8 @@ start with holding.
 
 3.5.6 The spec is not bound to areas. They shape the discussion, never the document written from it. [Lee's ruling, 26 Nov 2026: "The document that we're creating isn't bound to areas. The areas just facilitate discussion"]
 
+3.5.7 A small piece of work's entries are owned by the work itself (3.1.3): the one area is the whole, and no label is made for it. Ground that never becomes an area, like the login page of 3.5.3, is owned the same way. [Claude's derivation: 3.1.3, 3.5.3, 3.5.4]
+
 ### 3.6 The whole
 
 3.6.1 The whole gets as much attention as any area, all the time. What lies between areas is talked through as the discussion goes, in either kind of conversation. [Lee's ruling, 26 Nov 2026: "We should be addressing the whole all the time so we're not building in areas because we have the whole"]
@@ -478,6 +480,8 @@ NOTHING WAITING
 7.2.6 The close of the whole makes the checks a topic's close makes today, across the whole piece of work: every decision made in the talk has its entry, no two answers contradict, and each measurement a decision rests on is run again. [Claude's derivation: 5.1.1 moved the close and removed none of its checks]
 
 7.2.7 The summary also lists, once, the leans from discovery the talk never touched. Your yes carries them onto the ledger as your decisions, given in discovery; one you no longer hold is dropped or changed there. [Lee's ruling, 26 Nov 2026]
+
+7.2.8 The summary also lists any new work the decisions create that belongs on the roadmap (5.3.3), for you to strike or reword, as a close does today (2.1.4). [Claude's derivation: 2.1.4, 5.3.3]
 
 ## 8. What goes
 
