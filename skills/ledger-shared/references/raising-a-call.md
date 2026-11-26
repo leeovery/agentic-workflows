@@ -58,6 +58,6 @@ A raise is no gate: its answer never goes to `gate`. `{id}` is the one the draw 
 - **Technical** → `raise show {id} --technical`; `raise show {id}` hides the mechanism again.
 - **A comment or a question** about it is talked through, then `raise show {id}`.
 
-Where the phase's skill puts a raise to the person in the conversation, not drawn, the same answers are read from what they say: a row picked is `--pick {key}`, the row's own key; "don't care" is the raise's while it is open, as on screen; and each `raise show {id}` above is the point put to them again in the conversation.
+Where the phase's skill puts a raise to the person in the conversation, its screen's sections are not emitted, and the same answers are read from what they say. A button pressed is the number it sends, `--pick {n}`, as on screen; a row picked in their own words is `--pick {key}`, the row's own key; "don't care" is the raise's while it is open, as on screen. Each `raise show {id}` above still runs, its sections not emitted, so the buttons on show are the point's again, the point put again in the conversation where it needs it. Where the framework shows a waiting raise again after background work arrives, that is the same `raise show {id}`, its sections not emitted: the work is said in its one line, and the point is not put again.
 
 Where the answer carries `care_drop`, propose dropping that care entry, as the framework's **The Record of the Person** says.

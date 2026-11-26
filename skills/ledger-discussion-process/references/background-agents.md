@@ -45,6 +45,14 @@ Say `Background review dispatched. Results will be surfaced when available.` The
 
 ## Perspectives
 
+Offer them where a decision point shows **genuine ambiguity** — two or more viable approaches where the tradeoffs are not obvious. Signals:
+- Multiple defensible approaches with no clear winner
+- The person expresses uncertainty ("I'm not sure which...", "they both seem fine")
+- The domain has known competing paradigms (e.g., relational vs document, monolith vs microservices, sync vs async)
+- The person disputes a challenge and remains unsettled — a decisive answer to a challenge is settled, not disagreement
+
+Signals are read from the conversation, never from domain shape alone — a known competing-paradigm pair is not a trigger until the person has engaged the decision and the ambiguity has shown itself. Do not offer them when the decision is straightforward, the tradeoffs are already well understood, or the person has already made a confident decision.
+
 Offer them in the conversation. On yes, the decision's question on the map, asked first where it is not, pick the polarity pair whose tension it turns on, from the pairs in `.claude/agents/ledger-discussion-perspective.md`, and dispatch both lenses as one set; brief each agent the response's `agents` names, and call both:
 
 ```bash

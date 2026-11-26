@@ -23,10 +23,35 @@ Its report is taken in as any report coming back is (the skill's **Tools**). A `
 
 Where the pass changed what the topic decides — a question opened, an answer replaced — another pass reads what changed, unasked, once the conversation has closed what it opened. The passes end at one that changes nothing, and `closing-pass` is done.
 
-Your own reads:
-- `decisions-entered` — the conversation and the log read against the record: every decision made in the conversation has its entry, and every answer the person gave landed. The brief read against it too: an open question of the brief's that never reached the map goes on it, as does a point it marks as from before, asked with its id from before.
+## Your Own Reads
+
+The fresh reader catches *topical* gaps — areas that should have been explored. Your reads catch *conversational* gaps — substance that was discussed in the session but never made it into the record or the log. Only you can do this: you were in the conversation, the reader wasn't.
+
+The stakes are high here. The pressure to polish rationale beyond what was actually said is real, a journey is easy to write tersely after the fact and to clean up post-hoc, and tentative leans can harden into recorded decisions. The specification is written from the record — drift here compounds downstream.
+
+Re-read the topic's record (`ledger record {work_unit} {topic}`), its map and its log in full. Don't rely on your memory of what you wrote earlier.
+
+- `decisions-entered` — the conversation walked against the record and the log, on six dimensions (the last two sweep the log alone):
+  1. **Undocumented substance** — threads, tangents, trade-offs, edge cases, provisional positions, or points that came up in conversation but never made it into the record or the log: every decision made in the conversation has its entry, and every answer the person gave landed. Not verbatim — the *substance* of what was explored. This is the most common failure mode as sessions grow long and later exchanges crowd out earlier ones. The log's journey is especially vulnerable: it is supposed to capture the arc of how a decision was reached, and it's easy to write it tersely after the fact in a way that skips the actual back-and-forth.
+  2. **Hallucinated or embellished content** — claims, options, rationale, or journey in the record or the log that don't trace back to anything actually discussed. Synthesis that drifted from what was said into what you *think* should have been said. Plausible-sounding filler in a decision's why that wasn't in the conversation.
+  3. **Accuracy drift** — positions recorded as firmer than they were, tentative leans written as decisions, softened pushback from the person, competing options understated to make the chosen one look cleaner, a decision landed on a point that was really still converging. Check the map itself for drift — a point under another closed by its parent's decision when it wasn't fully resolved.
+  4. **Revision landing** — a decision changed this session that was recorded in an earlier sitting is a replacement naming its cause, never a change carried in the log's prose alone, and the earlier sessions' log stands as written.
+  5. **Misdirected knowledge** (epics only) — prose in the log addressed to another topic instead of recording this topic's own ground: notes to carry forward ("→ {topic}: …"), corrections owed to another topic whose decided ground this session's decisions superseded, "tell {topic} about X" asides. A citation of another topic's decision as context is fine — only knowledge *owed to* another topic qualifies, and owed means the note makes an **ask** of the target: a question to explore, a defect in its own ground, substance it owns. A decision that answers a question another topic sent to this one owes nothing back. The way for these is the session's own message at the moment the correction is known; anything found here is a miss to repair, not a convention to preserve.
+  6. **Pipeline meta** — the log stating its own pipeline position: readiness declarations ("ready for specification"), decided-point counts, review-cycle tallies — whether written this session or in an earlier sitting. Per-point resolution prose ("X decided — {substance}") is substance and stays; the aggregate goes. The engine holds that state.
+
+  The brief read against the record too: an open question of the brief's that never reached the map goes on it, as does a point it marks as from before, asked with its id from before.
+
+  Put each finding right through the doors, the log only ever appended to:
+  - Gap → the missing substance lands where it belongs: a question, a finding or a decision through its door, the journey appended to the log
+  - Hallucination → an entry of yours that traces to nothing said is replaced, `--reason was-wrong`, corrected to match what was discussed, and one recorded as the person's put back to them as its replacement (`raise --replaces`); the log corrected by a line appended under this session
+  - Drift → the record brought back to what the conversation said: a decision of yours replaced, one recorded as the person's put back to them as its replacement (`raise --replaces`), the log corrected by a line appended
+  - Mislanded re-decision → the replacement landed, its cause named; an earlier session's log edited is restored from git
+  - Misdirected knowledge → sent as a message, as the skill's **A message** says, built from the note *plus* the session context it stems from — the decision that superseded the other topic's ground, the reasoning, what it needs to change — so the target resolves it from cold; in a single-topic unit, said to the person in one sentence apiece, what it says and which work it points at, theirs to decide
+  - Pipeline meta → written no more, any genuine substance it carries folded into the record (an open condition becomes a question on the map), never the status itself
 - `conflicts-read` — no two current answers on the topic contradict each other.
-- `findings-rerun` — each measured or exploratory finding a decision rests on is run again by its command. A value that has changed is replaced, `--reason was-wrong`, with the new result; each decision relying on it is then confirmed (`ledger hold`) or raised as its replacement (`raise --replaces`).
+- `findings-rerun` — **unverified claims**: every load-bearing empirical claim about the codebase or toolchain, whatever session made it. Each measured or exploratory finding a decision rests on is run again by its command; construct the obvious measurement where none is recorded, and record it as a finding with its command and result. The record's own figures, and anything asserted as verified earlier, are claims — not measurements. A load-bearing claim no command can check is softened to observation, its finding replaced as `read`. A value that has changed is replaced, `--reason was-wrong`, with the new result; each decision relying on it is then confirmed (`ledger hold`) or raised as its replacement (`raise --replaces`).
+
+Where your reads changed anything, tell the person conversationally — do not dump a diff: one short paragraph or a handful of bullets describing what was added, removed, or corrected and why.
 
 ## The Payload
 
