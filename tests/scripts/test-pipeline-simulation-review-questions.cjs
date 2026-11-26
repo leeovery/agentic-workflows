@@ -26,7 +26,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, worlds, CUT_CLOSED_UNIT, builtAside, areaRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, finished, gatesAnswered,
+  Sim, worlds, CUT_CLOSED_UNIT, builtAside, sectionRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, finished, gatesAnswered,
 } = require('./pipeline-world.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 
@@ -45,7 +45,7 @@ describe('pipeline simulation: a question asked in a review round', () => {
     const task = failedHashRound(sim, WU);
     builtAside(sim, WU, task, 'src/hash.js');
     sim.run(['review', 'reads', WU, '1-the-work']);
-    areaRead(sim, WU);
+    sectionRead(sim, WU);
     await raisedAtReview(sim, WU, 'Should the export check hashes in this work?', leaningCall('The export checks them.', 'The export is left as it is.'));
     sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger whose entries are checked.'], findings: [] })]);
 

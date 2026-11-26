@@ -250,7 +250,6 @@ describe('pipeline simulation: the trust log', () => {
     trustedElsewhere(sim);
     undrawn(t);
     startUnit(sim, 'feature', wu, 'Notes that stay put');
-    handoff(sim, `/ledger-discussion-process feature ${wu}`);
     enterEntry(sim, wu, 'discussion', wu);
     const at = `${wu}.discussion.${wu}`;
     for (const n of [1, 2, 3]) {

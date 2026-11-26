@@ -8,12 +8,12 @@
 //
 // `review round` records the round under review (review-phase.cjs) from
 // Claude's account of it, `{can_now, findings, settled?}`: what the person
-// can now do, each a line; each finding with the area it is of — one the
+// can now do, each a line; each finding with the section it is of — one the
 // round reads, `tests` for the test surface — its scope, `in` or `out` of
 // the change, its call, its text, the items of the round's reports it
 // answers — each finding `{report}#{n}`, each note for later `{report}#n{k}`,
 // each builder's note standing (review-phase.cjs) `notes#{k}`, a finding
-// answering those alone of the area `notes`, and in a bugfix's round 1
+// answering those alone of the section `notes`, and in a bugfix's round 1
 // `unfixed#1`, serious, where its reproducing test passed on the unfixed
 // code again (bug-proven.cjs, 15.5.6) — and where it landed, one of:
 //   fix     a fix task, in scope: a task of the round's fix phase, past the
@@ -46,7 +46,7 @@
 // `review notes` answers the builders' notes standing once the round that
 // ended the phase has its fix tasks done — notes no round is left to
 // answer — from Claude's account, `{findings}`, each finding as a round's,
-// of the area `notes`, every note standing answered by exactly one; their
+// of the section `notes`, every note standing answered by exactly one; their
 // findings join that round's record, its report written again with them,
 // and both are committed — a quick-fix's review handing back to its close
 // where that ends it, as `review round` does, and as the last of its fix
@@ -60,7 +60,7 @@
 // close where no review was asked for, the notes for later its fixes'
 // builders and pairs banked (`task note`, notes.cjs), which no phase's
 // consolidation takes: from Claude's account, `{findings}`, each finding as
-// a round's, of the area `notes`, out of scope, every note standing
+// a round's, of the section `notes`, out of scope, every note standing
 // (review-phase.cjs, `notesStanding`) answered by exactly one, filed to the
 // inbox or dropped, its `ledger` Claude's call at
 // `{unit}.implementation`. They are kept after those answered before at
@@ -75,7 +75,7 @@
 //
 // It refuses, opening `review round: ` and writing nothing: a unit whose
 // review phase cannot be entered; a round that cannot be read — one ended
-// the phase, fix tasks of the round before wait, a later round's areas are
+// the phase, fix tasks of the round before wait, a later round's sections are
 // not named; a bugfix's round 1 before its reproducing test has run on the
 // unfixed code again since the review began, naming the call that runs it
 // (15.5.6); no snapshot of the round's held, its cache lost or an earlier
@@ -301,16 +301,16 @@ function coverageFaults(items, findings) {
 }
 
 /**
- * A finding's area refused where it is none the round reads, nor `notes`
+ * A finding's section refused where it is none the round reads, nor `notes`
  * for one answering builders' notes alone — said so where it answers one.
  * @param {Record<string, any>} finding @param {string[]} reads @param {string} what @returns {string[]}
  */
-function areaFaults({ area, from }, reads, what) {
-  if (reads.includes(String(area))) return [];
+function sectionFaults({ section, from }, reads, what) {
+  if (reads.includes(String(section))) return [];
   const notes = (Array.isArray(from) ? from : []).filter((item) => isBuilderNote(String(item)));
-  if (area === NOTES && notes.length > 0 && notes.length === from.length) return [];
+  if (section === NOTES && notes.length > 0 && notes.length === from.length) return [];
   const read = reads.length === 0 ? '' : ` — it reads ${reads.join(', ')}`;
-  return [`${what} is of ${JSON.stringify(area)}, which the round does not read${read}${notes.length === 0 ? '' : `; a finding answering builders' notes alone is of ${NOTES}`}`];
+  return [`${what} is of ${JSON.stringify(section)}, which the round does not read${read}${notes.length === 0 ? '' : `; a finding answering builders' notes alone is of ${NOTES}`}`];
 }
 
 /**
@@ -322,8 +322,8 @@ function areaFaults({ area, from }, reads, what) {
 function findingsOf(at, given, reads, items, faults) {
   const findings = listed(given, 'findings').map((finding, i) => {
     const what = `finding ${i + 1}`;
-    const shape = shaped(finding, what, ['area', 'scope', 'call', 'text', 'from'], [...LANDS, 'ledger']);
-    faults.push(...areaFaults(shape, reads, what));
+    const shape = shaped(finding, what, ['section', 'scope', 'call', 'text', 'from'], [...LANDS, 'ledger']);
+    faults.push(...sectionFaults(shape, reads, what));
     if (!SCOPES.includes(String(shape.scope))) faults.push(`${what}'s scope is in or out`);
     if (!CALLS.includes(String(shape.call))) faults.push(`${what}'s call is serious, bug or nit`);
     if (!filled(shape.text)) faults.push(`${what} says nothing`);
@@ -419,7 +419,7 @@ function recordRound(cwd, unit, file) {
   const said = 'review round';
   const refuse = refuserFor(said);
   const {
-    manifest, areas, rounds, round, reads, notes, repos, tree,
+    manifest, sections, rounds, round, reads, notes, repos, tree,
   } = roundUnderReview(cwd, unit);
   const rerunPass = rerunHeld(cwd, unit, manifest, round, refuse);
   treeHeld(cwd, unit, round, tree, refuse);
@@ -458,7 +458,7 @@ function recordRound(cwd, unit, file) {
     ends,
     ...(fixes.length === 0 ? {} : { fix_phase: phase }),
     ...(ends ? {} : { reads_at_least: reviewStanding(reading(cwd, unit, manifest)).required }),
-    areas: areas.map(({ name }) => name),
+    sections: sections.map(({ name }) => name),
     ...closeNext(cwd, unit, manifest, ends),
   });
 }

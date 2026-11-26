@@ -28,8 +28,8 @@ const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 
-/** The quick-fix's one area, by its name in the layout. */
-const AREA = '1-the-change';
+/** The quick-fix's one section, by its name in the layout. */
+const SECTION = '1-the-change';
 /** The file fix task 2.1 changes. */
 const DOCS = 'docs/flag.md';
 /** The fixes' files, every one landed by the merge by hand. */
@@ -72,7 +72,7 @@ function payload(at, name, content) {
 
 /** Every report of a round written, the change's first reader finding `found`. @param {string} at @param {number} round @param {string[]} found */
 function reported(at, round, found) {
-  for (const name of [`${AREA}-a`, `${AREA}-b`, 'tests-a']) writeState(at, layout.unit(UNIT, 'review', `round-${round}`, `${name}.md`), reportText(name === `${AREA}-a` ? found : []));
+  for (const name of [`${SECTION}-a`, `${SECTION}-b`, 'tests-a']) writeState(at, layout.unit(UNIT, 'review', `round-${round}`, `${name}.md`), reportText(name === `${SECTION}-a` ? found : []));
 }
 
 /**
@@ -85,7 +85,7 @@ function firstRoundFailed({ as }, at) {
   reported(at, 1, ['bug: The docs still say --color.']);
   run(['task', 'phase', UNIT, '2', '--title', 'The review\'s fixes, round 1']);
   run(['task', 'create', UNIT, '2', '--file', writeState(at, layout.cache('review-fix.md'), fixFile(1, 'Name the flag in the docs').replace('- 1.S1 ', '- '))]);
-  run(['review', 'round', UNIT, '--file', payload(at, 'round-1.json', { can_now: ['Pass --colour.'], findings: [{ area: AREA, scope: 'in', call: 'bug', text: 'The docs still say --color.', from: [`${AREA}-a#1`], fix: '2.1' }] })]);
+  run(['review', 'round', UNIT, '--file', payload(at, 'round-1.json', { can_now: ['Pass --colour.'], findings: [{ section: SECTION, scope: 'in', call: 'bug', text: 'The docs still say --color.', from: [`${SECTION}-a#1`], fix: '2.1' }] })]);
 }
 
 /**
@@ -123,7 +123,7 @@ function fixTaskRead(conf, at) {
   run(['land', 'open', UNIT, '2.1']);
   fixDone(at, '2.1', conf.as());
   okSections(at, ['enter', 'review', UNIT], conf.as());
-  run(['review', 'reads', UNIT, AREA, 'tests']);
+  run(['review', 'reads', UNIT, SECTION, 'tests']);
   return changeRead(conf, at);
 }
 

@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Domain ring: a quick-fix's fixes' acceptance in their own words — what a
 // review asked for at its close holds the change against, where a build's
-// review holds it against its spec (19.5.14, 19.5.24, 14.2.4): the area
+// review holds it against its spec (19.5.14, 19.5.24, 14.2.4): the section
 // pair's and the test surface's briefs (brief-records.cjs), and the
 // scenarios a round records and its report words (review-round.cjs,
 // review-change.cjs), and the checks the board words from the fixes as it

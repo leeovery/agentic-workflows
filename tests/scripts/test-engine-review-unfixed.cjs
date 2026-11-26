@@ -134,7 +134,7 @@ describe('review round: a bugfix\'s round 1 (15.5.6)', () => {
     enter();
     reported(1, EVERY);
     fixPhaseWritten(3, [['Rework the reproducing test', '§1.1']]);
-    const reworked = { area: 'tests', scope: 'in', text: 'The reproducing test passes on the unfixed code.', from: ['unfixed#1'], fix: '3.1' };
+    const reworked = { section: 'tests', scope: 'in', text: 'The reproducing test passes on the unfixed code.', from: ['unfixed#1'], fix: '3.1' };
 
     assert.deepStrictEqual([refusedRound(NOTHING), refusedRound({ ...NOTHING, findings: [{ ...reworked, call: 'bug' }] })], [
       'review round: unfixed#1 is answered by no finding — every item of every report lands in the round\'s record (14.3.1)',

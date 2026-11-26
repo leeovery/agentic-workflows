@@ -352,7 +352,7 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
       closing: 'Ask about anything else, or walk through the whole thing.',
       rows: [
         { key: 'w', word: 'walk', label: 'Walk through how Ledger works', next: WALK },
-        { key: 't', word: 'topics', label: 'Read about one area in more depth', next: TOPICS },
+        { key: 't', word: 'topics', label: 'Read about one subject in more depth', next: TOPICS },
       ],
     },
   });
@@ -420,7 +420,7 @@ describe('a menu\'s help (18.9.5, 23.2.1, 23.2.2, 23.2.3)', () => {
       '◆ What would you like to do?',
       '',
       'w/walk   → Walk through how Ledger works',
-      't/topics → Read about one area in more depth',
+      't/topics → Read about one subject in more depth',
       'b/back   → Back to the start menu',
       'Ask      → Ask anything about how Ledger works',
     ]]);

@@ -117,7 +117,7 @@
 // A report that does not read is replaced by briefing its reviewer again,
 // which every refusal of it names. A phase's review is
 // reported beside its consolidation, `build/phases/phase-{N}/
-// review-{letter}.md`, or `{area}-{letter}.md` where it was split, and read
+// review-{letter}.md`, or `{section}-{letter}.md` where it was split, and read
 // whole (`phaseReports`), each report with its text's fingerprint, by which
 // a settlement names the reports it answers (phase-settlement.cjs) and
 // commits them. What the phase's folder holds (`phaseRecords`) its close
@@ -163,7 +163,7 @@ const SCENARIO_LINE = new RegExp(`^[ \\t]*(?:${BULLET})?${SCENARIO_NAMED}`, 'i')
 const SCENARIO_AFTER = new RegExp(`(?:^|[ \\t])${SCENARIO_NAMED}`, 'i');
 const FORM = `each finding opens at the margin on its call, \`- serious: …\`, \`- bug: …\` or \`- nit: …\``;
 const ROUND_FILE = /^round-([1-9][0-9]*)-([a-z])\.md$/;
-/** A report of a phase's review: its set, `review` or an area, and its reviewer's letter. */
+/** A report of a phase's review: its set, `review` or a section, and its reviewer's letter. */
 const PHASE_REPORT = /^(.+)-([a-z])\.md$/;
 
 /** Whether findings pass: nothing serious and no bug (13.4.3, 13.4.4). @param {readonly Finding[]} findings */
@@ -392,7 +392,7 @@ function phaseReviewBegun(cwd, unit, phase) {
 /**
  * A phase's review as its reports stand: a report from every reviewer of
  * the count, for each set of reports the folder holds — `review`, or an
- * area where the review was split (13.1.4) — each read, with its file and
+ * section where the review was split (13.1.4) — each read, with its file and
  * the fingerprint of its text; or what stands in the way of reading them
  * all — none reported, a report missing, one that does not read.
  * @param {string} cwd @param {string} unit @param {number} phase

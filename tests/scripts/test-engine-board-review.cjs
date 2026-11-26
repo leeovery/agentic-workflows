@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // `engine board` in the review phase (ledger-engine/scripts/domain/
-// projections/board-review.cjs, 20.10): the round under way, each area by
+// projections/board-review.cjs, 20.10): the round under way, each section by
 // its reports and the briefs this conversation issued for it in that round;
 // and the build past the cut in step, its fix phase with a task behind the
 // one in flight and the phase whose merge waits; and a decided topic a
@@ -12,7 +12,7 @@
 // every view, test-engine-board-review-standing.cjs.
 //
 // Layer: verb. World: the review phase's (review-world.cjs) — `pay`, its
-// build finished, its spec of two areas — copied for each test.
+// build finished, its spec of two sections — copied for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -26,7 +26,7 @@ const {
   readManifest, createManifest,
 } = require('./review-world.cjs');
 const { MADE } = require('./ledger-world.cjs');
-const { area, tests, facts, placed, reviewBoard } = require('./review-board-world.cjs');
+const { section, tests, facts, placed, reviewBoard } = require('./review-board-world.cjs');
 const { withEnv, holdLock, lockAttempts, layout, traced } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
@@ -42,9 +42,9 @@ useWorld((made) => {
 const { board, head } = reviewBoard(() => dir);
 
 describe('the round under way (20.10.1)', () => {
-  it('each area is waiting, being read since its brief was issued in this conversation (P15), or read with every finding its reports hold, as FOUND lists them (N5); FOUND each finding a landed report holds, by its call and report item, unnumbered; NOT PROVEN each scenario not proven at the change\'s tips — its work not landed among them, a later run on code since amended counting for nothing — as the round will judge it, and so its check\'s page, wherever the session has gone (N3); the banner says the round reads (N2)', () => {
+  it('each section is waiting, being read since its brief was issued in this conversation (P15), or read with every finding its reports hold, as FOUND lists them (N5); FOUND each finding a landed report holds, by its call and report item, unnumbered; NOT PROVEN each scenario not proven at the change\'s tips — its work not landed among them, a later run on code since amended counting for nothing — as the round will judge it, and so its check\'s page, wherever the session has gone (N3); the banner says the round reads (N2)', () => {
     enter();
-    const { res } = issued(['review-area', UNIT, '--area', '1', '--base', 'main', '--letter', 'a']);
+    const { res } = issued(['review-section', UNIT, '--section', '1', '--base', 'main', '--letter', 'a']);
     const since = fs.statSync(issuedOf(res.id)).mtime.toISOString();
     reported(1, ['2-refunds'], { '2-refunds-a': ['bug: A refund is lost.'], '2-refunds-b': ['bug: A refund is lost.', 'nit: A name.'] });
     cutUnmerged();
@@ -65,11 +65,11 @@ describe('the round under way (20.10.1)', () => {
         ...head(1),
         built: 4,
         recorded: false,
-        areas: [area('1', 'Cards', 'reading', { since }), area('2', 'Refunds', 'read', { found: 3 }), tests('waiting')],
+        sections: [section('1', 'Cards', 'reading', { since }), section('2', 'Refunds', 'read', { found: 3 }), tests('waiting')],
         found: [
-          { round: 1, finding: null, from: '2-refunds-a#1', area: '2-refunds', call: 'bug', text: 'A refund is lost.' },
-          { round: 1, finding: null, from: '2-refunds-b#1', area: '2-refunds', call: 'bug', text: 'A refund is lost.' },
-          { round: 1, finding: null, from: '2-refunds-b#2', area: '2-refunds', call: 'nit', text: 'A name.' },
+          { round: 1, finding: null, from: '2-refunds-a#1', section: '2-refunds', call: 'bug', text: 'A refund is lost.' },
+          { round: 1, finding: null, from: '2-refunds-b#1', section: '2-refunds', call: 'bug', text: 'A refund is lost.' },
+          { round: 1, finding: null, from: '2-refunds-b#2', section: '2-refunds', call: 'nit', text: 'A name.' },
         ],
         not_proven: [
           { round: 1, scenario: '2.S1', standing: 'named, not run', text: 'Given a charge, when it is refunded whole, then the card is credited.' },
@@ -82,27 +82,27 @@ describe('the round under way (20.10.1)', () => {
     });
   });
 
-  it('an area is read once both its reviewers\' reports are written, and only its own brief puts it being read', () => {
+  it('a section is read once both its reviewers\' reports are written, and only its own brief puts it being read', () => {
     enter();
-    issued(['review-area', UNIT, '--area', '1', '--base', 'main', '--letter', 'a']);
+    issued(['review-section', UNIT, '--section', '1', '--base', 'main', '--letter', 'a']);
     writeState(dir, `${UNIT}/review/round-1/2-refunds-a.md`, reportText([]));
 
-    assert.deepStrictEqual(board().view.areas.map(({ state }) => state), ['reading', 'waiting', 'waiting']);
+    assert.deepStrictEqual(board().view.sections.map(({ state }) => state), ['reading', 'waiting', 'waiting']);
   });
 
-  it('a brief issued for an area in one round never puts the next round\'s read of it being read; that round\'s own brief does, on its own clock (P15)', () => {
+  it('a brief issued for a section in one round never puts the next round\'s read of it being read; that round\'s own brief does, on its own clock (P15)', () => {
     enter();
-    issued(['review-area', UNIT, '--area', '1', '--base', 'main', '--letter', 'a']);
+    issued(['review-section', UNIT, '--section', '1', '--base', 'main', '--letter', 'a']);
     reported(1, EVERY, FAILING);
     fixPhaseWritten(3, [['Send the receipt', '§1.2']]);
     recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
     fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
     enter();
     named(['1-cards']);
-    const before = board().view.areas[0];
-    const { res } = issued(['review-area', UNIT, '--area', '1', '--base', 'main', '--letter', 'a']);
+    const before = board().view.sections[0];
+    const { res } = issued(['review-section', UNIT, '--section', '1', '--base', 'main', '--letter', 'a']);
 
-    assert.deepStrictEqual([before, board().view.areas[0]], [area('1', 'Cards', 'waiting'), area('1', 'Cards', 'reading', { since: fs.statSync(issuedOf(res.id)).mtime.toISOString() })]);
+    assert.deepStrictEqual([before, board().view.sections[0]], [section('1', 'Cards', 'waiting'), section('1', 'Cards', 'reading', { since: fs.statSync(issuedOf(res.id)).mtime.toISOString() })]);
   });
 
   it('a board call finds the project\'s repositories, and the branch each lands on, once — the tasks landed and the change both reading them (N6)', () => {

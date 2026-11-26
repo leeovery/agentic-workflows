@@ -30,7 +30,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { git } = require('./engine-harness.cjs');
 const {
-  Sim, worlds, CUT_CLOSED_UNIT, writeTasks, builtAside, failedHashRound, reviewNext, buildLoop, areaRead, testsRead, finished, finishClosed, typeAtGate,
+  Sim, worlds, CUT_CLOSED_UNIT, writeTasks, builtAside, failedHashRound, reviewNext, buildLoop, sectionRead, testsRead, finished, finishClosed, typeAtGate,
 } = require('./pipeline-world.cjs');
 
 const WU = CUT_CLOSED_UNIT;
@@ -77,7 +77,7 @@ describe('pipeline simulation: a task beyond the review\'s findings', () => {
 
   it('a request at any point: something small asked for while round 1\'s readers read, no fix phase written, is a one-line task of the fix phase the entry names, written first; built and landed, the round passing, finish lands it', () => {
     requestBuilt();
-    areaRead(sim, WU);
+    sectionRead(sim, WU);
     testsRead(sim, WU);
     sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger.'], findings: [] })]);
 
@@ -88,7 +88,7 @@ describe('pipeline simulation: a task beyond the review\'s findings', () => {
 
   it('a request at finish: the review passed, something small asked for as finish\'s Comment is a one-line task of the fix phase after the passing round, which the entry names, written first; built and landed, finish lands it', () => {
     reviewNext(sim, WU);
-    areaRead(sim, WU);
+    sectionRead(sim, WU);
     testsRead(sim, WU);
     sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger.'], findings: [] })]);
     finishClosed(sim, WU);

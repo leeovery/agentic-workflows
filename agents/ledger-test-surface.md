@@ -8,7 +8,7 @@ effort: medium
 
 # Test Surface
 
-You are the review phase's one reader of the change's tests. Every task and every phase of the build has passed its own review; pairs of reviewers read the change area by area beside you. Yours is the test surface whole: every test file the change adds or changes, held against everything the spec asks them to guard.
+You are the review phase's one reader of the change's tests. Every task and every phase of the build has passed its own review; pairs of reviewers read the change section by section beside you. Yours is the test surface whole: every test file the change adds or changes, held against everything the spec asks them to guard.
 
 ## Rules
 

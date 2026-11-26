@@ -26,7 +26,7 @@
 //   round passed by every reviewer of the count, or settled (13.4.6,
 //   round-report.cjs); rounds that do not read fail it, said as a warning.
 // - Its phase review passed and its fixes landed: a report from every
-//   reviewer of the count, of each set where the review was split by area
+//   reviewer of the count, of each set where the review was split by section
 //   (13.1.4), every one read (round-report.cjs), passing; or, where one
 //   failed, the orchestrator's settlement answering those reports, every
 //   fix task it names done (13.10.1, phase-settlement.cjs) — one closed

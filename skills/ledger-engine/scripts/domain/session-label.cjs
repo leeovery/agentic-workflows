@@ -78,6 +78,14 @@ const SESSION_RESUME_COMMAND = `${HOOK_ENGINE} session resume`;
 const PRESENCE_CLEANUP_COMMAND = `${HOOK_ENGINE} presence cleanup`;
 const CONVERSATION_END_COMMAND = `${HOOK_ENGINE} conversation end`;
 const LAYOUT_GUARD_COMMAND = `${HOOK_ENGINE} layout guard`;
+
+/**
+ * The seconds each SessionEnd hook asks for. Claude Code gives the event's
+ * hooks 1.5 seconds between them and cancels what is still running, unless
+ * a hook's own timeout asks for longer; an engine call takes longer than
+ * that on a busy machine.
+ */
+const SESSION_END_TIMEOUT = 10;
 const BRIEF_GUARD_COMMAND = `${HOOK_ENGINE} brief guard`;
 const SHELL_GUARD_COMMAND = `${HOOK_ENGINE} shell guard`;
 // What makes a hook ours: the exact `engine.cjs" <verb>` form. The path
@@ -141,13 +149,14 @@ function carriesOurHooks(settings) {
   return Object.values(hooks).some((groups) => Array.isArray(groups) && groups.some((group) => marksOf(group).length > 0));
 }
 
-/** @typedef {{event: string, matcher?: string, commands: string[]}} WantedGroup */
+/** @typedef {{event: string, matcher?: string, timeout?: number, commands: string[]}} WantedGroup */
 
 /**
  * The groups wanted, each under its event: the label hook while labels are
  * on (`session`) — SessionEnd restores the name — and Ledger's own
  * (`ledger`), where SessionEnd sweeps the heartbeats and records the
- * conversation's transcript, SessionStart records a resumed conversation
+ * conversation's transcript, each given the time to finish (`timeout`),
+ * SessionStart records a resumed conversation
  * again where it was and brings its label back, its matcher having Claude
  * Code fire it on `claude --resume` alone, and PreToolUse runs the layout
  * hook before every write, the brief hook before every dispatch and the
@@ -159,7 +168,7 @@ function wantedGroups({ session, ledger }) {
   /** @param {(string|false)[]} candidates */
   const on = (candidates) => candidates.filter(/** @returns {c is string} */ (c) => typeof c === 'string');
   return [
-    { event: 'SessionEnd', commands: on([session && SESSION_CLEANUP_COMMAND, ledger && PRESENCE_CLEANUP_COMMAND, ledger && CONVERSATION_END_COMMAND]) },
+    { event: 'SessionEnd', timeout: SESSION_END_TIMEOUT, commands: on([session && SESSION_CLEANUP_COMMAND, ledger && PRESENCE_CLEANUP_COMMAND, ledger && CONVERSATION_END_COMMAND]) },
     { event: 'SessionStart', matcher: 'resume', commands: on([ledger && SESSION_RESUME_COMMAND]) },
     { event: 'PreToolUse', matcher: LAYOUT_HOOK_TOOLS.join('|'), commands: on([ledger && LAYOUT_GUARD_COMMAND]) },
     { event: 'PreToolUse', matcher: BRIEF_HOOK_TOOLS.join('|'), commands: on([ledger && BRIEF_GUARD_COMMAND]) },
@@ -180,11 +189,20 @@ function wantedByEvent(want) {
 }
 
 /**
+ * The fields the sync writes for each command of a wanted group: its
+ * command, and its timeout where the group gives one.
+ * @param {WantedGroup} wanted @returns {{type: 'command', command: string, timeout?: number}[]}
+ */
+function hooksOf({ commands, timeout }) {
+  return commands.map((command) => ({ type: 'command', command, ...(timeout === undefined ? {} : { timeout }) }));
+}
+
+/**
  * One event's groups with ours reconciled to the wanted groups. Where the
  * marks found already make up exactly the wanted set, wherever and however
- * they sit, nothing is twinned or moved: null when each hook of ours runs
- * the command the sync writes, else the groups with each that does not
- * rewritten to it, its other fields kept. Otherwise ours are stripped from
+ * they sit, nothing is twinned or moved: null when each hook of ours is
+ * current (`currentHooks`), else the groups with each that is not brought
+ * up to date, its other fields kept. Otherwise ours are stripped from
  * every group — a group emptied by that goes, one still holding foreign
  * hooks keeps them and its matcher — and each wanted group lands after
  * them, one per matcher.
@@ -192,27 +210,26 @@ function wantedByEvent(want) {
  * @returns {any[]|null}
  */
 function reconcileEventGroups(groups, wanted) {
-  const commands = new Map(wanted.flatMap((w) => w.commands.map((command) => [hookMark(command), command])));
-  if (groups.flatMap(marksOf).sort().join('\n') === [...commands.keys()].sort().join('\n')) return currentCommands(groups, commands);
+  const written = new Map(wanted.flatMap(hooksOf).map((hook) => [hookMark(hook.command), hook]));
+  if (groups.flatMap(marksOf).sort().join('\n') === [...written.keys()].sort().join('\n')) return currentHooks(groups, written);
   const kept = groups.flatMap((g) => {
     if (marksOf(g).length === 0) return [g];
     const foreign = g.hooks.filter((/** @type {unknown} */ h) => !ourMark(h));
     return foreign.length > 0 ? [{ ...g, hooks: foreign }] : [];
   });
-  const ours = wanted.filter((w) => w.commands.length > 0).map(({ matcher, commands }) => {
-    const hooks = commands.map((command) => ({ type: 'command', command }));
-    return matcher ? { matcher, hooks } : { hooks };
-  });
+  const ours = wanted.filter((w) => w.commands.length > 0).map((w) => (w.matcher ? { matcher: w.matcher, hooks: hooksOf(w) } : { hooks: hooksOf(w) }));
   return [...kept, ...ours];
 }
 
 /**
- * The groups with each hook of ours running the command the sync writes for
- * its mark, or null where every one runs it already.
- * @param {any[]} groups @param {Map<string, string>} commands
+ * The groups with each hook of ours current — running the command the sync
+ * writes for its mark, and holding each other field the sync writes, a
+ * timeout of the person's own kept over the sync's — or null where every
+ * one is current already.
+ * @param {any[]} groups @param {Map<string, {command: string}>} written
  * @returns {any[]|null}
  */
-function currentCommands(groups, commands) {
+function currentHooks(groups, written) {
   let rewritten = false;
   const next = groups.map((group) => {
     if (marksOf(group).length === 0) return group;
@@ -220,10 +237,10 @@ function currentCommands(groups, commands) {
       ...group,
       hooks: group.hooks.map((/** @type {any} */ hook) => {
         const mark = ourMark(hook);
-        const command = mark === null ? undefined : commands.get(mark);
-        if (command === undefined || hook.command === command) return hook;
+        const fields = mark === null ? undefined : written.get(mark);
+        if (fields === undefined || (hook.command === fields.command && Object.keys(fields).every((key) => key in hook))) return hook;
         rewritten = true;
-        return { ...hook, command };
+        return { ...fields, ...hook, command: fields.command };
       }),
     };
   });
@@ -233,13 +250,12 @@ function currentCommands(groups, commands) {
 /**
  * A settings document with the session hooks as wanted: SessionEnd carries
  * `session cleanup` iff `session`, and `presence cleanup` and `conversation
- * end` iff `ledger`; SessionStart carries `session resume` iff `ledger`;
+ * end` iff `ledger`, each with its timeout; SessionStart carries `session resume` iff `ledger`;
  * PreToolUse carries `layout guard`, `brief guard` and `shell guard`, each
  * in its own group, iff `ledger` — each event reconciled on its own,
  * every other key (permissions, other events, foreign groups and their
  * matchers) preserved, an event emptied by a removal gone. Null where the
- * document already carries exactly those, each running the command the
- * sync writes.
+ * document already carries exactly those, each current.
  * @param {Record<string, any>} settings @param {{session: boolean, ledger: boolean}} want
  * @returns {Record<string, any>|null}
  */

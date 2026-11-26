@@ -21,8 +21,8 @@ const { installTmuxStub, tmuxStubEnv, tmuxStubName, setTmuxStubName, setTmuxStub
 const { installPortalStub, portalStubEnv, portalStubLabel, setPortalStubLabel, portalStubCalls, pinnedPath } = require('./portal-stub.cjs');
 const harness = require('./engine-harness.cjs');
 
-const { engineHook, LEDGER_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, RESUME_GROUP, OWN_HOOKS } = harness;
-const SESSION_HOOK = engineHook('session cleanup');
+const { endHook, LEDGER_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, RESUME_GROUP, OWN_HOOKS } = harness;
+const SESSION_HOOK = endHook('session cleanup');
 const [RESUME_HOOK] = RESUME_GROUP.hooks;
 const [PRESENCE_HOOK, END_HOOK] = LEDGER_HOOKS;
 // The settings a project reaches with labels on — one group per matcher,

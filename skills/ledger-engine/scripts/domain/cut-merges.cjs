@@ -4,11 +4,11 @@
 // Domain ring: the cut and the merges' work on a unit whose building
 // started (directive 080; 21.8.6–21.8.8, E6). The unit's cut is laid out as
 // its phases (`unitPhases`), numbered as the cut numbers them: each old
-// plan's phase with a tracker parent, and each area of the joined spec no
+// plan's phase with a tracker parent, and each section of the joined spec no
 // plan put in the tracker — the plans in the order their dependencies
 // allow, a plan another of the unit's depends on before it, and otherwise
 // in the order the spec joins their topics, each plan's phases in its own
-// order, an area no plan holds where the spec joins it. The unit's sources
+// order, a section no plan holds where the spec joins it. The unit's sources
 // are the directive's check's (`unitSourcesOf`); the tracker is read as the
 // cut's adoption would leave it, writing nothing (task-verbs.cjs,
 // `adoptionRead`).
@@ -31,7 +31,7 @@
 // `migrate join <unit> --directive <id>` joins the pieces into the unit's
 // plan, `plan.json`, as the cut takes it (cut-migrating.cjs): the phases in
 // order, each naming its tracker parent; each phase's scenarios appended to
-// its area's, numbered on from the last, the phase naming them; the notes
+// its section's, numbered on from the last, the phase naming them; the notes
 // and corrections in phase order; and the person's answers kept. It
 // refuses, naming every fault and writing nothing: a unit no building
 // unit; a phase whose piece is missing, will not read or is of another
@@ -43,7 +43,7 @@
 // phase the cut adopts holds, or titling it otherwise; the phase, its tasks
 // read as its corrections end them, marked built holding a task neither
 // done nor closed, or not marked built holding none; and a phase marked
-// built naming a section outside its old plan's area — each named by its
+// built naming an address outside its old plan's section — each named by its
 // phase; a piece its verifier has not passed, or whose
 // findings stand; and a phase still to build of a plan that depends on
 // another plan's phase still to build, relying on nothing that names it —
@@ -83,23 +83,23 @@ const { DRY_RUN } = require('./ledger-carry.cjs');
 
 /**
  * A building unit's sources, as the check reads them.
- * @typedef {{project: string, areas: {topic: string, spec: string}[], plans: MigratedPlan[], legacy: string|null, staging: string}} UnitSources
+ * @typedef {{project: string, sections: {topic: string, spec: string}[], plans: MigratedPlan[], legacy: string|null, staging: string}} UnitSources
  */
 
 /**
- * A phase of the unit's cut: its number, its topic and area, and where it
+ * A phase of the unit's cut: its number, its topic and section, and where it
  * comes from — an old plan's phase, with its tracker parent, what the
  * manifest says of it, its name as its plan heads it or else as the tracker
  * titles its parent, its tasks as the cut's adoption names them and the
- * topic its old plan's root names in the tracker, or an area no plan put
+ * topic its old plan's root names in the tracker, or a section no plan put
  * in the tracker — where the manifest and the tracker disagree over it,
  * and whether an agent composes it.
- * @typedef {{number: number, topic: string, area: number|null, plan: MigratedPlan|null, old: OldPhase|null, tasks: TaskDetail[], rooted: string|null, disagreements: string[], composed: boolean}} CutPhase
+ * @typedef {{number: number, topic: string, section: number|null, plan: MigratedPlan|null, old: OldPhase|null, tasks: TaskDetail[], rooted: string|null, disagreements: string[], composed: boolean}} CutPhase
  */
 
 /**
  * What a piece is checked against: the unit, the sections its spec numbers,
- * its cut's phases, and the topics joined, area by area, against which a
+ * its cut's phases, and the topics joined, section by section, against which a
  * phase built names its sections — null for a single-topic unit.
  * @typedef {{unit: string, sections: Set<string>, phases: CutPhase[], topics: string[]|null}} CutReading
  */
@@ -125,14 +125,14 @@ function phaseNamed(topic, id) {
 }
 
 /**
- * The order the unit's cut takes its plans and its areas no plan holds:
- * each a plan or an area, the plans in the order their dependencies on
+ * The order the unit's cut takes its plans and its sections no plan holds:
+ * each a plan or a section, the plans in the order their dependencies on
  * each other allow, and otherwise in the order the spec joins their topics.
- * @param {MigratedPlan[]} plans the plans with a phase in the tracker @param {{topic: string}[]} areas
+ * @param {MigratedPlan[]} plans the plans with a phase in the tracker @param {{topic: string}[]} sections
  * @returns {{topic: string, plan: MigratedPlan|null}[]}
  */
-function cutOrder(plans, areas) {
-  const joined = areas.map(({ topic }) => topic);
+function cutOrder(plans, sections) {
+  const joined = sections.map(({ topic }) => topic);
   const rank = (/** @type {string} */ topic) => (joined.includes(topic) ? joined.indexOf(topic) : joined.length);
   const entries = [
     ...plans.map((plan) => ({ topic: plan.topic, plan })),
@@ -187,9 +187,11 @@ function disagreementsOf(plan, phase, number, tasks) {
 function unitSources(cwd, unit, directive, said) {
   const rules = /** @type {Record<string, unknown>} */ (loadCheck(directive));
   if (typeof rules.unitSourcesOf !== 'function') throw new Error(`${said}: ${directive} carries no unit's work — its pieces are not units`);
-  const sources = rules.unitSourcesOf({ projectDir: codeRoot(cwd), stateDir: stateRoot(cwd), unit });
-  if (sources === null) throw new Error(`${said}: ${unit} is no unit whose building started — the cut and the merges cut a unit the move left an old plan's items on`);
-  return sources;
+  const read = rules.unitSourcesOf({ projectDir: codeRoot(cwd), stateDir: stateRoot(cwd), unit });
+  if (read === null) throw new Error(`${said}: ${unit} is no unit whose building started — the cut and the merges cut a unit the move left an old plan's items on`);
+  // 080's check is a released migration's, frozen: it answers the sections as `areas`.
+  const { areas: sections, ...rest } = read;
+  return { ...rest, sections };
 }
 
 /**
@@ -201,15 +203,15 @@ function unitSources(cwd, unit, directive, said) {
  */
 function unitPhases(cwd, unit, sources) {
   const tracked = sources.plans.filter((plan) => plan.phases.some(({ parent }) => parent !== null));
-  const areaOf = (/** @type {string} */ topic) => {
-    const at = sources.areas.findIndex((area) => area.topic === topic);
+  const sectionOfTopic = (/** @type {string} */ topic) => {
+    const at = sources.sections.findIndex((section) => section.topic === topic);
     return at === -1 ? null : at + 1;
   };
   /** @type {Omit<CutPhase, 'tasks'|'rooted'|'disagreements'|'composed'>[]} */
   const laid = [];
-  for (const { topic, plan } of cutOrder(tracked, sources.areas)) {
-    if (plan === null) laid.push({ number: laid.length + 1, topic, area: areaOf(topic), plan: null, old: null });
-    else for (const old of plan.phases.filter(({ parent }) => parent !== null)) laid.push({ number: laid.length + 1, topic, area: areaOf(topic), plan, old });
+  for (const { topic, plan } of cutOrder(tracked, sources.sections)) {
+    if (plan === null) laid.push({ number: laid.length + 1, topic, section: sectionOfTopic(topic), plan: null, old: null });
+    else for (const old of plan.phases.filter(({ parent }) => parent !== null)) laid.push({ number: laid.length + 1, topic, section: sectionOfTopic(topic), plan, old });
   }
   const adopted = laid.filter(({ old }) => old !== null);
   /** @type {Map<number, {title: string|null, tasks: TaskDetail[], rooted: string|null}>} */
@@ -383,12 +385,12 @@ function joined(root, sources, reading) {
   const scenarios = {};
   const cut = read.map(({ phase, piece }) => {
     const tracker = phase.old?.parent ?? undefined;
-    if (piece === null) return { name: phase.old?.title ?? `${titled(phase.topic)}, phase ${phase.old?.number}`, goal: phase.old?.goal ?? `Phase ${phase.old?.number} of the ${phase.topic} plan, built before the migration.`, sections: phase.area === null ? [] : [String(phase.area)], built: true, ...(tracker === undefined ? {} : { tracker }) };
+    if (piece === null) return { name: phase.old?.title ?? `${titled(phase.topic)}, phase ${phase.old?.number}`, goal: phase.old?.goal ?? `Phase ${phase.old?.number} of the ${phase.topic} plan, built before the migration.`, sections: phase.section === null ? [] : [String(phase.section)], built: true, ...(tracker === undefined ? {} : { tracker }) };
     const { built, relies_on: relies, ...entry } = piece.phase;
     if (built === true) return { ...entry, built: true, ...(tracker === undefined ? {} : { tracker }) };
-    const area = String(phase.area);
-    const block = (scenarios[area] ??= []);
-    const ids = piece.scenarios.map((/** @type {string} */ text) => `${area}.S${block.push(text)}`);
+    const section = String(phase.section);
+    const block = (scenarios[section] ??= []);
+    const ids = piece.scenarios.map((/** @type {string} */ text) => `${section}.S${block.push(text)}`);
     return { ...entry, scenarios: ids, relies_on: relies, ...(tracker === undefined ? {} : { tracker }) };
   });
   const pieces = read.flatMap(({ piece }) => (piece === null ? [] : [piece]));

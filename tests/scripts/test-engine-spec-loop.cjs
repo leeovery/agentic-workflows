@@ -5,7 +5,7 @@
 // loop's states; agent-state.cjs, the store a pass's report is taken in by;
 // brief-records.cjs, the briefs that read them): seeded walks of the loop's
 // events — the writer's brief, alone or landed; spec.md edited, a statement,
-// the introduction, an area added, removed or moved, and landed or left
+// the introduction, a section added, removed or moved, and landed or left
 // written; a pass dispatched, briefed and reported, clean or with findings
 // in each lane, its findings' text quoting headings in fenced blocks or not,
 // or code inline, its report malformed — a fence among them left open as its
@@ -101,8 +101,8 @@ const MALFORMED = Object.freeze([
 ]);
 /** Every event a walk takes, pinned to occur across the seeds. */
 const EVENTS = Object.freeze([
-  'writer brief', 'writer brief, landed', 'land', 'spec: a statement edited', 'spec: the introduction edited', 'spec: an area added',
-  'spec: an area removed', 'spec: areas moved', 'pass', 'pass, its report malformed', 'pass abandoned, reporting late', 'pass left running',
+  'writer brief', 'writer brief, landed', 'land', 'spec: a statement edited', 'spec: the introduction edited', 'spec: a section added',
+  'spec: a section removed', 'spec: sections moved', 'pass', 'pass, its report malformed', 'pass abandoned, reporting late', 'pass left running',
   'pass lost with its owner', 'pass returned without its report', 'a pass in flight reports', 'a pass in flight abandoned', 'ack', 'ack --clean, refused',
   'incorporate before its ack, refused', 'incorporate', 'surface', 'entry at the spec', 'asset linked to an entry at the spec', 'gap asked',
   'gap answered', 'the way on taken',
@@ -171,7 +171,7 @@ function seeded(seed) {
 
 /**
  * The spec a walk's shape writes: its introduction's edition, its first
- * statement's take, the extra areas by number, and whether its two areas are
+ * statement's take, the extra sections by number, and whether its two sections are
  * swapped.
  * @typedef {{take: number, intro: number, extras: number[], next: number, swapped: boolean}} Shape
  * @param {Shape} shape
@@ -182,7 +182,7 @@ function specOf({ take, intro, extras, swapped }) {
   return [
     '# Payments', '', ...(intro === 0 ? [] : [`The payments of the shop, edition ${intro}.`, '']),
     ...(swapped ? [...refunds, ...cards] : [...cards, ...refunds]),
-    ...extras.flatMap((n) => [`## ${n}. Extra ${n}`, '', `### ${n}.1 More`, '', `${n}.1.1 Refunds take one kind, in area ${n}. [${decided.refunds}]`, '']),
+    ...extras.flatMap((n) => [`## ${n}. Extra ${n}`, '', `### ${n}.1 More`, '', `${n}.1.1 Refunds take one kind, in section ${n}. [${decided.refunds}]`, '']),
   ].join('\n');
 }
 
@@ -443,9 +443,9 @@ class Walk {
       ['land', () => this.land()],
       ['spec: a statement edited', () => this.edit((shape) => { shape.take += 1; })],
       ['spec: the introduction edited', () => this.edit((shape) => { shape.intro += 1; })],
-      ['spec: an area added', () => this.edit((shape) => { shape.extras.push(shape.next); shape.next += 1; })],
-      this.shape.extras.length === 0 ? null : ['spec: an area removed', () => this.edit((shape) => { shape.extras.pop(); })],
-      ['spec: areas moved', () => this.edit((shape) => { shape.swapped = !shape.swapped; })],
+      ['spec: a section added', () => this.edit((shape) => { shape.extras.push(shape.next); shape.next += 1; })],
+      this.shape.extras.length === 0 ? null : ['spec: a section removed', () => this.edit((shape) => { shape.extras.pop(); })],
+      ['spec: sections moved', () => this.edit((shape) => { shape.swapped = !shape.swapped; })],
       issuable ? ['pass', () => this.review('pass')] : null,
       issuable ? ['pass, its report malformed', () => this.review('malformed')] : null,
       issuable ? ['pass abandoned, reporting late', () => this.review('abandoned')] : null,

@@ -1,6 +1,6 @@
 ---
 name: ledger-sweep
-description: The sweep before the spec — once every topic of an epic is decided, reads across all its records, and the project's in the areas it touches, for work no topic owns and for conflicting answers, and writes what it finds as JSON for approve the map, the topics' mailboxes and the spec's writer. Briefed by the engine.
+description: The sweep before the spec — once every topic of an epic is decided, reads across all its records, and the project's on the subjects it touches, for work no topic owns and for conflicting answers, and writes what it finds as JSON for approve the map, the topics' mailboxes and the spec's writer. Briefed by the engine.
 tools: Read, Write, Bash
 model: opus
 effort: medium

@@ -13,7 +13,7 @@
 // recap staged, the close marked in the checklist store and committed, its
 // place released and the work handed off into the spec (19.S15, 24.S17,
 // 11.2.1), the close voided as the investigation goes on (9.7.9); and what
-// the bug is in, the unit whose code it fixes and the feature map's area,
+// the bug is in, the unit whose code it fixes and the feature map's part,
 // staged with the recap in the spelling first recorded (17.1.9). Its
 // conclude at ready to build is test-engine-ready-to-build-bugfix.cjs's; its
 // entry, log and gates test-engine-investigation.cjs's.
@@ -315,7 +315,7 @@ describe('the close into the spec, with no gate — `investigation stage` (19.4.
     assert.deepStrictEqual([['investigation', 'stage', RIPE], ['investigation', 'stage'], ['investigation', 'conclude', RIPE]].map((args) => refused(args)), Array(3).fill('Usage: engine investigation stage <bugfix> --file <recap.json>'));
     wrote('decide', ['--answers', asked], { ...PERSON, text: 'Yes, in one line.', why: 'The person wants to know.' });
     assert.strictEqual(stageRefused(RIPE, { hunt: 'two\nlines' }), 'investigation stage: the recap\'s hunt is one paragraph of words, not empty');
-    assert.strictEqual(stageRefused(RIPE, { recap: 'x' }), 'investigation stage: the recap must be {hunt, fixes?, area?}');
+    assert.strictEqual(stageRefused(RIPE, { recap: 'x' }), 'investigation stage: the recap must be {hunt, fixes?, part?}');
 
     log('root-cause', ['--entry', made.rootCause]);
     assert.strictEqual(stageRefused(HUNT), `investigation stage: no fix direction is logged — log it once its question is raised: engine investigation-log fix-direction ${HUNT} --question <question>`);
@@ -339,37 +339,37 @@ describe('the close into the spec, with no gate — `investigation stage` (19.4.
     commitAll(dir, 'the verify setup');
   }
 
-  it('17.1.9: what the bug is in is the recap\'s, staged with it — its area in the spelling the project\'s bugfixes first recorded it by, folded for case and spacing, a new one as named (N3)', () => {
+  it('17.1.9: what the bug is in is the recap\'s, staged with it — its part in the spelling the project\'s bugfixes first recorded it by, folded for case and spacing, a new one as named (N3)', () => {
     verifySetUp();
     const recorded = (/** @type {string} */ unit, /** @type {string} */ day, /** @type {Record<string, string>} */ fields) => {
       for (const [field, value] of Object.entries({ concluded_at: `2026-10-${day}T09:00:00.000Z`, ...fields })) run(['manifest', 'set', `${unit}.investigation.${unit}`, field, value]);
     };
-    recorded('fixed', '01', { area: 'session  restore' });
+    recorded('fixed', '01', { part: 'session  restore' });
     createManifest(dir, 'later', { work_type: 'bugfix', phases: { investigation: { items: { later: { status: 'completed' } } } } });
-    recorded('later', '02', { fixes: FEATURE, area: 'Session Restore' });
+    recorded('later', '02', { fixes: FEATURE, part: 'Session Restore' });
 
-    const answers = [{ fixes: FEATURE, area: ' Session Restore ' }, { area: 'Boot' }].map((bug) => {
-      const { fixes, area } = stage(RIPE, { ...RECAP, ...bug });
-      return [fixes, area, closeOf().area];
+    const answers = [{ fixes: FEATURE, part: ' Session Restore ' }, { part: 'Boot' }].map((bug) => {
+      const { fixes, part } = stage(RIPE, { ...RECAP, ...bug });
+      return [fixes, part, closeOf().part];
     });
 
     assert.deepStrictEqual(answers, [[FEATURE, 'session  restore', 'session  restore'], [undefined, 'Boot', 'Boot']]);
   });
 
-  it('refuses what the bug is in, writing nothing — a unit the project lacks or this one, an area where no verify setup is recorded or past a line', () => {
+  it('refuses what the bug is in, writing nothing — a unit the project lacks or this one, a part where no verify setup is recorded or past a line', () => {
     const recap = (/** @type {Record<string, string>} */ bug) => stageRefused(RIPE, { ...RECAP, ...bug });
     assert.deepStrictEqual([
       recap({ fixes: 'nowhere' }),
       recap({ fixes: '.' }),
       recap({ fixes: RIPE }),
-      recap({ area: 'session restore' }),
+      recap({ part: 'session restore' }),
     ], [
       'investigation stage: there is no work unit "nowhere" to fix — the recap\'s fixes names the unit whose code the bug is in, left out where no unit built it',
       'investigation stage: there is no work unit "." to fix — the recap\'s fixes names the unit whose code the bug is in, left out where no unit built it',
       `investigation stage: ${RIPE} cannot fix its own code — the recap's fixes names the unit whose code the bug is in`,
-      'investigation stage: no verify setup is recorded, so no feature map names an area — leave the area out',
+      'investigation stage: no verify setup is recorded, so no feature map names a part — leave the part out',
     ]);
     verifySetUp();
-    assert.strictEqual(recap({ fixes: FEATURE, area: 'session\nrestore' }), 'investigation stage: the area is one line of words, an area of the verify setup\'s feature map');
+    assert.strictEqual(recap({ fixes: FEATURE, part: 'session\nrestore' }), 'investigation stage: the part is one line of words, a part of the verify setup\'s feature map');
   });
 });

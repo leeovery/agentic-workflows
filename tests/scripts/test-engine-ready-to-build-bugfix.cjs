@@ -196,11 +196,11 @@ describe('the one screen\'s yes (17.1.9, 17.S4)', () => {
   it('keeps what the bug is in, as staged, with whether that unit\'s review had ended — judged now, or kept from an earlier conclude naming the same unit — counted only where it had', () => {
     verifySetUp();
     reviewSettled(FIXES);
-    stageRecap(dir(), { fixes: FIXES, area: ' Session restore ' });
+    stageRecap(dir(), { fixes: FIXES, part: ' Session restore ' });
     yes(['--position', 'auto']);
 
-    const { fixes, area, after_review: after } = readManifest(dir(), BUGFIX).phases.investigation.items[BUGFIX];
-    assert.deepStrictEqual([fixes, area, after], [FIXES, 'Session restore', true]);
+    const { fixes, part, after_review: after } = readManifest(dir(), BUGFIX).phases.investigation.items[BUGFIX];
+    assert.deepStrictEqual([fixes, part, after], [FIXES, 'Session restore', true]);
     assert.deepStrictEqual(ok(dir(), ['measures', 'bugs']).bugs.map(({ fixed }) => fixed), [[{ unit: FIXES, bugfixes: [BUGFIX] }]]);
   });
 
@@ -215,13 +215,13 @@ describe('the one screen\'s yes (17.1.9, 17.S4)', () => {
 
   it('refuses, writing nothing, what the bug is in no longer holding, naming the restage', () => {
     verifySetUp();
-    stageRecap(dir(), { area: 'session restore' });
+    stageRecap(dir(), { part: 'session restore' });
     const project = JSON.parse(readState(dir(), layout.projectManifest));
     delete project.environment.verify;
     writeState(dir(), layout.projectManifest, JSON.stringify(project, null, 2));
     commitAll(dir(), 'no verify setup');
 
     assert.strictEqual(refused(['ready-to-build', 'yes', BUGFIX, '--position', 'auto']),
-      `ready-to-build yes: no verify setup is recorded, so no feature map names an area — leave the area out — engine investigation stage ${BUGFIX} --file <recap.json> stages it again`);
+      `ready-to-build yes: no verify setup is recorded, so no feature map names a part — leave the part out — engine investigation stage ${BUGFIX} --file <recap.json> stages it again`);
   });
 });

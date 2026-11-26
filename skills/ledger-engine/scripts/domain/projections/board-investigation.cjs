@@ -61,7 +61,7 @@
 //   investigating. How far it has come, as All work says it, is read from
 //   what it holds: the cause found, confirmed, the fix picked —
 //   as the fix direction reads its pick — confirmed.
-// - Nothing of earlier fixes to the area is shown or counted (20.12.3):
+// - Nothing of earlier fixes to the same code is shown or counted (20.12.3):
 //   they are Claude's analysis, in the log's prose, never its lists.
 // - The hunt's moments, for a bugfix's LATELY whatever phase it is in, are
 //   those its records date: each experiment, the root cause and the fix by

@@ -10,9 +10,9 @@ export default {
   "waiting": [{ "kind": "finish", "id": "finish", "text": "Finish: the report of every round", "page": null }],
   "stopped": false,
   "recorded": true,
-  "areas": [
+  "sections": [
     {
-      "area": "1",
+      "section": "1",
       "title": "Purpose and Scope",
       "before": null,
       "state": "unchanged",
@@ -21,7 +21,7 @@ export default {
       "since": null
     },
     {
-      "area": "2",
+      "section": "2",
       "title": "The Lean Default AI Command",
       "before": null,
       "state": "unchanged",
@@ -30,7 +30,7 @@ export default {
       "since": null
     },
     {
-      "area": "3",
+      "section": "3",
       "title": "Quote-Aware ai_command Parsing",
       "before": null,
       "state": "unchanged",
@@ -39,7 +39,7 @@ export default {
       "since": null
     },
     {
-      "area": "4",
+      "section": "4",
       "title": "The Per-Call Size Cap",
       "before": null,
       "state": "read",
@@ -48,7 +48,7 @@ export default {
       "since": null
     },
     {
-      "area": "5",
+      "section": "5",
       "title": "Per-Verb Exclusion Lists",
       "before": null,
       "state": "read",
@@ -57,7 +57,7 @@ export default {
       "since": null
     },
     {
-      "area": "6",
+      "section": "6",
       "title": "The Exclusion Check",
       "before": null,
       "state": "read",
@@ -66,7 +66,7 @@ export default {
       "since": null
     },
     {
-      "area": "7",
+      "section": "7",
       "title": "Routing a Release's Notes",
       "before": null,
       "state": "unchanged",
@@ -75,7 +75,7 @@ export default {
       "since": null
     },
     {
-      "area": "8",
+      "section": "8",
       "title": "Chunked Generation",
       "before": null,
       "state": "unchanged",
@@ -84,7 +84,7 @@ export default {
       "since": null
     },
     {
-      "area": "9",
+      "section": "9",
       "title": "Failure Classification",
       "before": null,
       "state": "unchanged",
@@ -93,7 +93,7 @@ export default {
       "since": null
     },
     {
-      "area": "10",
+      "section": "10",
       "title": "Halving After an Under-Cap Overflow",
       "before": null,
       "state": "unchanged",
@@ -102,7 +102,7 @@ export default {
       "since": null
     },
     {
-      "area": "11",
+      "section": "11",
       "title": "Failures in a Chunked Run",
       "before": null,
       "state": "unchanged",
@@ -111,7 +111,7 @@ export default {
       "since": null
     },
     {
-      "area": "12",
+      "section": "12",
       "title": "The Remediation Floor",
       "before": null,
       "state": "read",
@@ -120,7 +120,7 @@ export default {
       "since": null
     },
     {
-      "area": "13",
+      "section": "13",
       "title": "--notes-file",
       "before": null,
       "state": "unchanged",
@@ -129,7 +129,7 @@ export default {
       "since": null
     },
     {
-      "area": "14",
+      "section": "14",
       "title": "One Non-AI Body: Dropping [release].fallback",
       "before": null,
       "state": "unchanged",
@@ -138,7 +138,7 @@ export default {
       "since": null
     },
     {
-      "area": "15",
+      "section": "15",
       "title": "Chunked Notes at the Review Gate and in the Cache",
       "before": null,
       "state": "unchanged",
@@ -147,7 +147,7 @@ export default {
       "since": null
     },
     {
-      "area": "16",
+      "section": "16",
       "title": "Progress Narration",
       "before": null,
       "state": "read",
@@ -156,7 +156,7 @@ export default {
       "since": null
     },
     {
-      "area": "17",
+      "section": "17",
       "title": "mint commit's AI-Failure Output",
       "before": null,
       "state": "unchanged",
@@ -165,7 +165,7 @@ export default {
       "since": null
     },
     {
-      "area": "18",
+      "section": "18",
       "title": "Documentation and the Setup Guide",
       "before": null,
       "state": "read",
@@ -174,7 +174,7 @@ export default {
       "since": null
     },
     {
-      "area": "tests",
+      "section": "tests",
       "title": "Tests held against the specification",
       "before": null,
       "state": "read",

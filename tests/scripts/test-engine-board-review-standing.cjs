@@ -10,7 +10,7 @@
 // finish's hold do. The round itself is test-engine-board-review.cjs.
 //
 // Layer: verb. World: the review phase's (review-world.cjs) — `pay`, its
-// build finished, its spec of two areas — copied for each test.
+// build finished, its spec of two sections — copied for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

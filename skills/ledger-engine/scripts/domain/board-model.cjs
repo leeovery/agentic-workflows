@@ -35,7 +35,7 @@
 // ---------------------------------------------------------------------------
 
 /** The view model's version (the header's). */
-const BOARD_VERSION = 11;
+const BOARD_VERSION = 12;
 
 /** The board's tabs (20.3.1). */
 const TABS = Object.freeze(['this', 'unit', 'all']);
@@ -149,17 +149,17 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 /**
  * A finding of a round: the round; its number in it once the round is
  * recorded, else null, and while it is read the report item it is,
- * `{report}#{n}`, else null; its area, call and words.
- * @typedef {{round: number, finding: number|null, from: string|null, area: string, call: string, text: string}} FoundLine
+ * `{report}#{n}`, else null; its section, call and words.
+ * @typedef {{round: number, finding: number|null, from: string|null, section: string, call: string, text: string}} FoundLine
  */
-/** An area's state in a round: read, being read, waiting, or not read again (20.10.2). @typedef {'read'|'reading'|'waiting'|'unchanged'} AreaState */
+/** A section's state in a round: read, being read, waiting, or not read again (20.10.2). @typedef {'read'|'reading'|'waiting'|'unchanged'} SectionState */
 /**
- * An area of a round, or the reader over the tests (`tests`): its number
+ * A section of a round, or the reader over the tests (`tests`): its number
  * and title, how much of it was built before the migration cut the unit,
  * `built` or `partly`, else null (21.8.8), its state, the checks of its
  * scenarios the round ran, what it found, and since when it is read, else
  * null.
- * @typedef {{area: string, title: string, before: 'built'|'partly'|null, state: AreaState, ran: number, found: number, since: string|null}} AreaLine
+ * @typedef {{section: string, title: string, before: 'built'|'partly'|null, state: SectionState, ran: number, found: number, since: string|null}} SectionLine
  */
 /**
  * The review phase's This session (20.10): the unit, its title, the project
@@ -168,7 +168,7 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * the last recorded — what waits on the person, the unit's one list, its
  * questions or finish (D18), and whether nothing can go on without an
  * answer, as the build's; whether the round is recorded, and each of its
- * areas; what it found — once recorded each finding in scope, else each
+ * sections; what it found — once recorded each finding in scope, else each
  * its landed reports hold; each check not proven, by the round that
  * recorded it, or round 1 while it is read, with its scenario's words, null
  * where the spec lacks them; each finding that went to the inbox, by its
@@ -176,7 +176,7 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * build's phase they make, null where there are none.
  * @typedef {{
  *   kind: 'review', unit: string, title: string, project: string, type: string, built: number,
- *   round: number, waiting: WaitingLine[], stopped: boolean, recorded: boolean, areas: AreaLine[],
+ *   round: number, waiting: WaitingLine[], stopped: boolean, recorded: boolean, sections: SectionLine[],
  *   found: FoundLine[], not_proven: {round: number, scenario: string, standing: string, text: string|null}[],
  *   inbox: {round: number, finding: number, text: string}[],
  *   verdict: 'passed'|'failed'|'settled'|null, fixes: {phase: number, round: number, tasks: TaskLine[]}|null,
@@ -186,9 +186,9 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * A finding read in full (20.10.3): its round; once the round is recorded,
  * its number, scope, and the fix task or inbox item it went to, the
  * reviewer null; while it is read, the letter of the reviewer whose report
- * holds it, the rest null; its area, call and words.
+ * holds it, the rest null; its section, call and words.
  * @typedef {{
- *   kind: 'finding', unit: string, round: number, finding: number|null, area: string, scope: string|null, call: string, text: string,
+ *   kind: 'finding', unit: string, round: number, finding: number|null, section: string, scope: string|null, call: string, text: string,
  *   fix: string|null, inbox: string|null, reviewer: string|null,
  * }} FindingPage
  */

@@ -45,7 +45,7 @@
 // longer holds it; a number removed since the page opened given to another
 // line, a line brought back with its last wording being that line again;
 // and an added number not past every number held where it sits, its part,
-// its area's scenarios or its line's screens. The spec's writer is briefed
+// its section's scenarios or its line's screens. The spec's writer is briefed
 // with them, each place's numbers and the next free one there
 // (`heldPlaces`), so it never writes a land the page refuses.
 //
@@ -92,7 +92,7 @@ const REVIEW_FILE = 'spec-review.json';
 /** @typedef {'approved'|'approved-after-comment'|'claudes-tick'|'open'|'changed'|'passed'|'removed'} ReviewState */
 /**
  * A line as the review leaves it: its id and number; for a line the spec
- * holds, its area and its wording; its state and its conversation; and
+ * holds, its section and its wording; its state and its conversation; and
  * whether its conversation waits for Claude.
  * @typedef {{id: string, number: string, section: number|null, wording: string|null, state: ReviewState, conversation: Said[], waiting: boolean}} Reviewed
  */
@@ -381,7 +381,7 @@ function heldNumbers(cwd, unit, landed) {
 
 /**
  * The numbers the unit's open page holds, by where each sits — a part, an
- * area's scenarios or a line's screens — in the order first held, each
+ * section's scenarios or a line's screens — in the order first held, each
  * place's numbers in order with the next free one there; null while no page
  * is open.
  * @param {string} cwd @param {string} unit @returns {{held: string[], next: string}[]|null}

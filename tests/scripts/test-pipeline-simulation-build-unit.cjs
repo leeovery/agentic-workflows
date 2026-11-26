@@ -26,7 +26,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { git, createFile } = require('./engine-harness.cjs');
 const {
-  Sim, worlds, SPEC_TO_BUILD_UNIT, PASSED_REPORT, firstPhaseBuilt, writePhaseTasks, startPhase, builders, taskBuilt, landed, placeIn, areaRead, testsRead, reviewNext,
+  Sim, worlds, SPEC_TO_BUILD_UNIT, PASSED_REPORT, firstPhaseBuilt, writePhaseTasks, startPhase, builders, taskBuilt, landed, placeIn, sectionRead, testsRead, reviewNext,
   finishClosed, answerGate,
 } = require('./pipeline-world.cjs');
 
@@ -63,7 +63,7 @@ describe('pipeline simulation: the build on a unit\'s own branch', () => {
 
     const { move, data } = reviewNext(sim, WU);
     const base = data.base[0].split(' ')[0];
-    areaRead(sim, WU, PASSED_REPORT, 1, base);
+    sectionRead(sim, WU, PASSED_REPORT, 1, base);
     testsRead(sim, WU, PASSED_REPORT, base);
     const round = sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Settle and show an entry.'], findings: [] })]).ends;
     const closing = reviewNext(sim, WU).move;

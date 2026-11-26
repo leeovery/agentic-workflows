@@ -120,7 +120,7 @@ describe('start this work, the screen (8.8.2, 8.S16, 8.S21)', () => {
       '· · · · · · · · · · · ·',
       'Your yes creates the epic. We shape its topics next, and you approve the map.',
       '',
-      '**`◆ Start this work?`**',
+      '**`◆ Start it as an epic?`**',
       '',
       '**`y/yes`**        → Start it — create the epic',
       '**Keep shaping** → Tell me what I\'m missing',
@@ -249,7 +249,7 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
     const joinedFirst = started(oneTopic('feature', 'saved-filters')).product_session_closed;
     ok(dir(), ['enter', 'discovery', 'product'], { env: LIVE });
     const joinedLast = started(oneTopic('feature', 'pinned-notes'));
-    assert.deepStrictEqual([joinedFirst, joinedLast.product_session_closed, readManifest(dir(), '.').product_session, joinedLast.next.kind], [null, null, '001', 'handoff']);
+    assert.deepStrictEqual([joinedFirst, joinedLast.product_session_closed, readManifest(dir(), '.').product_session, joinedLast.next.kind], [null, null, '001', 'invoke']);
   });
 
   it('a bare start leaves the product\'s conversation, its presence row gone with its position', () => {
@@ -315,20 +315,17 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
     assert.ok(!fs.existsSync(statePath(dir(), 'login-loop')));
   });
 
-  it('lands a feature\'s one topic with its brief, the draft consumed, and hands off into its discussion — carried by the mod where it runs, inline where it does not (8.7.7, 8.S47, 24.S1, 24.S2)', () => {
+  it('lands a feature\'s one topic with its brief, the draft consumed, and opens its discussion in this conversation (8.7.7, 8.S47)', () => {
     const given = oneTopic('feature', 'saved-filters');
     const res = started(given);
     assert.deepStrictEqual([res.brief, readState(dir(), layout.brief('saved-filters', 'saved-filters')), fs.existsSync(given.brief)],
       [statePath(dir(), layout.brief('saved-filters', 'saved-filters')), '# saved-filters\n\nWhat discovery heard.\n', false]);
     assert.deepStrictEqual(readManifest(dir(), 'saved-filters').phases, {}, 'a feature has no discovery session to carry on');
-    assert.deepStrictEqual(res.next, { kind: 'handoff', skill: 'ledger-discussion-process', args: ['feature', 'saved-filters'] });
-    const hand = (/** @type {Record<string, string>} */ env) => sectionOf(output(dir(), ['handoff', res.next.skill, ...res.next.args], { env }), 'DATA');
-    assert.match(hand({ ...SESSION, LEDGER_HANDOFF: '1' }), /^handoff: mod$/m);
-    assert.match(hand(SESSION), /^handoff: inline$/m);
+    assert.deepStrictEqual(res.next, { kind: 'invoke', skill: 'ledger-discussion-process', args: ['feature', 'saved-filters'] });
   });
 
-  it('hands a bugfix into its investigation, and a quick-fix, which takes no brief, carries on into its fixes in this conversation (24.1.2, 24.1.3)', () => {
-    assert.deepStrictEqual(started(oneTopic('bugfix', 'login-loop')).next, { kind: 'handoff', skill: 'ledger-investigation-process', args: ['bugfix', 'login-loop'] });
+  it('opens a bugfix\'s investigation in this conversation, and a quick-fix, which takes no brief, carries on into its fixes there too (24.1.3)', () => {
+    assert.deepStrictEqual(started(oneTopic('bugfix', 'login-loop')).next, { kind: 'invoke', skill: 'ledger-investigation-process', args: ['bugfix', 'login-loop'] });
     const { brief, ...quick } = oneTopic('quick-fix', 'typo-fix');
     const res = started({ ...quick, seeds: [statePath(dir(), BUG)] });
     assert.deepStrictEqual([res.next, res.brief, fs.existsSync(statePath(dir(), layout.topic('typo-fix', 'typo-fix')))],

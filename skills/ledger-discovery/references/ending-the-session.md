@@ -6,7 +6,7 @@
 
 ## The Roadmap Items
 
-In the product's conversation, what the picture and the log hold that the roadmap does not yet — the areas of work the talk settled, and what still stands of the researcher's open questions — is proposed as roadmap items on one screen. An item is coarse, an area of work a piece of work could start from, never a task, and a placeholder, changeable until work starts from it. Nothing reaches the roadmap without the person's yes; with nothing to propose, there is no screen.
+In the product's conversation, what the picture and the log hold that the roadmap does not yet — the work the talk settled, and what still stands of the researcher's open questions — is proposed as roadmap items on one screen. An item is coarse, a body of work a piece of work could start from, never a task, and a placeholder, changeable until work starts from it. Nothing reaches the roadmap without the person's yes; with nothing to propose, there is no screen.
 
 Each item is a kebab-case `name`, a one-line `summary` in the product's terms, and the horizon the person named; each item they gave none takes its own pick, as Putting Something Aside says. Write them to `.ledger/.cache/product/discovery/product/roadmap-items.json`, `[{"name", "horizon", "summary", "sources": ["{log}"]}]`, `{log}` the log's path from the state root and `"kind": "bug"` or `"quick-fix"` for those. Draw the proposal:
 

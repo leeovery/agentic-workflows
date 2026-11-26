@@ -7,7 +7,7 @@ allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 
 # Review
 
-The third review, once every phase of the build has closed: the whole change held against the spec's intent by independent agents — a pair for each of the spec's areas, reading its area, where it meets the others and the unit's calls whole, and running what touches it; and one reader over every test file of the change. You orchestrate the rounds. Every finding lands somewhere — a fix task, the inbox, or dropped — the fixes are built through the build's own task loop, and the areas they changed are read again, until a round passes. Each round's report is shown to the person, and finish is theirs. A quick-fix's review, asked for at its close, has no spec to hold the change against: **A Quick-Fix's Review** says how it differs.
+The third review, once every phase of the build has closed: the whole change held against the spec's intent by independent agents — a pair for each of the spec's sections, reading its section, where it meets the others and the unit's calls whole, and running what touches it; and one reader over every test file of the change. You orchestrate the rounds. Every finding lands somewhere — a fix task, the inbox, or dropped — the fixes are built through the build's own task loop, and the sections they changed are read again, until a round passes. Each round's report is shown to the person, and finish is theirs. A quick-fix's review, asked for at its close, has no spec to hold the change against: **A Quick-Fix's Review** says how it differs.
 
 ## Arguments
 
@@ -49,15 +49,15 @@ Each ends by entering again, whose DATA says what comes next.
 ## The Round
 
 Each move once the one before it holds:
-1. **The readers.** For each area `reads` names, its pair: `brief review-area {work_unit} --area {n} --base {base} --letter {letter:[a|b]}`, once for each letter; and where it names the test surface, its one reader: `brief test-surface {work_unit} --base {base}`. `{n}` is the area's number, `{base}` the entry's `base`. A report the entry names `report in` is in already, and its reader is not briefed again. Make the Agent call with the agent and the pointer each brief answers. The round waits for every report.
+1. **The readers.** For each section `reads` names, its pair: `brief review-section {work_unit} --section {n} --base {base} --letter {letter:[a|b]}`, once for each letter; and where it names the test surface, its one reader: `brief test-surface {work_unit} --base {base}`. `{n}` is the section's number, `{base}` the entry's `base`. A report the entry names `report in` is in already, and its reader is not briefed again. Make the Agent call with the agent and the pointer each brief answers. The round waits for every report.
 2. **The findings.** Each report is whole in its file; the agent's final message holds only its nits, its notes for later and its verdict. Every item of every report is answered by exactly one finding, and each finding lands somewhere:
    - **In scope**, in the unit's delivered change: a fix task, however small, since no code changes outside a task. One below the floor, or not real, is dropped with its reason.
    - **Out of scope**, beside the change: drop what is not worth doing, group related findings into one item, and file the rest to the inbox. Nothing is offered to the person, and a drop is never raised.
    - A report's notes for later are items of it too, and lie beyond the change: each is answered by a finding out of scope, filed or dropped, never a fix.
-   - Each `builder note` the entry names is an item of the round too, `notes#{k}`, note {k} of the `notes` file — a note a fix task's builder left — answered as a report's note is; a finding answering those alone is of the area `notes`.
+   - Each `builder note` the entry names is an item of the round too, `notes#{k}`, note {k} of the `notes` file — a note a fix task's builder left — answered as a report's note is; a finding answering those alone is of the section `notes`.
 
    Each file-or-drop call out of scope, and each serious finding or bug dropped in scope, is your call on the ledger with its reason. A finding filed goes to the inbox once its call is in.
-3. **The fix tasks.** A round's fix tasks are one more phase of the build, its own: phase {N}, as the entry's `fix phase` line names it. Write the phase, unless a request met during the round wrote it already, then each fix as a task, findings one change fixes sharing it: its type `fix`, its acceptance scenario the finding's user scenario, its spec reference the area — a quick-fix's, `none`.
+3. **The fix tasks.** A round's fix tasks are one more phase of the build, its own: phase {N}, as the entry's `fix phase` line names it. Write the phase, unless a request met during the round wrote it already, then each fix as a task, findings one change fixes sharing it: its type `fix`, its acceptance scenario the finding's user scenario, its spec reference the section — a quick-fix's, `none`.
 4. **The record.** Write the round to `.ledger/.cache/{work_unit}/review/round.json` and record it, `review round {work_unit} --file .ledger/.cache/{work_unit}/review/round.json`. A refusal names every fault. A report missing or not reading goes back to its reader: brief it again, and never edit a reader's report. A tree changed is **The Working Tree**. Put every other fault right, and record the round again.
 5. **The report.** Draw it:
 
@@ -83,11 +83,11 @@ Once the gate is answered, record the round again. Where putting it back answers
 
 ## A Quick-Fix's Review
 
-A quick-fix has no spec. Its review holds the whole change against its fixes' acceptance, in their own words, and its short records, the `summary` the entry reads in the spec's place. Its one area is the change, `--area 1`, read by its pair beside the test surface's reader. Its fix tasks are tasks of the quick-fix, landing in its one pull request, and the task loop builds them as a quick-fix's. Where `review round`, `review notes`, or the last fix task's `task done` or `task close` answers a `next`, the review is over: once the round's report is drawn, follow it back to the quick-fix's close, answered as **Closing** says.
+A quick-fix has no spec. Its review holds the whole change against its fixes' acceptance, in their own words, and its short records, the `summary` the entry reads in the spec's place. Its one section is the change, `--section 1`, read by its pair beside the test surface's reader. Its fix tasks are tasks of the quick-fix, landing in its one pull request, and the task loop builds them as a quick-fix's. Where `review round`, `review notes`, or the last fix task's `task done` or `task close` answers a `next`, the review is over: once the round's report is drawn, follow it back to the quick-fix's close, answered as **Closing** says.
 
 ## The Fixes
 
-The fix tasks the entry names are built in the same loop as every task of the build: load **[the-task-loop.md](../ledger-implementation-process/references/the-task-loop.md)** and follow its instructions as written, with place = `review` and N = `{N}`, as the entry's `fix phase` line names it. A fix phase has no checklists and no phase review: the areas its tasks changed are read again instead. Once the loop hands back, enter again.
+The fix tasks the entry names are built in the same loop as every task of the build: load **[the-task-loop.md](../ledger-implementation-process/references/the-task-loop.md)** and follow its instructions as written, with place = `review` and N = `{N}`, as the entry's `fix phase` line names it. A fix phase has no checklists and no phase review: the sections its tasks changed are read again instead. Once the loop hands back, enter again.
 
 Where the entry names a `merge waiting` gate, phase {M}, the phase that line names, merges first; it can be lower than the fix phase. Fetch the gate:
 
@@ -97,7 +97,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render phase-merge-gate {wo
 
 ### The Builders' Notes
 
-Once the round that ended the review has its fix tasks done, the notes their builders left are answered before finish, as a round answers its notes: each `builder note` the entry names by a finding out of scope, of the area `notes`, filed or dropped by your call. Write them, `{findings}`, to `.ledger/.cache/{work_unit}/review/notes.json` and record them, `review notes {work_unit} --file .ledger/.cache/{work_unit}/review/notes.json`. A refusal names every fault: put each right and record them again. Then draw the report again:
+Once the round that ended the review has its fix tasks done, the notes their builders left are answered before finish, as a round answers its notes: each `builder note` the entry names by a finding out of scope, of the section `notes`, filed or dropped by your call. Write them, `{findings}`, to `.ledger/.cache/{work_unit}/review/notes.json` and record them, `review notes {work_unit} --file .ledger/.cache/{work_unit}/review/notes.json`. A refusal names every fault: put each right and record them again. Then draw the report again:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render review-report {work_unit}
@@ -107,7 +107,7 @@ The report is no gate: enter again.
 
 ## Reading Again
 
-Once a round's fix tasks are done, the next round reads again, whole, every area whose code they changed: name them, `review reads {work_unit} {read} …`. An area nothing changed is not read again, and the whole change is never read against the spec once more. Then enter again, and **The Round** reads them.
+Once a round's fix tasks are done, the next round reads again, whole, every section whose code they changed: name them, `review reads {work_unit} {read} …`. A section nothing changed is not read again, and the whole change is never read against the spec once more. Then enter again, and **The Round** reads them.
 
 ## The Person
 
@@ -115,14 +115,14 @@ Every question for the person goes through `raise`, at the review's place: one a
 
 ## Doors
 
-- A reader → `brief review-area {work_unit} --area {n} --base {base} --letter {letter:[a|b]}`, `brief test-surface {work_unit} --base {base}`; then the Agent call with the agent and the pointer `brief` answers.
+- A reader → `brief review-section {work_unit} --section {n} --base {base} --letter {letter:[a|b]}`, `brief test-surface {work_unit} --base {base}`; then the Agent call with the agent and the pointer `brief` answers.
 - Your call on a finding → `ledger ask {work_unit}.review`, `{"text", "by": "claude", "who_moved_whom": "none"}`; then `ledger decide {work_unit}.review --answers {question_id}`, `{"text", "why", "by": "claude", "who_moved_whom": "none"}`.
 - A finding filed → `inbox file {work_unit} --file {item}`, `{"kind", "text", "call"}`: its kind `idea`, `bug` or `quick-fix`, its text opening on its `# Title`, its call your decision's id.
 - The fix phase → `task phase {work_unit} {N} --title "{title}"`, then `task create {work_unit} {N} --file {path}` for each task, its file a `#` title over `## Type`, `## Problem`, `## Solution`, `## Outcome`, `## Acceptance scenarios` and `## Spec reference`, in the cache.
 - A bugfix's reproducing test on the unfixed code again, before round 1 is recorded → `verify run {work_unit} {scenario} --unfixed --test "{command}"`, as the entry's `rerun` line names it.
 - The tree changed → `render review-tree {work_unit}`, its rows running `review restore-tree` or `review accept-tree {work_unit}`.
 - The builders' notes → `review notes {work_unit} --file {path}`, its file `{findings}`, each finding as the round's.
-- The round → `review reads|round|accept-tree {work_unit}`, the round's file `{can_now, findings, settled?}`: `can_now`, each line of what the person can now do that they could not; each finding's `area` by its name, `tests` for the test surface, `scope` `in` or `out`, `call`, `text` and `from`, the report items it answers as `{report}#{n}`, a note for later as `{report}#n{k}`, a builder's note as `notes#{k}`, a bugfix's reproducing test passing on the unfixed code again as `unfixed#1`, then where it landed — `fix` its task, `inbox` the item filed, or `drop` why — and `ledger`, your call's id, where you made one; `settled`, how a round that makes no fix task was settled. Its report → `render review-report {work_unit} [--round {r}]`.
+- The round → `review reads|round|accept-tree {work_unit}`, the round's file `{can_now, findings, settled?}`: `can_now`, each line of what the person can now do that they could not; each finding's `section` by its name, `tests` for the test surface, `scope` `in` or `out`, `call`, `text` and `from`, the report items it answers as `{report}#{n}`, a note for later as `{report}#n{k}`, a builder's note as `notes#{k}`, a bugfix's reproducing test passing on the unfixed code again as `unfixed#1`, then where it landed — `fix` its task, `inbox` the item filed, or `drop` why — and `ledger`, your call's id, where you made one; `settled`, how a round that makes no fix task was settled. Its report → `render review-report {work_unit} [--round {r}]`.
 - A question for the person → `ledger ask {work_unit}.review [--task {task}]`, then `raise {work_unit}.review --answers {question_id} [--parks {task}]`.
 - A question waiting → `raise waiting|draw|aside {work_unit} …`, its answer `raise answer {id} …`.
 - An inbox item the work resolved → `inbox close {work_unit} {path} …`.

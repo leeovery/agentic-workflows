@@ -9,12 +9,12 @@
 //                  its headings a level down, under the template's own; then
 //                  each addition, in order, under a heading of its own saying
 //                  whether the orchestrator or the person added it (13.11.3)
-//   spec-sections  each section the task's spec reference cites, verbatim
+//   spec-sections  each address the task's spec reference cites, verbatim
 //                  from the unit's spec (spec-sections.cjs); for a
 //                  quick-fix's task, which has no spec, the line saying its
 //                  acceptance in its own words stands for them (19.5.24);
 //                  for a task the plan from before Ledger wrote, holding
-//                  no spec reference, each area joined from an old spec
+//                  no spec reference, each section joined from an old spec
 //                  its text cites by its path (21.8.5) — or, citing none
 //                  of them, its phase's sections and scenarios, as the cut
 //                  holds them
@@ -170,9 +170,9 @@
 // `spec.md` by the spec's one grammar (spec-sections.cjs) and from the
 // unit's entries (unit-entries.cjs):
 //
-//   spec-outline   the spec's path, then its areas, each with its parts, by
+//   spec-outline   the spec's path, then its sections, each with its parts, by
 //                  address and title, in the spec's order
-//   spec-scenarios each scenario by id, with the area it proves and its
+//   spec-scenarios each scenario by id, with the section it proves and its
 //                  wording, the statements it draws on closing it; for a
 //                  quick-fix, which has no spec, the line saying so, then
 //                  each criterion of its fixes' acceptance in its own
@@ -244,9 +244,9 @@
 //                  naming its line (11.11); none recorded where no file is
 //                  named
 //   spec-to        where the writer writes: the unit's `spec.md`
-//   changed-sections the spec's path, then the sections the review's pass
+//   changed-sections the spec's path, then the addresses the review's pass
 //                  reads, each verbatim, the title and introduction one of
-//                  them, an area's own text without its parts: every one at
+//                  them, a section's own text without its parts: every one at
 //                  the first pass, then those changed since the last pass
 //                  reported, and those gone; the dispatch `--agent` names is
 //                  bound to the land it reviews, and closed where the brief
@@ -297,14 +297,14 @@
 //   cut-phase      the phase as the cut holds it: its number, the unit and
 //                  its name, its goal, and what it relies on, an earlier
 //                  phase by its number or another unit by its name
-//   phase-sections the spec's path; each section the phase names, and
+//   phase-sections the spec's path; each address the phase names, and
 //                  whether it is first built in this phase or an earlier
-//                  one — the phase that builds a section being the first
-//                  naming it, a part of it or the area holding it (11.5.2),
+//                  one — the phase that builds an address being the first
+//                  naming it, a part of it or the section holding it (11.5.2),
 //                  so an invariant in one first built here is this phase's
 //                  to check (15.8.2); then each verbatim, in the cut's
-//                  order, a part whose own area the phase names left to the
-//                  area
+//                  order, a part whose own section the phase names left to the
+//                  section
 //   phase-scenarios each scenario the phase holds, by id with its wording
 //   held-notes     the notes for later held for this phase (12.9.10,
 //                  notes.cjs), each verbatim under its heading
@@ -372,18 +372,18 @@
 //                  phase's `consolidation.md` (notes.cjs)
 //
 // The review phase's records, each of the unit the brief is for, in the
-// round under review (review-phase.cjs): an area's, the area `--area`
+// round under review (review-phase.cjs): a section's, the section `--section`
 // names by its number, never merged with another (14.2.3) — a quick-fix's
 // one, the change (review-phase.cjs); the change's, the whole change across
 // every repository (review-change.cjs):
 //
-//   area-sections  the spec's path, then the area verbatim, its parts in it;
+//   section-text   the spec's path, then the section verbatim, its parts in it;
 //                  a quick-fix's change, the line saying it has no spec,
 //                  the change asked for, its record, `summary.md`, whole,
 //                  and its fixes' acceptance as spec-scenarios draws it
 //                  (19.5.14)
-//   area-meets     the spec's other areas, by number and title; then each
-//                  pair of parts, one in the area and one outside it, where
+//   section-meets  the spec's other sections, by number and title; then each
+//                  pair of parts, one in the section and one outside it, where
 //                  one relies on the other, as relies-on-graph draws them;
 //                  a quick-fix's change, the line saying it meets none
 //   unit-calls     every current decision of the unit's, at any of its
@@ -407,21 +407,21 @@
 //                  scratch-layout lays it out, one holding the change at
 //                  its tip there, a clone holding none at the branch it
 //                  lands on
-//   area-runs      each scenario of the area — a quick-fix's change, each
+//   section-runs   each scenario of the section — a quick-fix's change, each
 //                  its fixes' acceptance names — by id with what its runs
 //                  prove at the change's tips, and its wording; then each
 //                  run counted, as recorded-runs draws it (15.3.3)
-//   area-report-to where the reviewer `--letter` names writes its report
-//                  of the area in the round under review:
-//                  `review/round-{N}/{area}-{letter}.md`; refused for an
-//                  area the round does not read (14.3.3)
+//   section-report-to where the reviewer `--letter` names writes its report
+//                  of the section in the round under review:
+//                  `review/round-{N}/{section}-{letter}.md`; refused for a
+//                  section the round does not read (14.3.3)
 //   tests-report-to where the test surface's one reader writes its report
 //                  of the round: `review/round-{N}/tests-a.md` (14.2.4);
 //                  refused where the round does not read it
 //
 // Each is refused where the round cannot be read: the review phase cannot
 // be entered, a round ended it, the round before's fix tasks wait, or a
-// later round's areas are not named (review-phase.cjs, `roundRefusal`).
+// later round's sections are not named (review-phase.cjs, `roundRefusal`).
 //
 // The plain-search helper's one record is the conversation's (22.6.10):
 //
@@ -521,10 +521,10 @@
 // itself (21.10.5, E7):
 //
 //   migrated-phase the unit: its work type and status, the state's place
-//                  and the project's, its joined spec's areas, and every
+//                  and the project's, its joined spec's sections, and every
 //                  phase of its cut; what its plan depends on; and the
-//                  phase — its old plan's phase or its area, the sections
-//                  the spec numbers in that area, its plan's tasks' file and
+//                  phase — its old plan's phase or its section, the sections
+//                  the spec numbers in that section, its plan's tasks' file and
 //                  its own section of the plan by heading, its tasks as the
 //                  cut's adoption names them, each still to
 //                  build with its text as the tracker holds it, read writing
@@ -569,7 +569,7 @@
 // round's reports, a round missing a reviewer's report or holding one
 // that does not read, a last round that passed; a review phase that cannot
 // be entered or is over, a round waiting on the round before's fix tasks,
-// an area the spec lacks or the round does not read, a change no
+// a section the spec lacks or the round does not read, a change no
 // repository holds; a question that is none, no longer current,
 // stands elsewhere or is not open, or one its dispatch was not first briefed
 // on; a dispatch the topic's store lacks, of another kind, no longer in
@@ -600,7 +600,7 @@ const { resolveId } = require('./ledger-ids.cjs');
 const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
 const {
-  dismissedNames, topicTitle, cutPhases, quickFixBuild, specJoined, builtSince, nothingBuiltSince, landedBefore, landedAnyBefore, citedAreas, areaBuilt,
+  dismissedNames, topicTitle, cutPhases, quickFixBuild, specJoined, builtSince, nothingBuiltSince, landedBefore, landedAnyBefore, oldTaskCites, sectionBuilt, sectionOfAddress,
 } = require('./derivations.cjs');
 const {
   UNIT_PHASE, dispatchedRows, gapReviewSince, bindQuestion, bindSpec, closeUnbriefed, refusedReports,
@@ -650,7 +650,7 @@ const { scratchName } = require('./scratch.cjs');
 const { accountPath, accountOwed, landingStage, reviewOverWay } = require('./task-account.cjs');
 const { directiveOf, loadCheck, briefedSections } = require('./directives.cjs');
 const {
-  TESTS, TESTS_LETTER, roundRefusal, readsWords, areaReportPath, unitCalls, fixPhase, filesUnder,
+  TESTS, TESTS_LETTER, roundRefusal, readsWords, sectionReportPath, unitCalls, fixPhase, filesUnder,
 } = require('./review-phase.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
 const { reading, reposOf } = require('./phase-checks.cjs');
@@ -741,27 +741,27 @@ function drawTask(filling) {
 }
 
 /**
- * Each section the task's spec reference cites; for a task of the plan from
- * before Ledger, the areas the migration's cut found it citing (21.8.8,
- * `citedAreas`), with its phase's scenarios; or, citing none, its phase's
- * sections and scenarios. For a quick-fix's task, the line saying its
+ * Each address the task's spec reference cites; for a task of the plan from
+ * before Ledger, the sections the migration's cut found it citing (21.8.8,
+ * `oldTaskCites`), with its phase's scenarios; or, citing none, its phase's
+ * addresses and scenarios. For a quick-fix's task, the line saying its
  * acceptance, in its own words, stands for them (19.5.24).
  * @param {Filling} filling
  */
 function drawSpecSections(filling) {
   const { ref, task } = taskOf(filling);
   if (ofQuickFixTask(filling)) return `${ref.unit} is a quick-fix, which has no spec: the task's acceptance scenarios, in their own words, stand for its sections.`;
-  const cited = citedAreas(unitManifest(filling))(ref);
-  if (cited.length > 0) return [...cited.map((area) => areaSectionText(filling, area)), 'Its phase\'s scenarios:', scenarioLines(filling, ref.phase)].join('\n\n');
+  const cited = oldTaskCites(unitManifest(filling))(ref);
+  if (cited.length > 0) return [...cited.map((section) => sectionText(filling, section)), 'Its phase\'s scenarios:', scenarioLines(filling, ref.phase)].join('\n\n');
   const reference = specReferenceOf(task.text);
   if (reference !== null) return readCitedSections(filling.cwd, ref.unit, reference).map((section) => section.text).join('\n\n');
   return [`${taskName(ref)} cites no section of the spec, so its phase's stand for it, with its phase's scenarios:`, ...sectionTexts(filling, ref.phase), scenarioLines(filling, ref.phase)].join('\n\n');
 }
 
-/** An area of the spec, verbatim, refused where the spec lacks it. @param {Filling} filling @param {string} area */
-function areaSectionText(filling, area) {
-  const section = unitSpec(filling).sections.get(area);
-  if (section === undefined) throw new Error(`the spec has no §${area}`);
+/** A section of the spec, verbatim, refused where the spec lacks it. @param {Filling} filling @param {string} number */
+function sectionText(filling, number) {
+  const section = unitSpec(filling).sections.get(number);
+  if (section === undefined) throw new Error(`the spec has no §${number}`);
   return section.text;
 }
 
@@ -1506,8 +1506,8 @@ function migratedPhase(filling) {
 }
 
 /** A phase of the cut, as the record lists it. @param {import('./cut-merges.cjs').CutPhase} phase */
-function cutPhaseLine({ number, topic, area, old, composed }) {
-  if (old === null) return `- Phase ${number}: §${area} ${topic}, which no plan put in the tracker`;
+function cutPhaseLine({ number, topic, section, old, composed }) {
+  if (old === null) return `- Phase ${number}: §${section} ${topic}, which no plan put in the tracker`;
   return `- Phase ${number}: phase ${old.number} of ${topic}'s plan, ${composed ? (old.built ? 'the manifest counting it built' : 'still to build') : 'built — the join writes it'}`;
 }
 
@@ -1548,15 +1548,15 @@ function drawMigratedPhase(filling) {
   const whole = (/** @type {string} */ at) => path.join(at.startsWith(`${OLD_STATE}/`) ? sources.project : root, at);
   const spec = path.join(root, unit, SPEC_FILE);
   const reliances = oldReliances(phases).filter(({ phase: of }) => of.topic === phase.topic);
-  const area = String(phase.area);
-  const numbered = [...specAddresses(filling.cwd, unit)].filter((address) => address === area || address.startsWith(`${area}.`));
-  const sections = `- The sections ${spec} numbers in its area, the only ones a piece names: ${numbered.join(', ')}`;
+  const section = String(phase.section);
+  const numbered = [...specAddresses(filling.cwd, unit)].filter((address) => address === section || address.startsWith(`${section}.`));
+  const addresses = `- The sections and parts ${spec} numbers in its section, the only ones a piece names: ${numbered.join(', ')}`;
   const own = phase.old === null
-    ? [`- Phase ${phase.number}: §${phase.area} ${phase.topic} of ${spec}, which no plan put in the tracker — compose it from the area`, sections]
+    ? [`- Phase ${phase.number}: §${phase.section} ${phase.topic} of ${spec}, which no plan put in the tracker — compose it from the section`, addresses]
     : [
       `- Phase ${phase.number}: phase ${phase.old.number} of ${phase.topic}'s plan, its tracker parent ${phase.old.parent}${phase.old.built ? ', the manifest counting it built' : ''}`,
-      `- Its area: §${phase.area} ${phase.topic} of ${spec}`,
-      sections,
+      `- Its section: §${phase.section} ${phase.topic} of ${spec}`,
+      addresses,
       ...phasePlanLines(root, phase, phase.old.number),
     ];
   const tasks = phase.old === null ? NONE
@@ -1569,9 +1569,9 @@ function drawMigratedPhase(filling) {
     '',
     '## Its joined spec',
     '',
-    `${spec}, an area for each spec joined, in build order:`,
+    `${spec}, a section for each spec joined, in build order:`,
     '',
-    listed(sources.areas.map(({ topic, spec: from }, at) => `- §${at + 1} ${topic}, joined from ${whole(from)}`)),
+    listed(sources.sections.map(({ topic, spec: from }, at) => `- §${at + 1} ${topic}, joined from ${whole(from)}`)),
     '',
     '## Its cut',
     '',
@@ -1861,8 +1861,8 @@ function drawSpecScenarios(filling) {
   if (ofQuickFix(filling)) return [noSpecLine(filling), listed(fixCriteria(filling))].join('\n\n');
   const { sections, lines } = unitSpec(filling);
   const scenarios = listed(lines.filter(({ kind }) => kind === 'scenario').map(({ number, wording }) => {
-    const area = /** @type {Section} */ (sections.get(number.split('.')[0]));
-    return `- ${number}, of §${area.address} ${titleOf(area)}: ${indented(wording)}`;
+    const section = /** @type {Section} */ (sections.get(number.split('.')[0]));
+    return `- ${number}, of §${section.address} ${titleOf(section)}: ${indented(wording)}`;
   }));
   return landedAnyBefore(unitManifest(filling)) ? [scenarios, TESTS_BEFORE].join('\n\n') : scenarios;
 }
@@ -2167,7 +2167,7 @@ const takeFindings = (filling, warnings) => recordTaking(filling.cwd, unitOf(fil
 const drawLandRefusal = (filling) => landRefusal(filling.cwd, unitOf(filling)) ?? NONE;
 
 /** The rule the numbers the open review page holds keep, which `spec land` holds a land to (11.11.3). */
-const HELD_RULE = 'The person\'s review page is open, so these numbers are held: every line keeps its number; a line added takes the next free number at the end of its part — and a scenario or a screen added, at the end of its area\'s scenarios or its line\'s screens — and a number removed is never given to another line.';
+const HELD_RULE = 'The person\'s review page is open, so these numbers are held: every line keeps its number; a line added takes the next free number at the end of its part — and a scenario or a screen added, at the end of its section\'s scenarios or its line\'s screens — and a number removed is never given to another line.';
 
 /** @param {Filling} filling */
 function drawHeldNumbers(filling) {
@@ -2283,11 +2283,8 @@ const taskLine = ({ ref, title, status }) => `- ${shownTask(ref)} ${title}, ${ST
 /** What a phase relies on, as a sentence names it. @param {number|string} on */
 const reliedName = (on) => (typeof on === 'number' ? `phase ${on}` : `the work unit ${on}`);
 
-/** The area a section is in: an area its own. @param {string} address */
-const areaOf = (address) => address.split('.')[0];
-
-/** Whether a phase naming `named` builds some of the section at `address`: it, a part of it, or the area holding it. @param {string} address */
-const builds = (address) => (/** @type {string} */ named) => named === address || named === areaOf(address) || named.startsWith(`${address}.`);
+/** Whether a phase naming `named` builds some of `address`: it, a part of it, or the section holding it. @param {string} address */
+const builds = (address) => (/** @type {string} */ named) => named === address || named === sectionOfAddress(address) || named.startsWith(`${address}.`);
 
 /** @param {Filling} filling */
 function drawCutPhase(filling) {
@@ -2298,14 +2295,14 @@ function drawCutPhase(filling) {
 }
 
 /**
- * Each section a phase of the cut names, verbatim, in the cut's order — a
- * part whose own area it names left to the area.
+ * Each address a phase of the cut names, verbatim, in the cut's order — a
+ * part whose own section it names left to the section.
  * @param {Filling} filling @param {number} phase
  */
 function sectionTexts(filling, phase) {
   const named = cutOf(filling)[phase - 1].sections;
   const { sections } = unitSpec(filling);
-  return named.filter((address) => areaOf(address) === address || !named.includes(areaOf(address))).map((address) => {
+  return named.filter((address) => sectionOfAddress(address) === address || !named.includes(sectionOfAddress(address))).map((address) => {
     const section = sections.get(address);
     if (section === undefined) throw new Error(`phase ${phase} of the cut names §${address}, which the spec lacks`);
     return section.text;
@@ -2719,12 +2716,12 @@ const reviewOf = oncePerFill(/** @param {Filling} filling @param {string[]} warn
   return { ...standing, reads: /** @type {string[]} */ (standing.reads) };
 });
 
-/** The area `--area` names, refused where the spec has none so numbered. @param {Filling} filling @param {string[]} warnings */
-function areaNamed(filling, warnings) {
-  const { areas } = reviewOf(filling, warnings);
-  const area = areas.find(({ number }) => number === filling.given.area);
-  if (area === undefined) throw new Error(`${ofQuickFix(filling) ? `${unitOf(filling)}'s review` : 'the spec'} has no area ${filling.given.area} — its areas are ${areas.map(({ number }) => `§${number}`).join(', ')}`);
-  return area;
+/** The section `--section` names, refused where the spec has none so numbered. @param {Filling} filling @param {string[]} warnings */
+function sectionNamed(filling, warnings) {
+  const { sections } = reviewOf(filling, warnings);
+  const section = sections.find(({ number }) => number === filling.given.section);
+  if (section === undefined) throw new Error(`${ofQuickFix(filling) ? `${unitOf(filling)}'s review` : 'the spec'} has no section ${filling.given.section} — its sections are ${sections.map(({ number }) => `§${number}`).join(', ')}`);
+  return section;
 }
 
 /** The whole change, read once a fill (review-change.cjs). */
@@ -2734,11 +2731,11 @@ const changeHeld = oncePerFill(/** @param {Filling} filling @param {string[]} wa
 });
 
 /**
- * A quick-fix's one area, the change (19.5.14): what was asked, its record,
+ * A quick-fix's one section, the change (19.5.14): what was asked, its record,
  * `summary.md`, and its fixes' acceptance in their own words.
  * @param {Filling} filling
  */
-function drawChangeArea(filling) {
+function drawChangeSection(filling) {
   const unit = unitOf(filling);
   const file = statePath(filling.cwd, summaryFile(unit));
   return [
@@ -2752,44 +2749,44 @@ function drawChangeArea(filling) {
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
-function drawAreaSections(filling, warnings) {
-  const area = areaNamed(filling, warnings);
-  if (ofQuickFix(filling)) return drawChangeArea(filling);
+function drawSectionText(filling, warnings) {
+  const section = sectionNamed(filling, warnings);
+  if (ofQuickFix(filling)) return drawChangeSection(filling);
   const { file, sections } = unitSpec(filling);
-  const built = areaBuilt(unitManifest(filling), area.number);
-  return [`\`${file}\``, /** @type {Section} */ (sections.get(area.number)).text, ...(built === null ? [] : [BUILT_BEFORE[built](area.number)])].join('\n\n');
+  const built = sectionBuilt(unitManifest(filling), section.number);
+  return [`\`${file}\``, /** @type {Section} */ (sections.get(section.number)).text, ...(built === null ? [] : [BUILT_BEFORE[built](section.number)])].join('\n\n');
 }
 
-/** What the area's reader is told of work of it built before the migration cut the unit, whole or in part (`areaBuilt`). */
+/** What the section's reader is told of work of it built before the migration cut the unit, whole or in part (`sectionBuilt`). */
 const BUILT_BEFORE = Object.freeze({
-  built: (/** @type {string} */ area) => `§${area} was built before the migration cut the unit: its work landed before Ledger, so no commit of the change carries it. Hold the product at the change's tips against the area — the work landed before stands there, the area's as much as the change's.`,
-  partly: (/** @type {string} */ area) => `Some of §${area} was built before the migration cut the unit: that work landed before Ledger, so no commit of the change carries it, and the rest is the change's. Hold the product at the change's tips against the area — the work landed before stands there beside the change's.`,
+  built: (/** @type {string} */ section) => `§${section} was built before the migration cut the unit: its work landed before Ledger, so no commit of the change carries it. Hold the product at the change's tips against the section — the work landed before stands there, the section's as much as the change's.`,
+  partly: (/** @type {string} */ section) => `Some of §${section} was built before the migration cut the unit: that work landed before Ledger, so no commit of the change carries it, and the rest is the change's. Hold the product at the change's tips against the section — the work landed before stands there beside the change's.`,
 });
 
 /**
- * What the area's reader holds the change against, as its review opens: the
- * spec's intent for the area, never a task's criteria — a quick-fix's, which
+ * What the section's reader holds the change against, as its review opens: the
+ * spec's intent for the section, never a task's criteria — a quick-fix's, which
  * has no spec, its fixes' acceptance in their own words, read as one.
  * @param {Filling} filling
  */
-function drawAreaAuthority(filling) {
+function drawSectionAuthority(filling) {
   if (ofQuickFix(filling)) {
     return 'Every fix of the change has passed its own review. Hold the whole change against what was asked of it, as one piece. Its fixes\' acceptance, in their own words and read as one, and the product they describe, are your authority:';
   }
   const before = landedAnyBefore(unitManifest(filling)) ? ' Work of the unit that landed before the migration cut it stands in the product there with no commit of the change carrying it, and is met as the change\'s is.' : '';
-  return `Every task and every phase of the build has passed its own review. Hold the product at the change's tips against this area of the spec, as one piece.${before} The spec's intent for the area, and the product it describes, are your authority, never a task's criteria:`;
+  return `Every task and every phase of the build has passed its own review. Hold the product at the change's tips against this section of the spec, as one piece.${before} The spec's intent for the section, and the product it describes, are your authority, never a task's criteria:`;
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
-function drawAreaMeets(filling, warnings) {
-  const { number } = areaNamed(filling, warnings);
-  if (ofQuickFix(filling)) return `The change is ${unitOf(filling)}'s one area: there is no other for it to meet.`;
-  const others = reviewOf(filling, warnings).areas.filter((area) => area.number !== number);
+function drawSectionMeets(filling, warnings) {
+  const { number } = sectionNamed(filling, warnings);
+  if (ofQuickFix(filling)) return `The change is ${unitOf(filling)}'s one section: there is no other for it to meet.`;
+  const others = reviewOf(filling, warnings).sections.filter((section) => section.number !== number);
   const spec = unitSpec(filling);
   const edges = withUnitEntries(filling.cwd, unitOf(filling), warnings, (view) => reliesOnEdges(view, spec))
-    .filter(({ from, to }) => (areaOf(from) === number) !== (areaOf(to) === number));
+    .filter(({ from, to }) => (sectionOfAddress(from) === number) !== (sectionOfAddress(to) === number));
   return [
-    'The other areas:', listed(others.map(({ number: at, title }) => `- §${at} ${title}`)),
+    'The other sections:', listed(others.map(({ number: at, title }) => `- §${at} ${title}`)),
     'Where they meet it:', listed(edges.map(({ from, to, links }) => `- §${from} relies on §${to}: ${links.join('; ')}`)),
   ].join('\n\n');
 }
@@ -2832,7 +2829,7 @@ function partDrawn(repo, part) {
 function drawChangeScratchLayout(filling, warnings) {
   const { repos, holding } = changeHeld(filling, warnings);
   const unit = unitOf(filling);
-  const named = filling.given.area === undefined ? scratchName.tests(unit) : scratchName.area(unit, filling.given.area, letterOf(filling));
+  const named = filling.given.section === undefined ? scratchName.tests(unit) : scratchName.section(unit, filling.given.section, letterOf(filling));
   return layoutOf(filling.cwd, repos, new Map(holding.map((held) => [held.repo, changeLaid(held)])), (repo) => onBranch(repo, landingBranch(filling.cwd, repo, unit), 'the branch it lands on'), named);
 }
 
@@ -2849,8 +2846,8 @@ function changeLaid({ repo, tip, commit }) {
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
-function drawAreaRuns(filling, warnings) {
-  const { number } = areaNamed(filling, warnings);
+function drawSectionRuns(filling, warnings) {
+  const { number } = sectionNamed(filling, warnings);
   const tips = changeTips(changeHeld(filling, warnings));
   const scenarios = ofQuickFix(filling)
     ? fixScenarios(fixAcceptance(filling.cwd, unitOf(filling))).map(({ scenario, wording }) => ({ number: scenario, wording }))
@@ -2862,18 +2859,18 @@ function drawAreaRuns(filling, warnings) {
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
-function drawAreaReportTo(filling, warnings) {
-  const { name, number } = areaNamed(filling, warnings);
+function drawSectionReportTo(filling, warnings) {
+  const { name, number } = sectionNamed(filling, warnings);
   const { round, reads } = reviewOf(filling, warnings);
-  if (!reads.includes(name)) throw new Error(`area ${number} is not read in round ${round}, which reads ${readsWords(reads)}`);
-  return reportPlace(filling, areaReportPath(unitOf(filling), round, name, letterOf(filling)), reviewReportFaults);
+  if (!reads.includes(name)) throw new Error(`section ${number} is not read in round ${round}, which reads ${readsWords(reads)}`);
+  return reportPlace(filling, sectionReportPath(unitOf(filling), round, name, letterOf(filling)), reviewReportFaults);
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
 function drawTestsReportTo(filling, warnings) {
   const { round, reads } = reviewOf(filling, warnings);
   if (!reads.includes(TESTS)) throw new Error(`the test surface is not read in round ${round}, which reads ${readsWords(reads)}`);
-  return reportPlace(filling, areaReportPath(unitOf(filling), round, TESTS, TESTS_LETTER), reviewReportFaults);
+  return reportPlace(filling, sectionReportPath(unitOf(filling), round, TESTS, TESTS_LETTER), reviewReportFaults);
 }
 
 /** The flag naming the branch a range is read from. @type {BriefFlag} */
@@ -2882,8 +2879,8 @@ const BASE = Object.freeze({ name: 'base', value: 'branch' });
 /** The flag naming the reviewer a report is written by. @type {BriefFlag} */
 const LETTER = Object.freeze({ name: 'letter', value: REVIEWER_LETTERS.join('|') });
 
-/** The flag naming the spec's area a review phase's pair reads, by its number. @type {BriefFlag} */
-const AREA = Object.freeze({ name: 'area', value: 'N' });
+/** The flag naming the spec's section a review phase's pair reads, by its number. @type {BriefFlag} */
+const SECTION = Object.freeze({ name: 'section', value: 'N' });
 
 /** Every record, by the slot that draws it. @type {Readonly<Record<string, BriefRecord>>} */
 const RECORDS = Object.freeze({
@@ -2974,14 +2971,14 @@ const RECORDS = Object.freeze({
   mutants: { of: 'phase', draw: drawMutants },
   'phase-report-to': { of: 'phase', flags: [LETTER], draw: drawPhaseReportTo },
   'consolidation-to': { of: 'phase', draw: drawConsolidationTo },
-  'area-sections': { of: 'unit', flags: [AREA], draw: drawAreaSections },
-  'area-meets': { of: 'unit', flags: [AREA], draw: drawAreaMeets },
+  'section-text': { of: 'unit', flags: [SECTION], draw: drawSectionText },
+  'section-meets': { of: 'unit', flags: [SECTION], draw: drawSectionMeets },
   'unit-calls': { of: 'unit', draw: drawUnitCalls },
   'change-commits': { of: 'unit', flags: [BASE], draw: drawChangeCommits },
   'change-scratch-layout': { of: 'unit', flags: [BASE], draw: drawChangeScratchLayout },
-  'area-runs': { of: 'unit', flags: [AREA, BASE], draw: drawAreaRuns },
-  'area-report-to': { of: 'unit', flags: [AREA, LETTER], draw: drawAreaReportTo },
-  'area-authority': { of: 'unit', draw: drawAreaAuthority },
+  'section-runs': { of: 'unit', flags: [SECTION, BASE], draw: drawSectionRuns },
+  'section-report-to': { of: 'unit', flags: [SECTION, LETTER], draw: drawSectionReportTo },
+  'section-authority': { of: 'unit', draw: drawSectionAuthority },
   'tests-report-to': { of: 'unit', draw: drawTestsReportTo },
   investigation: { of: 'unit', draw: drawInvestigation },
   'hunt-log': { of: 'unit', draw: drawHuntLog },
@@ -2992,18 +2989,18 @@ const RECORDS = Object.freeze({
 });
 
 /** The records that place a read of the review phase's round. */
-const ROUND_REPORTS = Object.freeze(['area-report-to', 'tests-report-to']);
+const ROUND_REPORTS = Object.freeze(['section-report-to', 'tests-report-to']);
 
 /**
  * What the record of whose a brief is keeps beside its role for a read of
- * the review phase's round: the area `--area` names, where it names one,
+ * the review phase's round: the section `--section` names, where it names one,
  * and the round it reads (the board's clock reads both); nothing for any
  * other brief.
- * @param {Filling} filling @param {readonly string[]} records @param {string[]} warnings @returns {{area?: string, round?: number}}
+ * @param {Filling} filling @param {readonly string[]} records @param {string[]} warnings @returns {{section?: string, round?: number}}
  */
 function readFacts(filling, records, warnings) {
   if (!records.some((record) => ROUND_REPORTS.includes(record))) return {};
-  return { ...(filling.given.area === undefined ? {} : { area: filling.given.area }), round: reviewOf(filling, warnings).round };
+  return { ...(filling.given.section === undefined ? {} : { section: filling.given.section }), round: reviewOf(filling, warnings).round };
 }
 
 module.exports = { RECORDS, DIVE_KINDS, readFacts };

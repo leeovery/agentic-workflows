@@ -120,20 +120,21 @@ function startDisplay(view) {
 
 /**
  * Start this work (8.8.2): the work, then the authority gate whose yes
- * creates the unit — or for a move, makes it the new type.
+ * creates the unit — or for a move, makes it the new type. Its question
+ * names the type, which is what the yes agrees to.
  * @param {StartView} view
  * @returns {string}
  */
 function startThisWorkScreen(view) {
   const { type, moves } = view;
   const yes = moves === undefined
-    ? { lead: `Your yes creates the ${type}.`, label: `Start it — create the ${type}` }
-    : { lead: `Your yes makes the ${moves.from} ${aType(type)}.`, label: `Move it — the ${moves.from} becomes ${aType(type)}` };
+    ? { lead: `Your yes creates the ${type}.`, label: `Start it — create the ${type}`, question: `Start it as ${aType(type)}?` }
+    : { lead: `Your yes makes the ${moves.from} ${aType(type)}.`, label: `Move it — the ${moves.from} becomes ${aType(type)}`, question: `Make the ${moves.from} ${aType(type)}?` };
   return section('DISPLAY: start this work', CONTINUE_INSTRUCTION, startDisplay(view))
     + section('MENU: start this work', MENU_INSTRUCTION, menu(`${yes.lead} ${OPENS[/** @type {keyof typeof OPENS} */ (type)]}`, [
       cmdOption('y', 'yes', yes.label, runs(['start-this-work', 'yes'])),
       promptOption('Keep shaping', 'Tell me what I\'m missing'),
-    ], { question: 'Start this work?' }));
+    ], { question: yes.question }));
 }
 
 /** THE MAP: each topic numbered in its order, a mark where a re-shape made it new or moved it. @param {MapView['topics']} topics */

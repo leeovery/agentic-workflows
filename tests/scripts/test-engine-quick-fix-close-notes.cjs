@@ -58,11 +58,11 @@ function called(text, place = PLACE) {
 function filedNote(item, title) {
   const call = called(`Filed: ${title}.`);
   const { filed } = run(['inbox', 'file', UNIT, '--file', payload('item.json', { kind: 'idea', text: `# ${title}\n\nA builder met it.`, call })]);
-  return { area: 'notes', scope: 'out', call: 'nit', text: `${title}.`, from: [item], inbox: filed, ledger: call };
+  return { section: 'notes', scope: 'out', call: 'nit', text: `${title}.`, from: [item], inbox: filed, ledger: call };
 }
 
 /** A note answered by a finding dropped: the finding. @param {string} item @param {string} [place] */
-const droppedNote = (item, place) => ({ area: 'notes', scope: 'out', call: 'nit', text: 'The man page could say it too.', from: [item], drop: 'The man page is generated from the help.', ledger: called('Dropped.', place) });
+const droppedNote = (item, place) => ({ section: 'notes', scope: 'out', call: 'nit', text: 'The man page could say it too.', from: [item], drop: 'The man page is generated from the help.', ledger: called('Dropped.', place) });
 
 /** `quick-fix notes` refused, nothing written: its error. @param {object} answers */
 const refusedNotes = (answers) => refused(['quick-fix', 'notes', UNIT, '--file', payload('notes.json', answers)]);

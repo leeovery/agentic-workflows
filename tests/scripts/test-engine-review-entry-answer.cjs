@@ -3,9 +3,9 @@
 // ---------------------------------------------------------------------------
 // The review phase's entry's answer (ledger-engine/scripts/domain/
 // review-entry.cjs, its records review-phase.cjs): `engine enter review
-// <unit>` — the round under review, the spec's areas, never merged, five as
-// one (14.2.1, 14.2.3), the reads the round takes — every area and the test
-// surface at round 1, then those `review reads` named, from the areas whose
+// <unit>` — the round under review, the spec's sections, never merged, five as
+// one (14.2.1, 14.2.3), the reads the round takes — every section and the test
+// surface at round 1, then those `review reads` named, from the sections whose
 // findings made fix tasks (14.3.3) — each of the round's reports in and
 // reading, so a return briefs only the rest — the fix phase a round's fix
 // tasks are written or built in, numbered from the cut (P14) — once a round
@@ -27,7 +27,7 @@ const fs = require('fs');
 const path = require('path');
 const { output } = require('./engine-harness.cjs');
 const {
-  UNIT, inStep, ENGINE, ENGINE_LINE, SESSION_ID, AREAS, EVERY, FIVE, RECEIPT, FAILING, useWorld, env, enter, reportText, reported, named, recorded, refusedRound, firstRoundFailed, fixPhaseWritten, taskMade, fixBuilt, fixClosed, reviewPassed, data,
+  UNIT, inStep, ENGINE, ENGINE_LINE, SESSION_ID, SECTIONS, EVERY, FIVE, RECEIPT, FAILING, useWorld, env, enter, reportText, reported, named, recorded, refusedRound, firstRoundFailed, fixPhaseWritten, taskMade, fixBuilt, fixClosed, reviewPassed, data,
   ok, okSections, statePath, writeState, git, stateGit, assert,
 } = require('./review-world.cjs');
 
@@ -46,8 +46,8 @@ const readsAfter = (unit = UNIT) => [
 /** The base line: the default branch, which the change is read against, each reader's base. */
 const BASE_LINE = 'base: main — the default branch, which the change is read against, the --base of each reader\'s brief';
 
-/** The areas' lines, each by its name and its title. */
-const AREA_LINES = ['area: 1-cards — §1 Cards', 'area: 2-refunds — §2 Refunds'];
+/** The sections' lines, each by its name and its title. */
+const SECTION_LINES = ['section: 1-cards — §1 Cards', 'section: 2-refunds — §2 Refunds'];
 
 /** A round's report's line. @param {number} round */
 const reportLine = (round) => `round report: ${statePath(dir, `${UNIT}/review/round-${round}.md`)}`;
@@ -61,15 +61,15 @@ const requestPhaseLine = (phase) => `fix phase: phase ${phase}, where a request 
 /** The reads line while round 2's are not yet named. */
 const UNNAMED = `reads: not yet named — once round 1's fix tasks are done, review reads ${UNIT} names them from what those changed, among them 1-cards`;
 
-describe('the answer: the round under review, the spec\'s areas, and what the round reads', () => {
-  it('14.S2: round 1 answers each of a five-area spec\'s areas, never merged, and reads every one of them beside the test surface — committing nothing', () => {
+describe('the answer: the round under review, the spec\'s sections, and what the round reads', () => {
+  it('14.S2: round 1 answers each of a five-section spec\'s sections, never merged, and reads every one of them beside the test surface — committing nothing', () => {
     const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
     const { res, sections } = okSections(dir, ['enter', 'review', 'five'], { env: env() });
     const names = FIVE.map((title, at) => `${at + 1}-${title.toLowerCase()}`);
 
     assert.deepStrictEqual(res, { ok: true, phase: 'review', unit: 'five', entered: true, started: false });
     assert.strictEqual(sections, data([
-      'round: round 1', ...FIVE.map((title, at) => `area: ${names[at]} — §${at + 1} ${title}`), `reads: ${names.join(', ')}, the test surface (tests)`, fixPhaseLine(2, 1, 'written'), BASE_LINE, ...readsAfter('five'),
+      'round: round 1', ...FIVE.map((title, at) => `section: ${names[at]} — §${at + 1} ${title}`), `reads: ${names.join(', ')}, the test surface (tests)`, fixPhaseLine(2, 1, 'written'), BASE_LINE, ...readsAfter('five'),
     ]));
     assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head);
   });
@@ -84,13 +84,13 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     assert.deepStrictEqual(enter().sections.split('\n').filter((line) => line.startsWith('report in: ')), [`report in: ${report('1-cards-a')}`, `report in: ${report('tests-a')}`]);
   });
 
-  it('a one-area spec answers its one area', () => {
+  it('a one-section spec answers its one section', () => {
     const { sections } = okSections(dir, ['enter', 'review', 'solo'], { env: env() });
 
-    assert.deepStrictEqual(sections.split('\n').filter((line) => /^(area|reads): /.test(line)), ['area: 1-cards — §1 Cards', 'reads: 1-cards, the test surface (tests)']);
+    assert.deepStrictEqual(sections.split('\n').filter((line) => /^(section|reads): /.test(line)), ['section: 1-cards — §1 Cards', 'reads: 1-cards, the test surface (tests)']);
   });
 
-  it('14.S3: after a round whose findings made fix tasks, the next waits on each task of their phase until it is done — one written there beyond the findings among them, until it is done or closed — then its reads are named from what they changed, among them every area whose findings made one', () => {
+  it('14.S3: after a round whose findings made fix tasks, the next waits on each task of their phase until it is done — one written there beyond the findings among them, until it is done or closed — then its reads are named from what they changed, among them every section whose findings made one', () => {
     firstRoundFailed();
     taskMade(3, 'Mail the receipt', '§1.2');
     const waiting = enter().sections;
@@ -100,10 +100,10 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     const unnamed = enter().sections;
     named(['2-refunds', '1-cards']);
 
-    assert.strictEqual(waiting, data(['round: round 2', ...AREA_LINES, UNNAMED, fixPhaseLine(3, 1, 'built'), 'fix task waiting: 3.1 not started', 'fix task waiting: 3.2 not started', BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(waiting, data(['round: round 2', ...SECTION_LINES, UNNAMED, fixPhaseLine(3, 1, 'built'), 'fix task waiting: 3.1 not started', 'fix task waiting: 3.2 not started', BASE_LINE, reportLine(1), ...readsAfter()]));
     assert.deepStrictEqual(beyond, ['fix task waiting: 3.2 not started'], 'the task beyond the findings waited on once theirs is done');
-    assert.strictEqual(unnamed, data(['round: round 2', ...AREA_LINES, UNNAMED, fixPhaseLine(4, 2, 'written'), BASE_LINE, reportLine(1), ...readsAfter()]));
-    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, 'reads: 1-cards, 2-refunds', fixPhaseLine(4, 2, 'written'), BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(unnamed, data(['round: round 2', ...SECTION_LINES, UNNAMED, fixPhaseLine(4, 2, 'written'), BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: round 2', ...SECTION_LINES, 'reads: 1-cards, 2-refunds', fixPhaseLine(4, 2, 'written'), BASE_LINE, reportLine(1), ...readsAfter()]));
   });
 
   it('in step, once the fix tasks are done, waits on their phase\'s merge at its gate until each not closed has landed (14.6.2)', () => {
@@ -111,15 +111,15 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     enter();
     reported(1, EVERY, { ...FAILING, '2-refunds-b': ['bug: A refund names no charge.'] });
     fixPhaseWritten(3, [['Send the receipt', '§1.2'], ['Name the charge', '§2.1']]);
-    recorded({ can_now: [], findings: [RECEIPT, { area: '2-refunds', scope: 'in', call: 'bug', text: 'A refund names no charge.', from: ['2-refunds-b#1'], fix: '3.2' }] });
+    recorded({ can_now: [], findings: [RECEIPT, { section: '2-refunds', scope: 'in', call: 'bug', text: 'A refund names no charge.', from: ['2-refunds-b#1'], fix: '3.2' }] });
     fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
     fixClosed(3, 2);
     const merging = enter().sections;
     git(dir, ['commit', '-q', '--allow-empty', '-m', `feat(${UNIT}): landed`, '-m', `Task: ${UNIT}-3-1`]);
 
     const unnamed = `reads: not yet named — once round 1's fix tasks are done and their phase has merged, review reads ${UNIT} names them from what those changed, among them 1-cards, 2-refunds`;
-    assert.strictEqual(merging, data(['round: round 2', ...AREA_LINES, unnamed, fixPhaseLine(4, 2, 'written'), `merge waiting: phase 3 waits at its gate: render phase-merge-gate ${UNIT} 3`, BASE_LINE, reportLine(1), ...readsAfter()]));
-    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, unnamed, fixPhaseLine(4, 2, 'written'), BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(merging, data(['round: round 2', ...SECTION_LINES, unnamed, fixPhaseLine(4, 2, 'written'), `merge waiting: phase 3 waits at its gate: render phase-merge-gate ${UNIT} 3`, BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: round 2', ...SECTION_LINES, unnamed, fixPhaseLine(4, 2, 'written'), BASE_LINE, reportLine(1), ...readsAfter()]));
   });
 
   it('a fix task closed waits on nothing — in step, no merge of its phase either', () => {
@@ -128,30 +128,30 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     fixClosed(3, 1);
 
     const unnamed = `reads: not yet named — once round 1's fix tasks are done and their phase has merged, review reads ${UNIT} names them from what those changed, among them 1-cards`;
-    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, unnamed, fixPhaseLine(4, 2, 'written'), BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: round 2', ...SECTION_LINES, unnamed, fixPhaseLine(4, 2, 'written'), BASE_LINE, reportLine(1), ...readsAfter()]));
   });
 
   it('once a round passes with no fix task, the review phase is over, finish next, and nothing is read — the fix phase after it named, where a request met before finish goes', () => {
     reviewPassed();
 
-    assert.strictEqual(enter().sections, data(['round: the review phase passed in round 1 — finish is next', ...AREA_LINES, requestPhaseLine(3), BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: the review phase passed in round 1 — finish is next', ...SECTION_LINES, requestPhaseLine(3), BASE_LINE, reportLine(1), ...readsAfter()]));
   });
 
-  it('13.4.4: a round passing with nits fixed in its fix phase ends the review phase once their fix tasks are done, no area read again for them', () => {
+  it('13.4.4: a round passing with nits fixed in its fix phase ends the review phase once their fix tasks are done, no section read again for them', () => {
     enter();
     reported(1, EVERY, { '2-refunds-b': ['nit: A refund\'s label is terse.'] });
     fixPhaseWritten(3, [['Word the label', '§2.1']]);
-    const res = recorded({ can_now: ['Pay by card.'], findings: [{ area: '2-refunds', scope: 'in', call: 'nit', text: 'A refund\'s label is terse.', from: ['2-refunds-b#1'], fix: '3.1' }] });
+    const res = recorded({ can_now: ['Pay by card.'], findings: [{ section: '2-refunds', scope: 'in', call: 'nit', text: 'A refund\'s label is terse.', from: ['2-refunds-b#1'], fix: '3.1' }] });
     const building = enter().sections;
     const again = refusedRound({ can_now: [], findings: [] });
     fixBuilt(3, 1, 'Word the label', 'main', 'src/label.js');
 
-    assert.deepStrictEqual(res, { ok: true, round: 1, passed: true, fixes: ['3.1'], ends: true, fix_phase: 3, areas: AREAS, committed: res.committed });
+    assert.deepStrictEqual(res, { ok: true, round: 1, passed: true, fixes: ['3.1'], ends: true, fix_phase: 3, sections: SECTIONS, committed: res.committed });
     assert.strictEqual(again, `review round: ${UNIT}'s review phase passed in round 1 — its fix tasks are built, then finish: task 3.1 not started`);
     assert.strictEqual(building, data([
-      'round: the review phase passed in round 1 — its fix tasks are built, then finish', ...AREA_LINES, fixPhaseLine(3, 1, 'built'), 'fix task waiting: 3.1 not started', BASE_LINE, reportLine(1), ...readsAfter(),
+      'round: the review phase passed in round 1 — its fix tasks are built, then finish', ...SECTION_LINES, fixPhaseLine(3, 1, 'built'), 'fix task waiting: 3.1 not started', BASE_LINE, reportLine(1), ...readsAfter(),
     ]));
-    assert.strictEqual(enter().sections, data(['round: the review phase passed in round 1 — finish is next', ...AREA_LINES, requestPhaseLine(3), BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: the review phase passed in round 1 — finish is next', ...SECTION_LINES, requestPhaseLine(3), BASE_LINE, reportLine(1), ...readsAfter()]));
   });
 });
 
@@ -167,7 +167,7 @@ describe('the recovery note (24.2.2)', () => {
     for (const line of [
       `- ${path.join(dir, '.claude/skills/ledger-review-process/SKILL.md')} and what its Instructions section loads`, `- \`${ENGINE} ledger record ${UNIT}\``,
       ...[`${UNIT}/review/round-1.md`, `${UNIT}/spec.md`, `${UNIT}/build/log.md`].map((rel) => `- ${statePath(dir, rel)}\n`),
-      `\nround: round 2\n${AREA_LINES.join('\n')}\n${UNNAMED}\n${fixPhaseLine(3, 1, 'built')}\nfix task waiting: 3.1 not started\n`,
+      `\nround: round 2\n${SECTION_LINES.join('\n')}\n${UNNAMED}\n${fixPhaseLine(3, 1, 'built')}\nfix task waiting: 3.1 not started\n`,
     ]) {
       assert.ok(note.includes(line), `the note names ${line}\n${note}`);
     }

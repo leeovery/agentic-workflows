@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A review round's report read (ledger-engine/scripts/domain/review-report.cjs):
-// an area pair's or the test reader's, its verdict and findings by the
+// a section pair's or the test reader's, its verdict and findings by the
 // reviewers' grammar (round-report.cjs) and its notes for later counted —
 // each an item under a notes heading of level two or three, or a line
 // holding its label alone, bold or plain — `Notes for later` or `Note for

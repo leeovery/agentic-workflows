@@ -4,11 +4,11 @@
 // The pipeline simulation's review phase, as its skill runs it, on an epic
 // in auto: the build's last phase closed, the build runs straight into the
 // review phase in the same conversation, each entry's DATA saying what
-// comes next in the skill's order; round 1 reads both areas and the test
+// comes next in the skill's order; round 1 reads both sections and the test
 // surface, its findings out of scope filed to the inbox or dropped by
 // Claude's calls, its fix written as the round's phase past the cut,
 // the one the entry names, and built through the task loop; round 2 reads
-// only the area the fix changed and passes; its report and the calls
+// only the section the fix changed and passes; its report and the calls
 // drawn; and finish, its gate's yes landing the fix phase and handing off
 // to the epic's menu, the finished unit's folder holding what the layout
 // lays out. The board draws each round recorded: the failing one with its
@@ -22,7 +22,7 @@
 //
 // Layer: simulation. World: this file's own, built once from the project
 // every scenario starts from (pipeline-world.cjs) — an epic of one topic
-// through its spec of two areas to ready to build's pick in auto, entered
+// through its spec of two sections to ready to build's pick in auto, entered
 // again from its menu's build row, its cut one phase, built and closed — a
 // copy per scenario, which replays the
 // engine calls the review phase's skill makes, in order, the oracle
@@ -39,7 +39,7 @@ const { treeSnapshot, sectionOf } = require('./engine-harness.cjs');
 const { standingOn } = require('./board-world.cjs');
 const {
   Sim, worldFrom, mappedEpic, discussed, specEntry, specReviewed, cutTheSpec, readyToBuild, answerGate, intoTheBuild, epicBuildPick, epicMenuAt, firstPhaseBuilt, carryOn,
-  writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, reviewCall, finishClosed, finished,
+  writePhaseTasks, builders, taskBuilt, sectionRead, testsRead, reviewNext, reviewCall, finishClosed, finished,
 } = require('./pipeline-world.cjs');
 
 const WU = 'ledgerly';
@@ -51,7 +51,7 @@ const BESIDE = [
   'Verdict: fail', '',
 ].join('\n');
 
-/** An epic of one topic through its spec of two areas — the second with no scenario of its own — to ready to build's pick in auto, entered again from its menu's build row, its cut's one phase built and closed. */
+/** An epic of one topic through its spec of two sections — the second with no scenario of its own — to ready to build's pick in auto, entered again from its menu's build row, its cut's one phase built and closed. */
 const reviewWorld = worldFrom('pipeline-review-', (sim) => {
   mappedEpic(sim, WU, ['entries']);
   discussed(sim, WU, 'entries');
@@ -104,7 +104,7 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
       'the review phase\'s entry records its place, its first round to read');
   });
 
-  it('an epic in auto: the build runs straight into the review phase in one conversation; round 1 reads both areas and the tests, files one finding out of scope and drops another by Claude\'s calls, its fix phase the one the entry names, built; round 2 reads only the area it changed and passes; finish lands the fix phase and draws no menu unasked, the conversation leaving the work; the finished folder holds what the layout lays out (14.S1, 24.S7, 12.S43, 14.S3, 14.S5, 4.S21, 4.S22, 20.10.1, 20.10.2)', () => {
+  it('an epic in auto: the build runs straight into the review phase in one conversation; round 1 reads both sections and the tests, files one finding out of scope and drops another by Claude\'s calls, its fix phase the one the entry names, built; round 2 reads only the section it changed and passes; finish lands the fix phase and draws no menu unasked, the conversation leaving the work; the finished folder holds what the layout lays out (14.S1, 24.S7, 12.S43, 14.S3, 14.S5, 4.S21, 4.S22, 20.10.1, 20.10.2)', () => {
     const handedOff = sim.handoffs.length;
     sim.run(['enter', 'implementation', WU]);
     assert.deepStrictEqual(sim.sections.split('\n').filter((line) => line.startsWith('finished: ')), [`finished: every phase of the cut has closed — the review phase is next: enter review ${WU}`],
@@ -122,12 +122,12 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     assert.deepStrictEqual([sim.handoffs.slice(handedOff), here.position], [[], { name: WU, phase: 'review', topic: WU }],
       'the build\'s own conversation carries on into the review phase, with no handoff and no menu between (14.S1, 24.S7)');
     assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills/ledger-review-process/SKILL.md'), 'a compaction there carries on in the review phase\'s skill');
-    assert.deepStrictEqual([move, data.reads], ['round', ['1-entries, 2-export, the test surface (tests)']], 'round 1 reads every area, none merged, and the test surface');
+    assert.deepStrictEqual([move, data.reads], ['round', ['1-entries, 2-export, the test surface (tests)']], 'round 1 reads every section, none merged, and the test surface');
 
-    // Round 1: both pairs and the test reader; area 1 fails, the test
+    // Round 1: both pairs and the test reader; section 1 fails, the test
     // reader's findings are beside the change — one filed, one dropped.
-    areaRead(sim, WU, UNCHECKED, 1);
-    areaRead(sim, WU, undefined, 2);
+    sectionRead(sim, WU, UNCHECKED, 1);
+    sectionRead(sim, WU, undefined, 2);
     testsRead(sim, WU, BESIDE);
     const fileCall = reviewCall(sim, WU, 'Is the dropped import date filed or dropped?', 'Filed: an old ledger\'s import keeps its dates.', 'A real loss, beside the change.');
     const item = sim.run(['inbox', 'file', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/item.json`, {
@@ -138,9 +138,9 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, {
       can_now: ['Keep a ledger and export it.'],
       findings: [
-        { area: '1-entries', scope: 'in', call: 'bug', text: 'The ledger never checks its hash on read.', from: ['1-entries-a#1'], fix: `${phase}.1` },
-        { area: 'tests', scope: 'out', call: 'bug', text: 'Importing an old ledger drops its dates.', from: ['tests-a#1'], inbox: item.filed, ledger: fileCall },
-        { area: 'tests', scope: 'out', call: 'nit', text: 'A test of the import calls its ledger an export.', from: ['tests-a#2'], drop: 'Not worth an item.', ledger: dropCall },
+        { section: '1-entries', scope: 'in', call: 'bug', text: 'The ledger never checks its hash on read.', from: ['1-entries-a#1'], fix: `${phase}.1` },
+        { section: 'tests', scope: 'out', call: 'bug', text: 'Importing an old ledger drops its dates.', from: ['tests-a#1'], inbox: item.filed, ledger: fileCall },
+        { section: 'tests', scope: 'out', call: 'nit', text: 'A test of the import calls its ledger an export.', from: ['tests-a#2'], drop: 'Not worth an item.', ledger: dropCall },
       ],
     })]);
     sim.render(['review-report', WU], { expect: 'content' });
@@ -149,15 +149,15 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     assert.deepStrictEqual([failed.verdict, failed.found.length, failed.inbox, failed.fixes?.tasks.map(({ task }) => task)], ['failed', 1, [{ round: 1, finding: 2, text: 'Importing an old ledger drops its dates.' }], [`${phase}.1`]],
       'the board draws the round failed, its finding in scope, what went to the inbox and its fix task (20.10.1)');
 
-    // The fix built through the task loop; round 2 reads the area it changed.
+    // The fix built through the task loop; round 2 reads the section it changed.
     assert.strictEqual(reviewNext(sim, WU).move, 'fixes');
     const tree = builders.make(`agent-${phase}`);
     taskBuilt(sim, WU, `${phase}.1`, tree, { 'src/hash.js': 'export const hash = 1;\n' }, false);
     builders.remove(sim, tree);
     assert.strictEqual(reviewNext(sim, WU).move, 'reads');
     sim.run(['review', 'reads', WU, '1-entries']);
-    assert.deepStrictEqual(reviewNext(sim, WU).data.reads, ['1-entries'], 'only the area the fix changed is read again (14.3.3)');
-    areaRead(sim, WU, undefined, 1);
+    assert.deepStrictEqual(reviewNext(sim, WU).data.reads, ['1-entries'], 'only the section the fix changed is read again (14.3.3)');
+    sectionRead(sim, WU, undefined, 1);
     sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger whose entries are checked.'], findings: [] })]);
     const unclosed = board().view.waiting;
     assert.strictEqual(reviewNext(sim, WU).move, 'closing');
@@ -175,8 +175,8 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
       all: { phase: 'review', standing: 'finish waits on you', waiting: 1, total: 1 },
       banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
     }, 'S1: finish waits on the person on the epic\'s DELIVERY, on its page and in All work\'s row and count, as the banner has it (D18, D37)');
-    assert.deepStrictEqual([passed.view.round, passed.view.verdict, passed.view.areas.map(({ state }) => state), passed.view.waiting.map(({ kind }) => kind), passed.banner.state], [2, 'passed', ['read', 'unchanged', 'unchanged'], ['finish'], 'needs'],
-      'the board draws round 2 passed, the area read and the rest unchanged, finish waiting on the person (20.10.2, D18, D37)');
+    assert.deepStrictEqual([passed.view.round, passed.view.verdict, passed.view.sections.map(({ state }) => state), passed.view.waiting.map(({ kind }) => kind), passed.banner.state], [2, 'passed', ['read', 'unchanged', 'unchanged'], ['finish'], 'needs'],
+      'the board draws round 2 passed, the section read and the rest unchanged, finish waiting on the person (20.10.2, D18, D37)');
     assert.deepStrictEqual(unclosed, [], 'finish waits on no view before its checklist closes, its screen refusing until then (N3)');
     sim.render(['review-report', WU], { expect: 'content' });
     sim.render(['review-calls', WU], { expect: 'content' });

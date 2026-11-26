@@ -159,7 +159,7 @@ const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 // build's yes, which concludes the spec (P7), or by the migration's cut
 // (cut-migrating.cjs): `{position, done_before?, cites?}`, the position
 // picked there and switched since through `workunit position`; the cut
-// adds the tasks done before the migration and the areas its old tasks
+// adds the tasks done before the migration and the sections its old tasks
 // cite (21.8.8); and, for a unit with a branch of its own, `branch`, its
 // name, `feat/{unit}`, written by the engine alone as the build's first
 // phase start closes and kept for good (unit-branch.cjs, 7.2.35).

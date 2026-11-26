@@ -51,7 +51,7 @@ describe('a specification on the board (20.9)', () => {
     });
   });
 
-  it('the spec\'s areas in its order, each with the passes that changed it and whether a pass running reads it; a pass running numbered after those reported, newest first, since it was dispatched, with what it reads; the banner names the pass reading (20.9.1)', () => {
+  it('the spec\'s sections in its order, each with the passes that changed it and whether a pass running reads it; a pass running numbered after those reported, newest first, since it was dispatched, with what it reads; the banner names the pass reading (20.9.1)', () => {
     landed();
     cleanPass();
     writeSpec(spec({ instant: '2.1.2 Refunds are instant, always.' }));

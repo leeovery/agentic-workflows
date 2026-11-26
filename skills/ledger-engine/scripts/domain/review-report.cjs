@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: a review round's report (14.2, 14.3.1) — an area pair's or
+// Domain ring: a review round's report (14.2, 14.3.1) — a section pair's or
 // the test reader's, read by the reviewers' grammar (round-report.cjs) with
 // its notes for later besides, each an item of the round (review-round.cjs).
 // The task loop's and the phase review's reports read by that grammar alone,

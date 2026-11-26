@@ -22,7 +22,7 @@
 // investigation entered, two symptoms, three hypotheses, an experiment on
 // its finding, a root cause logged on its decision with a body, and a
 // question of Claude's waiting to be raised; an earlier bugfix, complete,
-// that fixed the same area. Each test's conversation has its own system
+// that fixed the same code. Each test's conversation has its own system
 // config, where its raises are sealed.
 // ---------------------------------------------------------------------------
 
@@ -60,7 +60,7 @@ const made = { cause: '', rootCause: '', kill: '', keep: '', fix: '', call: '' }
 const world = fixtureFrom('engine-board-investigation-', (dir) => {
   createManifest(dir, BUG, { work_type: 'bugfix', created: STARTED, description: 'Killing every session wipes the saved state' });
   createManifest(dir, EARLIER, {
-    work_type: 'bugfix', status: 'completed', area: 'session restore', phases: { investigation: { items: { [EARLIER]: { status: 'completed', concluded_at: '2026-07-01T10:00:00.000Z', area: 'session restore' } } } },
+    work_type: 'bugfix', status: 'completed', part: 'session restore', phases: { investigation: { items: { [EARLIER]: { status: 'completed', concluded_at: '2026-07-01T10:00:00.000Z', part: 'session restore' } } } },
   });
   writeState(dir, layout.topic(BUG, BUG, 'log.md'), '# Kill All\n\n## Earlier fixes\n\nempty-save fixed session restore before; the guard it added holds.\n');
   commitAll(dir, 'the world');
@@ -448,7 +448,7 @@ describe('This session in an investigation (20.12.1)', () => {
     ]);
   });
 
-  it('20.S20: an area fixed before shows nothing of the earlier fix and counts none — the earlier bugfix stands on All work, the log\'s prose on it is Claude\'s alone', () => {
+  it('20.S20: code fixed before shows nothing of the earlier fix and counts none — the earlier bugfix stands on All work, the log\'s prose on it is Claude\'s alone', () => {
     atTheHunt();
     const { view } = board();
     const all = board(['--tab', 'all']).view;

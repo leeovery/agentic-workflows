@@ -1,13 +1,13 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine review reads <unit> <area|tests> …` (ledger-engine/scripts/domain/
+// `engine review reads <unit> <section|tests> …` (ledger-engine/scripts/domain/
 // review-verbs.cjs, its records review-phase.cjs): a later round's reads
 // named once the round before's fix tasks are done — in step, once their
 // phase has merged too (14.6.2) — every read whose findings made fix tasks
-// among them — each finding's area and each read whose report holds an
+// among them — each finding's section and each read whose report holds an
 // item it answers — the test surface read only where named or its findings
-// made one, areas added and never dropped, written in the spec's order and
+// made one, sections added and never dropped, written in the spec's order and
 // committed (14.3.3). What it refuses is
 // test-engine-review-reads-refusals.cjs's; the round's snapshot taken
 // there, and `review accept-tree`, test-engine-review-tree.cjs's.
@@ -30,7 +30,7 @@ useWorld((at) => { dir = at; });
 /** `review <verb>` refused, nothing written: its error. @param {string[]} args */
 const refused = (args) => refusedPristine(dir, ['review', ...args], { env: env() }).error;
 
-/** Round 1 recorded failing on area 1's receipt, its fix task 3.1 built and done, round 2 entered. */
+/** Round 1 recorded failing on section 1's receipt, its fix task 3.1 built and done, round 2 entered. */
 function fixesDone() {
   firstRoundReady();
   recorded({ can_now: [], findings: [RECEIPT] });
@@ -52,23 +52,23 @@ describe('review reads: a later round\'s reads named (14.3.3)', () => {
     assert.deepStrictEqual(JSON.parse(stateText(`${UNIT}/review/round-2.json`)).reports, ['1-cards-a.md', '1-cards-b.md', '2-refunds-a.md', '2-refunds-b.md', 'tests-a.md']);
   });
 
-  it('a finding filed under one area that answers another read\'s item makes that read one the next round takes', () => {
+  it('a finding filed under one section that answers another read\'s item makes that read one the next round takes', () => {
     firstRoundReady();
     reported(1, EVERY, { '1-cards-a': ['bug: The receipt is never sent.'], '2-refunds-b': ['bug: No receipt follows a refund.'] });
     recorded({ can_now: [], findings: [{ ...RECEIPT, from: ['1-cards-a#1', '2-refunds-b#1'] }] });
     fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
 
-    assert.strictEqual(refused(['reads', UNIT, '1-cards']), 'review reads: round 2 reads every area whose findings made fix tasks in round 1, and leaves out 2-refunds');
+    assert.strictEqual(refused(['reads', UNIT, '1-cards']), 'review reads: round 2 reads every section whose findings made fix tasks in round 1, and leaves out 2-refunds');
     assert.deepStrictEqual(named(['1-cards', '2-refunds']).reads, ['1-cards', '2-refunds']);
   });
 
-  it('an area\'s finding that answers the test reader\'s item makes the test surface one the next round takes', () => {
+  it('a section\'s finding that answers the test reader\'s item makes the test surface one the next round takes', () => {
     firstRoundReady();
     reported(1, EVERY, { '1-cards-a': ['bug: The receipt is never sent.'], 'tests-a': ['bug: No test sends a receipt.'] });
     recorded({ can_now: [], findings: [{ ...RECEIPT, from: ['1-cards-a#1', 'tests-a#1'] }] });
     fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
 
-    assert.strictEqual(refused(['reads', UNIT, '1-cards']), 'review reads: round 2 reads every area whose findings made fix tasks in round 1, and leaves out the test surface (tests)');
+    assert.strictEqual(refused(['reads', UNIT, '1-cards']), 'review reads: round 2 reads every section whose findings made fix tasks in round 1, and leaves out the test surface (tests)');
     assert.deepStrictEqual(named(['1-cards', 'tests']).reads, ['1-cards', 'tests']);
   });
 

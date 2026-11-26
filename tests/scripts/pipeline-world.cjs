@@ -940,7 +940,7 @@ function validated(sim, wu, which) {
 /**
  * The fix direction as the investigation sets it out (19.4.13, 19.4.21): a
  * question on the map, raised with what the step back found — where the
- * cause sits in the design, with a row to rework the area as a feature,
+ * cause sits in the design, with a row to rework the section as a feature,
  * marked to always ask as a design problem — the person's pick answered,
  * and the fix direction logged once it is decided. Answers the question's
  * id.
@@ -1377,7 +1377,7 @@ function startPhase(sim, wu, phase) {
 // the links between them. A task's `after` names the tasks it waits on, as
 // `{phase}.{n}`; its `scenarios`, the phase's scenarios it takes from the
 // cut (12.4.3), else a scenario of its own; its `type` and `reference`, a
-// review's fix task's `fix` and the finding's area, else `feat` and §1.
+// review's fix task's `fix` and the finding's section, else `feat` and §1.
 /**
  * @param {Sim} sim @param {string} wu @param {number} phase @param {string} title
  * @param {{title: string, after?: string[], scenarios?: string[], type?: string, reference?: string}[]} tasks
@@ -1737,13 +1737,13 @@ function twoPhaseEpic(sim, wu) {
   intoTheBuild(sim, wu, sim.run(answerGate(sim, 'ready to build', '--pick', 'a').next.argv));
 }
 
-// The round under review's read of the spec's area `area`, the first by
+// The round under review's read of the spec's section `section`, the first by
 // default, by its pair (14.2), each briefed on the entry's `base`, main
 // unless given: the first's report `report`, the second's passing.
-/** @param {Sim} sim @param {string} wu @param {string} [report] @param {number} [area] @param {string} [base] */
-function areaRead(sim, wu, report = PASSED_REPORT, area = 1, base = 'main') {
+/** @param {Sim} sim @param {string} wu @param {string} [report] @param {number} [section] @param {string} [base] */
+function sectionRead(sim, wu, report = PASSED_REPORT, section = 1, base = 'main') {
   for (const letter of ['a', 'b']) {
-    landed(placeIn(sim, sim.run(['brief', 'review-area', wu, '--area', String(area), '--base', base, '--letter', letter]), 'Where your report goes'), letter === 'a' ? report : PASSED_REPORT);
+    landed(placeIn(sim, sim.run(['brief', 'review-section', wu, '--section', String(section), '--base', base, '--letter', letter]), 'Where your report goes'), letter === 'a' ? report : PASSED_REPORT);
   }
 }
 
@@ -1784,12 +1784,12 @@ function builtAside(sim, wu, task, file) {
 /** @param {Sim} sim @param {string} wu */
 function failedHashRound(sim, wu) {
   const { fixPhase: phase } = reviewNext(sim, wu);
-  areaRead(sim, wu, '## Findings\n\n- bug: the ledger never checks its hash on read\n  Scenario: an entry read back\n\nVerdict: fail\n');
+  sectionRead(sim, wu, '## Findings\n\n- bug: the ledger never checks its hash on read\n  Scenario: an entry read back\n\nVerdict: fail\n');
   testsRead(sim, wu);
   writePhaseTasks(sim, wu, phase, 'The review\'s fixes', [{ title: 'Check the hash on read', type: 'fix', scenarios: ['an entry read back'], reference: '§1' }]);
   sim.run(['review', 'round', wu, '--file', sim.write(`.ledger/.cache/${wu}/review/round.json`, {
     can_now: ['Keep a ledger.'],
-    findings: [{ area: '1-the-work', scope: 'in', call: 'bug', text: 'The ledger never checks its hash on read.', from: ['1-the-work-a#1'], fix: `${phase}.1` }],
+    findings: [{ section: '1-the-work', scope: 'in', call: 'bug', text: 'The ledger never checks its hash on read.', from: ['1-the-work-a#1'], fix: `${phase}.1` }],
   })]);
   return `${phase}.1`;
 }
@@ -1896,5 +1896,5 @@ function finished(sim, wu, { closed = false } = {}) {
 module.exports = {
   Sim, worldFrom, worlds, readyForSim, shownRows, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, labEntry, specEntry, handoff, answerGate, verdictAsked, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, roadmapMenu, pullFromRoadmap, decideTopic, discussed, askedOn,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, startBare, startWith, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, triagePick, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
-  DECIDED_ITEMS, specWritten, specLanded, specBuilt, readyClosed, builders, taskBuilt, fixTree, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic, wentAheadBlind, pickedRow,
+  DECIDED_ITEMS, specWritten, specLanded, specBuilt, readyClosed, builders, taskBuilt, fixTree, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, sectionRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic, wentAheadBlind, pickedRow,
 };

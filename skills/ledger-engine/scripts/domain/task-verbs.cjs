@@ -44,7 +44,7 @@
 // read as it ends it, writing nothing, and refused, every fault named at
 // once — a correction naming a task no adopted phase holds, or titling it
 // otherwise, a phase it marks built holding a
-// task neither done nor closed, or naming a section outside the area of its
+// task neither done nor closed, or naming an address outside the section of its
 // old plan's topic, a phase it leaves unbuilt holding none, and a link
 // holding a task neither done nor closed after one neither, of a later
 // phase or another unit's, which `task link` refuses and the build would
@@ -161,7 +161,7 @@ const { NO_SPEC, breaksLine, readTaskText, specReferenceOf, scenarioIds, oneLine
 const { recordTask, clearTask, clearTasks, recordStop } = require('./position.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const {
-  phaseStarted, cutLength, quickFixBuild, specJoined, areaOfAddress, FIXES_PHASE,
+  phaseStarted, cutLength, quickFixBuild, specJoined, sectionOfAddress, FIXES_PHASE,
 } = require('./derivations.cjs');
 const { reproducingHold, reproducingClose } = require('./bug-proven.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
@@ -705,19 +705,19 @@ function builtFaults({ phase, built, tasks }) {
 }
 
 /**
- * Where a phase marked built names a section outside the area its old plan
+ * Where a phase marked built names an address outside the section its old plan
  * built — its plan's topic's place among the topics joined, `topics` — that
  * fault; none for a single-topic unit, `topics` null, whose plan built the
  * whole spec.
  * @param {{phase: number, built: boolean, sections: string[], plan: string|null}} held @param {string[]|null} topics
  */
-function areaFaults({ phase, built, sections, plan }, topics) {
+function sectionFaults({ phase, built, sections, plan }, topics) {
   if (!built || topics === null) return [];
-  const area = String(topics.indexOf(plan ?? '') + 1);
-  if (area === '0') return [`phase ${phase} is marked built, and its old plan's root names ${plan === null ? 'no topic' : `${plan}, a topic`} the migration joined into no area — so what it built is no area of the spec`];
-  const outside = sections.filter((address) => areaOfAddress(address) !== area);
+  const section = String(topics.indexOf(plan ?? '') + 1);
+  if (section === '0') return [`phase ${phase} is marked built, and its old plan's root names ${plan === null ? 'no topic' : `${plan}, a topic`} the migration joined into no section — so what it built is no section of the spec`];
+  const outside = sections.filter((address) => sectionOfAddress(address) !== section);
   if (outside.length === 0) return [];
-  return [`phase ${phase} is marked built with ${outside.map((address) => `§${address}`).join(', ')}, outside §${area}, the area of its old plan's topic, ${plan} — a phase built before the migration names only what its old plan built`];
+  return [`phase ${phase} is marked built with ${outside.map((address) => `§${address}`).join(', ')}, outside §${section}, the section of its old plan's topic, ${plan} — a phase built before the migration names only what its old plan built`];
 }
 
 /**
@@ -766,13 +766,13 @@ function corrected(held, corrections) {
  * `read` holds, or titling it otherwise; and each phase of `judged`, its
  * tasks read as the corrections end them, marked built holding a task
  * neither done nor closed or not marked built holding none, or marked built
- * naming a section outside the area of its old plan's topic. `judged` is
+ * naming an address outside the section of its old plan's topic. `judged` is
  * every phase read but where one phase's piece is checked alone
  * (cut-merges.cjs).
  * @param {AdoptedPhase[]} read @param {TrackerCorrection[]} corrections @param {string[]|null} topics @param {AdoptedPhase[]} [judged]
  */
 function adoptionFaults(read, corrections, topics, judged = read) {
-  return [...correctionFaults(read, corrections), ...corrected(judged, corrections).flatMap((phase) => [...builtFaults(phase), ...areaFaults(phase, topics)])];
+  return [...correctionFaults(read, corrections), ...corrected(judged, corrections).flatMap((phase) => [...builtFaults(phase), ...sectionFaults(phase, topics)])];
 }
 
 /**
@@ -786,7 +786,7 @@ function adoptionFaults(read, corrections, topics, judged = read) {
  * done, and those neither done nor closed with their text. A run again
  * adopts, ends and types only what the last left out.
  * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, order: string[], built: boolean, sections: string[]}[]} phases
- * @param {string} type @param {string[]|null} topics the topics joined, area by area — null for a single-topic unit (`areaFaults`)
+ * @param {string} type @param {string[]|null} topics the topics joined, section by section — null for a single-topic unit (`sectionFaults`)
  * @param {TrackerCorrection[]} [corrections]
  * @returns {{adopted: {phase: number, tasks: string[]}[], typed: string[], ended: string[], done: string[], open: {task: string, text: string}[], committed?: string|null, note?: string, warnings?: string[]}}
  */

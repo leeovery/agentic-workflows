@@ -5,18 +5,18 @@
 // (review-entry.cjs), its verbs (review-round.cjs, review-verbs.cjs), its
 // briefs (brief-records.cjs) and its screens (projections/review-phase.cjs).
 //
-// - Its areas are the spec's: each `## N. Title`, in the spec's order, never
+// - Its sections are the spec's: each `## N. Title`, in the spec's order, never
 //   merged (14.2.1, 14.2.3), known in the layout by its number and its
-//   title's slug, `{n}-{slug}` (landing-names.cjs) — so a one-area spec has
-//   one pair. A quick-fix, which has no spec, has one area, the change —
+//   title's slug, `{n}-{slug}` (landing-names.cjs) — so a one-section spec has
+//   one pair. A quick-fix, which has no spec, has one section, the change —
 //   its record and its change-set from the base (19.5.14), `1-the-change`
-//   in the layout. Each area is read by the pair (kernel/reviewers.cjs), each
-//   reviewer's report at `review/round-{N}/{area}-{letter}.md`, and the
-//   change's tests by one reader, `tests` beside the areas, its report at
+//   in the layout. Each section is read by the pair (kernel/reviewers.cjs), each
+//   reviewer's report at `review/round-{N}/{section}-{letter}.md`, and the
+//   change's tests by one reader, `tests` beside the sections, its report at
 //   `review/round-{N}/tests-a.md` (14.2.2, 14.2.4).
 // - A round is recorded by `review round` alone, at `review/round-{N}.json`,
 //   the engine's: the report files it read; whether every one passed; what
-//   the person can now do; each finding with its area — `tests` for the
+//   the person can now do; each finding with its section — `tests` for the
 //   test surface's — its scope, its call, the items of the reports it
 //   answers, `{report}#{n}`, every item of every report answered by exactly
 //   one finding, and where it landed: a fix task, an item filed to the inbox,
@@ -26,7 +26,7 @@
 //   of the cut stood at as the round was recorded (15.3.3):
 //
 //     {"reports": ["1-cards-a.md", …], "passed": false, "can_now": ["…"],
-//      "findings": [{"area": "1-cards", "scope": "in", "call": "bug",
+//      "findings": [{"section": "1-cards", "scope": "in", "call": "bug",
 //                    "text": "…", "from": ["1-cards-a#1"], "fix": "4.1"}, …],
 //      "settled": null, "scenarios": [{"scenario": "1.S1", "standing": "proven"}]}
 //
@@ -35,15 +35,15 @@
 //   cut, round k's `M+k` (P14, 14.3.2), each waited on until it is done or
 //   closed. A round that passed, or that Claude settled, ends the review
 //   phase (14.6.3) — no count of rounds ends it — which is over once that
-//   round's fix tasks, nits alone where it passed, are done: no area is read
+//   round's fix tasks, nits alone where it passed, are done: no section is read
 //   again for them (13.4.4, 13.10.1). Any other round is followed by the
 //   next, once its fix tasks are done — and in step once its fix phase has
 //   merged too, which stops at its gate as any phase merge does (14.6.2,
 //   7.2.4), so the next round reads the tree it merged into, each phase
 //   below it merging first, a fix phase built on them (7.2.6); in auto the
 //   fix phases land at finish.
-// - Round 1 reads every area and the test surface. Each later round reads
-//   the areas Claude names once the fix tasks are done, from what they
+// - Round 1 reads every section and the test surface. Each later round reads
+//   the sections Claude names once the fix tasks are done, from what they
 //   changed (`review reads`, at `review/round-{N}-reads.json`, the
 //   engine's): every one whose findings made fix tasks among them — each
 //   read whose report holds an item such a finding answers — the test
@@ -126,12 +126,12 @@ const { reviewReportFaults } = require('./review-report.cjs');
 /** @typedef {import('./phase-checks.cjs').Reading} Reading */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 
-/** An area of the spec: its number, its title, and its name in the layout. @typedef {{number: string, title: string, name: string}} Area */
-/** What the test surface's findings, its place among a round's reads and its report are known by, beside the areas. */
+/** A section of the spec: its number, its title, and its name in the layout. @typedef {{number: string, title: string, name: string}} Section */
+/** What the test surface's findings, its place among a round's reads and its report are known by, beside the sections. */
 const TESTS = 'tests';
 /** The test surface's one reader's letter. */
 const TESTS_LETTER = REVIEWER_LETTERS[0];
-/** What a builder's note is known by among a round's items, `notes#{k}`, and the area of a finding that answers builders' notes alone. */
+/** What a builder's note is known by among a round's items, `notes#{k}`, and the section of a finding that answers builders' notes alone. */
 const NOTES = 'notes';
 
 /** The folder of the cache what put back sets aside is kept in, by unit. */
@@ -165,7 +165,7 @@ const isBuilderNote = (item) => item.startsWith(`${NOTES}#`);
 
 /**
  * A finding as a round records it.
- * @typedef {{area: string, scope: 'in'|'out', call: 'serious'|'bug'|'nit', text: string, from: string[], fix?: string, inbox?: string, drop?: string, ledger?: string}} RoundFinding
+ * @typedef {{section: string, scope: 'in'|'out', call: 'serious'|'bug'|'nit', text: string, from: string[], fix?: string, inbox?: string, drop?: string, ledger?: string}} RoundFinding
  */
 /**
  * A round as `review round` recorded it (the header's).
@@ -183,33 +183,33 @@ const roundRecordPath = (unit, round) => `${reviewFolder(unit)}/round-${round}.j
 const roundReportFile = (unit, round) => `${reviewFolder(unit)}/round-${round}.md`;
 /** A round's detailed checks. @param {string} unit @param {number} round */
 const roundChecksFile = (unit, round) => `${reviewFolder(unit)}/round-${round}-checks.md`;
-/** The areas a later round reads, as Claude named them, the engine's. @param {string} unit @param {number} round */
+/** The sections a later round reads, as Claude named them, the engine's. @param {string} unit @param {number} round */
 const roundReadsPath = (unit, round) => `${reviewFolder(unit)}/round-${round}-reads.json`;
 /** A round's folder of reports. @param {string} unit @param {number} round */
 const roundFolder = (unit, round) => `${reviewFolder(unit)}/round-${round}`;
-/** A reviewer's report of an area, or the test surface's, in a round. @param {string} unit @param {number} round @param {string} area @param {string} letter */
-const areaReportPath = (unit, round, area, letter) => `${roundFolder(unit, round)}/${area}-${letter}.md`;
+/** A reviewer's report of a section, or the test surface's, in a round. @param {string} unit @param {number} round @param {string} section @param {string} letter */
+const sectionReportPath = (unit, round, section, letter) => `${roundFolder(unit, round)}/${section}-${letter}.md`;
 
-/** An area by its number and title, with its name in the layout. @param {string} number @param {string} title @returns {Area} */
-const areaOf = (number, title) => ({ number, title, name: `${number}-${slugOf(title)}` });
+/** A section by its number and title, with its name in the layout. @param {string} number @param {string} title @returns {Section} */
+const namedSection = (number, title) => ({ number, title, name: `${number}-${slugOf(title)}` });
 
-/** A quick-fix's one area: the change, its record and its change-set from the base (19.5.14). */
-const CHANGE_AREA = Object.freeze(areaOf('1', 'The change'));
+/** A quick-fix's one section: the change, its record and its change-set from the base (19.5.14). */
+const CHANGE_SECTION = Object.freeze(namedSection('1', 'The change'));
 
 /**
- * The areas the unit's review reads, in order, each with its name in the
+ * The sections the unit's review reads, in order, each with its name in the
  * layout: the spec's, refused where the unit has no spec — a quick-fix's
  * one, the change, it having none.
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @returns {Area[]}
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @returns {Section[]}
  */
-function reviewAreas(cwd, unit, manifest) {
-  if (quickFixBuild(manifest)) return [CHANGE_AREA];
+function reviewSections(cwd, unit, manifest) {
+  if (quickFixBuild(manifest)) return [CHANGE_SECTION];
   return specReading(readSpec(cwd, unit), specJoined(manifest)).headings
-    .filter(({ kind }) => kind === 'area')
-    .map(({ number, title }) => areaOf(/** @type {string} */ (number), title));
+    .filter(({ kind }) => kind === 'section')
+    .map(({ number, title }) => namedSection(/** @type {string} */ (number), title));
 }
 
-/** The report files a round's reads are read from, by name in its folder: each area's pair, and the test surface's one. @param {string[]} reads */
+/** The report files a round's reads are read from, by name in its folder: each section's pair, and the test surface's one. @param {string[]} reads */
 function reportNames(reads) {
   return reads.flatMap((read) => (read === TESTS ? [`${TESTS}-${TESTS_LETTER}.md`] : REVIEWER_LETTERS.map((letter) => `${read}-${letter}.md`)));
 }
@@ -255,9 +255,9 @@ function recordedRounds(cwd, unit) {
   }
 }
 
-/** The areas Claude named for a later round, or null where it named none yet. @param {string} cwd @param {string} unit @param {number} round @returns {string[]|null} */
+/** The sections Claude named for a later round, or null where it named none yet. @param {string} cwd @param {string} unit @param {number} round @returns {string[]|null} */
 function namedReads(cwd, unit, round) {
-  return recordAt(cwd, roundReadsPath(unit, round), 'the areas a review round reads', (held) => isObject(held) && isStringList(held.reads))?.reads ?? null;
+  return recordAt(cwd, roundReadsPath(unit, round), 'the sections a review round reads', (held) => isObject(held) && isStringList(held.reads))?.reads ?? null;
 }
 
 /** A round's fix tasks, each once, in the order its findings name them. @param {RoundRecord} round */
@@ -269,21 +269,21 @@ const endsReview = (round) => round.passed || round.settled !== null;
 /** The build phase a round's fix tasks make: round k's, the k-th past the build's own — its cut's, or a quick-fix's fixes (P14). @param {Record<string, any>} manifest @param {number} round */
 const fixPhase = (manifest, round) => buildLength(manifest) + round;
 
-/** The reads every area and the test surface make: round 1's. @param {Area[]} areas */
-const everyRead = (areas) => [...areas.map(({ name }) => name), TESTS];
+/** The reads every section and the test surface make: round 1's. @param {Section[]} sections */
+const everyRead = (sections) => [...sections.map(({ name }) => name), TESTS];
 
 /** The read a report item `{report}#{n}` is of: its report's name without the reviewer's letter. @param {string} item */
 const readOfItem = (item) => item.replace(/#\d+$/, '').replace(new RegExp(`-(${REVIEWER_LETTERS.join('|')})$`), '');
 
 /**
  * The reads whose findings in a round made fix tasks, in the reads' order:
- * each such finding's area, and each read whose report holds an item it
+ * each such finding's section, and each read whose report holds an item it
  * answers.
- * @param {Area[]} areas @param {RoundRecord} round
+ * @param {Section[]} sections @param {RoundRecord} round
  */
-function fixedReads(areas, round) {
-  const fixed = new Set(round.findings.filter(({ fix }) => typeof fix === 'string').flatMap(({ area, from }) => [area, ...from.map(readOfItem)]));
-  return everyRead(areas).filter((read) => fixed.has(read));
+function fixedReads(sections, round) {
+  const fixed = new Set(round.findings.filter(({ fix }) => typeof fix === 'string').flatMap(({ section, from }) => [section, ...from.map(readOfItem)]));
+  return everyRead(sections).filter((read) => fixed.has(read));
 }
 
 /**
@@ -316,15 +316,15 @@ function notesStanding(cwd, unit, rounds) {
 }
 
 /**
- * Where the review phase stands: its areas; the rounds recorded; the
+ * Where the review phase stands: its sections; the rounds recorded; the
  * round under review, or the last recorded once a round ended the phase;
  * whether one did, and whether the phase is over; the last round's fix
  * tasks waiting; in step, the fix phase whose merge the round under review
  * waits on, null where none; the reads the round under review must take;
- * those it takes — null for a later round whose areas Claude has not yet
+ * those it takes — null for a later round whose sections Claude has not yet
  * named; and the builders' notes standing.
  * @typedef {{
- *   areas: Area[], rounds: RoundRecord[], round: number, ended: boolean, over: boolean,
+ *   sections: Section[], rounds: RoundRecord[], round: number, ended: boolean, over: boolean,
  *   waiting: string[], merging: number|null, required: string[], reads: string[]|null, notes: string[],
  * }} ReviewStanding
  */
@@ -332,17 +332,17 @@ function notesStanding(cwd, unit, rounds) {
 /** Where the unit's review phase stands, its tracker read through `at`. @param {Reading} at @returns {ReviewStanding} */
 function reviewStanding(at) {
   const { cwd, unit } = at;
-  const areas = reviewAreas(cwd, unit, at.manifest);
+  const sections = reviewSections(cwd, unit, at.manifest);
   const rounds = recordedRounds(cwd, unit);
   const { waiting, merging } = fixesWaiting(at, rounds);
   const notes = notesStanding(cwd, unit, rounds);
   const last = rounds.at(-1);
-  if (last === undefined) return { areas, rounds, round: 1, ended: false, over: false, waiting, merging, required: everyRead(areas), reads: everyRead(areas), notes };
+  if (last === undefined) return { sections, rounds, round: 1, ended: false, over: false, waiting, merging, required: everyRead(sections), reads: everyRead(sections), notes };
   if (endsReview(last)) {
-    return { areas, rounds, round: rounds.length, ended: true, over: waiting.length === 0 && notes.length === 0, waiting, merging: null, required: [], reads: [], notes };
+    return { sections, rounds, round: rounds.length, ended: true, over: waiting.length === 0 && notes.length === 0, waiting, merging: null, required: [], reads: [], notes };
   }
   const round = rounds.length + 1;
-  return { areas, rounds, round, ended: false, over: false, waiting, merging, required: fixedReads(areas, last), reads: namedReads(cwd, unit, round), notes };
+  return { sections, rounds, round, ended: false, over: false, waiting, merging, required: fixedReads(sections, last), reads: namedReads(cwd, unit, round), notes };
 }
 
 /**
@@ -365,7 +365,7 @@ function reportsIn(cwd, unit, { round, reads, ended }) {
  */
 function reviewGoesOn(cwd, unit, standing) {
   if (standing.ended || standing.waiting.length > 0 || standing.merging !== null) return null;
-  if (standing.reads === null) return `round ${standing.round}'s reads are named next: review reads ${unit} <area> …`;
+  if (standing.reads === null) return `round ${standing.round}'s reads are named next: review reads ${unit} <section> …`;
   const landed = new Set(reportsIn(cwd, unit, standing).map((file) => path.basename(file)));
   const out = reportNames(standing.reads).filter((name) => !landed.has(name)).map((name) => path.basename(name, '.md'));
   return out.length === 0 ? null : `round ${standing.round}'s readers are still to brief or reading: ${out.join(', ')}`;
@@ -402,7 +402,7 @@ const mergingWords = (unit, phase) => `phase ${phase} waits at its gate: render 
 const readsWords = (reads) => reads.map((read) => (read === TESTS ? `the test surface (${TESTS})` : read)).join(', ');
 
 /** Why a later round's reads are not yet known, with the way on. @param {string} unit @param {ReviewStanding} standing */
-const unnamedWords = (unit, { round, required }) => `round ${round}'s areas are not yet named — review reads ${unit} <area> …, from what round ${round - 1}'s fix tasks changed, among them ${readsWords(required)}`;
+const unnamedWords = (unit, { round, required }) => `round ${round}'s sections are not yet named — review reads ${unit} <section> …, from what round ${round - 1}'s fix tasks changed, among them ${readsWords(required)}`;
 
 /**
  * Why no round is under review, or null: one ended the phase, the round
@@ -418,7 +418,7 @@ function openRefusal(unit, standing) {
 
 /**
  * Why the round under review cannot be read or recorded yet, or null: none
- * is under review (openRefusal), or its areas are not named.
+ * is under review (openRefusal), or its sections are not named.
  * @param {string} unit @param {ReviewStanding} standing @returns {string|null}
  */
 function roundRefusal(unit, standing) {
@@ -641,6 +641,6 @@ const inTheBuild = ({ phase }) => BUILD_PHASES.includes(phase);
 module.exports = {
   TESTS, TESTS_LETTER, NOTES, isBuilderNote, setAsideFolder, setAsideHeld, filesUnder, EMPTY_PRINT, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, notesStanding, reviewStanding, reportsIn, reviewGoesOn, everyRead,
   endedWords, endedRefusal, openRefusal, roundRefusal, readsWords, mergingWords,
-  roundRecordPath, roundReportFile, roundChecksFile, roundReadsPath, roundFolder, areaReportPath,
+  roundRecordPath, roundReportFile, roundChecksFile, roundReadsPath, roundFolder, sectionReportPath,
   treeRepos, takeSnapshot, openSnapshot, snapshotRound, dropSnapshot, treeDrift, movedWords, treeChanges, unitCalls, callsForThePerson, reviewCallFault, inTheBuild,
 };

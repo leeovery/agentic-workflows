@@ -35,7 +35,7 @@ describe('finish\'s checklist (6.4.10, 2.S2)', () => {
     enter();
     reported(1, EVERY, { '2-refunds-a': ['nit: A refund\'s label is terse.'] });
     fixPhaseWritten(3, [['Word the label', '§2.1']]);
-    recorded({ can_now: ['Pay by card.'], findings: [{ area: '2-refunds', scope: 'in', call: 'nit', text: 'A refund\'s label is terse.', from: ['2-refunds-a#1'], fix: '3.1' }] });
+    recorded({ can_now: ['Pay by card.'], findings: [{ section: '2-refunds', scope: 'in', call: 'nit', text: 'A refund\'s label is terse.', from: ['2-refunds-a#1'], fix: '3.1' }] });
     taskMade(3, 'Mail the receipt', '§1.2');
     const waiting = items();
     fixBuilt(3, 1, 'Word the label', 'main', 'src/label.js');

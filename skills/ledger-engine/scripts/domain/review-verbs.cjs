@@ -13,7 +13,7 @@
 //   writing nothing. It refuses, writing nothing: a unit that is no
 //   quick-fix built by its own arm, and one whose close does not stand,
 //   as its screen refuses it (finish.cjs) — the row being the close's.
-// - `review reads <unit> <area|tests> …`: the areas a later round reads, as
+// - `review reads <unit> <section|tests> …`: the sections a later round reads, as
 //   Claude names them once the round before's fix tasks are done, from what
 //   they changed (14.3.3) — written at `review/round-{N}-reads.json` in the
 //   spec's order, the test surface last, and committed, before the round's
@@ -21,10 +21,10 @@
 //   tree is taken where none is held (review-phase.cjs), so naming more
 //   reads keeps the one held. It refuses, writing nothing: a unit whose review
 //   phase cannot be entered; no round under review (review-phase.cjs,
-//   `openRefusal`); round 1, which reads every area; a name that is no area
-//   of the spec and not `tests`; a set leaving out an area whose findings
+//   `openRefusal`); round 1, which reads every section; a name that is no section
+//   of the spec and not `tests`; a set leaving out a section whose findings
 //   made fix tasks in the round before, or one named for the round before —
-//   areas are added, never dropped.
+//   sections are added, never dropped.
 // - `review accept-tree <unit>`: the working tree taken as it is, on the
 //   person's word, the round's snapshot taken again over any held (12.7.8,
 //   14.S13); nothing else written. It refuses a unit whose review phase
@@ -57,7 +57,7 @@ const REVIEW_USAGE = [
   'review ask <work-unit>',
   'review round <work-unit> --file <round.json>',
   'review notes <work-unit> --file <notes.json>',
-  'review reads <work-unit> <area|tests> [<area|tests> …]',
+  'review reads <work-unit> <section|tests> [<section|tests> …]',
   'review accept-tree <work-unit>',
   'review restore-tree <work-unit> --listed <print>',
 ].join('\n');
@@ -73,21 +73,21 @@ function roundOpen(cwd, unit, said) {
 }
 
 /**
- * `review reads`: the areas the round under review reads, as Claude named
+ * `review reads`: the sections the round under review reads, as Claude named
  * them (the header's).
  * @param {string} cwd @param {string} unit @param {string[]} named
  */
 function nameReads(cwd, unit, named) {
   const { refuse, standing, repos } = roundOpen(cwd, unit, 'review reads');
-  const { areas, round, required, reads: before } = standing;
-  if (round === 1) refuse(`round 1 reads every area and the test surface (${TESTS}) — a later round's are named`);
-  const known = everyRead(areas);
+  const { sections, round, required, reads: before } = standing;
+  if (round === 1) refuse(`round 1 reads every section and the test surface (${TESTS}) — a later round's are named`);
+  const known = everyRead(sections);
   const unknown = named.filter((name) => !known.includes(name));
-  if (unknown.length > 0) refuse(`${unknown.join(', ')} ${unknown.length === 1 ? 'is' : 'are'} no area of ${unit}'s spec — name its areas by ${known.join(', ')}`);
+  if (unknown.length > 0) refuse(`${unknown.join(', ')} ${unknown.length === 1 ? 'is' : 'are'} no section of ${unit}'s spec — name its sections by ${known.join(', ')}`);
   const dropped = required.filter((name) => !named.includes(name));
-  if (dropped.length > 0) refuse(`round ${round} reads every area whose findings made fix tasks in round ${round - 1}, and leaves out ${readsWords(dropped)}`);
+  if (dropped.length > 0) refuse(`round ${round} reads every section whose findings made fix tasks in round ${round - 1}, and leaves out ${readsWords(dropped)}`);
   const unnamed = (before ?? []).filter((name) => !named.includes(name));
-  if (unnamed.length > 0) refuse(`round ${round} already reads ${readsWords(unnamed)} — areas are added, never dropped`);
+  if (unnamed.length > 0) refuse(`round ${round} already reads ${readsWords(unnamed)} — sections are added, never dropped`);
   const reads = known.filter((name) => named.includes(name));
   const rel = roundReadsPath(unit, round);
   writeJsonAtomic(statePath(cwd, rel), { reads });

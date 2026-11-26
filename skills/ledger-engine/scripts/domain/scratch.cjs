@@ -29,8 +29,8 @@
 //
 // Neither writes the state. Each reader's layout is named for the reader
 // (`scratchName`): a task's reviewer `{unit}-{task}-{letter}`, a phase
-// review's `{unit}-phase-{N}-{letter}`, an area's reader
-// `{unit}-area-{n}-{letter}` and the test surface's `{unit}-tests`. A
+// review's `{unit}-phase-{N}-{letter}`, a section's reader
+// `{unit}-section-{n}-{letter}` and the test surface's `{unit}-tests`. A
 // reader that dies leaves its layout, so the engine takes apart every one
 // left once its readers are known to be done (`readersDone`): a task's at its
 // account, a phase review's at its settlement or its phase's merge, a
@@ -61,12 +61,12 @@ const scratchLayout = (name) => kindName('scratch', name);
 
 /**
  * A reader's scratch worktree's name (the header's): a task's reviewer's, a
- * phase review's, an area's reader's, or the test surface's.
+ * phase review's, a section's reader's, or the test surface's.
  */
 const scratchName = Object.freeze({
   task: (/** @type {string} */ unit, /** @type {string} */ task, /** @type {string} */ letter) => `${unit}-${task}-${letter}`,
   phase: (/** @type {string} */ unit, /** @type {number} */ phase, /** @type {string} */ letter) => `${unit}-phase-${phase}-${letter}`,
-  area: (/** @type {string} */ unit, /** @type {number|string} */ area, /** @type {string} */ letter) => `${unit}-area-${area}-${letter}`,
+  section: (/** @type {string} */ unit, /** @type {number|string} */ section, /** @type {string} */ letter) => `${unit}-section-${section}-${letter}`,
   tests: (/** @type {string} */ unit) => `${unit}-tests`,
 });
 
@@ -80,8 +80,8 @@ const literal = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const READERS = Object.freeze({
   task: (/** @type {string} */ unit, /** @type {string} */ task) => new RegExp(`^${literal(unit)}-${literal(task)}-[a-z]$`),
   phase: (/** @type {string} */ unit, /** @type {number} */ phase) => new RegExp(`^${literal(unit)}-phase-${phase}-[a-z]$`),
-  round: (/** @type {string} */ unit) => new RegExp(`^${literal(unit)}-(area-\\d+-[a-z]|tests)$`),
-  unit: (/** @type {string} */ unit) => new RegExp(`^${literal(unit)}-(\\d+\\.\\d+-[a-z]|phase-\\d+-[a-z]|area-\\d+-[a-z]|tests)$`),
+  round: (/** @type {string} */ unit) => new RegExp(`^${literal(unit)}-(section-\\d+-[a-z]|tests)$`),
+  unit: (/** @type {string} */ unit) => new RegExp(`^${literal(unit)}-(\\d+\\.\\d+-[a-z]|phase-\\d+-[a-z]|section-\\d+-[a-z]|tests)$`),
 });
 
 /**

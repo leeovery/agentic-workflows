@@ -51,7 +51,7 @@
 // (review-phase.cjs, `notesUntaken`). Nor has a quick-fix: where no review
 // was asked for, its close answers them (`quick-fix notes`,
 // review-round.cjs), kept at `build/notes-answered.json`, `{findings}`, a
-// review round's findings of the area `notes` (`answeredAtClose`).
+// review round's findings of the section `notes` (`answeredAtClose`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');

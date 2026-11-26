@@ -54,7 +54,7 @@ A phase skill fences its field and gives its corridors' moves (Fields and Corrid
 
 Every phase is entered and left through gates, each the engine's. The prose never says whether a gate stops, and never carries a branch for a position.
 
-**Entering.** A phase is moved into by a handoff, from a gate or a menu pick, except a move between discovery's levels, which carries the conversation on (Handoffs and Recovery). Its entry is one engine call, shared by every phase; the skill does what the answer says.
+**Entering.** A phase is moved into by a handoff, from a gate or a menu pick, except a move between discovery's levels and the start of a piece of work, which carry the conversation on (Handoffs and Recovery). Its entry is one engine call, shared by every phase; the skill does what the answer says.
 
 **Leaving.** The phase is left at its closing point. Claude works the checklist (`checklist show`, `done`, `skip` with a reason) in the order it likes, closes it, and fetches the gate that follows, where one does — a phase's start in the build has none.
 
@@ -203,7 +203,7 @@ An agent works from the record, never the conversation. Its calls come back to t
 
 **Handing off** moves the work into a skill that starts it afresh. The engine names the move — `handoff`, or a gate's `next` of kind `handoff` — and composes the continuation. Where the gate mod runs it clears the conversation and carries the continuation into the next one; elsewhere the skill is invoked in place. Nothing crosses but the skill and its arguments: what the next skill needs is on disk first.
 
-Nothing hands off inside a build, a quick-fix or a topic. An experiment's spawn leaves the topic: the laboratory opens in a clean conversation, by a handoff. One orchestrator runs a build across all its phases and straight into the review phase. A move between discovery's levels, or from a topic up to its epic's discovery or the product's conversation, carries the conversation on in the same session.
+Nothing hands off inside a build, a quick-fix or a topic. An experiment's spawn leaves the topic: the laboratory opens in a clean conversation, by a handoff. One orchestrator runs a build across all its phases and straight into the review phase. A move between discovery's levels, or from a topic up to its epic's discovery or the product's conversation, carries the conversation on in the same session. So does the start of a piece of work, and a unit's move to another type: the first phase opens in the conversation that shaped the work, its skill invoked there, since a handoff would clear what was said and read.
 
 **Invoking** a skill is a Skill tool call: it adds the skill's instructions to the running context and clears nothing. Show the literal command — ``Invoke `/{skill} {args}`.`` — outside any fence; inside one it is printed, not run (lint check 14). **Loading** a reference reads it into the running context, nothing more.
 

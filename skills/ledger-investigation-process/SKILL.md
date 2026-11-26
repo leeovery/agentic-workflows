@@ -35,7 +35,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs enter investigation {work_u
 
 A refusal names the way on: say it in a line. Where another session holds the topic, the entry asks first; carrying on from it ends the turn. Waiting mail is the conversation's first business (**Mail**).
 
-Then read what the DATA names, each in full, an `earlier` one as input never changed, a `catch up` transcript as far as the framework says. Take in each `landed` report as **Validations** says, and close each `lost` one with `agent incorporate`. Search earlier work units' entries in the bug's area with `knowledge query`.
+Then read what the DATA names, each in full, an `earlier` one as input never changed, a `catch up` transcript as far as the framework says. Take in each `landed` report as **Validations** says, and close each `lost` one with `agent incorporate`. Search earlier work units' entries on the code the bug touches with `knowledge query`.
 
 The DATA's `kept branch` and `kept work` lines name work that came across into the investigation, set-aside work with the calls its line gives.
 
@@ -59,7 +59,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render investigation-plan {
 
 ### The Analysis
 
-Trace from where the person meets the bug back to its source: the data's path, the control flow and the state that reach it, what it depends on, and what changed lately — the history, blame, a bisect; in a repository nested inside the project, its history is read there (`git -C {folder} …`). As you read, check whether the area was fixed before and whether the cause sits in the design; none of this is shown to the person or counted.
+Trace from where the person meets the bug back to its source: the data's path, the control flow and the state that reach it, what it depends on, and what changed lately — the history, blame, a bisect; in a repository nested inside the project, its history is read there (`git -C {folder} …`). As you read, check whether that code was fixed before and whether the cause sits in the design; none of this is shown to the person or counted.
 
 What the code or a run shows is a finding, saying how it is known: `read` in the code, `documented` with its source, or `exploratory` with the command and its result. A check run to test a hypothesis is the investigation's own experiment, logged with what it showed and resting on its finding (`investigation-log experiment`). A trace or a longer account goes beneath its entry as `--body`. A hypothesis's state follows the evidence — confirmed, or ruled out, a dead end kept and never deleted — and one the person says is intended behaviour is `intended`, `--by` their answer. A new suspect joins as a hypothesis of its own.
 
@@ -106,9 +106,9 @@ Before setting out fix options, step back from the bug. Was the implementation w
 
 ### The Fix Direction
 
-The fix is a question on the map, set out through `raise`, its call holding besides `"stepped_back"`, a line for each thing the step back found. Each row is a way to fix it, said as what the person would notice. Where the cause sits in the design or the area keeps breaking, it carries one row more: rework the area as a feature. Where the root cause is a design problem, each raise of the fix direction is marked `--always design-problem`. The direction says what the fix does, never how it is written — that is the spec's.
+The fix is a question on the map, set out through `raise`, its call holding besides `"stepped_back"`, a line for each thing the step back found. Each row is a way to fix it, said as what the person would notice. Where the cause sits in the design or the code it lives in keeps breaking, it carries one row more: rework that code as a feature. Where the root cause is a design problem, each raise of the fix direction is marked `--always design-problem`. The direction says what the fix does, never how it is written — that is the spec's.
 
-Once the fix is decided, log the fix direction (`investigation-log fix-direction`); then dispatch the fix's validation. Reworking the area as a feature, decided, dispatches no validation: go on to **Reworking It as a Feature**.
+Once the fix is decided, log the fix direction (`investigation-log fix-direction`); then dispatch the fix's validation. Reworking the code as a feature, decided, dispatches no validation: go on to **Reworking It as a Feature**.
 
 ### Mail
 
@@ -149,9 +149,9 @@ The investigation closes once the root cause and the fix stand, both validated s
 
 The recap names what the bug is in, for the bugs found after review:
 - `fixes` — the work unit whose code the bug is in, read from the code's history and the project's units; asked of the person where it isn't plain, and left out where no unit built that code.
-- `area` — where the project records a verify setup, the area of the feature map it names that the bug sits in; left out otherwise.
+- `part` — where the project records a verify setup, the part of the feature map it names that the bug sits in; left out otherwise.
 
-Write `{"hunt": "{one paragraph}", "fixes": "{unit}", "area": "{area}"}` — the hunt told short in product terms, what was suspected and what ruled each out, what proved the cause; `fixes` and `area` only where named — to `.ledger/.cache/{work_unit}/investigation/{work_unit}/recap.json`, then stage it:
+Write `{"hunt": "{one paragraph}", "fixes": "{unit}", "part": "{part}"}` — the hunt told short in product terms, what was suspected and what ruled each out, what proved the cause; `fixes` and `part` only where named — to `.ledger/.cache/{work_unit}/investigation/{work_unit}/recap.json`, then stage it:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs investigation stage {work_unit} --file .ledger/.cache/{work_unit}/investigation/{work_unit}/recap.json
@@ -179,7 +179,7 @@ The person shares a file, a path or an image — a log, an export, a screenshot 
 
 ## Reworking It as a Feature
 
-The person has decided the fix direction is to rework the area as a feature. Bring the log up to date, then draft the feature's brief at `.ledger/.cache/{work_unit}/investigation/{work_unit}/brief.md`: the symptoms, the root cause and why it is the design's, the ways ruled out and why, and the open questions — nothing in it a decision.
+The person has decided the fix direction is to rework the code as a feature. Bring the log up to date, then draft the feature's brief at `.ledger/.cache/{work_unit}/investigation/{work_unit}/brief.md`: the symptoms, the root cause and why it is the design's, the ways ruled out and why, and the open questions — nothing in it a decision.
 
 Write `{"description": "{one line in the person's framing}", "reason": "{one line on why it is a feature}", "brief": ".ledger/.cache/{work_unit}/investigation/{work_unit}/brief.md"}` to `.ledger/.cache/{work_unit}/investigation/{work_unit}/move.json`, then stage the move and draw start this work's screen:
 

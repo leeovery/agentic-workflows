@@ -22,7 +22,7 @@ const fs = require('fs');
 const path = require('path');
 const { treeSnapshot, head } = require('./engine-harness.cjs');
 const {
-  UNIT, AREAS, useWorld, env, enter, reported, named, recorded, refusedRound, firstRoundReady, fixBuilt, RECEIPT,
+  UNIT, SECTIONS, useWorld, env, enter, reported, named, recorded, refusedRound, firstRoundReady, fixBuilt, RECEIPT,
   ok, refusedPristine, statePath, assert,
 } = require('./review-world.cjs');
 
@@ -33,7 +33,7 @@ useWorld((at) => { dir = at; });
 /** `review <verb>` refused, nothing written: its error. @param {string[]} args */
 const refused = (args) => refusedPristine(dir, ['review', ...args], { env: env() }).error;
 
-/** Round 1 recorded failing on area 1's receipt, its fix task 3.1 built and done, round 2 entered. */
+/** Round 1 recorded failing on section 1's receipt, its fix task 3.1 built and done, round 2 entered. */
 function fixesDone() {
   firstRoundReady();
   recorded({ can_now: [], findings: [RECEIPT] });
@@ -75,7 +75,7 @@ describe('a later round\'s snapshot, taken as review reads opens the round (14.1
     const held = fs.readFileSync(statePath(dir, SNAPSHOT), 'utf8');
     fs.writeFileSync(path.join(dir, 'src/card.js'), 'export const card = 999;\n');
     named(['1-cards', '2-refunds']);
-    reported(2, AREAS);
+    reported(2, SECTIONS);
 
     assert.strictEqual(fs.readFileSync(statePath(dir, SNAPSHOT), 'utf8'), held);
     assert.match(refusedRound({ can_now: [], findings: [] }), /^review round: the working tree outside \.ledger\/ changed since the snapshot the round is held to: src\/card\.js — /);

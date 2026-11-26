@@ -1,6 +1,6 @@
 # Specification
 
-The specification is the contract: a piece of work's one spec, `spec.md`, the document its build reads and you can review line by line. It is written by area from the records alone, never from a conversation, and every statement cites the ledger entries it comes from. Then it is cut into the phases the build will follow, and it closes at ready to build, where you approve it and choose how the build runs.
+The specification is the contract: a piece of work's one spec, `spec.md`, the document its build reads and you can review line by line. It is written section by section from the records alone, never from a conversation, and every statement cites the ledger entries it comes from. Then it is cut into the phases the build will follow, and it closes at ready to build, where you approve it and choose how the build runs.
 
 Nothing here decides the product afresh. A gap the specification meets, a detail no decision covers, is decided as any call is, and the answer lands on the ledger before the spec carries it. Claude orchestrates: named agents sweep the records, write the spec, review it and cut it, each from a brief the engine issues, and Claude brings you to ready to build. You meet the phase at a few points only, and between them the work runs on, with a line saying where it has got to whenever it waits on an agent.
 

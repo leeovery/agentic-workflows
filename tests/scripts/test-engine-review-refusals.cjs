@@ -41,7 +41,7 @@ describe('review round: what it refuses, writing nothing', () => {
   it('a call of another shape, as inbox file\'s is: a verb it lacks, no unit, no payload or reads, an extra word, a flag it takes none of', () => {
     const file = payload('round.json', { can_now: [], findings: [] });
     const usage = (/** @type {string[]} */ args) => refusedPristine(dir, args, { env: env() }).error;
-    const reviewUsage = 'Usage: engine review ask <work-unit> | engine review round <work-unit> --file <round.json> | engine review notes <work-unit> --file <notes.json> | engine review reads <work-unit> <area|tests> [<area|tests> …] | engine review accept-tree <work-unit> | engine review restore-tree <work-unit> --listed <print>';
+    const reviewUsage = 'Usage: engine review ask <work-unit> | engine review round <work-unit> --file <round.json> | engine review notes <work-unit> --file <notes.json> | engine review reads <work-unit> <section|tests> [<section|tests> …] | engine review accept-tree <work-unit> | engine review restore-tree <work-unit> --listed <print>';
 
     for (const args of [
       ['review', 'record', UNIT, '--file', file], ['review', 'round', '--file', file], ['review', 'round', UNIT], ['review', 'round', UNIT, 'more', '--file', file], ['review', 'round', UNIT, '--file', file, '--force', 'x'],
@@ -124,7 +124,7 @@ describe('review round: what it refuses, writing nothing', () => {
 
     assert.deepStrictEqual([waiting, refusedRound({ can_now: [], findings: [] })], [
       'review round: round 2 is read once every fix task of round 1 is done — task 3.1 not started',
-      `review round: round 2's areas are not yet named — review reads ${UNIT} <area> …, from what round 1's fix tasks changed, among them 1-cards`,
+      `review round: round 2's sections are not yet named — review reads ${UNIT} <section> …, from what round 1's fix tasks changed, among them 1-cards`,
     ]);
   });
 
@@ -146,15 +146,15 @@ describe('review round: what it refuses, writing nothing', () => {
     const person = decided(dir, `${UNIT}.review`, 'Is it filed?', { by: 'person', text: 'File it.', why: 'I want it.' });
     const unfiled = statePath(dir, '.inbox/ideas/2026-01-01--x.md');
     const findings = [
-      { area: '3-reports', scope: 'near', call: 'major', text: '', drop: 'No.' },
-      { area: '1-cards', scope: 'in', call: 'bug', text: 'Two.', fix: '3.1', drop: 'Both.' },
-      { area: '1-cards', scope: 'in', call: 'bug', text: 'Not written.', fix: '3.2' },
-      { area: '1-cards', scope: 'out', call: 'bug', text: 'Out.', fix: '3.1', ledger: calls.token },
-      { area: '1-cards', scope: 'in', call: 'bug', text: 'Filed.', inbox: unfiled },
-      { area: '1-cards', scope: 'in', call: 'nit', text: 'Dropped.', drop: '', ledger: calls.token },
-      { area: '1-cards', scope: 'out', call: 'nit', text: 'Unfiled.', inbox: unfiled, ledger: person },
-      { area: '1-cards', scope: 'out', call: 'nit', text: 'No call.', drop: 'Not ours.' },
-      { area: '1-cards', scope: 'in', call: 'bug', text: 'Not real.', drop: 'The reviewer misread it.' },
+      { section: '3-reports', scope: 'near', call: 'major', text: '', drop: 'No.' },
+      { section: '1-cards', scope: 'in', call: 'bug', text: 'Two.', fix: '3.1', drop: 'Both.' },
+      { section: '1-cards', scope: 'in', call: 'bug', text: 'Not written.', fix: '3.2' },
+      { section: '1-cards', scope: 'out', call: 'bug', text: 'Out.', fix: '3.1', ledger: calls.token },
+      { section: '1-cards', scope: 'in', call: 'bug', text: 'Filed.', inbox: unfiled },
+      { section: '1-cards', scope: 'in', call: 'nit', text: 'Dropped.', drop: '', ledger: calls.token },
+      { section: '1-cards', scope: 'out', call: 'nit', text: 'Unfiled.', inbox: unfiled, ledger: person },
+      { section: '1-cards', scope: 'out', call: 'nit', text: 'No call.', drop: 'Not ours.' },
+      { section: '1-cards', scope: 'in', call: 'bug', text: 'Not real.', drop: 'The reviewer misread it.' },
     ].map((finding, at) => ({ ...finding, from: [`1-cards-a#${at + 1}`] }));
 
     assert.strictEqual(refusedRound({ can_now: ['Pay.', ''], findings, settled: '' }), [
@@ -181,7 +181,7 @@ describe('review round: what it refuses, writing nothing', () => {
   it('report items a finding answers none of, names that no report holds, or calls lesser than its own; and each item answered by no finding or by two', () => {
     enter();
     reported(1, EVERY, { '1-cards-a': ['bug: The receipt is never sent.', 'nit: The label is terse.'], '1-cards-b': ['bug: No receipt follows.'], 'tests-a': ['nit: A test is slow.'] });
-    const found = { area: '1-cards', scope: 'in', call: 'bug', text: 'The receipt is never sent.', drop: 'Not real.', ledger: reviewCall('Dropped.', 'Not real.') };
+    const found = { section: '1-cards', scope: 'in', call: 'bug', text: 'The receipt is never sent.', drop: 'Not real.', ledger: reviewCall('Dropped.', 'Not real.') };
 
     assert.strictEqual(refusedRound({ can_now: [], findings: [
       { ...found, from: [] },
@@ -212,7 +212,7 @@ describe('review round: what it refuses, writing nothing', () => {
     enter();
     reported(1, EVERY, { '2-refunds-a': ['nit: A refund\'s label is terse.'], 'tests-a': ['nit: A test is slow.'] });
     const refused = refusedRound({ can_now: ['Pay by card.'], findings: [] });
-    const nit = (/** @type {string} */ area, /** @type {string} */ item, /** @type {string} */ text) => ({ area, scope: 'in', call: 'nit', text, from: [item], drop: 'Below the floor.' });
+    const nit = (/** @type {string} */ section, /** @type {string} */ item, /** @type {string} */ text) => ({ section, scope: 'in', call: 'nit', text, from: [item], drop: 'Below the floor.' });
 
     assert.strictEqual(refused, [
       'review round: 2-refunds-a#1 is answered by no finding — every item of every report lands in the round\'s record (14.3.1)',

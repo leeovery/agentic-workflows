@@ -190,11 +190,11 @@ describe('the pane as drawn', () => {
   })
 
   test('a version this board does not know is refused in a line, nothing of it drawn', () => {
-    const { tabs, lines } = draw({ kind: 'refused', version: 12 }, walk(build, pageKey('task:6.4')))
+    const { tabs, lines } = draw({ kind: 'refused', version: 13 }, walk(build, pageKey('task:6.4')))
 
     expect(tabs).toBeNull()
     expect(shown(lines)).toEqual([
-      "This board draws version 11 of the engine's board, and the engine answers version 12: nothing is drawn until they match.",
+      "This board draws version 12 of the engine's board, and the engine answers version 13: nothing is drawn until they match.",
     ])
   })
 

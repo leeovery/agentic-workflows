@@ -6,7 +6,7 @@ The order is fixed where it matters: the symptoms, then the code, and the root c
 
 ## Symptoms
 
-The investigation opens on your own account of the bug: the brief written when the work started, the discovery log and the inbox items it came from. Claude also searches the [knowledge base](knowledge-base.md) for earlier work in the bug's area. It confirms what your account already answers rather than asking again, and asks what it leaves open: what should happen and what happens instead, the exact steps, how often, where, since when, and what you have tried. Each symptom is logged in your words. What you don't know stays unknown, never guessed.
+The investigation opens on your own account of the bug: the brief written when the work started, the discovery log and the inbox items it came from. Claude also searches the [knowledge base](knowledge-base.md) for earlier work on the code the bug touches. It confirms what your account already answers rather than asking again, and asks what it leaves open: what should happen and what happens instead, the exact steps, how often, where, since when, and what you have tried. Each symptom is logged in your words. What you don't know stays unknown, never guessed.
 
 ## The plan
 
@@ -16,7 +16,7 @@ The **plan** gate shows the hypotheses in the order they will be checked, and ho
 
 ## The analysis
 
-Claude traces from where you meet the bug back to its source: the data's path, the control flow and the state that reach it, what it depends on, and what changed lately, through the history, blame and bisect, in the project's repository and any repository nested inside it. As it reads it checks whether the area was fixed before and whether the cause sits in the design.
+Claude traces from where you meet the bug back to its source: the data's path, the control flow and the state that reach it, what it depends on, and what changed lately, through the history, blame and bisect, in the project's repository and any repository nested inside it. As it reads it checks whether that code was fixed before and whether the cause sits in the design.
 
 What the code or a run shows lands on the ledger as a finding saying how it is known: read in the code, documented with its source, or exploratory, with the command and its result. A check run to test a hypothesis is logged with what it showed. Each hypothesis's state follows the evidence: confirmed, or ruled out, a dead end kept and never deleted, or intended, where you say the behaviour is meant. A new suspect joins as a hypothesis of its own.
 
@@ -49,15 +49,15 @@ A finding that does not hold up is declined, with why in the log.
 
 Before any fix is set out, Claude steps back from the bug. Was the implementation wrong, or was it right and an edge case has turned up? Is there another way to do it, a different abstraction or mechanism, that thinking higher up reveals?
 
-The **fix direction** is then a question, each answer a way to fix it said as what you would notice, with what the step back found beside it. Where the cause sits in the design, or the area keeps breaking, it carries one way more: rework the area as a feature. Where the root cause is a design problem, the fix direction always comes to you; any other goes through the [ask rule](trust.md) like any call. The direction says what the fix does, never how it is written; that is the specification's.
+The **fix direction** is then a question, each answer a way to fix it said as what you would notice, with what the step back found beside it. Where the cause sits in the design, or the code it lives in keeps breaking, it carries one way more: rework that code as a feature. Where the root cause is a design problem, the fix direction always comes to you; any other goes through the [ask rule](trust.md) like any call. The direction says what the fix does, never how it is written; that is the specification's.
 
 ## Reworking it as a feature
 
-When you decide the right fix is to rework the area, the bugfix moves to a feature, once its root cause has been validated. Its brief carries the symptoms, the root cause and why it is the design's, the ways ruled out and why, and the open questions. The [start this work](discovery.md#starting-a-piece-of-work) screen asks your yes, and the work hands off into the feature's discussion, which reads the investigation as its earlier log. Keep shaping instead keeps it a bugfix, and the fix is settled afresh.
+When you decide the right fix is to rework the code, the bugfix moves to a feature, once its root cause has been validated. Its brief carries the symptoms, the root cause and why it is the design's, the ways ruled out and why, and the open questions. The [start this work](discovery.md#starting-a-piece-of-work) screen asks your yes, and the work carries on in the same conversation into the feature's discussion, which reads the investigation as its earlier log. Keep shaping instead keeps it a bugfix, and the fix is settled afresh.
 
 ## The conclusion
 
-The investigation closes once the root cause and the fix stand, both validated since, nothing of yours open and no mail waiting; it has no checklist. Its recap tells the hunt short, in the product's terms: what was suspected, what ruled each out, what proved the cause. It also names what the bug is in, for the bugs found after a review: the piece of work whose code the bug is in, where one built it, and where the project has a verify setup, the area of its feature map the bug sits in. Bugs found after a review are grouped by those areas, which steers the checks there.
+The investigation closes once the root cause and the fix stand, both validated since, nothing of yours open and no mail waiting; it has no checklist. Its recap tells the hunt short, in the product's terms: what was suspected, what ruled each out, what proved the cause. It also names what the bug is in, for the bugs found after a review: the piece of work whose code the bug is in, where one built it, and where the project has a verify setup, the part of its feature map the bug sits in. Bugs found after a review are grouped by those parts, which steers the checks there.
 
 The investigation has no gate of its own: once it closes, the work moves into its specification, and the recap is shown at [ready to build](specification.md#ready-to-build). That yes concludes the investigation with the spec. Until the spec is written, opening the investigation again, a message reaching it, a question asked there, a decision replaced there or a new line in its log takes it back, and it closes again once it can; taken back while the spec is being written, it holds the spec back until it closes again. Once the spec is written the investigation is set: a change to the root cause or the fix, asked for at ready to build or found in the spec's review, is made in the spec, and the recap is told again over it.
 

@@ -4,7 +4,7 @@
 // The person's review page (ledger-engine/scripts/domain/spec-page.cjs):
 // `engine spec page <unit>`, writing the one fixed page with the spec as its
 // data and the store's first writes — every line with its tick and flags,
-// each screen after its line, each area's count, Claude's tick on each line
+// each screen after its line, each section's count, Claude's tick on each line
 // as the page's model draws it, and the page declaring `db` alone (11.11.2,
 // 11.11.3, 11.11.5, 11.11.13, 11.11.15, 11.S23, 11.S32); `engine spec
 // published <unit> <url>`, which opens the page and answers where its marks
@@ -12,7 +12,7 @@
 // --store [--reason] [--from]`, planning what a re-land changed for the open
 // page against the store's listing — one numbered change with its reason
 // and the lines that led to it, earlier wordings kept oldest first, a
-// removed line kept where it stood, an area emptied and brought back, a line
+// removed line kept where it stood, a section emptied and brought back, a line
 // brought back, a change to sources alone recording none, a push that
 // stopped finished, and the documents the store holds named for
 // `if_version` (11.11.6, 11.11.17, 11.S28, 11.S33); each refusal writing
@@ -79,7 +79,7 @@ const STATEMENTS = () => [
   `1.1.5 A declined card is refused. [${made.taken}]`,
 ];
 
-/** The spec, its first part's statements as given, with or without its second area. @param {string[]} statements @param {boolean} [refunds] */
+/** The spec, its first part's statements as given, with or without its second section. @param {string[]} statements @param {boolean} [refunds] */
 function spec(statements, refunds = true) {
   return [
     `# ${TITLE}`, '', 'How to read it.', '', '## 1. Cards', '', '### 1.1 The form', '', ...statements.flatMap((line) => [line, '']),
@@ -161,8 +161,8 @@ function fOf({ f: _f, ...rest }) {
   return crypto.createHash('sha256').update(JSON.stringify(sorted(rest))).digest('hex').slice(0, 12);
 }
 
-/** A line of an area as its items hold it, by id. @param {Record<string, any>} area @param {string} id */
-const itemIn = (area, id) => area.items.find((/** @type {{id?: string}} */ item) => item.id === id);
+/** A line of a section as its items hold it, by id. @param {Record<string, any>} section @param {string} id */
+const itemIn = (section, id) => section.items.find((/** @type {{id?: string}} */ item) => item.id === id);
 
 describe('spec page: the page and its first writes (11.11.2, 11.11.13, 11.S23)', () => {
   it('answers the page, its title, the capabilities declaring db alone, and the batches to send in order (11.11.5)', () => {
@@ -192,7 +192,7 @@ describe('spec page: the page and its first writes (11.11.2, 11.11.13, 11.S23)',
     assert.deepStrictEqual(JSON.parse(data), { index: { ...index, f: fOf(index) }, s1: docs['spec/s1'], s2: docs['spec/s2'] });
   });
 
-  it('every line is an item with its id, number and flags, each screen after its line, each area counted (11.11.3)', () => {
+  it('every line is an item with its id, number and flags, each screen after its line, each section counted (11.11.3)', () => {
     const docs = docsOf(build().batches);
     const lines = (/** @type {string} */ doc) => docs[doc].items.map((/** @type {Record<string, unknown>} */ { k, t, id, num, kind, after, flags }) => (k === 'line' ? { id, num, kind, after, flags } : { k, t }));
     assert.deepStrictEqual(lines('spec/s1'), [
@@ -212,7 +212,7 @@ describe('spec page: the page and its first writes (11.11.2, 11.11.13, 11.S23)',
     });
   });
 
-  it('each area is the model\'s, every document carrying its fingerprint', () => {
+  it('each section is the model\'s, every document carrying its fingerprint', () => {
     const docs = docsOf(build().batches);
     const model = specPage(dir, UNIT);
     for (const { num, items } of model.sections) assert.deepStrictEqual(docs[`spec/s${num}`], { items, f: fOf({ items }) });
@@ -230,7 +230,7 @@ describe('spec page: the page and its first writes (11.11.2, 11.11.13, 11.S23)',
     assert.deepStrictEqual(verdicts, { '1-1-1': 'soft', '1-1-2': 'open', '1-1-3': 'soft', '1-1-3-scr1': 'soft', '1-1-4': 'soft', '1-1-5': 'soft', '1-S1': 'soft' });
   });
 
-  it('the first writes: the areas, the index, the ticks, then the status line empty; no history and no change yet', () => {
+  it('the first writes: the sections, the index, the ticks, then the status line empty; no history and no change yet', () => {
     const writes = writesOf(build().batches);
     assert.deepStrictEqual(writes.map(({ op, to }) => `${op} ${to}`), [
       'set spec/s1', 'set spec/s2', 'set spec/index', 'set assess/s1', 'set assess/s2', 'set live/status',
@@ -239,8 +239,8 @@ describe('spec page: the page and its first writes (11.11.2, 11.11.13, 11.S23)',
   });
 
   it('writes in batches of at most 40', () => {
-    const areas = Array.from({ length: 20 }, (_, k) => k + 3).flatMap((n) => [`## ${n}. Area ${n}`, '', `### ${n}.1 Part`, '', `${n}.1.1 Holds. [builder: ${made.radius}]`, '']);
-    writeState(dir, SPEC, `${spec(STATEMENTS())}\n${areas.join('\n')}`);
+    const sections = Array.from({ length: 20 }, (_, k) => k + 3).flatMap((n) => [`## ${n}. Section ${n}`, '', `### ${n}.1 Part`, '', `${n}.1.1 Holds. [builder: ${made.radius}]`, '']);
+    writeState(dir, SPEC, `${spec(STATEMENTS())}\n${sections.join('\n')}`);
     ok(dir, ['spec', 'land', UNIT]);
     assert.deepStrictEqual(build().batches.map((file) => json(file).length), [40, 6]);
   });
@@ -257,7 +257,7 @@ describe('spec page: refusals', () => {
     assert.match(refusedPristine(dir, ['spec', 'page', UNIT]).error, /^spec page: payments's spec is concluded — its review ended when the build began$/);
   });
 
-  it('refuses an area over the store\'s limit, writing nothing', () => {
+  it('refuses a section over the store\'s limit, writing nothing', () => {
     writeState(dir, SPEC, spec([...STATEMENTS(), `1.1.6 ${'Café. '.repeat(30000)}[${made.taken}]`]));
     ok(dir, ['spec', 'land', UNIT]);
     assert.match(refusedPristine(dir, ['spec', 'page', UNIT]).error, /^spec page: documents over the store's limit of 245,760 bytes, nothing planned: spec\/s1 \([0-9,]+ bytes\) — split the section$/);
@@ -340,7 +340,7 @@ describe('spec push: a re-land brought to the open page (11.11.6, 11.11.17, 11.S
     assert.deepStrictEqual(itemIn({ items }, '1-1-5'), { k: 'removed', id: '1-1-5', num: '1.1.5', kind: 'statement', parts: was.parts, src: was.src, c: 1 });
   });
 
-  it('an area that loses every line keeps them, removed, counted 0; brought back, its lines are added again with their history', () => {
+  it('a section that loses every line keeps them, removed, counted 0; brought back, its lines are added again with their history', () => {
     const seed = opened();
     reland(STATEMENTS(), false);
     const first = push(listing(seed)).batches;

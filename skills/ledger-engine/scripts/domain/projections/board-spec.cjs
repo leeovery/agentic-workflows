@@ -6,7 +6,7 @@
 // spec, its review's passes (agent-state.cjs, spec-passes.cjs), the ledger,
 // and the cut on the manifest.
 //
-// - Its sections are the spec's areas, in its order; none before the spec
+// - Its sections are the spec's, in its order; none before the spec
 //   is written. A section was changed by a pass where the spec the writer
 //   landed after taking that pass's report differs in it from the land the
 //   pass reviewed — after the last pass, the spec as it stands — one of its
@@ -51,7 +51,7 @@
 
 const { fact, placeFact } = require('../board-model.cjs');
 const fs = require('fs');
-const { specPath, specReading, areaText, SPEC_FILE } = require('../spec-sections.cjs');
+const { specPath, specReading, joinedSectionText, SPEC_FILE } = require('../spec-sections.cjs');
 const { reportedPasses, passesInFlight } = require('../agent-state.cjs');
 const { waitingGaps, sectionsToReview, changedSince, changedBetween, askedBy, gapsIn, raisedBy } = require('../spec-passes.cjs');
 const { findingText } = require('../spec-report.cjs');
@@ -87,17 +87,17 @@ function specText(at) {
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
 }
 
-/** The areas of a spec's addresses, its introduction aside. @param {string[]} addresses @returns {Set<string>} */
-const areasOf = (addresses) => new Set(addresses.filter((address) => /^\d/.test(address)).map((address) => address.split('.')[0]));
+/** The sections of a spec's addresses, its introduction aside. @param {string[]} addresses @returns {Set<string>} */
+const sectionsIn = (addresses) => new Set(addresses.filter((address) => /^\d/.test(address)).map((address) => address.split('.')[0]));
 
-/** The area a line of the spec stands in. @param {{number: string}} line */
-const lineArea = ({ number }) => number.split(/[.-]/)[0];
+/** The section a line of the spec stands in. @param {{number: string}} line */
+const lineSection = ({ number }) => number.split(/[.-]/)[0];
 
-/** Areas in the spec's order. @param {Iterable<string>} areas */
-const inOrder = (areas) => [...new Set(areas)].sort((a, b) => Number(a) - Number(b));
+/** Sections in the spec's order. @param {Iterable<string>} sections */
+const inOrder = (sections) => [...new Set(sections)].sort((a, b) => Number(a) - Number(b));
 
 /**
- * The areas each reported pass changed, by its number from 1 (the header's).
+ * The sections each reported pass changed, by its number from 1 (the header's).
  * @param {Reported[]} reported @param {string|null} text @returns {string[][]}
  */
 function changesOf(reported, text) {
@@ -105,15 +105,15 @@ function changesOf(reported, text) {
     const next = reported[k + 1];
     if (next === undefined && text === null) return [];
     const { changed } = next === undefined ? changedSince(land.sections, /** @type {string} */ (text)) : changedBetween(land.sections, new Map(Object.entries(next.land.sections)));
-    return inOrder(areasOf(changed));
+    return inOrder(sectionsIn(changed));
   });
 }
 
-/** The passes that changed each area, by area. @param {string[][]} changes @returns {Map<string, number[]>} */
+/** The passes that changed each section, by section. @param {string[][]} changes @returns {Map<string, number[]>} */
 function changedBy(changes) {
   /** @type {Map<string, number[]>} */
   const by = new Map();
-  changes.forEach((areas, k) => areas.forEach((area) => by.set(area, [...(by.get(area) ?? []), k + 1])));
+  changes.forEach((sections, k) => sections.forEach((section) => by.set(section, [...(by.get(section) ?? []), k + 1])));
   return by;
 }
 
@@ -199,13 +199,13 @@ function passesOf(standings, out, reads) {
 }
 
 /**
- * The areas a cite on the spec names: by its number, else by its title.
- * @param {SpecReading} reading @param {string} section
+ * The sections a cite on the spec names: by its number, else by its title.
+ * @param {SpecReading} reading @param {string} cite
  */
-function citedArea(reading, section) {
-  const number = /^§?\s*(\d+)/.exec(section.trim())?.[1];
-  const area = reading.headings.find((heading) => heading.kind === 'area' && (number === undefined ? heading.title === section.trim() : String(heading.number) === number));
-  return area === undefined ? [] : [String(area.number)];
+function sectionsCitedBy(reading, cite) {
+  const number = /^§?\s*(\d+)/.exec(cite.trim())?.[1];
+  const section = reading.headings.find((heading) => heading.kind === 'section' && (number === undefined ? heading.title === cite.trim() : String(heading.number) === number));
+  return section === undefined ? [] : [String(section.number)];
 }
 
 /**
@@ -218,8 +218,8 @@ function touched(at, reading, entry, cites) {
   if (reading === null) return [];
   const spec = `${at.unit}/${SPEC_FILE}`;
   return inOrder([
-    ...cites.filter(({ path }) => path === spec).flatMap(({ section }) => citedArea(reading, section)),
-    ...reading.lines.filter(({ cites: cited }) => cited.some((id) => entry.startsWith(id))).map(lineArea),
+    ...cites.filter(({ path }) => path === spec).flatMap(({ section }) => sectionsCitedBy(reading, section)),
+    ...reading.lines.filter(({ cites: cited }) => cited.some((id) => entry.startsWith(id))).map(lineSection),
   ]);
 }
 
@@ -311,7 +311,7 @@ function specView(at, waiting) {
   const reading = text === null ? null : specReading(text, specJoined(at.manifest));
   const reported = reportedOf(at);
   const out = passesInFlight(at.cwd, at.unit);
-  const reads = text === null || out.length === 0 ? null : [...areasOf(sectionsToReview(at.cwd, at.unit, text).changed)];
+  const reads = text === null || out.length === 0 ? null : [...sectionsIn(sectionsToReview(at.cwd, at.unit, text).changed)];
   const beingRead = out.some(({ stands }) => stands === 'running') ? reads : null;
   const changed = changedBy(changesOf(reported, text));
   const since = readShown(at.root, at.warnings, (shower) => /** @type {{id: string, text: string}[]} */ (/** @type {unknown} */ (answerSince(shower, { unit: at.unit, topic: null }, at.root, at.warnings).calls)));
@@ -322,7 +322,7 @@ function specView(at, waiting) {
       title: at.title,
       type: at.manifest.work_type,
       project: projectName(at.cwd),
-      sections: (reading?.headings ?? []).filter(({ kind }) => kind === 'area').map(({ number, title }) => ({
+      sections: (reading?.headings ?? []).filter(({ kind }) => kind === 'section').map(({ number, title }) => ({
         number: String(number), title, changed_by: changed.get(String(number)) ?? [], reading: beingRead?.includes(String(number)) ?? false,
       })),
       passes: passesOf(passStandings(at, reported), out, reads),
@@ -353,7 +353,7 @@ function specBanner(at, waiting) {
 
 /**
  * A section of the spec read in full (20.9.2), by its number: the passes
- * that changed it, and its text — a joined spec's area as the old spec
+ * that changed it, and its text — a joined spec's section as the old spec
  * wrote it; refused where the spec is not written or holds no such section.
  * @param {BoardAt} at @param {string} number @returns {import('../board-model.cjs').SectionPage}
  */
@@ -361,20 +361,20 @@ function sectionPage(at, number) {
   const text = specText(at);
   const joined = specJoined(at.manifest);
   const reading = text === null ? null : specReading(text, joined);
-  const heading = reading?.headings.find((held) => held.kind === 'area' && String(held.number) === number);
+  const heading = reading?.headings.find((held) => held.kind === 'section' && String(held.number) === number);
   if (text === null || reading === null || heading === undefined) throw new Error(`${at.unit}'s spec holds no section ${number}`);
   const changed = changedBy(changesOf(reportedOf(at), text));
-  return { kind: 'section', unit: at.unit, number, title: heading.title, changed_by: changed.get(number) ?? [], text: joined ? areaText(text, number) : sectionProse(reading, number) };
+  return { kind: 'section', unit: at.unit, number, title: heading.title, changed_by: changed.get(number) ?? [], text: joined ? joinedSectionText(text, number) : sectionProse(reading, number) };
 }
 
 /**
  * A section's words as its page reads them: each statement and screen of
- * the area, in its order, its blocks as written with its number and its
+ * the section, in its order, its blocks as written with its number and its
  * bracket of cites taken off — no heading, scenario or note.
  * @param {SpecReading} reading @param {string} number
  */
 const sectionProse = (reading, number) => reading.lines
-  .filter((line) => (line.kind === 'statement' || line.kind === 'screen') && lineArea(line) === number)
+  .filter((line) => (line.kind === 'statement' || line.kind === 'screen') && lineSection(line) === number)
   .flatMap(({ parts }) => parts.map(({ text }) => text))
   .join('\n\n');
 

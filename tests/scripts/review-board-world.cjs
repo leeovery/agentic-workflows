@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // What the review phase's board suites share (test-engine-board-review*.cjs):
 // the board as the world's conversation reads it at the review phase, the
-// view's head, an area's line and the tests' reader's, finish waiting, and
+// view's head, a section's line and the tests' reader's, finish waiting, and
 // the banner's facts.
 // ---------------------------------------------------------------------------
 
@@ -14,11 +14,11 @@ const { place } = require('./board-world.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 
-/** An area's line, of a unit the migration did not cut. @param {string} area @param {string} title @param {string} state @param {{ran?: number, found?: number, since?: string|null}} [more] */
-const area = (area, title, state, { ran = 0, found = 0, since = null } = {}) => ({ area, title, before: null, state, ran, found, since });
+/** A section's line, of a unit the migration did not cut. @param {string} number @param {string} title @param {string} state @param {{ran?: number, found?: number, since?: string|null}} [more] */
+const section = (number, title, state, { ran = 0, found = 0, since = null } = {}) => ({ section: number, title, before: null, state, ran, found, since });
 
 /** The tests' reader's line. @param {string} state @param {{ran?: number, found?: number, since?: string|null}} [more] */
-const tests = (state, more) => area('tests', 'Tests held against the specification', state, more);
+const tests = (state, more) => section('tests', 'Tests held against the specification', state, more);
 
 /** Finish, waiting on the person, as the unit's one list holds it. */
 const FINISH = { kind: 'finish', id: 'finish', text: 'Finish: the report of every round', page: null };
@@ -43,4 +43,4 @@ function reviewBoard(dirOf) {
   return { board, head };
 }
 
-module.exports = { area, tests, FINISH, facts, placed, reviewBoard };
+module.exports = { section, tests, FINISH, facts, placed, reviewBoard };

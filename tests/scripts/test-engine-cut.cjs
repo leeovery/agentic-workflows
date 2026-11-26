@@ -20,7 +20,7 @@
 // built, or naming a tracker parent the manifest's cut does not, refused.
 //
 // The cut's corridor: `engine brief phase-cut <unit>`, the phase cut's
-// agent briefed from the spec's outline, its scenarios each with its area,
+// agent briefed from the spec's outline, its scenarios each with its section,
 // and the graph of what its parts rely on, drawn from the entries its lines
 // cite (11.5.6, 11.S7) — a part relying on another where a line of it cites
 // an entry relying on one, in its current form or through entries no line
@@ -37,7 +37,7 @@
 // brief storing none, a cancelled unit's among them.
 //
 // Layer: verb. Worlds, each built once and copied: a project with two
-// units, one whose `spec.md` holds areas 1 to 3 and scenarios 1.S1, 3.S1
+// units, one whose `spec.md` holds sections 1 to 3 and scenarios 1.S1, 3.S1
 // and 3.S2 (11.S31's), its build begun, and one, `billing`, with no spec. A phase's start is
 // its checklist closed on the manifest: by `checklist close` for a first
 // phase relying on nothing, and written by hand for later ones, whose
@@ -408,7 +408,7 @@ describe('the cut\'s corridor (11.5.1, 11.5.6, 11.S5, 11.S7)', () => {
   useWorld(corridorWorld);
   afterEach(() => { fs.rmSync(conversationDir(SESSION_ID), { recursive: true, force: true }); });
 
-  it('briefs the phase cut for the unit from the spec\'s outline, its scenarios each with its area, the graph of what its parts rely on, and where the cut goes', () => {
+  it('briefs the phase cut for the unit from the spec\'s outline, its scenarios each with its section, the graph of what its parts rely on, and where the cut goes', () => {
     const { res, brief } = briefed();
 
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'phase-cut', agent: 'ledger-phase-cut', pointer: `brief:${res.id}` });

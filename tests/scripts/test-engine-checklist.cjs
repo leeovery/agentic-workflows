@@ -27,8 +27,8 @@
 //
 // Layer: verb. Worlds, each built once and copied: a project with an epic,
 // `payments`, of two topics under discussion, a "don't care" decision on
-// `cards`, its `spec.md` (area 1 with parts 1.1 and 1.2, each a statement
-// of the builder's citing that decision, area 2; scenarios
+// `cards`, its `spec.md` (section 1 with parts 1.1 and 1.2, each a statement
+// of the builder's citing that decision, section 2; scenarios
 // 1.S1 and 2.S1) and its cut written by
 // the verb, two phases, the first relying on another unit, `billing`, the
 // second on the first, its build begun; `billing`, under way; and a feature
@@ -349,7 +349,7 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     assert.deepStrictEqual([mailbox('cards'), mailbox('refunds')], ['open', 'done']);
   });
 
-  it('reads the cut against spec.md: every part drawn on, directly or through its area, and each phase naming a scenario and a section, relying on nothing or more', () => {
+  it('reads the cut against spec.md: every part drawn on, directly or through its section, and each phase naming a scenario and a section, relying on nothing or more', () => {
     const engines = () => engineItems('ready-to-build', UNIT);
     const seen = [];
     cut(dir, [{ ...CARDS, sections: ['1.1'] }, REFUNDS]);

@@ -34,8 +34,8 @@
 // subagent writes. A `.txt` beside no file place has none.
 //
 // A path's names are literal but for its placeholders: `{unit}` a unit's
-// name, `{slug}` a kebab-case slug; `{area}` an area of the spec by its
-// number and slug, `{n}-{slug}`, so no area's report is named as the tests'
+// name, `{slug}` a kebab-case slug; `{section}` a section of the spec by its
+// number and slug, `{n}-{slug}`, so no section's report is named as the tests'
 // or the phase review's; `{topic}` a topic's name, which holds no dot;
 // `{N}`, `{n}` and `{m}` a whole number from 1; `{NNN}` three digits or
 // more; `{task}` a task as screens show it, `{phase}.{n}`; `{letter}` a
@@ -70,7 +70,7 @@ const WHOLE = '[1-9][0-9]*';
 const PLACEHOLDERS = Object.freeze({
   unit: KEBAB_SLUG,
   slug: KEBAB_SLUG,
-  area: `${WHOLE}-${KEBAB_SLUG}`,
+  section: `${WHOLE}-${KEBAB_SLUG}`,
   topic: '[^/.]+',
   N: WHOLE,
   n: WHOLE,
@@ -136,15 +136,15 @@ const LAYOUT = Object.freeze([
   engineFile('{unit}/build/tasks/{task}/review.json', '13.3.4', 'the orchestrator\'s choice of a task\'s reviewers, and why', 'task review'),
   place('file', '{unit}/build/phases/phase-{N}/review-{letter}.md', '4.11.5'),
   place('file', '{unit}/build/phases/phase-{N}/consolidation.md', '4.11.5'),
-  place('file', '{unit}/build/phases/phase-{N}/{area}-{letter}.md', '4.11.5'),
+  place('file', '{unit}/build/phases/phase-{N}/{section}-{letter}.md', '4.11.5'),
   engineFile('{unit}/build/phases/phase-{N}/settlement.json', '4.11.5', 'the orchestrator\'s settlement of a phase review that failed', 'task settle'),
   engineFile('{unit}/build/runs/{n}.S{m}/run-{NNN}.json', '4.11.15', 'a verification run', 'verify'),
   engineFile('{unit}/review/round-{N}.md', '4.11.5', 'a review round\'s report', 'review round'),
   engineFile('{unit}/review/round-{N}-checks.md', '4.11.5', 'a review round\'s detailed checks', 'review round'),
   engineFile('{unit}/review/round-{N}.json', '4.11.5', 'the record of a review round', 'review round'),
-  engineFile('{unit}/review/round-{N}-reads.json', '4.11.5', 'the areas a later review round reads', 'review reads'),
+  engineFile('{unit}/review/round-{N}-reads.json', '4.11.5', 'the sections a later review round reads', 'review reads'),
   place('file', '{unit}/review/round-{N}/tests-{letter}.md', '4.11.5'),
-  place('file', '{unit}/review/round-{N}/{area}-{letter}.md', '4.11.5'),
+  place('file', '{unit}/review/round-{N}/{section}-{letter}.md', '4.11.5'),
 ]);
 
 /** The product's folder, its conversation's session logs and its picture of where the product stands, and the roadmap's notes (4.11.16). */

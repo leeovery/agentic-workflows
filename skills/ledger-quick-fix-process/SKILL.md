@@ -104,7 +104,7 @@ Append to the build's log, `.ledger/{work_unit}/build/log.md`, as the work goes:
 
 Finish closes on its checklist; `checklist show finish {work_unit}` lists its items. `inbox-closed` reads the build's log for its `Resolved:` lines: check the live inbox against what was built, claim in the log each item the work resolved, and close them, `inbox close {work_unit} {path} …`. Yours is `build-log-closed` — the build's log ends on what the fixes came to, nothing left in flight.
 
-Where `notes-answered` stays open, the notes for later its fixes' builders and reviewers left stand. Answer each by one finding, filed to the inbox or dropped: `{"area": "notes", "scope": "out", "call", "text", "from": ["notes#{k}"], "inbox": "{path}", "ledger": "{id}"}`, or `"drop": "{why}"` in place of `inbox`. `notes#{k}` is note {k} of `.ledger/{work_unit}/build/notes.md`; `call` is the finding's weight, `serious`, `bug` or `nit`; `inbox` is the path `inbox file` answered; `ledger` is the id of your decision to file or drop it (**Doors**). Write them as `{"findings": […]}` to `.ledger/.cache/{work_unit}/build/notes.json` and record them:
+Where `notes-answered` stays open, the notes for later its fixes' builders and reviewers left stand. Answer each by one finding, filed to the inbox or dropped: `{"section": "notes", "scope": "out", "call", "text", "from": ["notes#{k}"], "inbox": "{path}", "ledger": "{id}"}`, or `"drop": "{why}"` in place of `inbox`. `notes#{k}` is note {k} of `.ledger/{work_unit}/build/notes.md`; `call` is the finding's weight, `serious`, `bug` or `nit`; `inbox` is the path `inbox file` answered; `ledger` is the id of your decision to file or drop it (**Doors**). Write them as `{"findings": […]}` to `.ledger/.cache/{work_unit}/build/notes.json` and record them:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs quick-fix notes {work_unit} --file .ledger/.cache/{work_unit}/build/notes.json
@@ -142,7 +142,7 @@ Bring the build's log up to date, then draft the new type's brief at `.ledger/.c
 node .claude/skills/ledger-engine/scripts/engine.cjs workunit move {work_unit} --to {type:[feature|bugfix]} --file .ledger/.cache/{work_unit}/build/move.json
 ```
 
-A refusal names what to fix. Before following a yes's `next`, stop every agent you dispatched with the TaskStop tool; then follow the `next` of what it ran, the handoff into the new type's first phase. The person keeping shaping keeps the quick-fix: carry on with its fixes.
+A refusal names what to fix. Before following a yes's `next`, stop every agent you dispatched with the TaskStop tool; then follow the `next` of what it ran, the new type's first phase, opened in this conversation. The person keeping shaping keeps the quick-fix: carry on with its fixes.
 
 ## Cancelling the Quick-Fix
 

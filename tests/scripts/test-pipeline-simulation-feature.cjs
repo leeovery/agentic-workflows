@@ -51,8 +51,7 @@ describe('pipeline simulation: feature', () => {
       type: 'feature', name: wu, description: 'Payments feature', reason: 'One topic, decided in one discussion.',
       shaped_by: [shaped], brief: briefDraft(sim, wu, wu),
     });
-    assert.deepStrictEqual(started.next, { kind: 'handoff', skill: 'ledger-discussion-process', args: ['feature', wu] });
-    handoff(sim, `/ledger-discussion-process feature ${wu}`);
+    assert.deepStrictEqual(started.next, { kind: 'invoke', skill: 'ledger-discussion-process', args: ['feature', wu] });
 
     // First phase: discussion (topic = work unit for single-topic types),
     // entered through `enter`, which starts it; the conversation reads the

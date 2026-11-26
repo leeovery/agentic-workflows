@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // The bug-proven suites' world and helpers (test-engine-verify-unfixed.cjs
 // and test-engine-commit-task-bugfix.cjs): a bugfix, `crash`, its spec of
-// one area with two scenarios, its cut one phase holding both, its build
+// one section with two scenarios, its cut one phase holding both, its build
 // begun in auto and the phase started — its start's close written onto the
 // manifest, as the verify suites' is — its two tasks in the tracker: 1.1,
 // the reproducing task, of type `test` holding 1.S1, and 1.2, the fix,

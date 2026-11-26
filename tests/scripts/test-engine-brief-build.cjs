@@ -48,8 +48,8 @@ const {
   UNIT,
   LINTERS,
   NESTED,
-  AREA_1,
-  AREA_2,
+  SECTION_1,
+  SECTION_2,
   PART_1_2,
   PART_2_1,
   CUT,
@@ -111,12 +111,12 @@ describe('the task writer\'s brief (12.5, 12.S9, 11.S17)', () => {
     })}`);
   });
 
-  it('12.S9, 11.S17: a brief reads the sections its phase names and never the rest of the spec — the first phase\'s, which builds its area first, drawing a part the third never does', () => {
+  it('12.S9, 11.S17: a brief reads the sections its phase names and never the rest of the spec — the first phase\'s, which builds its section first, drawing a part the third never does', () => {
     const first = issued(['task-writer', UNIT, '1']).brief;
     const third = issued(['task-writer', UNIT, '3']).brief;
 
-    assert.ok(first.includes(`# Its sections\n\n\`${statePath(dir, layout.unit(UNIT, SPEC_FILE))}\`\n\n- §1, first built in this phase\n\n${AREA_1}\n\n# Its scenarios\n`), first);
-    assert.ok(!third.includes('1.1.1 A card is taken once.') && !third.includes('## 1. Cards'), 'a phase naming neither the area nor the part draws neither');
+    assert.ok(first.includes(`# Its sections\n\n\`${statePath(dir, layout.unit(UNIT, SPEC_FILE))}\`\n\n- §1, first built in this phase\n\n${SECTION_1}\n\n# Its scenarios\n`), first);
+    assert.ok(!third.includes('1.1.1 A card is taken once.') && !third.includes('## 1. Cards'), 'a phase naming neither the section nor the part draws neither');
   });
 
   it('a phase written already draws its tasks so far, and a first phase relies on nothing, has no earlier tasks and none of the note held for another phase', () => {
@@ -127,11 +127,11 @@ describe('the task writer\'s brief (12.5, 12.S9, 11.S17)', () => {
     assert.ok(brief.includes('# Its tasks written so far\n\n- 1.1 Take a card, done\n- 1.2 Show a receipt, in progress\n- 1.3 Store a card, closed\n- 1.4 Check the number, not started\n\n# Earlier phases\' unfinished tasks\n\nNone recorded.\n'), brief);
   });
 
-  it('11.5.2: an area a later phase names whole was first built where an earlier phase built a part of it', () => {
+  it('11.5.2: a section a later phase names whole was first built where an earlier phase built a part of it', () => {
     const manifest = JSON.parse(readState(dir, layout.manifest(UNIT)));
     const phases = [{ ...CUT.phases[0], sections: ['1.2'] }, { ...CUT.phases[1], sections: ['1'], relies_on: [1] }, CUT.phases[2]];
     writeState(dir, layout.manifest(UNIT), JSON.stringify({ ...manifest, cut: { phases } }));
-    commitAll(dir, 'a part before its area');
+    commitAll(dir, 'a part before its section');
 
     assert.ok(issued(['task-writer', UNIT, '2']).brief.includes('# Its sections\n\n' + `\`${statePath(dir, layout.unit(UNIT, SPEC_FILE))}\`` + '\n\n- §1, first built in phase 1\n'));
   });
@@ -150,10 +150,10 @@ describe('the task writer\'s brief (12.5, 12.S9, 11.S17)', () => {
     ]);
   });
 
-  it('a phase naming an area and a part of it draws the area once, the part within it', () => {
+  it('a phase naming a section and a part of it draws the section once, the part within it', () => {
     const { brief } = issued(['task-writer', UNIT, '2']);
 
-    assert.ok(brief.includes(`- §2, first built in this phase\n- §2.1, first built in this phase\n\n${AREA_2}\n\n# Its scenarios\n`), brief);
+    assert.ok(brief.includes(`- §2, first built in this phase\n- §2.1, first built in this phase\n\n${SECTION_2}\n\n# Its scenarios\n`), brief);
   });
 });
 
