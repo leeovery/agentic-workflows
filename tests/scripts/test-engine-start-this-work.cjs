@@ -120,7 +120,7 @@ describe('start this work, the screen (8.8.2, 8.S16, 8.S21)', () => {
       '· · · · · · · · · · · ·',
       'Your yes creates the epic. We shape its topics next, and you approve the map.',
       '',
-      '**`◆ Start this work?`**',
+      '**`◆ Start it as an epic?`**',
       '',
       '**`y/yes`**        → Start it — create the epic',
       '**Keep shaping** → Tell me what I\'m missing',

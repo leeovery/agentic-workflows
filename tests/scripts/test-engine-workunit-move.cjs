@@ -89,7 +89,7 @@ describe('workunit move, the stage (19.5.9, P7)', () => {
       '· · · · · · · · · · · ·',
       'Your yes makes the quick-fix a feature. Its discussion opens next.',
       '',
-      '**`◆ Start this work?`**',
+      '**`◆ Make the quick-fix a feature?`**',
       '',
       '**`y/yes`**        → Move it — the quick-fix becomes a feature',
       '**Keep shaping** → Tell me what I\'m missing',
