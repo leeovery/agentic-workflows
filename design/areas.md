@@ -113,6 +113,28 @@ start with holding.
 
 3.4.1 Claude suggests which area to take first, by what the others rest on. It is a suggestion in the talk and on the menu; no order is approved. [Claude's proposal]
 
+### 3.5 What an area is for
+
+3.5.1 Areas are never the goal. The goal is the product, and the discussion is where you and Claude work it out: Claude making calls for you, and bringing you the ones your experience should settle. Ledger is a tool for that, and nothing in what Claude is told may read as if making areas, or following Ledger, were the point. [Lee's ruling, 26 Nov 2026: "The goal isn't to use Ledger to create areas… The context can be so heavy on the prescription that it leads the model into thinking that the goal here is to just follow Ledger. Ledger is a tool like any tool"]
+
+3.5.2 An area is a scope for discussion, no better and no worse than staying across the work. What it gives is focus: the context, your attention and the conversation all on one thing. [Lee's ruling, 26 Nov 2026: "The areas facilitate scoped discussion… They're not any better or worse than staying across the areas"]
+
+3.5.3 What earns that focus is how hard and how important the ground is. A login page is agreed in a few steps and never becomes an area; the logic that moves customers' money is worked in a focused way, and may be several areas. [Lee's ruling, 26 Nov 2026]
+
+3.5.4 A small piece of work is one area that is the whole: the item taken from the roadmap. No area is made for the sake of having one. [Lee's ruling, 26 Nov 2026: "if it's a small feature, then the item that's pulled off the roadmap is just an area of itself"]
+
+3.5.5 The quality of the result never depends on a conversation on one area having happened. Staying across the work throughout still goes as far into each thing as it needs. [Lee's ruling, 26 Nov 2026: "If I was to say, 'I don't want to go deep on anything,'… we should still produce something of quality"]
+
+3.5.6 The spec is not bound to areas. They shape the discussion, never the document written from it. [Lee's ruling, 26 Nov 2026: "The document that we're creating isn't bound to areas. The areas just facilitate discussion"]
+
+### 3.6 The whole
+
+3.6.1 The whole gets as much attention as any area, all the time. What lies between areas is talked through as the discussion goes, in either kind of conversation. [Lee's ruling, 26 Nov 2026: "We should be addressing the whole all the time so we're not building in areas because we have the whole"]
+
+3.6.2 The closes and the pass that reads across areas are there to catch what was missed. They are never where a gap that was known and left is filled. [Lee's ruling, 26 Nov 2026: "The end parts, the closing reviews, etc. are there to catch the gaps that we might have missed, not to fill in the gaps between areas that we know exist but which we've ignored"]
+
+3.6.3 A conversation on one area still talks about the whole where its area touches it. Being scoped is for depth, never a reason to leave the whole out. [Lee's ruling, 26 Nov 2026: "Being scoped and explicit in order to achieve a scoped depth on a particular area doesn't preclude us still discussing the whole"]
+
 ## 4. Conversations on a piece of work
 
 ### 4.1 A conversation across the work
@@ -203,6 +225,8 @@ session-004   on one area: paying out
 
 4.6.5 When a conversation on one area is done, the work passes back to one across the work. [Lee's ruling, 25 Nov 2026]
 
+4.6.6 The conversation across the work that follows one on an area looks at what was done there and works it into the whole: what it changes for the other areas, and what now lies between them. [Lee's ruling, 26 Nov 2026: "The next session… can look at what was done and then work on stitching that into the product"]
+
 ### 4.7 Claude's calls
 
 4.7.1 Claude makes its own calls in either kind of conversation, by the one judgement of 2.2.1, each through the ask rule. [Lee's ruling, 25 Nov 2026: "it should be one rule. Otherwise, we're recreating the tension… we'd then have to go deep in order to get the benefit of Ledger in terms of the trust matrix"]
@@ -269,6 +293,8 @@ proceed if you know that session is no longer working.
 5.1.2 The close is a topic's close as it is today: a fresh reader's pass over the area, the summary, a verdict on each call you changed, your yes. [Claude's proposal]
 
 5.1.3 A small area that never had a conversation of its own is closed from a conversation across the work. [Claude's proposal]
+
+5.1.4 An area's verdicts are asked at its close, whichever kind of conversation it closes in. [Claude's derivation: 5.1.2]
 
 ### 5.2 After the close
 
@@ -357,6 +383,16 @@ Finance
   · The whole              3 decided
 ```
 
+### 7.2 The close of the whole
+
+7.2.1 Once every area is closed or put off, the piece of work has one close of its own, and that close is what takes it into the spec. [Lee's ruling, 26 Nov 2026]
+
+7.2.2 It runs the pass that reads across areas (7.1.3), then shows the summary for the whole: the decisions about the whole, each area in a line with its counts, and the product-record lines proposed from decisions about the whole (5.3.2). [Lee's ruling, 26 Nov 2026]
+
+7.2.3 You give a verdict on each call about the whole that you changed, and then your yes. [Lee's ruling, 26 Nov 2026]
+
+7.2.4 For a small piece of work (3.5.4) this is its only close, and it is a feature's close as it is today. [Lee's ruling, 26 Nov 2026]
+
 ## 8. What goes
 
 ### 8.1 Removed
@@ -388,8 +424,6 @@ Finance
 10.1.1 The names: for an area, and for the two kinds of conversation. "Across the work" and "on one area" are working words; "broad" and "deep" are out, because they read as shallow against detailed, which is not the difference. [open; Lee, 25 Nov 2026: "Maybe we need better words for these things because they seem at odds with each other"]
 
 10.1.10 The work's menu and the board. [open]
-
-10.1.11 When verdicts are asked where an area closes from a conversation across the work. [open]
 
 10.1.12 What this means for migrating existing projects: a project already on Ledger that holds topics, with their briefs, mailboxes and logs; and a project coming into Ledger from before it, whose migration today builds topics from its old records. [open; Lee, 25 Nov 2026: "We will have to discuss what the impact is here for this feature on migrating existing projects"]
 
