@@ -228,8 +228,8 @@ hold what can be checked:
   the glossary's avoid line may say; and the skills, the agents, the book,
   the README and the tests never calling it workflows, in any of the
   forms the suite lists, but in the glossary's avoid line, `history.md`, a
-  released migration and its suite, the tests' fixtures, any `.cache`
-  folder, and the suite itself.
+  migration released before the product was named Ledger and its suite,
+  the tests' fixtures, any `.cache` folder, and the suite itself.
 - `tests/scripts/test-tool-names.cjs` — a tool a driver wraps named only
   where CLAUDE.md's Tool Names allows: the docs and `README.md` may name
   one, help and the glossary never.

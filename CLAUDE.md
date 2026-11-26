@@ -150,7 +150,7 @@ The gates, run locally before every commit (`docs/contributing.md` lists what ea
 - **A change that moves retrieval re-pins the knowledge eval baseline** in the same PR (`node tests/scripts/knowledge-eval.cjs --pin`).
 - **Where a tool may be named** is held by `tests/scripts/test-tool-names.cjs`: a driver's tool, in the forms only it takes, nowhere outside the places Tool Names allows, and in help and the glossary not even as a word.
 - **The glossary** is held by `tests/scripts/test-glossary.cjs`: no retired term, every term the design adds, and no entry speaking in an engine verb, a path or a skill name.
-- **The docs** are held by `tests/scripts/test-docs.cjs`: the book's chapters, the effort line, the README's pipeline table, none of the author's own products named, the product called Ledger in the docs, help and the glossary, and never workflows in the skills, the agents, the book, the README and the tests — but in the glossary's avoid line, `history.md`, released migrations and their suites, fixtures, `.cache` folders, and the suite itself.
+- **The docs** are held by `tests/scripts/test-docs.cjs`: the book's chapters, the effort line, the README's pipeline table, none of the author's own products named, the product called Ledger in the docs, help and the glossary, and never workflows in the skills, the agents, the book, the README and the tests — but in the glossary's avoid line, `history.md`, the migrations released before the product was named Ledger and their suites, fixtures, `.cache` folders, and the suite itself.
 
 ## Skill Authoring
 
