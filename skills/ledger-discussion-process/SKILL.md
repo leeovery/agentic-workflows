@@ -49,7 +49,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs handoff /ledger-continue-ep
 
 The DATA's `kept branch` and `kept work` lines name work that came across into the topic, set-aside work with the calls its line gives.
 
-The brief's open questions go on the map (`ledger ask`) as the conversation first starts, wherever it begins: only a question on the map holds the close. Each time the topic opens, earlier units' decisions in its area are searched (`knowledge query`): one that still holds is built on, nothing decided again; one that must change is replaced, never decided afresh beside it.
+Only a question on the map holds the close. An earlier unit's decision that still holds is built on, nothing decided again; one that must change is replaced, never decided afresh beside it.
 
 ## The Record
 

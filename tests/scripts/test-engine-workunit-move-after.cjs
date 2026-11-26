@@ -81,12 +81,12 @@ describe('what the new type\'s build meets: nothing of the fixes (19.5.16)', () 
 });
 
 describe('the yes: a bugfix moved to a feature (19.S30, 19.4.22)', () => {
-  it('re-types it in place, its investigation item dropped and its brief rewritten, its lines carried to the discussion and its log set aside, the finding citing it following, and hands off into the discussion — whose first opening reads the investigation\'s log and the topic\'s record as its earlier ones, keeping a log of its own', () => {
+  it('re-types it in place, its investigation item dropped and its brief rewritten, its lines carried to the discussion and its log set aside, the finding citing it following, and opens the discussion in this conversation — whose first opening reads the investigation\'s log and the topic\'s record as its earlier ones, keeping a log of its own', () => {
     dir = world();
     const investigated = readState(dir, INVESTIGATION_LOG);
     const res = moved(BUG, 'feature');
 
-    assert.deepStrictEqual([res.fixes_closed, res.branches, res.next], [[], [], { kind: 'handoff', skill: 'ledger-discussion-process', args: ['feature', BUG] }]);
+    assert.deepStrictEqual([res.fixes_closed, res.branches, res.next], [[], [], { kind: 'invoke', skill: 'ledger-discussion-process', args: ['feature', BUG] }]);
     const manifest = readManifest(dir, BUG);
     assert.deepStrictEqual([manifest.work_type, manifest.phases], ['feature', { discussion: { items: { [BUG]: { status: 'unstarted' } } } }]);
     assert.deepStrictEqual(readManifest(dir, '.').work_units[BUG], { work_type: 'feature' });

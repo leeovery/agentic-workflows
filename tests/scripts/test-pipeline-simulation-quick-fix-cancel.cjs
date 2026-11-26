@@ -131,7 +131,7 @@ describe('pipeline simulation: quick-fix cancelled mid-fix', () => {
     sim.run(['enter', 'discovery', 'product']);
     const read = [...sim.sections.matchAll(/^session log: (.*)$/gm)].map((m) => m[1]);
 
-    assert.deepStrictEqual([closed, started, moved, open, read], [[null, null], false, { kind: 'handoff', skill: 'ledger-discussion-process', args: ['feature', 'grows'] }, '001', [log]]);
+    assert.deepStrictEqual([closed, started, moved, open, read], [[null, null], false, { kind: 'invoke', skill: 'ledger-discussion-process', args: ['feature', 'grows'] }, '001', [log]]);
     assert.match(fs.readFileSync(read[0], 'utf8'), /Three tiers, the middle one leading\./);
   });
 

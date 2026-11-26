@@ -95,7 +95,7 @@ describe('pipeline simulation: roadmap', () => {
       type: 'bugfix', name: 'export-timeout', description: 'Large exports time out', reason: 'Exports worked and now fail.',
       shaped_by: [shapedInTheProduct(sim, 'export-timeout')], roadmap: ['export-timeout'], brief: briefDraft(sim, 'product', 'export-timeout'),
     });
-    assert.deepStrictEqual(bugfix.next, { kind: 'handoff', skill: 'ledger-investigation-process', args: ['bugfix', 'export-timeout'] });
+    assert.deepStrictEqual(bugfix.next, { kind: 'invoke', skill: 'ledger-investigation-process', args: ['bugfix', 'export-timeout'] });
     assert.strictEqual(sim.manifest('export-timeout').work_type, 'bugfix');
     assert.ok(fs.existsSync(path.join(sim.dir, '.ledger/.product/notes/2026-02-02--export-timeout.md')));
 

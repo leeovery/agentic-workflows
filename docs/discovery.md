@@ -34,7 +34,7 @@ As the work takes shape, it is matched against what already waits: the roadmap's
 - **Your yes creates the work.** It gets a name, derived from yours or from the description. The seeds move into it as its record of origin, the parts of the product's logs that shaped it are linked, and a feature or a bugfix gets the brief its one topic will open from. Started in the product's conversation, a feature, a bugfix or an epic ends that session as the work leaves it, unless another window is still in it; a quick-fix never ends it, so fixes asked for along the way never split the talk across logs. Until this yes nothing exists on disk: an abandoned exploration leaves no half-made work behind.
 - **Keep shaping** takes your word back into the conversation.
 
-Then the work moves on by its kind. A feature goes into its discussion and a bugfix into its investigation, each a handoff into a fresh conversation. An epic carries straight on in this conversation into its own discovery, to shape its topics. A quick-fix carries straight on into its fixes.
+Then the work carries on in the same conversation, by its kind: a feature into its discussion, a bugfix into its investigation, an epic into its own discovery, to shape its topics, and a quick-fix into its fixes. Nothing you and Claude have said or read is cleared.
 
 ## An epic's discovery
 

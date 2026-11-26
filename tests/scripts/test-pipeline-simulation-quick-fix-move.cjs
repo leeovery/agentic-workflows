@@ -19,7 +19,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, startUnit, handoff, answerGate, discussed, specWritten, specReviewed, cutTheSpec, readyToBuild, intoTheBuild,
+  Sim, startUnit, answerGate, discussed, specWritten, specReviewed, cutTheSpec, readyToBuild, intoTheBuild,
   continueInto, buildEntry, briefOf, writePhaseTasks, startPhase, writeTasks, finishClosed, fixBuilt, reviewNext,
 } = require('./pipeline-world.cjs');
 
@@ -72,10 +72,11 @@ describe('pipeline simulation: quick-fix moves', () => {
     const { next } = movedTo(sim, wu, 'feature');
     assert.strictEqual(sim.manifest(wu).work_type, 'feature');
 
-    // The move hands straight to the new type's first phase — a feature's
-    // discussion, which it runs normally to its yes: moved mid-fix, it asks,
-    // decides and closes at its topic as a unit before its spec.
-    assert.strictEqual(handoff(sim, `/${next.skill} ${next.args.join(' ')}`).text, `Invoke \`/ledger-discussion-process feature ${wu}\`.`);
+    // The move opens the new type's first phase in this conversation — a
+    // feature's discussion, which it runs normally to its yes: moved
+    // mid-fix, it asks, decides and closes at its topic as a unit before
+    // its spec.
+    assert.deepStrictEqual(next, { kind: 'invoke', skill: 'ledger-discussion-process', args: ['feature', wu] });
     assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'ledger-specification-process', args: ['feature', wu] });
     assert.deepStrictEqual(sim.run(['ledger', 'record', wu, wu]).decisions.map((d) => [d.text, d.phase]), [['QUICK-FIX CALL: the help says colour.', 'discussion'], ['This.', 'discussion']]);
 
@@ -114,13 +115,13 @@ describe('pipeline simulation: quick-fix moves', () => {
     reviewNext(sim, wu);
 
     const { next } = movedTo(sim, wu, 'feature');
-    assert.strictEqual(handoff(sim, `/${next.skill} ${next.args.join(' ')}`).text, `Invoke \`/ledger-discussion-process feature ${wu}\`.`);
+    assert.deepStrictEqual(next, { kind: 'invoke', skill: 'ledger-discussion-process', args: ['feature', wu] });
   });
 
-  it('quick-fix moved to a bugfix hands straight to its investigation', () => {
+  it('quick-fix moved to a bugfix opens its investigation in this conversation', () => {
     const wu = 'deeper';
     opened(sim, wu);
     const { next } = movedTo(sim, wu, 'bugfix');
-    assert.strictEqual(handoff(sim, `/${next.skill} ${next.args.join(' ')}`).text, `Invoke \`/ledger-investigation-process bugfix ${wu}\`.`);
+    assert.deepStrictEqual(next, { kind: 'invoke', skill: 'ledger-investigation-process', args: ['bugfix', wu] });
   });
 });

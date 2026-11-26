@@ -82,7 +82,8 @@
 //   did — the fixes it closed, the branch it kept, each fix's work set
 //   aside it kept, by its ref and the call that shows it (fix-aside.cjs,
 //   `keptAside`), and whether it closed the pull request — and the
-//   handoff into the new type's first phase (24.1.2). A quick-fix's start
+//   new type's first phase, its skill invoked in this conversation. A
+//   quick-fix's start
 //   kept the place the conversation was in for its close, and its row in
 //   the product's conversation; the move forgets the one and drops the
 //   other, as a start of work that leaves the talk does, so the new type's
