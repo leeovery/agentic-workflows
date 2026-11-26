@@ -248,7 +248,7 @@ session-004   focused: paying out
 
 4.6.1 After the commit, a piece of work goes straight into discussion. There is no separate step before it: no cut of topics, no map to approve. [Lee's ruling, 25 Nov 2026]
 
-4.6.2 Its first conversation is the main thread's first session, opened from the starting page (6.3). [Lee's ruling, 25 Nov 2026: "we have to land somewhere in order to have the initial conversation"]
+4.6.2 Its first conversation is the main thread's first session. Where the work is started from a conversation, that conversation carries on into it, with nothing cleared: what was said and read stays in context. A handoff, which clears the conversation, is for work picked up from the start menu, where the session opens from the starting page (6.3). [Lee's ruling, 26 Nov 2026: "if it started from a conversation, then we shouldn't hand off. The handoff is for clearing context at the start menu, not for clearing context from a conversation"]
 
 4.6.3 Discussion runs over as many sessions as it takes, the main thread and focused sessions in any order, as much at your direction as at Claude's. [Lee's ruling, 25 Nov 2026: "it's all through discussion. It's as much driven by me as it is Claude, and it's collaborative"]
 
@@ -517,7 +517,7 @@ NOTHING WAITING
 
 9.1.4 A bugfix's investigation is not changed by this note: one conversation, its log, and its close at ready to build. With mailboxes gone (8.1.2), a point that reaches it from outside arrives as 4.4.6 says. [Claude's proposal]
 
-9.1.5 The first conversation names the work as one of the three kinds: feature, bugfix or quick-fix. The line between a quick-fix and a feature stays where it is today: a quick-fix is settled work needing no decision beyond a quick call, with no discussion and no spec, and one that turns out to need a real decision moves to a feature. [Lee's ruling, 26 Nov 2026: "where we have to be careful is not slipping, not merging the definition between quick fix and feature"]
+9.1.5 The first conversation names the work as one of the three kinds: feature, bugfix or quick-fix. A quick-fix and a feature are told apart by the work, never by how much talk is left. A feature is work whose shape takes decisions, whether they are still to make or the talk has made them: its decisions go on the record and it is built against a spec. A quick-fix is work of any size that takes no deciding beyond a quick call, with no discussion and no spec, and one that turns out to need a real decision moves to a feature. [Lee's ruling, 26 Nov 2026: "where we have to be careful is not slipping, not merging the definition between quick fix and feature"; and of work talked through and then typed a quick-fix, the same day: a feature]
 
 ## 10. Names
 

@@ -10,7 +10,7 @@ The plan for building `design/areas.md`. Approved by Lee on 26 Nov 2026.
 - **Merging.** A pull request is merged into `feat/areas` by the orchestrator once it is reviewed and its gates are green. Questions that do not block go to Lee on the board while the work carries on.
 - **The migration.** Migration 082 is one file that stays unreleased until the end; each slice that changes a stored shape adds its part. It is rehearsed on sandboxed copies of Lee's projects, one project at a time, each run taken to its end: Fumi and Portal for work mid-discussion, agntc and Mint for finished work.
 - **How the code reads.** As if areas had been the design from the start. No comment, name, test title, fixture or guard says what a thing used to be, and no identifier is left half-renamed. The shapes of before are met only in migrations. "Topic" and "epic" are gone from the engine, the skills, the docs and the tests, except where the repo's rules keep them: released migrations and their suites, fixtures of old state, and the history.
-- **The kinds.** The first conversation names the work a feature, a bugfix or a quick-fix (9.1.5). A feature is any piece of work, large or small, that is neither of the others. The line between a quick-fix and a feature does not move.
+- **The kinds.** The first conversation names the work a feature, a bugfix or a quick-fix (9.1.5). A feature is work of any size whose shape takes decisions, made in the talk already or still to make; a quick-fix takes none beyond a quick call. The two are told apart by the work, never by how much talk is left.
 
 ## Where the plan changes most if a proposal of Claude's falls
 - **8.1.2 (mail goes).** Slice 11 would keep the mail code, and the directive would shrink.
