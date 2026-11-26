@@ -475,6 +475,28 @@ NOTHING WAITING
 
 10.1.1 The names of the two kinds of conversation. "Area" stays. "The main thread" and "a focused session" are your working words, used throughout. [open as to the two; Lee's ruling, 26 Nov 2026 for "area": "'areas' is still a good word… softer than 'topic'"; Lee, 26 Nov 2026: "Main thread and focused session… I think main thread"]
 
-10.1.12 What this means for migrating existing projects: a project already on Ledger that holds topics, with their briefs, mailboxes and logs; and a project coming into Ledger from before it, whose migration today builds topics from its old records. [open; Lee, 25 Nov 2026: "We will have to discuss what the impact is here for this feature on migrating existing projects"]
-
 10.1.13 What the one kind of work (9.1.1) is called: "epic", or a new name. [open]
+
+## 11. Existing projects
+
+### 11.1 Where they stand
+
+11.1.1 Across your projects, three pieces of work are mid-discussion: one epic in Fumi, of 19 topics with 4 messages waiting, and two in Portal, of 2 and 4 topics with 2 messages waiting each. Every other piece of work in Fumi, Portal, agntc and Mint is finished or cancelled. [a read of the projects, 26 Nov 2026]
+
+11.1.2 f8x starts its first piece of work under areas and never holds a topic. [Lee's ruling, 26 Nov 2026: "It won't reach the discussion phase before this work's done. This work will be done, topics will be gone, and areas will be true before that work is ready"]
+
+### 11.2 The move to areas
+
+11.2.1 Finished work needs nothing moved: each ledger entry already carries its topic's name, and that name is read as its area. [Lee's ruling, 26 Nov 2026]
+
+11.2.2 One new migration does what needs no reading: a topic's log is registered as its area's first focused-session log, the epic's own discovery logs as the main thread's earlier logs, an experiment kept in a topic's folder moves to the work's folder, and a feature or an epic becomes the one kind. [Lee's ruling, 26 Nov 2026]
+
+11.2.3 A decided topic becomes an area with nothing waiting, and its closing pass counts as its fresh read (5.1.3). [Lee's ruling, 26 Nov 2026]
+
+11.2.4 A cancelled topic is kept as the record that it was raised and declined. [Lee's ruling, 26 Nov 2026]
+
+11.2.5 A brief is kept as a file to read. Nothing is deleted. [Lee's ruling, 26 Nov 2026]
+
+11.2.6 One directive for each piece of work mid-discussion does what needs reading: each waiting message, and each point of a not-started topic's brief, becomes a question marked under its area. Claude reads them; no code judges their content. [Lee's ruling, 26 Nov 2026]
+
+11.2.7 The move into Ledger from before it is left as it is. A project coming in later runs it, and then the new migration straight after. [Lee's ruling, 26 Nov 2026; a released migration is never edited]
