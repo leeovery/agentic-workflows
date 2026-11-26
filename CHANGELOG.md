@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.5] - 2026-11-26
+
+🔧 Changed
+- Claude no longer offers to move a conversation on to a piece of work when talk seems to have come to rest — work now starts only on your yes or when you ask for it.
+- Claude no longer offers to close a discussion topic when talk seems to have come to rest — the close runs on your yes, your asking, or the settle-the-rest yes.
+- Claude no longer waits for "natural pauses" to draw the discussion map, take up review findings, raise mail, or propose entries for your record — it acts as things come up.
+- Investigation no longer limits itself to asking about symptoms most-important-first, and no longer opens by announcing kept branches and kept work — those are now simply named in what Claude reads.
+- Settling the rest of a discussion's open points is offered only after eight agreements in a row, not on your word as well.
+
 ## [0.9.4] - 2026-11-26
 
 Discussions now work as a conversation: what you settle with Claude is recorded as yours, and handing points over is recorded as Claude's.
