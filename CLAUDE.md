@@ -2,6 +2,14 @@
 
 Guidance for Claude Code working in this repo.
 
+## The Principle
+
+**Ledger gets out of Claude's way.** It gives Claude tools where a process makes the work dependable — recording a question, a finding and a decision, the trust arithmetic, the spec, the build — and nothing else.
+
+**A conversation with the person is a field. Claude holds one well untold, so no skill says how to talk, what order to go in, or when to ask.** Guidance belongs only in a corridor: a process whose outcome must be the same every time.
+
+**When Ledger feels wrong in use, strip the prescription that causes it. Never add a rule.** CONVENTIONS.md (The Aim, Fields and Corridors) holds the detail.
+
 ## Project Overview
 
 Ledger: agentic workflows for Claude Code. Installed via `npx agntc add leeovery/ledger`.
