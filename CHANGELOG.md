@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.3] - 2026-11-26
+
+Raised-question menus are easier to read and answer: the explanation prints in the chat above the buttons, and answers are numbered.
+
+💥 Breaking
+- `raise answer --pick` now takes the row's number as the screen shows it (1, 2, 3) — scripts passing a row key that is a number other than the row's place are refused, so key such rows by their place.
+
+🔧 Changed
+- Raised-question answers are numbered 1, 2, 3 in the order drawn, the keep row last, and the buttons ask the question itself instead of a short stand-in.
+- Gate menus print their explanation, and for a raised question its whole account, in the chat directly above the buttons, so it scrolls and wraps like any message.
+- A question too long for the button area is cut with `…` so the rows still show, with the chat above holding it whole.
+- Fix-direction options on the investigation board are numbered to match the raise screen.
+- On a replacement, if one of Claude's rows already holds the decision's current answer, it stands as the keep row in its own place.
+- A pick that matches no drawn row is refused with a message saying the rows are numbered 1 to N.
+- Typed answers to a raise are matched against the numbered rows as drawn.
+
 ## [0.9.2] - 2026-11-24
 
 Discussion reviews hunt for more gaps while a topic is still being talked through, and topics now close when you say so.
