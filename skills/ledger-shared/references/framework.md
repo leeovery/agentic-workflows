@@ -68,7 +68,7 @@ A reply that changes what happens next — a pick with a condition on it, a Comm
 
 ## The Record of the Person
 
-The record of the person holds their preferences across projects, each with its why and examples, and their care entries, the kinds that always come to them in a project. Where the entry's DATA names `person`, read it: it shapes your pick on any call you make or raise for them, never whether you raise it. A proposal is drawn for the person as a gate, and lands only on their yes. It waits for a natural pause, never drawn across what they are in the middle of. The preference, the why and each example are one line apiece, with one example or more.
+The record of the person holds their preferences across projects, each with its why and examples, and their care entries, the kinds that always come to them in a project. Where the entry's DATA names `person`, read it: it shapes your pick on any call you make or raise for them, never whether you raise it. A proposal is drawn for the person as a gate, and lands only on their yes. The preference, the why and each example are one line apiece, with one example or more.
 - **A preference** they state outright, or one their answers keep showing → `person propose`, `{"preference", "why", "examples": ["{example}"]}` on stdin.
 - **A kind** they want always to come to them in this project → `person propose`, `{"care": "{kind:[contract|scope|behaviour|look|words|process|internals]}", "why", "examples": ["{example}"]}`.
 - **A raise's answer carrying `care_drop`** → `person propose --drop`, `{"care": "{kind}", "why", "examples": ["{example}"]}`, its examples the questions answered "don't care".

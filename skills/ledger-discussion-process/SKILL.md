@@ -87,7 +87,7 @@ The brief's open questions go on the map (`ledger ask`) as the conversation firs
   Load **[pivot-to-epic.md](../ledger-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`, and follow its instructions as written.
 
   Then send it as a message, the epic's new topic its target. Declined, the point is work no topic owns.
-- **Mail** — another topic's reasoning about something this topic owns, decided here in this topic's frame. Messages landing while you talk wait in `topic mailbox {work_unit} {topic}`, which nothing announces: check it at a natural pause.
+- **Mail** — another topic's reasoning about something this topic owns, decided here in this topic's frame. Messages landing while you talk wait in `topic mailbox {work_unit} {topic}`, which nothing announces.
 
 ## Doors
 
