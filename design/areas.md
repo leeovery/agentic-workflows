@@ -68,6 +68,8 @@ Each line ends with where it stands. "Lee's ruling" with a date is something you
 
 2.3.4 The phases, a menu where one makes sense, and the formal process of the build and its reviews all stay. [Lee's ruling, 25 Nov 2026]
 
+2.3.5 What discovery finds by reading existing code is not covered by 2.3.1. What the code shows stays a finding on the ledger, as today: Claude's own reads during discovery, and the researcher's first read of a codebase built before Ledger. 2.3.1 keeps your leans, questions and decisions from discovery off the ledger. [Lee's ruling, 26 Nov 2026]
+
 ## 3. The area
 
 ### 3.1 What an area is
