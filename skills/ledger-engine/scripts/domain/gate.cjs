@@ -28,15 +28,15 @@
 //   (trust-events.cjs). A typed row's key is its label's words, lowercase,
 //   joined by hyphens: `comment`, `tell-me-what-to-change`.
 // - An answer is a row picked by its key or by its word — the name the gate
-//   mod draws on the row and sends when it is pressed — and recorded by its
-//   key; a typed row, by its key; or free text, naming no row, the person's
-//   words given with it. The separate call reads the words against the
-//   gate's question and its rows, as the person saw them, its typed rows
-//   never among them (answer-reader.cjs), for the one they pick, and they
-//   are dropped: the event says only that the answer was free text, and its
-//   reading, the row read from it, null where they pick none or the call
-//   cannot read them (16.13.3, 16.19.1, 16.19.8). A reading leads nowhere:
-//   free text sets the gate aside whatever it reads (6.6.2).
+//   mod draws on the row and sends when it is pressed — in either case, and
+//   recorded by its key; a typed row, by its key; or free text, naming no
+//   row, the person's words given with it. The separate call reads the
+//   words against the gate's question and its rows, as the person saw them,
+//   its typed rows never among them (answer-reader.cjs), for the one they
+//   pick, and they are dropped: the event says only that the answer was free
+//   text, and its reading, the row read from it, null where they pick none
+//   or the call cannot read them (16.13.3, 16.19.1, 16.19.8). A reading
+//   leads nowhere: free text sets the gate aside whatever it reads (6.6.2).
 // - An answer was pressed where the gate mod announced itself to the
 //   command and its record of the last press, `pressed.json`, names this
 //   gate and this row, sent after the gate was shown — so a press that
@@ -262,16 +262,19 @@ function readJson(file) {
 /** A row as the text menu draws it: its key, then its word where it has one. @param {ShownOption} option */
 const drawn = (option) => (option.word === null ? option.key : `${option.key}/${option.word}`);
 
+/** Whether `pick` names `name`, a row's key or word, in either case. @param {string|null} name @param {string} pick */
+const names = (name, pick) => name !== null && name.toLowerCase() === pick.toLowerCase();
+
 /**
- * The row `answer` names on the gate `shown` — by its key, else by its word;
- * null for free text — or a refusal naming the rows it has as drawn, or free
- * text with no words.
+ * The row `answer` names on the gate `shown` — by its key, else by its word,
+ * in either case; null for free text — or a refusal naming the rows it has
+ * as drawn, or free text with no words.
  * @param {ShownRecord} shown @param {Answer} answer
  * @returns {ShownOption|ShownTypedRow|null}
  */
 function rowAnswered(shown, answer) {
   if ('pick' in answer) {
-    const row = shown.options.find((o) => o.key === answer.pick) ?? shown.options.find((o) => o.word === answer.pick);
+    const row = shown.options.find((o) => names(o.key, answer.pick)) ?? shown.options.find((o) => names(o.word, answer.pick));
     if (row) return row;
     const typed = shown.typed.some((t) => t.key === answer.pick) ? ` — ${answer.pick} is typed: --typed ${answer.pick}` : '';
     throw new Error(`gate: "${shown.gate}" has no row ${answer.pick} to pick — its rows: ${shown.options.map(drawn).join(', ')}${typed}`);

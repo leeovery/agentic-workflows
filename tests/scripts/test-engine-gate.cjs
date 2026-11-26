@@ -662,6 +662,13 @@ describe('the mod\'s record of a press, as `gate` reads it', () => {
     }
   });
 
+  it('a row is picked by its key or its word in either case, and recorded by its key', () => {
+    for (const name of ['Y', 'Yes', 'YES']) {
+      render(['migration-gate']);
+      assert.strictEqual(answer(['migration gate', '--pick', name]).picked, 'y', name);
+    }
+  });
+
   it('a send that failed leaves over its press the record `gate` reads as no press', () => {
     showCodeGate(ANNOUNCED);
     pressed(1000);

@@ -270,7 +270,7 @@ const MENU_SECTION = [
 
 const DRAWN_MENU = [
   '=== MENU: task gate (drawn above the prompt — do NOT emit it; stop and wait) ===',
-  "The options are on screen as buttons. The user's answer arrives as their next message — typed by them, or sent for them by the ledger-gates plugin when they press a row.",
+  "The options are on screen as buttons. The user's answer arrives as their next message — typed by them, or sent for them by the ledger-gates plugin when they press a row. At a menu a row's key or word goes to --pick unchanged; at a raise only a number does, and t and e are its Technical and Explain rows.",
   '',
 ]
 
