@@ -250,6 +250,16 @@ describe('syncSessionHooks', () => {
     assert.deepStrictEqual(syncSessionHooks(world.dir, LEDGER_ONLY), { changed: false });
   });
 
+  it('a SessionEnd hook of ours with no timeout is given one where it sits, Claude Code cancelling the event\'s hooks after 1.5 seconds between them otherwise; a timeout set by hand stays', () => {
+    const bare = (/** @type {{timeout?: number}} */ { timeout, ...hook }) => hook;
+    const theirs = { type: 'command', command: 'say goodbye' };
+    writeSettings({ hooks: { ...LABELS_ON.hooks, SessionEnd: [{ hooks: [{ ...SESSION_HOOK, timeout: 5 }, theirs, bare(PRESENCE_HOOK)] }, { hooks: [bare(END_HOOK)] }] } });
+    assert.deepStrictEqual(syncSessionHooks(world.dir, BOTH), { changed: true });
+    assert.deepStrictEqual(settings().hooks.SessionEnd, [{ hooks: [{ ...SESSION_HOOK, timeout: 5 }, theirs, PRESENCE_HOOK] }, { hooks: [END_HOOK] }]);
+    assert.deepStrictEqual([PRESENCE_HOOK.timeout, END_HOOK.timeout, Object.keys(settings().hooks.SessionEnd[1].hooks[0])], [10, 10, ['type', 'command', 'timeout']]);
+    assert.deepStrictEqual(syncSessionHooks(world.dir, BOTH), { changed: false });
+  });
+
   it('the mark is the exact `engine.cjs" <verb>` form — a re-quoted command is not recognised', () => {
     writeSettings({ hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: "node '$CLAUDE_PROJECT_DIR/.claude/skills/ledger-engine/scripts/engine.cjs' presence cleanup" }] }] } });
     assert.deepStrictEqual(syncSessionHooks(world.dir, LEDGER_ONLY), { changed: true });
