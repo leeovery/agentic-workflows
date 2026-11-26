@@ -71,14 +71,14 @@ const MINT = 'mint';
 // Another conversation: the same person after a /clear.
 const CLEARED = 'c0ffee00-1234-4abc-8def-0123456789ac';
 
-const CURSOR = Object.freeze({ key: '1', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' });
-const MAIN = Object.freeze({ key: '2', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
+const CURSOR = Object.freeze({ key: 'a', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' });
+const MAIN = Object.freeze({ key: 'b', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
 
 /** Claude's call: where a new note opens, leaning to the cursor's screen. */
 const CALL = Object.freeze({
   question: 'When you make a new note, where should its window open?',
   rows: [CURSOR, MAIN],
-  lean: '1',
+  lean: 'a',
   why: 'A note follows the person.',
   sort: 'several',
   mechanism: 'The screen under the pointer when the note is made.',
@@ -89,7 +89,7 @@ const CALL = Object.freeze({
 const FRAMED = Object.freeze({
   ...CALL,
   question: 'Should a note have a thin frame after all?',
-  rows: [{ key: '1', name: 'Thin', text: 'A thin frame', notice: 'notes stand out from the desk' }, { key: '2', name: 'Shadow', text: 'A shadow alone', notice: 'notes float with no edge' }],
+  rows: [{ key: 'a', name: 'Thin', text: 'A thin frame', notice: 'notes stand out from the desk' }, { key: 'b', name: 'Shadow', text: 'A shadow alone', notice: 'notes float with no edge' }],
 });
 
 /** A question's content beyond its text, asked for no task. */
@@ -163,7 +163,7 @@ function park(question, task, { at = BUILD, call = CALL, flags = [], env = conve
 /** A fact only the person holds: which account a new note syncs to. */
 const FACT = Object.freeze({
   question: 'Which iCloud account does a new note sync to?',
-  rows: [{ key: '1', name: 'Personal', text: 'The personal account', notice: 'notes sync to your own devices' }],
+  rows: [{ key: 'a', name: 'Personal', text: 'The personal account', notice: 'notes sync to your own devices' }],
   mechanism: 'The container the sync engine is given.',
   product_wide: false,
 });
@@ -654,7 +654,7 @@ describe('raise draw (12.13.10, 12.13.18–12.13.20, 12.S33, 12.S34)', () => {
     const { sections } = draw('Q1');
 
     assert.ok(sections.includes('Q1 · Fumi · parks task 2.4\n'), sections);
-    assert.ok(sections.includes('**`keep`**        → A frameless note'), sections);
+    assert.ok(sections.includes('**`3`**           → A frameless note'), sections);
   });
 
   it('refuses, sealing nothing: a unit that does not exist, a number its unit holds none of — naming those waiting — no session, and argv of another shape', () => {

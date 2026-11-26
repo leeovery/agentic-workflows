@@ -148,10 +148,10 @@ const KEEP_CALL = Object.freeze({
 const FIX_CALL = Object.freeze({
   question: 'How should a save stop losing sessions?',
   rows: [
-    { key: '1', name: 'Harden the reads, outlast the shutdown', text: 'Stop reading a dying tmux as no sessions, and log every drop', notice: 'a reboot keeps every session' },
-    { key: '2', name: 'Read hardening alone', text: 'Only stop reading a dying tmux as no sessions', notice: 'sessions dying first are still lost' },
+    { key: 'a', name: 'Harden the reads, outlast the shutdown', text: 'Stop reading a dying tmux as no sessions, and log every drop', notice: 'a reboot keeps every session' },
+    { key: 'b', name: 'Read hardening alone', text: 'Only stop reading a dying tmux as no sessions', notice: 'sessions dying first are still lost' },
   ],
-  lean: '1', why: 'It covers both routes.', sort: 'one', mechanism: 'The capture refuses an empty read.', product_wide: false,
+  lean: 'a', why: 'It covers both routes.', sort: 'one', mechanism: 'The capture refuses an empty read.', product_wide: false,
   stepped_back: ['Other tools that save tmux state snapshot every 15 minutes.', 'None promises a kill is final.'],
 });
 
@@ -337,7 +337,7 @@ describe('This session in an investigation (20.12.1)', () => {
       fix: {
         state: 'asking',
         stepped_back: FIX_CALL.stepped_back,
-        options: [{ key: '1', name: 'Harden the reads, outlast the shutdown', lean: true }, { key: '2', name: 'Read hardening alone', lean: false }],
+        options: [{ key: 'a', name: 'Harden the reads, outlast the shutdown', lean: true }, { key: 'b', name: 'Read hardening alone', lean: false }],
         pick: null,
         fix: null,
       },
@@ -348,7 +348,7 @@ describe('This session in an investigation (20.12.1)', () => {
 
   it('Claude\'s lean set out on any row but the first is said not to be first; the fix direction set out while the root cause\'s validation runs, the investigation validates it', async () => {
     dispatched('root-cause-validation', ['F1']);
-    await raised({ ...FIX_CALL, lean: '2' }, made.fix);
+    await raised({ ...FIX_CALL, lean: 'b' }, made.fix);
     atTheHunt();
     const { view } = board();
 
@@ -363,7 +363,7 @@ describe('This session in an investigation (20.12.1)', () => {
     fs.writeFileSync(shown, JSON.stringify({ ...seals, [fix]: { ...seals[fix], blind: true } }));
     atTheHunt();
     const { view } = board();
-    const pages = ['1', '2'].map((key) => board(['--page', `option:${key}`]).view.state);
+    const pages = ['a', 'b'].map((key) => board(['--page', `option:${key}`]).view.state);
 
     assert.deepStrictEqual([view.waiting.map((/** @type {{id: string}} */ wait) => bySubject(wait, made.fix)), view.fix_direction.options.map((/** @type {{lean: boolean}} */ { lean }) => lean), pages], [
       [{ kind: 'raise', id: made.fix, text: FIX_CALL.question, page: null, raised_by: 'fix-direction', why: null, options: 2, lean: 'held' }],
@@ -380,13 +380,13 @@ describe('This session in an investigation (20.12.1)', () => {
     const unloggedFar = howFar();
     run(['investigation-log', 'fix-direction', BUG, '--question', made.fix]);
     const before = board().view;
-    const pages = ['1', '2'].map((key) => board(['--page', `option:${key}`]).view.state);
+    const pages = ['a', 'b'].map((key) => board(['--page', `option:${key}`]).view.state);
     const validation = dispatched('fix-validation', ['F1']);
     const after = board().view;
 
     assert.deepStrictEqual([unlogged.decided, before.fix_direction, before.standing, before.validations[1].state], [
       [],
-      { state: 'picked', stepped_back: FIX_CALL.stepped_back, options: [{ key: '1', name: 'Harden the reads, outlast the shutdown', lean: true }, { key: '2', name: 'Read hardening alone', lean: false }], pick: '2', fix: 'Only stop reading a dying tmux as no sessions' },
+      { state: 'picked', stepped_back: FIX_CALL.stepped_back, options: [{ key: 'a', name: 'Harden the reads, outlast the shutdown', lean: true }, { key: 'b', name: 'Read hardening alone', lean: false }], pick: 'b', fix: 'Only stop reading a dying tmux as no sessions' },
       'investigating',
       'not-started',
     ]);
@@ -477,7 +477,7 @@ describe('each decision where its chain stands now', () => {
     assert.deepStrictEqual([view.fix_direction.state, view.fix_direction.pick, view.fix_direction.fix, view.decided, view.validations[1].state, ['both', 'keep'].map(page)], [
       'picked', 'both', 'Harden the reads and make panes outlast the shutdown', [], 'not-started', ['picked', 'option'],
     ]);
-    assert.deepStrictEqual(board(['--page', 'option:1']).view.kind, 'unavailable', 'the first raise\'s options no longer stand');
+    assert.deepStrictEqual(board(['--page', 'option:a']).view.kind, 'unavailable', 'the first raise\'s options no longer stand');
   });
 
   it('the replacement kept, the first pick stands as the pick, on its page too; a replacement of another decision, raised after a finding was surfaced as the fix\'s, says nothing of what raised it', async () => {
@@ -488,8 +488,8 @@ describe('each decision where its chain stands now', () => {
     const { fix_direction: fix } = board().view;
 
     assert.deepStrictEqual(raisers, ['fix', null]);
-    assert.deepStrictEqual([fix.state, fix.pick, fix.fix, fix.options.map((/** @type {{key: string}} */ { key }) => key)], ['picked', '1', FIX_CALL.rows[0].text, ['1', '2']]);
-    assert.deepStrictEqual(['1', 'keep'].map((key) => board(['--page', `option:${key}`]).view.state ?? 'none'), ['picked', 'none']);
+    assert.deepStrictEqual([fix.state, fix.pick, fix.fix, fix.options.map((/** @type {{key: string}} */ { key }) => key)], ['picked', 'a', FIX_CALL.rows[0].text, ['a', 'b']]);
+    assert.deepStrictEqual(['a', 'keep'].map((key) => board(['--page', `option:${key}`]).view.state ?? 'none'), ['picked', 'none']);
   });
 
   it('the fix replaced twice, a raise replacing it again is the fix direction\'s, down its question\'s chain', async () => {
@@ -696,13 +696,13 @@ describe('the hunt\'s pages (20.12.2)', () => {
     atTheHunt();
     const page = (/** @type {string} */ ref) => board(['--page', ref]).view;
 
-    assert.deepStrictEqual(['hunt:H3', 'hunt:E1', 'hunt:root-cause', 'hunt:stepped-back', 'option:1', 'option:2'].map(page), [
+    assert.deepStrictEqual(['hunt:H3', 'hunt:E1', 'hunt:root-cause', 'hunt:stepped-back', 'option:a', 'option:b'].map(page), [
       { kind: 'hunt', unit: BUG, item: 'hypothesis', name: 'H3', title: 'A dying tmux reads as zero sessions', state: 'suspected', text: '' },
       { kind: 'hunt', unit: BUG, item: 'experiment', name: 'E1', title: 'Kill every session, hook on', state: 'each kill shrank it', text: '3 sessions saved, each kill shrank the save.' },
       { kind: 'hunt', unit: BUG, item: 'root-cause', name: null, title: '', state: 'validated', text: `${ROOT_CAUSE}\n\nThe housekeeping pass deletes every file the index no longer names.` },
       { kind: 'hunt', unit: BUG, item: 'stepped-back', name: null, title: '', state: null, text: FIX_CALL.stepped_back.join('\n\n') },
-      { kind: 'hunt', unit: BUG, item: 'option', name: '1', title: FIX_CALL.rows[0].name, state: 'lean', text: `${FIX_CALL.rows[0].text}\n\n${FIX_CALL.rows[0].notice}` },
-      { kind: 'hunt', unit: BUG, item: 'option', name: '2', title: FIX_CALL.rows[1].name, state: 'option', text: `${FIX_CALL.rows[1].text}\n\n${FIX_CALL.rows[1].notice}` },
+      { kind: 'hunt', unit: BUG, item: 'option', name: 'a', title: FIX_CALL.rows[0].name, state: 'lean', text: `${FIX_CALL.rows[0].text}\n\n${FIX_CALL.rows[0].notice}` },
+      { kind: 'hunt', unit: BUG, item: 'option', name: 'b', title: FIX_CALL.rows[1].name, state: 'option', text: `${FIX_CALL.rows[1].text}\n\n${FIX_CALL.rows[1].notice}` },
     ]);
     assert.deepStrictEqual(['hunt:H9', 'option:3'].map((ref) => board(['--page', ref]).view), [
       { kind: 'unavailable', reason: `${BUG}'s investigation holds no H9 — a hunt's page is a hypothesis or an experiment by its name, the root cause, or what stepping back found` },

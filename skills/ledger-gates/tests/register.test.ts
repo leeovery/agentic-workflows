@@ -251,6 +251,9 @@ const ASK = {
   detail: null,
 }
 
+/** A question as a raise asks it, too long for a narrow band's one line. */
+const LONG_QUESTION = 'Should a note made while offline sync the moment the network is back?'
+
 const RESULT_SECTION = [
   '=== DISPLAY: task result (emit verbatim as a text code block (```text fence)) ===',
   'Task 1.1 — the login form validates',
@@ -280,7 +283,6 @@ type Stated = {
   options?: readonly unknown[]
   typed?: readonly unknown[]
   question?: string
-  statement?: string
 }
 
 /** An engine response stating a gate, as the surface announces it. */
@@ -289,13 +291,12 @@ function announced(stated: Stated = {}, after: readonly string[] = []): string {
     options = OPTIONS,
     typed = [COMMENT],
     question = 'Approve this task?',
-    statement = '',
   } = stated
 
   return [
     ...RESULT_SECTION,
     GATE_LINE,
-    JSON.stringify({ gate: 'task gate', question, statement, options, typed }),
+    JSON.stringify({ gate: 'task gate', question, options, typed }),
     ...MENU_SECTION,
     ...after,
   ].join('\n')
@@ -540,7 +541,6 @@ const BOOTED = [
 const TASK_GATE = {
   name: 'task gate',
   question: 'Approve this task?',
-  statement: '',
   options: OPTIONS,
   typed: [COMMENT],
 }
@@ -1476,21 +1476,21 @@ describe('register', () => {
     })
   }
 
-  test('the statement draws directly above the question, level with its text', async ($, on) => {
-    world($, on, announced({ statement: 'Found existing review for Auth.' }))
+  test('the band opens on the question alone, a long one wrapping level with its text, bold throughout', async ($, on) => {
+    world($, on, announced({ question: LONG_QUESTION }))
 
     await presented($)
 
-    const ui = await $.ui.mount(MOUNT)
+    const ui = await $.ui.mount({ ...MOUNT, props: { ...BAND, bodyColumns: 40 } })
 
     expect((await linesOf(ui)).slice(1, 5).map(line => line.trimEnd())).toEqual([
       '',
-      '  Found existing review for Auth.',
-      '◆ Approve this task?',
+      '◆ Should a note made while offline sync',
+      '  the moment the network is back?',
       '',
     ])
 
-    expect(await runOf(ui, 'Found existing review for Auth.')).not.toMatchObject({
+    expect(await runOf(ui, 'the moment the network is back?')).toMatchObject({
       props: { bold: true },
     })
 
@@ -1543,8 +1543,7 @@ describe('register', () => {
       announced({
         options: DETAILED,
         typed: [ASK],
-        question: 'What would you like to do?',
-        statement: 'Specification Overview\nTwo discussions are ready to be grouped.',
+        question: LONG_QUESTION,
       }),
     )
 

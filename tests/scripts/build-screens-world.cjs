@@ -205,10 +205,10 @@ const buildScreensWorld = fixtureFrom('engine-build-screens-', (dir) => {
 const CALL = Object.freeze({
   question: QUESTIONS[0],
   rows: [
-    { key: '1', name: 'Print', text: 'A refund prints a receipt', notice: 'the customer holds proof of the refund' },
-    { key: '2', name: 'None', text: 'A refund prints nothing', notice: 'the refund shows only on the statement' },
+    { key: 'a', name: 'Print', text: 'A refund prints a receipt', notice: 'the customer holds proof of the refund' },
+    { key: 'b', name: 'None', text: 'A refund prints nothing', notice: 'the refund shows only on the statement' },
   ],
-  lean: '1',
+  lean: 'a',
   why: 'A customer keeps proof.',
   sort: 'several',
   mechanism: 'The till prints on refund.',

@@ -9,7 +9,10 @@
 // the person would notice with each row, why it asks where a rule always
 // asks it, and, with the toggle on, the mechanism and, where the counts
 // sent it, their reason beside it (16.9.2); then the rows, the lean
-// recommended, the toggle, "I don't follow" and a comment.
+// recommended, the toggle, "I don't follow" and a comment. The rows are
+// numbered 1, 2, 3 in the order drawn, the keep row last where it is drawn:
+// a pick names the number (`rowDrawn`), and a row's own key, its id
+// everywhere else, is never shown.
 // A raise on a replacement draws Claude's proposals, then the row its seal
 // holds for keeping the entry as it stands, recommended only where Claude
 // leaned to keep it, under the built-otherwise mark — and where a
@@ -20,8 +23,8 @@
 // its comment takes the answer in the person's own words.
 // A blind question (16.17.2) draws the question cold: no lean, no row
 // recommended and no WHY I'M ASKING, the mechanism behind its toggle drawn
-// as Claude wrote it, its rows in the order and the keys its seal holds —
-// the question's id's (raise.cjs, `inBlindOrder`) — Claude's answer held
+// as Claude wrote it, its rows in the order its seal holds — the
+// question's id's (raise.cjs, `inBlindOrder`) — Claude's answer held
 // in the seal alone until the person's is given (16.1.2), and every
 // surface reading the seal shows no lean until then (`leanShown`). Once
 // answered, the reveal (16.17.7): what the person picked, what Claude would
@@ -30,12 +33,14 @@
 // past; or, for the person's "don't care" outside the build, a line naming
 // Claude's answer as the builder's (`leftScreen`), the build's receipt
 // naming it there (questions.cjs).
-// Every line above the rows is the menu's statement, so a surface drawing
-// the gate payload draws it all. Claude's words are escaped, so they read
-// as written, never as markup, but each code span in them, which reads as
-// written only kept one, and kept whole in the gate payload; the mechanism
-// keeps its lines, each drawn
-// from its first word: a leading indent in a menu is a row's continuation.
+// Every line above the rows is the menu's statement, drawn apart from the
+// menu where the gate surface announced (surfaces.cjs, `menuFrame`), the
+// gate payload asking the call's own question in the place of the menu's
+// short one. Claude's words are escaped, so they read as written, never as
+// markup, but each code span in them, which reads as written only kept one,
+// and kept whole in the gate payload; the mechanism keeps its lines, each
+// drawn from its first word: a leading indent in a menu is a row's
+// continuation.
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption, promptOption, MENU_INSTRUCTION, CONTINUE_INSTRUCTION, escapeProse, wordsAsWritten } = require('./surfaces.cjs');
@@ -77,6 +82,24 @@ function keepingRow({ call, replaces }) {
 function drawnRows(seal) {
   const keeps = keepingRow(seal);
   return keeps === null || seal.call.rows.includes(keeps) ? seal.call.rows : [...seal.call.rows, keeps];
+}
+
+/**
+ * The number the row `key` is drawn under: its place among the rows drawn,
+ * from 1.
+ * @param {Seal} seal @param {string} key @returns {string}
+ */
+function drawnNumber(seal, key) {
+  return String(drawnRows(seal).findIndex((row) => row.key === key) + 1);
+}
+
+/**
+ * The row drawn under the number `number`; undefined where none is.
+ * @param {Seal} seal @param {string} number
+ * @returns {import('../raise.cjs').Row|undefined}
+ */
+function rowDrawn(seal, number) {
+  return drawnRows(seal).find((_, i) => String(i + 1) === number);
 }
 
 /**
@@ -155,16 +178,19 @@ function statement(seal, technical, shown, ruled) {
  * @returns {string}
  */
 function raiseScreen(seal, { technical = false, topic, ruled }) {
-  const { id } = seal;
+  const { id, call } = seal;
   wordsAsWritten();
   const { question, prompt } = asking(seal);
   const rows = [
-    ...drawnRows(seal).map((row) => cmdOption(row.key, null, { head: escapeProse(row.text), recommended: row.key === leanShown(seal) }, { next: engine(['raise', 'answer', id, '--pick', row.key]) })),
+    ...drawnRows(seal).map((row, i) => {
+      const number = String(i + 1);
+      return cmdOption(number, null, { head: escapeProse(row.text), recommended: row.key === leanShown(seal) }, { next: engine(['raise', 'answer', id, '--pick', number]) });
+    }),
     cmdOption('t', 'technical', technical ? 'Hide the mechanism' : 'Show the mechanism', { next: engine(['raise', 'show', id, ...(technical ? [] : ['--technical'])]) }),
     cmdOption('e', 'explain', 'I don\'t follow — explain it again', { next: engine(['raise', 'answer', id, '--didnt-follow']) }),
     promptOption('Comment', prompt),
   ];
-  return section(`MENU: ${seal.menu}`, MENU_INSTRUCTION, menu(statement(seal, technical, topic, ruled).join('\n'), rows, { question }));
+  return section(`MENU: ${seal.menu}`, MENU_INSTRUCTION, menu(statement(seal, technical, topic, ruled).join('\n'), rows, { question, asks: escapeProse(call.question) }));
 }
 
 /**
@@ -216,4 +242,4 @@ function leftScreen(lean) {
   return section('DISPLAY: blind question revealed', CONTINUE_INSTRUCTION, wrapWithPrefix(`My answer stands as the builder's: ${revealed(lean)}`, { width: TREE_WIDTH }).join('\n'));
 }
 
-module.exports = { drawnRows, keepingRow, leanShown, raiseScreen, revealScreen, leftScreen };
+module.exports = { drawnRows, drawnNumber, rowDrawn, keepingRow, leanShown, raiseScreen, revealScreen, leftScreen };

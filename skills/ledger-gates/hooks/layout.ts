@@ -28,12 +28,14 @@ export type Typed = {
   detail: string | null
 }
 
-/** A gate as the engine states it. */
+/**
+ * A gate as the engine states it: what the person picks from. What they
+ * read before it, the engine prints in the chat above.
+ */
 export type Gate = {
   /** The gate's name, which a press records for the engine. */
   name: string
   question: string
-  statement: string
   options: Option[]
   typed: Typed[]
 }
@@ -96,7 +98,7 @@ export type Line =
 /** The cursor's gutter, where the footer also sits. */
 export const GUTTER = 2
 
-/** The `◆ ` the question opens with; the statement lines up past it. */
+/** The `◆ ` the question opens with; its wrapped lines line up past it. */
 export const GLYPH_COLUMN = 2
 
 export const IDLE: Footer = { kind: 'idle' }
@@ -453,7 +455,7 @@ const pageHolding = (pages: readonly RowLine[][], cursor: number) =>
 
 /**
  * Every line the band draws for a gate, top to bottom: the rule, a blank, the
- * statement, the question, a blank, the rows, a blank and the footer. Where
+ * question, a blank, the rows, a blank and the footer. Where
  * that would stand taller than `maxRows`, the rows show a page at a time over
  * a pager line, every page padded to one height; the page shown is `page`, or
  * the one holding the option at `cursor`. How many lines there are is the
@@ -468,9 +470,9 @@ export function linesOf(
   maxRows = Infinity,
   { page, cursor = -1 }: { page?: number; cursor?: number } = {},
 ): Line[] {
-  const width = columns - GLYPH_COLUMN
-  const statement = paragraphs(gate.statement, width)
-  const question = paragraphs(gate.question, width, { bold: true })
+  const question = paragraphs(gate.question, columns - GLYPH_COLUMN, {
+    bold: true,
+  })
   const prose = (runs: Run[], glyph: boolean): Line => ({
     kind: 'prose',
     glyph,
@@ -489,7 +491,6 @@ export function linesOf(
   const head: Line[] = [
     RULE,
     BLANK,
-    ...statement.map(runs => prose(runs, false)),
     ...question.map((runs, n) => prose(runs, n === 0)),
     BLANK,
   ]

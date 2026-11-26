@@ -240,10 +240,10 @@ describe('investigation-log — the hunt under its fixed headings (19.4.1–19.4
   const FIX_CALL = Object.freeze({
     question: 'How should restore stop losing sessions?',
     rows: [
-      { key: '1', name: 'Refuse', text: 'Refuse to save an empty capture', notice: 'a kill never empties the save' },
-      { key: '2', name: 'Keep', text: 'Keep the last good save beside it', notice: 'restore offers the one before' },
+      { key: 'a', name: 'Refuse', text: 'Refuse to save an empty capture', notice: 'a kill never empties the save' },
+      { key: 'b', name: 'Keep', text: 'Keep the last good save beside it', notice: 'restore offers the one before' },
     ],
-    lean: '1',
+    lean: 'a',
     why: 'The empty capture is the cause.',
     sort: 'one',
     mechanism: 'The save checks the capture before it writes.',
@@ -268,7 +268,7 @@ describe('investigation-log — the hunt under its fixed headings (19.4.1–19.4
     log('root-cause', ['--entry', made.rootCause]);
     const decided = picked((await raised({ ...FIX_CALL, stepped_back: ['The first step back.'] })).res.raise, '1');
     const replacing = await raised({
-      ...FIX_CALL, rows: [FIX_CALL.rows[1], { key: '3', name: 'Both', text: 'Refuse it and keep the last good save', notice: 'both' }], lean: '3', stepped_back: STEPPED_BACK,
+      ...FIX_CALL, rows: [FIX_CALL.rows[1], { key: 'c', name: 'Both', text: 'Refuse it and keep the last good save', notice: 'both' }], lean: 'c', stepped_back: STEPPED_BACK,
     }, ['--replaces', decided, '--reason', 'changed-mind']);
     picked(replacing.res.raise, '3');
 

@@ -237,11 +237,11 @@ function fixSummary({ fix_direction: fix }: Investigation): Part[] {
   return summary === null ? [] : [{ text: summary, color: COLOUR.secondary }]
 }
 
-/** An option's row: its key and name, Claude's lean marked while the person is asked, the person's pick once picked. */
-function optionLine(view: Investigation, option: Option): Line {
+/** An option's row: the number the raise's screen draws it under and its name, Claude's lean marked while the person is asked, the person's pick once picked. */
+function optionLine(view: Investigation, option: Option, number: number): Line {
   const fix = view.fix_direction
   const picked = fix.state === 'picked'
-  const mark: Part = !picked ? { text: `${option.key} `, color: COLOUR.needs } : fix.pick === option.key ? { text: `${MARK.done} `, color: COLOUR.done } : { text: `${MARK.cancelled} `, color: COLOUR.notStarted }
+  const mark: Part = !picked ? { text: `${number} `, color: COLOUR.needs } : fix.pick === option.key ? { text: `${MARK.done} `, color: COLOUR.done } : { text: `${MARK.cancelled} `, color: COLOUR.notStarted }
   const said: Part[] = !picked ? (option.lean ? [{ text: " · Claude's lean", color: COLOUR.secondary }] : []) : fix.pick === option.key ? [{ text: ' · your pick', color: COLOUR.done }] : []
 
   return { key: `hunt:option:${option.key}`, mark, wraps: true, parts: [{ text: option.name, color: COLOUR.body }, ...said], press: pageKey(`option:${option.key}`) }
@@ -266,7 +266,7 @@ function fixLines(view: Investigation, width: number): Line[] {
       ? [{ key: 'hunt:fix:own', mark: { text: `${MARK.done} `, color: COLOUR.done }, wraps: true, parts: [{ text: fix.fix, color: COLOUR.body }, { text: ' · yours', color: COLOUR.done }] }]
       : []
 
-  return [head, ...back, ...fix.options.map(option => optionLine(view, option)), ...ownWords]
+  return [head, ...back, ...fix.options.map((option, n) => optionLine(view, option, n + 1)), ...ownWords]
 }
 
 const investigationLines = (view: Investigation, kit: Kit): Line[] => [

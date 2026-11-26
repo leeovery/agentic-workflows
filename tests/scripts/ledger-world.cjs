@@ -247,16 +247,16 @@ function ledgerHelpers(dir) {
 function leaningCall(lean, other) {
   return {
     question: 'What is a note?',
-    rows: [{ key: '1', name: 'Lean', text: lean, notice: 'what Claude would build' }, { key: '2', name: 'Other', text: other, notice: 'what else it could be' }],
-    lean: '1', why: 'It follows the person.', sort: 'several', mechanism: 'How a note is built.', product_wide: false,
+    rows: [{ key: 'lean', name: 'Lean', text: lean, notice: 'what Claude would build' }, { key: 'other', name: 'Other', text: other, notice: 'what else it could be' }],
+    lean: 'lean', why: 'It follows the person.', sort: 'several', mechanism: 'How a note is built.', product_wide: false,
   };
 }
 
 /**
  * The person's answer to Claude's lean on `question` at `address`: a raise
  * drawn and answered in the conversation `env` names, Claude leaning to
- * `lean` over `other`, the person picking `key` — `1` the lean, `2` the
- * other — who moved whom on stdin where `moved` gives it. Answers the
+ * `lean` over `other`, the person picking the row the screen numbers `key` —
+ * `1` the lean, `2` the other — who moved whom on stdin where `moved` gives it. Answers the
  * entry's short id.
  * @param {string} dir @param {string} address @param {string} question
  * @param {{lean: string, other: string, key: '1'|'2', moved?: string, env: Record<string, string|undefined>}} answer

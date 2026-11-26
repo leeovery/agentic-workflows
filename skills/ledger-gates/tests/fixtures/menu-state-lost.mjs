@@ -11,7 +11,7 @@ export default [
   "> Otherwise the state is lost: the decisions, the logs and the ledger. Fumi's code and its history are untouched.",
   "",
   "=== GATE (json for a gate surface — never display) ===",
-  "{\"gate\":\"state lost gate\",\"question\":\"Start again with a fresh state?\",\"statement\":\"\",\"options\":[{\"key\":\"y\",\"word\":\"yes\",\"head\":\"Start again\",\"tail\":\"a fresh state branch, then the product researcher reads Fumi's code to rebuild what it can\",\"cue\":null,\"holder\":null,\"detail\":null,\"struck\":false,\"recommended\":false},{\"key\":\"n\",\"word\":\"no\",\"head\":\"Not now\",\"tail\":\"look for another clone first; nothing is written\",\"cue\":null,\"holder\":null,\"detail\":null,\"struck\":false,\"recommended\":false}],\"typed\":[]}",
+  "{\"gate\":\"state lost gate\",\"question\":\"Start again with a fresh state?\",\"options\":[{\"key\":\"y\",\"word\":\"yes\",\"head\":\"Start again\",\"tail\":\"a fresh state branch, then the product researcher reads Fumi's code to rebuild what it can\",\"cue\":null,\"holder\":null,\"detail\":null,\"struck\":false,\"recommended\":false},{\"key\":\"n\",\"word\":\"no\",\"head\":\"Not now\",\"tail\":\"look for another clone first; nothing is written\",\"cue\":null,\"holder\":null,\"detail\":null,\"struck\":false,\"recommended\":false}],\"typed\":[]}",
   "=== MENU: state lost gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
   "· · · · · · · · · · · ·",
   "**`◆ Start again with a fresh state?`**",

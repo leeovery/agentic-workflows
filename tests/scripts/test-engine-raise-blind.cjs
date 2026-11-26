@@ -48,7 +48,7 @@ const { UNIT, MADE, NOTE, PHASES, SESSION_ID, ledgerHelpers } = require('./ledge
 const { SESSION, WHY, raiseHelpers } = require('./raise-world.cjs');
 const { DRAWN, DAY, idOf, history, lines } = require('./trust-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
-const { auditGate } = require('./gate-audit.cjs');
+const { auditGate, unannounced } = require('./gate-audit.cjs');
 const { fixture } = require('./board-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
@@ -78,14 +78,16 @@ const BUILD = `${BUILT}.implementation`;
 // Task 2.3 of its build, as a round's report names it.
 const TASK = Object.freeze({ unit: BUILT, phase: 2, n: 3 });
 
-const CURSOR = Object.freeze({ key: '1', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' });
-const MAIN = Object.freeze({ key: '2', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
+const CURSOR = Object.freeze({ key: 'a', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' });
+// Its key is the row's id alone, the one a blind draw ranks it by: `x`
+// keeps the order each question below gives it.
+const MAIN = Object.freeze({ key: 'x', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
 
 /** Claude's call: where a new note opens, leaning to the cursor's screen, its first row. */
 const CALL = Object.freeze({
   question: 'When you make a new note, where should its window open?',
   rows: [CURSOR, MAIN],
-  lean: '1',
+  lean: 'a',
   why: 'A note follows the person.',
   sort: 'several',
   mechanism: 'The screen under the pointer when the note is made.',
@@ -95,19 +97,22 @@ const CALL = Object.freeze({
 /** Claude's call as a blind draw of a question whose id puts the main screen first seals it: rekeyed by place, the lean with its row. */
 const MAIN_FIRST = Object.freeze({ ...CALL, rows: [{ ...MAIN, key: '1' }, { ...CURSOR, key: '2' }], lean: '2' });
 
+/** The same, sealed by a draw whose question's id puts the cursor's screen first. */
+const CURSOR_FIRST = Object.freeze({ ...CALL, rows: [{ ...CURSOR, key: '1' }, { ...MAIN, key: '2' }], lean: '1' });
+
 /** Claude's call proposing a shadow in place of its decision on the note's shadow. */
 const SHADOWED = Object.freeze({
   ...CALL,
   question: 'Should a note cast a soft shadow after all?',
-  rows: [{ key: '1', name: 'Soft', text: 'A soft shadow', notice: 'notes lift off the desk' }, { key: '2', name: 'Line', text: 'A hairline edge', notice: 'notes sit flat with an edge' }],
+  rows: [{ key: 'a', name: 'Soft', text: 'A soft shadow', notice: 'notes lift off the desk' }, { key: 'b', name: 'Line', text: 'A hairline edge', notice: 'notes sit flat with an edge' }],
 });
 
 /** Claude's call proposing afresh where a note opens, in place of its call on it. */
 const AFRESH = Object.freeze({
   ...CALL,
   question: 'Where should a new note open, now the second screen is in?',
-  rows: [{ ...MAIN, key: '1' }, { key: '2', name: 'Last', text: 'On the screen last used', notice: 'the note follows your last screen' }],
-  lean: '1',
+  rows: [MAIN, { key: 'b', name: 'Last', text: 'On the screen last used', notice: 'the note follows your last screen' }],
+  lean: MAIN.key,
 });
 
 // The questions a blind draw orders rows by, at ids chosen for the order
@@ -238,12 +243,12 @@ describe('the draw (16.17.1–16.17.5)', () => {
     const technical = okSections(dir, ['raise', 'show', res.raise, '--technical'], { env: { ...env, LEDGER_GATE_SURFACE: '1' } }).sections;
 
     assert.deepStrictEqual([res, sections], [{ ok: true, decision: 'blind', reason: BLIND, raise: res.raise, redrawn: false }, blindScreen(res.raise)]);
-    assert.deepStrictEqual([again.res, again.sections.replace(/^=== GATE.*\n.*\n/, '')], [{ ok: true, decision: 'blind', reason: BLIND, raise: res.raise, redrawn: true }, blindScreen(res.raise)]);
+    assert.deepStrictEqual([again.res, unannounced(again.sections)], [{ ok: true, decision: 'blind', reason: BLIND, raise: res.raise, redrawn: true }, blindScreen(res.raise)]);
     const drawn = auditGate(again.sections, 'raise, blind');
     const held = await fixture('raise-blind.mjs');
     assert.deepStrictEqual(drawn, { ...held, gate: `raise — ${res.raise}` }, 'the mod\'s blind question is not the payload the engine states (6.S19)');
     const gate = /** @type {Record<string, any>} */ (auditGate(technical, 'raise show --technical, blind'));
-    assert.deepStrictEqual([technical.replace(/^=== GATE.*\n.*\n/, ''), gate.options.map((/** @type {{recommended: boolean}} */ o) => o.recommended)], [blindScreen(res.raise, { technical: true }), [false, false, false, false]]);
+    assert.deepStrictEqual([unannounced(technical), gate.options.map((/** @type {{recommended: boolean}} */ o) => o.recommended)], [blindScreen(res.raise, { technical: true }), [false, false, false, false]]);
     const { call, rows_judged: judged, blind, reason, answered: answer } = seals()?.[res.raise] ?? {};
     assert.deepStrictEqual([call, judged, blind, reason, answer], [MAIN_FIRST, ['1'], true, BLIND, null]);
     assert.deepStrictEqual(loggedOf('blind-draw').map(({ entry, kind }) => [entry, kind]), [[res.raise, 'behaviour']]);
@@ -260,7 +265,7 @@ describe('the draw (16.17.1–16.17.5)', () => {
     fs.rmSync(inFolder(RAISE_SHOWN));
     const again = (await raised(NOTE, ['--answers', ASKED.note], CALL, env)).res.raise;
 
-    assert.deepStrictEqual([first?.[note].call, first?.[menu].call], [MAIN_FIRST, CALL]);
+    assert.deepStrictEqual([first?.[note].call, first?.[menu].call], [MAIN_FIRST, CURSOR_FIRST]);
     assert.notStrictEqual(again, note);
     assert.deepStrictEqual(seals()?.[again].call, MAIN_FIRST);
   });

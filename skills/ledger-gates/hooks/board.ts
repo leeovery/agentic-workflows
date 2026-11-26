@@ -71,7 +71,7 @@ let shown: {
   sends: Sends
   maxRows: number
 } = {
-  gate: { question: '', statement: '', options: [], typed: [] },
+  gate: { question: '', options: [], typed: [] },
   lines: [],
   columns: 0,
   sends: NO_SENDS,

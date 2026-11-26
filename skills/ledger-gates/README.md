@@ -33,9 +33,16 @@ pick. Rows only typing can answer — Ask, Comment — draw dim, and a
 click on one says to type it in the prompt. The footer under the rows says
 which: how to answer, what is in the prompt, or where to type.
 
+The band holds what the person picks from: the question, the rows and the
+footer. What they read before it — the gate's explanation, and for a raised
+question its whole account — the engine prints in the chat directly above,
+where it scrolls and wraps as any message does. For a raised question the
+band asks the question itself, never a short stand-in, and numbers its
+answers 1, 2, 3 in the order drawn.
+
 The band is never taller than the rows Claude Code gives it, so it never
-scrolls. A gate that fits shows whole: a rule, the statement and the question,
-the rows, the footer. One that does not keeps its rule, question and footer in
+scrolls. A gate that fits shows whole: a rule, the question, the rows, the
+footer. One that does not keeps its rule, question and footer in
 place and shows its rows a page at a time, every page the same height, over a
 line reading `↑ previous   ↓ next   page 1 of 3`; a click on either turns the
 page and puts the cursor on its first row. The arrows carry the cursor across

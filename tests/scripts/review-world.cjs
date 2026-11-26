@@ -377,10 +377,10 @@ function firstRoundFailed() {
 const MAILED = Object.freeze({
   question: 'Is the receipt mailed or printed?',
   rows: [
-    { key: '1', name: 'Mailed', text: 'The receipt is mailed', notice: 'the customer finds it in their inbox' },
-    { key: '2', name: 'Printed', text: 'The receipt is printed', notice: 'the till prints it' },
+    { key: 'a', name: 'Mailed', text: 'The receipt is mailed', notice: 'the customer finds it in their inbox' },
+    { key: 'b', name: 'Printed', text: 'The receipt is printed', notice: 'the till prints it' },
   ],
-  lean: '1',
+  lean: 'a',
   why: 'A customer keeps proof.',
   sort: 'several',
   mechanism: 'The gateway mails the receipt.',
