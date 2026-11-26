@@ -48,7 +48,7 @@ Claude keeps what comes up in any conversation, Ledger's or not, where Ledger ke
 
 - an **idea**: something you might build or explore;
 - a **bug**: something broken — its symptoms, the conditions, the impact;
-- a **quick-fix**: settled work needing no decision — what, where and why.
+- a **quick-fix**: work that takes no deciding — what, where and why.
 
 A capture writes your thought down as you said it, never padded; the thinking happens later, if you decide the thought is worth it. A capture made from a session in another project lands in the inbox of the project it concerns.
 

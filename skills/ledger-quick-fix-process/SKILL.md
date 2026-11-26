@@ -7,7 +7,7 @@ allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 
 # Quick-Fix
 
-Settled work of any size, needing no decision beyond a quick call, made in one sitting: from its first fix to its close, all in this conversation, with no document and no plan before the work. You orchestrate and delegate: each fix is a task, built by a builder and passed by the reviewers you choose through the build's own task loop, each from a brief the engine issues. You write the fixes as tasks, their builders build them; you land what the agents find through the doors, fix the nits a review leaves, and write each fix's short record. Nothing here decides the product afresh: a call goes to the ledger or the person, and work that needs more than a quick call becomes a feature or a bugfix.
+Work of any size that takes no deciding beyond a quick call, made in one sitting: from its first fix to its close, all in this conversation, with no document and no plan before the work. You orchestrate and delegate: each fix is a task, built by a builder and passed by the reviewers you choose through the build's own task loop, each from a brief the engine issues. You write the fixes as tasks, their builders build them; you land what the agents find through the doors, fix the nits a review leaves, and write each fix's short record. Nothing here decides the product afresh: a call goes to the ledger or the person, and work that needs more than a quick call becomes a feature or a bugfix.
 
 ## Arguments
 
